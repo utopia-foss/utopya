@@ -105,7 +105,7 @@ class ModelRegistry:
         )
 
         for model_name, _ in self.items():
-            lines.append("  - {}".format(model_name))
+            lines.append(f"  - {model_name}")
 
         return "\n".join(lines)
 
@@ -118,7 +118,7 @@ class ModelRegistry:
         )
 
         for model_name, entry in self.items():
-            lines.append("  - {:19s} {}".format(model_name, entry))
+            lines.append(f"  - {model_name:19s} {entry}")
 
         return "\n".join(lines)
 

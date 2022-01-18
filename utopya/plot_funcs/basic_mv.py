@@ -129,7 +129,7 @@ def errorbar(
             sel_dict = {coord.name: coord.item()}  # single value -> dim. red.
 
             # Prepare additional kwargs
-            add_kwargs = dict(label="${:.3g}$".format(coord.item()))
+            add_kwargs = dict(label=f"${coord.item():.3g}$")
 
             if color is not None:
                 add_kwargs["color"] = color
@@ -239,7 +239,7 @@ def asymptotic_average(
             mean.sel(**sel_dict),
             coord_val,
             yerr=std.sel(**sel_dict) if plot_std else None,
-            label="{:.3g}".format(coord_val.item()),
+            label=f"{coord_val.item():.3g}",
             **errorbar_kwargs,
         )
 

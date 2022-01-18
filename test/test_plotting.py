@@ -150,9 +150,9 @@ def test_dag_plotting():
             continue
 
         # The actual plotting
-        print("Plotting '{}' ...".format(cfg_name))
+        print(f"Plotting '{cfg_name}' ...")
         mv.pm.plot(cfg_name, **shared_kwargs, **plot_cfg)
-        print("Successfully plotted '{}'!\n\n".format(cfg_name))
+        print(f"Successfully plotted '{cfg_name}'!\n\n")
 
 
 def test_pcr_ext_extensions():

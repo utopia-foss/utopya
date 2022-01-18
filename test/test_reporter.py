@@ -23,7 +23,7 @@ def sleep_task() -> dict:
     sleep_args = (
         "python3",
         "-c",
-        "from time import sleep; sleep({})".format(SLEEP_TIME),
+        f"from time import sleep; sleep({SLEEP_TIME})",
     )
     return dict(worker_kwargs=dict(args=sleep_args, read_stdout=True))
 
@@ -490,7 +490,7 @@ def test_write_to_file(wm, rf_dict, tmpdir):
     assert report_file.isfile()
 
     # Read file content
-    with open(str(report_file), "r") as f:
+    with open(str(report_file)) as f:
         assert f.read() == "total: 11,  active: 0,  finished: 0,  stopped: 0"
 
     # Unset the report directory and try with relative path

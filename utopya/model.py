@@ -93,7 +93,7 @@ class Model:
 
     def __str__(self) -> str:
         """Returns an informative string for this Model instance"""
-        return "<Utopia '{}' model>".format(self.name)
+        return f"<Utopia '{self.name}' model>"
 
     # Properties ..............................................................
 
@@ -469,7 +469,7 @@ class Model:
     def _create_tmpdir(self) -> TemporaryDirectory:
         """Create a TemporaryDirectory"""
         return TemporaryDirectory(
-            prefix=self.name, suffix="_mv{}".format(len(self._mvs))
+            prefix=self.name, suffix=f"_mv{len(self._mvs)}"
         )
 
     def _find_config_sets(

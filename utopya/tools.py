@@ -246,7 +246,7 @@ def format_time(
             if ms_precision <= 0 or duration >= 60:
                 # Regular behaviour: Seconds do not have decimals or duration
                 # is so long that they need not be represented.
-                s = "{:d}{:}".format(time_to_represent, letter)
+                s = f"{time_to_represent:d}{letter}"
 
             else:
                 # There are decimaly to be represented.
@@ -328,7 +328,7 @@ def fill_line(
             fill_str[: len(fill_str) // 2] + s + fill_str[len(fill_str) // 2 :]
         )
 
-    raise ValueError("align argument '{}' not supported".format(align))
+    raise ValueError(f"align argument '{align}' not supported")
 
 
 def center_in_line(

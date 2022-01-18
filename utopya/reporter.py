@@ -919,9 +919,7 @@ class WorkerManagerReporter(Reporter):
         Returns:
             str: A str representation of the task counters of the WorkerManager
         """
-        return ",  ".join(
-            ["{}: {}".format(k, v) for k, v in self.task_counters.items()]
-        )
+        return ",  ".join([f"{k}: {v}" for k, v in self.task_counters.items()])
 
     def _parse_progress(self, *, report_no: int = None) -> str:
         """Returns a progress string
@@ -1302,7 +1300,7 @@ class WorkerManagerReporter(Reporter):
             def task_names(sc: set) -> str:
                 if not sc.fulfilled_for:
                     return "(None)"
-                return ", ".join(sorted([t.name for t in sc.fulfilled_for]))
+                return ", ".join(sorted(t.name for t in sc.fulfilled_for))
 
             parts += ["Stop Conditions"]
             parts += ["---------------"]

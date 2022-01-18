@@ -189,7 +189,7 @@ def bifurcation_diagram(
                 color = cmap(1.0)
 
             else:
-                log.warning("No color defined for data_var '{}'!".format(k))
+                log.warning(f"No color defined for data_var '{k}'!")
                 color = None
 
             # Create and add the handle and the label

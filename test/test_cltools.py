@@ -19,7 +19,7 @@ class MockArgs(dict):
     """An attribute dict to mock the CL arguments"""
 
     def __init__(self, *args, **kwargs):
-        super(MockArgs, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.__dict__ = self
 
 

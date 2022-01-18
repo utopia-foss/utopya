@@ -77,7 +77,7 @@ def create_mask(
     data = comp_func(data, rhs_value)
 
     # Create a new name
-    name = data.name + " (masked by '{} {}')".format(operator_name, rhs_value)
+    name = data.name + f" (masked by '{operator_name} {rhs_value}')"
 
     # Build a new xr.DataArray from that data, retaining all information
     return xr.DataArray(

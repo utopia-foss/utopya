@@ -51,13 +51,13 @@ def time_series(*, data: dict, hlpr: PlotHelper, **plot_kwargs):
                 hlpr.ax.plot(
                     line.coords["time"],
                     line,
-                    label="{:.2g}".format(c.item()),
+                    label=f"{c.item():.2g}",
                     **plot_kwargs,
                 )
 
             # Provide a default title to the legend: name of the loop dimension
             hlpr.provide_defaults(
-                "set_legend", title="${}$ coordinate".format(loop_dim)
+                "set_legend", title=f"${loop_dim}$ coordinate"
             )
 
         else:

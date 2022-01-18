@@ -347,7 +347,7 @@ class Parameter:
 
     @classmethod
     def from_shorthand(cls, value, *, mode, **kwargs):
-        """Constructs a Parameter object from a given shorthand mode.
+        r"""Constructs a Parameter object from a given shorthand mode.
 
         Args:
             value: A given value, typically the ``default`` argument.

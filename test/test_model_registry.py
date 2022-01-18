@@ -18,7 +18,7 @@ from .test_cfg import tmp_cfg_dir
 @pytest.fixture
 def test_cfg() -> dict:
     """Loads the test configuration file for this test module"""
-    with open(resource_filename("test", "cfg/model_registry.yml"), "r") as f:
+    with open(resource_filename("test", "cfg/model_registry.yml")) as f:
         return yaml.load(f)
 
 

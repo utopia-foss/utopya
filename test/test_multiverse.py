@@ -496,7 +496,7 @@ def test_parallel_init(mv_kwargs):
     mv = Multiverse(**mv_kwargs)
     mv.run()
     log = mv.wm.tasks[0].streams["out"]["log"]
-    assert any(("Parallel execution disabled" in line for line in log))
+    assert any("Parallel execution disabled" in line for line in log)
 
     # Now override default setting
     mv_kwargs["parameter_space"]["parallel_execution"] = dict(enabled=True)
@@ -504,7 +504,7 @@ def test_parallel_init(mv_kwargs):
     mv = Multiverse(**mv_kwargs)
     mv.run()
     log = mv.wm.tasks[0].streams["out"]["log"]
-    assert any(("Parallel execution enabled" in line for line in log))
+    assert any("Parallel execution enabled" in line for line in log)
 
 
 def test_prolog_and_epilog_is_run(mv_kwargs):
@@ -516,12 +516,12 @@ def test_prolog_and_epilog_is_run(mv_kwargs):
     mv = Multiverse(**mv_kwargs)
     mv.run()
     log = mv.wm.tasks[0].streams["out"]["log"]
-    assert any(("Prolog finished." in line for line in log))
-    assert any(("Epilog finished." in line for line in log))
+    assert any("Prolog finished." in line for line in log)
+    assert any("Epilog finished." in line for line in log)
 
     # The "Invoking epilog ..." message should _not_ be there in *this* case,
     # because it denotes that the simulation stopped after receiving a signal
-    assert not any(("Invoking epilog ..." in line for line in log))
+    assert not any("Invoking epilog ..." in line for line in log)
 
     # Now perform a longer simulation with a timeout
     mv_kwargs["parameter_space"]["num_steps"] = int(1e9)
@@ -531,9 +531,9 @@ def test_prolog_and_epilog_is_run(mv_kwargs):
     mv = Multiverse(**mv_kwargs)
     mv.run()
     log = mv.wm.tasks[0].streams["out"]["log"]
-    assert any(("Prolog finished." in line for line in log))
-    assert any(("Invoking epilog ..." in line for line in log))
-    assert any(("Epilog finished." in line for line in log))
+    assert any("Prolog finished." in line for line in log)
+    assert any("Invoking epilog ..." in line for line in log)
+    assert any("Epilog finished." in line for line in log)
 
 
 def test_shared_worker_manager(mv_kwargs):

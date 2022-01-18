@@ -1236,7 +1236,7 @@ class Multiverse:
         )
 
         # Get the length of longest key sequence (used for alignment)
-        _nd = max([len(".".join(ks)) for ks in invalid_params.keys()])
+        _nd = max(len(".".join(ks)) for ks in invalid_params.keys())
 
         for key_seq, errs in invalid_params.items():
             path = ".".join(key_seq)
@@ -1473,7 +1473,7 @@ class FrozenMultiverse(Multiverse):
 
         # Check if the directory exists
         if not os.path.isdir(run_dir):
-            raise IOError(f"No run directory found at '{run_dir}'!")
+            raise OSError(f"No run directory found at '{run_dir}'!")
 
         # Store the path and associate the subdirectories
         self.dirs["run"] = run_dir

@@ -220,10 +220,7 @@ class GridDC(XarrayDC):
         # Iterate over new dimension names and grid shape and use the dim names
         # and shape determined and cached by _determine_shape.
         return tuple(
-            [
-                (n, l)
-                for i, (n, l) in enumerate(zip(self._new_dims, self.shape))
-            ]
+            (n, l) for i, (n, l) in enumerate(zip(self._new_dims, self.shape))
         )
 
     # Properties ..............................................................

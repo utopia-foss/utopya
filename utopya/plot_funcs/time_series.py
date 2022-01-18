@@ -45,7 +45,7 @@ def density(
     size_factor: float = 1.0,
     **plot_kwargs,
 ) -> None:
-    """Plot the density of a mask, i.e. of a dataset holding booleans.
+    r"""Plot the density of a mask, i.e. of a dataset holding booleans.
 
     This plotting function is useful when creating a plot from data that is
     encoded in a binary fashion, e.g.: arrays containing True to denote the
@@ -160,7 +160,7 @@ def densities(
     to_plot: dict,
     **common_plot_kwargs,
 ):
-    """Like density, but for several specifications given by the ``to_plot``
+    r"""Like density, but for several specifications given by the ``to_plot``
     argument.
 
     Args:
@@ -214,7 +214,7 @@ def phase_space(
     cmap: str = None,
     **scatter_kwargs,
 ):
-    """Plots ``x`` and ``y`` data in a phase space plot. If ``cmap`` is given,
+    r"""Plots ``x`` and ``y`` data in a phase space plot. If ``cmap`` is given,
     the time development will be colour coded.
 
     .. note::

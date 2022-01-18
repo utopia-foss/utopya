@@ -341,12 +341,12 @@ def deploy_user_cfg(
     # Create a file at the given location
     with open(user_cfg_path, "x") as ucfg:
         # Write header section, from user config header file
-        with open(USER_CFG_HEADER_PATH, "r") as ucfg_header:
+        with open(USER_CFG_HEADER_PATH) as ucfg_header:
             ucfg.write(ucfg_header.read())
 
         # Now go over the full config and write the content, commenting out
         # the lines that are not already commented out
-        with open(BASE_CFG_PATH, "r") as bcfg:
+        with open(BASE_CFG_PATH) as bcfg:
             past_prefix = False
 
             for line in bcfg:
@@ -478,7 +478,7 @@ def copy_model_files(
         which copies from the source directory tree to the target directory
         tree.
         """
-        max_key_len = min(max([len(k) for k in file_map]), 32)
+        max_key_len = min(max(len(k) for k in file_map), 32)
         files = [
             "\t{:{l:d}s}  ->  {:s}".format(k, v, l=max_key_len)
             for k, v in file_map.items()
@@ -514,7 +514,7 @@ def copy_model_files(
                 file. In this case, the line has to be added manually.
         """
         # Read the file
-        with open(fpath, "r") as f:
+        with open(fpath) as f:
             lines = f.readlines()
 
         # Find the line to add the add_subdirectory command at
@@ -541,7 +541,7 @@ def copy_model_files(
 
         lines.insert(
             insert_idx if insert_idx else last_add_subdir_idx + 1,
-            "add_subdirectory({})\n".format(new_name),
+            f"add_subdirectory({new_name})\n",
         )
 
         if write:
@@ -592,7 +592,7 @@ def copy_model_files(
             "".format(new_name, ", ".join(_MODELS.keys()))
         )
 
-    print("Name of the new model:      {}".format(new_name))
+    print(f"Name of the new model:      {new_name}")
 
     # Define the replacements
     replacements = [
@@ -615,7 +615,7 @@ def copy_model_files(
             )
         except KeyboardInterrupt:
             return
-    print("Utopia project to copy to:  {}".format(target_project))
+    print(f"Utopia project to copy to:  {target_project}")
 
     project_info = projects.get(target_project)
     if not project_info:
@@ -702,7 +702,7 @@ def copy_model_files(
             target_dir=py_p_target_dir,
         )
 
-    max_repl_len = max([len(rs) for rs, _ in replacements])
+    max_repl_len = max(len(rs) for rs, _ in replacements)
     repl_info = [
         "\t'{:{l:d}s}'  ->  '{:s}'".format(*repl, l=max_repl_len)
         for repl in replacements
@@ -731,11 +731,11 @@ def copy_model_files(
 
     # Now, the actual copying . . . . . . . . . . . . . . . . . . . . . . . . .
     for i, (src_fpath, target_fpath) in enumerate(file_map.items()):
-        print("\nFile {:d}/{:d} ...".format(i + 1, len(file_map)))
-        print("\t   {:s}\n\t-> {:s}".format(src_fpath, target_fpath))
+        print(f"\nFile {i + 1:d}/{len(file_map):d} ...")
+        print(f"\t   {src_fpath:s}\n\t-> {target_fpath:s}")
 
         try:
-            with open(src_fpath, mode="r") as src_file:
+            with open(src_fpath) as src_file:
                 src_lines = src_file.read()
 
         except Exception as exc:

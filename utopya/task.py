@@ -290,7 +290,7 @@ class Task:
         return hash(self.uid)
 
     def __str__(self) -> str:
-        return "Task<uid: {}, priority: {}>".format(self.uid, self.priority)
+        return f"Task<uid: {self.uid}, priority: {self.priority}>"
 
     def __lt__(self, other) -> bool:
         return bool(self.order_tuple < other.order_tuple)
@@ -807,7 +807,7 @@ class WorkerTask(Task):
 
         def print_lines(lines: List[str], *, log_level: int):
             """Prints the lines to stdout via print or log.log"""
-            prefix = "  {} {}: ".format(self.name, stream_name)
+            prefix = f"  {self.name} {stream_name}: "
 
             if log_level is None:
                 # print it to the parent process's stdout

@@ -129,7 +129,7 @@ def state(
     preprocess_funcs: Dict[str, Callable] = None,
     default_imshow_kwargs: dict = None,
 ):
-    """Plots the state of the cellular automaton as a 2D heat map.
+    r"""Plots the state of the cellular automaton as a 2D heat map.
     This plot function can be used for a single plot, but also supports
     animation.
 
@@ -224,7 +224,7 @@ def state(
         imshow_kwargs: dict = None,
         **cbar_kwargs,
     ):
-        """Helper function to plot a property on a given axis and return
+        r"""Helper function to plot a property on a given axis and return
         an imshow object
 
         Args:

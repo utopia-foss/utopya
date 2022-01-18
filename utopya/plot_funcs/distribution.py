@@ -173,7 +173,7 @@ def histogram(
                 "$N_{{data}} = {Ntot:}$\n"
                 "$N_{{bins}} = {Nbins:d}$\n"
                 "bin width: ${bin_width:.3g}$\n"
-                "bin range: $[{rg_min:.3g},\ {rg_max:.3g}]$"
+                r"bin range: $[{rg_min:.3g},\ {rg_max:.3g}]$"
                 "".format(
                     Ntot=data.size,
                     Nbins=len(bin_pos),

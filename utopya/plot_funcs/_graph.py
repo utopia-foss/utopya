@@ -1639,9 +1639,9 @@ class GraphPlot:
             #      (also for large subgraphs) as each node is tried to be added to
             #      the set at least two times.
             # Store the current node selection
-            node_selection = set([center])
+            node_selection = {center}
             # Store the nodes added to the selection in the previous step
-            nbs_prev = set([center])
+            nbs_prev = {center}
             # Store the new nodes to be selected
             nbs_new = set()
 

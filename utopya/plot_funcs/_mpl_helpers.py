@@ -340,7 +340,7 @@ class ColorManager:
         return cmap
 
     def _create_norm(self, name: str = None, **norm_kwargs):
-        """Creates a norm.
+        r"""Creates a norm.
 
         Args:
             name (str, optional): The norm name. Must name a
