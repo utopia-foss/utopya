@@ -4,8 +4,8 @@ This mainly supplies the ModelTest class, which is a specialization of the
 :py:class:`~utopya.model.Model` for usage in tests.
 """
 
-import os
 import logging
+import os
 
 from .model import Model
 
@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
+
 class ModelTest(Model):
     """A class to use for testing Utopia models.
 
@@ -21,8 +22,14 @@ class ModelTest(Model):
     which test should be carried out.
     """
 
-    def __init__(self, model_name: str, *, test_file: str=None,
-                 use_tmpdir: bool=True, **kwargs):
+    def __init__(
+        self,
+        model_name: str,
+        *,
+        test_file: str = None,
+        use_tmpdir: bool = True,
+        **kwargs,
+    ):
         """Initialize the ModelTest class for the given model name.
 
         This is basically like the base class __init__ just that it sets the
@@ -41,7 +48,11 @@ class ModelTest(Model):
         Raises:
             ValueError: If the directory extracted from test_file is invalid
         """
-        super().__init__(name=model_name,
-                         base_dir=(None if test_file is None
-                                   else os.path.dirname(test_file)),
-                         use_tmpdir=use_tmpdir, **kwargs)
+        super().__init__(
+            name=model_name,
+            base_dir=(
+                None if test_file is None else os.path.dirname(test_file)
+            ),
+            use_tmpdir=use_tmpdir,
+            **kwargs,
+        )

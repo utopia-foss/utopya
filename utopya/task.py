@@ -4,21 +4,21 @@ The WorkerTask and ProcessTask classes specialize on tasks for the
 WorkerManager that work on subprocesses or multiprocessing processes.
 """
 
-import os
 import copy
-import uuid
-import time
-import queue
 import io
+import logging
+import multiprocessing
+import os
+import queue
+import re
+import signal
 import subprocess
 import threading
-import multiprocessing
-import signal
-import re
+import time
+import uuid
 import warnings
-import logging
 from functools import partial
-from typing import Callable, Union, Dict, List, Sequence, Set, Tuple, Generator
+from typing import Callable, Dict, Generator, List, Sequence, Set, Tuple, Union
 from typing.io import TextIO
 
 import numpy as np
@@ -33,7 +33,7 @@ SIGMAP = {a: int(getattr(signal, a)) for a in dir(signal) if a[:3] == "SIG"}
 
 # A regex pattern to remove ANSI escape characters, needed for stream saving
 # From: https://stackoverflow.com/a/14693789/1827608
-_ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+_ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
 
 # -----------------------------------------------------------------------------
@@ -41,10 +41,12 @@ _ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 # These solely relate to the WorkerTask and similar classes, and thus are not
 # implemented in the tools module.
 
-def _follow(f: io.TextIOWrapper,
-            delay: float=0.05,
-            should_stop: Callable=lambda: False,
-            ) -> Generator[str, None, None]:
+
+def _follow(
+    f: io.TextIOWrapper,
+    delay: float = 0.05,
+    should_stop: Callable = lambda: False,
+) -> Generator[str, None, None]:
     """Generator that follows the output written to the given stream object
     and yields each new line written to it. If no output is retrieved, there
     will be a delay to reduce processor load.
@@ -66,8 +68,14 @@ def _follow(f: io.TextIOWrapper,
             continue
         yield line
 
-def enqueue_lines(*, queue: queue.Queue, stream: TextIO, follow: bool=False,
-                  parse_func: Callable=None) -> None:
+
+def enqueue_lines(
+    *,
+    queue: queue.Queue,
+    stream: TextIO,
+    follow: bool = False,
+    parse_func: Callable = None,
+) -> None:
     """From the given text stream, read line-buffered lines and add them to the
     provided queue as 2-tuples, (line, parsed object).
 
@@ -102,10 +110,10 @@ def enqueue_lines(*, queue: queue.Queue, stream: TextIO, follow: bool=False,
 
         it = _follow(stream, should_stop=should_stop)
     else:
-        it = iter(stream.readline, '')
+        it = iter(stream.readline, "")
 
     # Read the lines and put them into the queue
-    for line in it: # <-- thread waits here for a new line, w/o idle looping
+    for line in it:  # <-- thread waits here for a new line, w/o idle looping
         # Got a new line
         # Strip the whitespace on the right (e.g. the new-line character)
         line = line.rstrip()
@@ -116,10 +124,13 @@ def enqueue_lines(*, queue: queue.Queue, stream: TextIO, follow: bool=False,
 
     # Thread dies here.
 
+
 # Custom parse methods ........................................................
 
 
-def parse_yaml_dict(line: str, *, start_str: str="!!map") -> Union[None, dict]:
+def parse_yaml_dict(
+    line: str, *, start_str: str = "!!map"
+) -> Union[None, dict]:
     """A yaml parse function that can be passed to enqueue_lines. It only tries
     parsing the line if it starts with the provided start string.
 
@@ -145,8 +156,12 @@ def parse_yaml_dict(line: str, *, start_str: str="!!map") -> Union[None, dict]:
 
     except Exception as err:
         # Failed to do that, regardless why; be verbose about it
-        log.warning("Got %s while trying to parse line '%s': %s",
-                    err.__class__.__name__, line, err)
+        log.warning(
+            "Got %s while trying to parse line '%s': %s",
+            err.__class__.__name__,
+            line,
+            err,
+        )
 
         return None
 
@@ -157,6 +172,7 @@ def parse_yaml_dict(line: str, *, start_str: str="!!map") -> Union[None, dict]:
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
+
 class Task:
     """The Task is a container for a task handled by the WorkerManager.
 
@@ -164,14 +180,23 @@ class Task:
     associate tasks with the corresponding workers and vice versa.
     """
 
-    __slots__ = ('_name', '_priority', '_uid', '_progress_func',
-                 '_stop_conditions', 'callbacks')
+    __slots__ = (
+        "_name",
+        "_priority",
+        "_uid",
+        "_progress_func",
+        "_stop_conditions",
+        "callbacks",
+    )
 
-    def __init__(self, *,
-                 name: str=None,
-                 priority: float=None,
-                 callbacks: Dict[str, Callable]=None,
-                 progress_func: Callable=None):
+    def __init__(
+        self,
+        *,
+        name: str = None,
+        priority: float = None,
+        callbacks: Dict[str, Callable] = None,
+        progress_func: Callable = None,
+    ):
         """Initialize a Task object.
 
         Args:
@@ -198,9 +223,12 @@ class Task:
 
         self._stop_conditions = set()
 
-        log.debug("Initialized Task '%s'.\n  Priority: %s,  UID: %s.",
-                  self.name, self.priority, self.uid)
-
+        log.debug(
+            "Initialized Task '%s'.\n  Priority: %s,  UID: %s.",
+            self.name,
+            self.priority,
+            self.uid,
+        )
 
     # Properties ..............................................................
 
@@ -218,8 +246,7 @@ class Task:
 
     @property
     def priority(self) -> float:
-        """The task's priority. Default is +inf, which is the lowest priority
-        """
+        """The task's priority. Default is +inf, which is the lowest priority"""
         return self._priority
 
     @property
@@ -234,26 +261,27 @@ class Task:
         This also performs checks that the progress is in [0, 1]
         """
         if self._progress_func is None:
-            return 0.
+            return 0.0
 
         progress = self._progress_func(self)
 
         if progress >= 0 and progress <= 1:
             return progress
 
-        raise ValueError("The progres function {} of task '{}' returned a "
-                         "value outside of the allowed range [0, 1]!"
-                         "".format(self._progress_func.__name__, self.name))
+        raise ValueError(
+            "The progres function {} of task '{}' returned a "
+            "value outside of the allowed range [0, 1]!"
+            "".format(self._progress_func.__name__, self.name)
+        )
 
     @property
-    def fulfilled_stop_conditions(self) -> Set['StopCondition']:
+    def fulfilled_stop_conditions(self) -> Set["StopCondition"]:
         """The set of *fulfilled* stop conditions for this task. Typically,
         this is set by the :py:class:`~utopya.stopcond.StopCondition` itself
         as part of its evaluation in the
         :py:meth:`utopya.stopcond.StopCondition.fulfilled` method.
         """
         return self._stop_conditions
-
 
     # Magic methods ...........................................................
     # ... including rich comparisons, needed in PriorityQueue
@@ -280,7 +308,6 @@ class Task:
         """
         return bool(self is other)
 
-
     # Private methods .........................................................
 
     def _invoke_callback(self, name: str):
@@ -299,6 +326,7 @@ class Task:
 # -----------------------------------------------------------------------------
 # ... working with subprocess
 
+
 class WorkerTask(Task):
     """A specialisation of :py:class:`~utopya.task.Task` for use in the
     :py:class:`~utopya.workermanager.WorkerManager`.
@@ -314,21 +342,30 @@ class WorkerTask(Task):
     """
 
     # Extend the slots of the Task class with some WorkerTask-specific slots
-    __slots__ = ('setup_func', 'setup_kwargs', 'worker_kwargs',
-                 '_worker', '_worker_pid', '_worker_status',
-                 'streams', 'profiling')
+    __slots__ = (
+        "setup_func",
+        "setup_kwargs",
+        "worker_kwargs",
+        "_worker",
+        "_worker_pid",
+        "_worker_status",
+        "streams",
+        "profiling",
+    )
 
     # Stream parser functions, used to generate Python objects from the
     # streams read from the worker. Resolved objects are stored in the
     # corresponding entry of the ``streams`` attribute.
-    STREAM_PARSE_FUNCS = dict(default=None,
-                              yaml_dict=parse_yaml_dict)
+    STREAM_PARSE_FUNCS = dict(default=None, yaml_dict=parse_yaml_dict)
 
-    def __init__(self, *,
-                 setup_func: Callable=None,
-                 setup_kwargs: dict=None,
-                 worker_kwargs: dict=None,
-                 **task_kwargs):
+    def __init__(
+        self,
+        *,
+        setup_func: Callable = None,
+        setup_kwargs: dict = None,
+        worker_kwargs: dict = None,
+        **task_kwargs,
+    ):
         """Initialize a WorkerTask.
 
         This is a specialization of :py:class:`~utopya.task.Task` for use in
@@ -363,14 +400,18 @@ class WorkerTask(Task):
 
         elif worker_kwargs:
             if setup_kwargs:
-                warnings.warn("`worker_kwargs` given but also `setup_kwargs` "
-                              "specified; the latter will be ignored. Did "
-                              "you mean to call a setup function? If yes, "
-                              "pass it via the `setup_func` argument.",
-                              UserWarning)
+                warnings.warn(
+                    "`worker_kwargs` given but also `setup_kwargs` "
+                    "specified; the latter will be ignored. Did "
+                    "you mean to call a setup function? If yes, "
+                    "pass it via the `setup_func` argument.",
+                    UserWarning,
+                )
         else:
-            raise ValueError("Need either argument `setup_func` or "
-                             "`worker_kwargs`, got none of those.")
+            raise ValueError(
+                "Need either argument `setup_func` or "
+                "`worker_kwargs`, got none of those."
+            )
 
         self.setup_func = setup_func
         self.setup_kwargs = copy.deepcopy(setup_kwargs)
@@ -382,8 +423,11 @@ class WorkerTask(Task):
         self.streams = dict()
         self.profiling = dict()
 
-        log.debug("Finished setting up task '%s' as a %s.",
-                  self.name, self.__class__.__name__)
+        log.debug(
+            "Finished setting up task '%s' as a %s.",
+            self.name,
+            self.__class__.__name__,
+        )
         log.debug("  With setup function?  %s", bool(setup_func))
 
     # Properties ..............................................................
@@ -406,14 +450,19 @@ class WorkerTask(Task):
             RuntimeError: If a process was already associated.
         """
         if self.worker is not None:
-            raise RuntimeError("A worker process was already associated with "
-                               "this task; cannot change it!")
+            raise RuntimeError(
+                "A worker process was already associated with "
+                "this task; cannot change it!"
+            )
 
         self._worker = proc
         self._worker_pid = proc.pid
 
-        log.debug("Task %s: associated with worker process %d.",
-                  self.name, self.worker_pid)
+        log.debug(
+            "Task %s: associated with worker process %d.",
+            self.name,
+            self.worker_pid,
+        )
 
     @property
     def worker_pid(self) -> int:
@@ -449,17 +498,18 @@ class WorkerTask(Task):
     @property
     def outstream_objs(self) -> list:
         """Returns the list of objects parsed from the 'out' stream"""
-        return self.streams['out']['log_parsed']
-
+        return self.streams["out"]["log_parsed"]
 
     # Magic methods ...........................................................
 
     def __str__(self) -> str:
         """Return basic WorkerTask information."""
-        return ("{}<uid: {}, priority: {}, worker_status: {}>"
-                "".format(self.__class__.__name__, self.uid,
-                          self.priority, self.worker_status))
-
+        return "{}<uid: {}, priority: {}, worker_status: {}>" "".format(
+            self.__class__.__name__,
+            self.uid,
+            self.priority,
+            self.worker_status,
+        )
 
     # Public API ..............................................................
 
@@ -497,21 +547,25 @@ class WorkerTask(Task):
         self.worker = self._spawn_worker(**worker_kwargs)
 
         # ... and take care of stdout stream reading.
-        if worker_kwargs.get('read_stdout', True):
+        if worker_kwargs.get("read_stdout", True):
             self._setup_stream_reader(
-                'out',
+                "out",
                 stream=self.worker.stdout,
-                parser=worker_kwargs.pop('stdout_parser', 'default'),
+                parser=worker_kwargs.pop("stdout_parser", "default"),
                 **worker_kwargs,
             )
 
         # Done with spawning.
-        self._invoke_callback('spawn')
+        self._invoke_callback("spawn")
         return self.worker
 
-    def read_streams(self, stream_names: list='all', *,
-                     max_num_reads: int=10,
-                     forward_directly: bool=False) -> None:
+    def read_streams(
+        self,
+        stream_names: list = "all",
+        *,
+        max_num_reads: int = 10,
+        forward_directly: bool = False,
+    ) -> None:
         """Read the streams associated with this task's worker.
 
         Args:
@@ -533,15 +587,17 @@ class WorkerTask(Task):
         Returns:
             None
         """
-        def read_single_stream(stream: dict, stream_name: str,
-                               max_num_reads=max_num_reads) -> bool:
+
+        def read_single_stream(
+            stream: dict, stream_name: str, max_num_reads=max_num_reads
+        ) -> bool:
             """A function to read a single stream
 
             Returns true, if a parsed object was among the read stream entries
             """
             log.debug("Reading stream '%s' ...", stream_name)
 
-            q = stream['queue']
+            q = stream["queue"]
 
             # The flag that is set if there was a parsed object in the queue
             contained_parsed_obj = False
@@ -564,27 +620,30 @@ class WorkerTask(Task):
                     break
 
                 else:
-                    stream['log_raw'].append(line)
+                    stream["log_raw"].append(line)
 
                     # Check for parsed object
                     if obj is not None:
-                        stream['log_parsed'].append(obj)
+                        stream["log_parsed"].append(obj)
                         contained_parsed_obj = True
 
                     else:
                         # Write line to the regular log. This way, the regular
                         # log only contains this entry if no object could be
                         # parsed.
-                        stream['log'].append(line)
+                        stream["log"].append(line)
 
             return contained_parsed_obj
 
         if not self.streams:
-            log.debug("No streams to read for WorkerTask '%s' (uid: %s).",
-                      self.name, self.uid)
+            log.debug(
+                "No streams to read for WorkerTask '%s' (uid: %s).",
+                self.name,
+                self.uid,
+            )
             return
 
-        elif stream_names == 'all':
+        elif stream_names == "all":
             stream_names = list(self.streams.keys())
 
         # Now have the stream names set properly
@@ -606,11 +665,11 @@ class WorkerTask(Task):
             self.forward_streams()
 
         if got_parsed_obj:
-            self._invoke_callback('parsed_object_in_stream')
+            self._invoke_callback("parsed_object_in_stream")
 
         return
 
-    def save_streams(self, stream_names: list='all', *, final: bool=False):
+    def save_streams(self, stream_names: list = "all", *, final: bool = False):
         """For each stream, checks if it is to be saved, and if yes: saves it.
 
         The saving location is stored in the streams dict. The relevant keys
@@ -639,41 +698,52 @@ class WorkerTask(Task):
             None
         """
         if not self.streams:
-            log.debug("No streams to save for WorkerTask '%s' (uid: %s).",
-                      self.name, self.uid)
+            log.debug(
+                "No streams to save for WorkerTask '%s' (uid: %s).",
+                self.name,
+                self.uid,
+            )
             return
 
-        elif stream_names == 'all':
+        elif stream_names == "all":
             stream_names = list(self.streams.keys())
 
         # Go over all streams and check if they were configured to be saved
         for stream_name in stream_names:
             stream = self.streams[stream_name]
 
-            if not stream.get('save'):
+            if not stream.get("save"):
                 log.debug("Not saving stream '%s' ...", stream_name)
                 continue
             # else: this stream is to be saved
 
             # Determine the lines to save
-            save_raw = stream['save_raw']
-            stream_log = stream['log_raw'] if save_raw else stream['log']
-            lines_to_save = stream_log[slice(stream['lines_saved'], None)]
+            save_raw = stream["save_raw"]
+            stream_log = stream["log_raw"] if save_raw else stream["log"]
+            lines_to_save = stream_log[slice(stream["lines_saved"], None)]
 
             if not lines_to_save:
-                log.debug("No lines to save for stream '%s'. Lines already "
-                          "saved: %d / %d.", stream_name,
-                          stream['lines_saved'], len(stream['log']))
+                log.debug(
+                    "No lines to save for stream '%s'. Lines already "
+                    "saved: %d / %d.",
+                    stream_name,
+                    stream["lines_saved"],
+                    len(stream["log"]),
+                )
                 continue
 
-            log.debug("Saving the log of stream '%s' to %s, starting from "
-                      "line %d ...",
-                      stream_name, stream['save_path'], stream['lines_saved'])
+            log.debug(
+                "Saving the log of stream '%s' to %s, starting from "
+                "line %d ...",
+                stream_name,
+                stream["save_path"],
+                stream["lines_saved"],
+            )
 
             # Open the file and append the not yet saved lines
-            with open(stream['save_path'], 'a') as f:
+            with open(stream["save_path"], "a") as f:
                 # Write header, if not already done
-                if stream['lines_saved'] == 0:
+                if stream["lines_saved"] == 0:
                     f.write(
                         "Log of '{}' stream of {} '{}'\n---\n\n"
                         "".format(stream_name, type(self).__name__, self.name)
@@ -682,8 +752,8 @@ class WorkerTask(Task):
                 # Prepare the string that is to be saved, potentially removing
                 # ANSI escape characters (e.g. from regex logging) ...
                 s = "\n".join(lines_to_save)
-                if stream['remove_ansi']:
-                    s = _ANSI_ESCAPE.sub('', s)
+                if stream["remove_ansi"]:
+                    s = _ANSI_ESCAPE.sub("", s)
 
                 # ... and write it.
                 f.write(s)
@@ -698,21 +768,27 @@ class WorkerTask(Task):
                     )
 
                     if self.fulfilled_stop_conditions:
-                        _fsc = "\n  - ".join([str(sc) for sc in
-                                              self.fulfilled_stop_conditions])
-                        f.write("\nFulfilled stop condition(s):\n"
-                                f"  - {_fsc}\n")
+                        _fsc = "\n  - ".join(
+                            [str(sc) for sc in self.fulfilled_stop_conditions]
+                        )
+                        f.write(
+                            "\nFulfilled stop condition(s):\n" f"  - {_fsc}\n"
+                        )
 
                 # Ensure new line at the end
                 f.write("\n")
 
-            stream['lines_saved'] += len(lines_to_save)
+            stream["lines_saved"] += len(lines_to_save)
 
-            log.debug("Saved %d lines of stream '%s'.",
-                      len(lines_to_save), stream_name)
+            log.debug(
+                "Saved %d lines of stream '%s'.",
+                len(lines_to_save),
+                stream_name,
+            )
 
-    def forward_streams(self, stream_names: list='all',
-                        forward_raw: bool=False) -> bool:
+    def forward_streams(
+        self, stream_names: list = "all", forward_raw: bool = False
+    ) -> bool:
         """Forwards the streams to stdout, either via logging module or print
 
         This function can be periodically called to forward the part of the
@@ -744,36 +820,43 @@ class WorkerTask(Task):
 
         # Check whether there are streams that could be printed
         if not self.streams:
-            log.debug("No streams to print for WorkerTask '%s' (uid: %s).",
-                      self.name, self.uid)
+            log.debug(
+                "No streams to print for WorkerTask '%s' (uid: %s).",
+                self.name,
+                self.uid,
+            )
             return
 
-        elif stream_names == 'all':
+        elif stream_names == "all":
             stream_names = list(self.streams.keys())
 
         rv = False
         for stream_name in stream_names:
             stream = self.streams[stream_name]
 
-            if not stream.get('forward'):
+            if not stream.get("forward"):
                 log.debug("Not forwarding stream '%s' ...", stream_name)
                 continue
             # else: this stream is to be forwarded
 
             # Determine lines to write
-            forward_raw = stream.get('forward_raw', True)
-            stream_log = stream['log_raw'] if forward_raw else stream['log']
-            lines = stream_log[stream['lines_forwarded']:]
+            forward_raw = stream.get("forward_raw", True)
+            stream_log = stream["log_raw"] if forward_raw else stream["log"]
+            lines = stream_log[stream["lines_forwarded"] :]
             if not lines:
                 continue
 
-            print_lines(lines, log_level=stream.get('log_level'))
-            stream['lines_forwarded'] += len(lines)
+            print_lines(lines, log_level=stream.get("log_level"))
+            stream["lines_forwarded"] += len(lines)
 
             # There was output -> set flag
             rv = True
-            log.debug("Forwarded %d lines for stream '%s' of WorkerTask '%s'.",
-                      len(lines), stream_name, self.name)
+            log.debug(
+                "Forwarded %d lines for stream '%s' of WorkerTask '%s'.",
+                len(lines),
+                stream_name,
+                self.name,
+            )
 
         return rv
 
@@ -795,44 +878,50 @@ class WorkerTask(Task):
             signum = SIGMAP[signal]
 
         except KeyError as err:
-            raise ValueError("No signal named '{}' available! Valid signals "
-                             "are: {}".format(signal, ", ".join(SIGMAP.keys()))
-                             ) from err
+            raise ValueError(
+                "No signal named '{}' available! Valid signals "
+                "are: {}".format(signal, ", ".join(SIGMAP.keys()))
+            ) from err
 
         # Handle some specific cases, then all the other signals ...
-        if signal == 'SIGTERM':
+        if signal == "SIGTERM":
             log.debug("Terminating worker of task %s ...", self.name)
             self.worker.terminate()
 
-        elif signal == 'SIGKILL':
+        elif signal == "SIGKILL":
             log.debug("Killing worker of task %s ...", self.name)
             self.worker.kill()
 
-        elif signal == 'SIGINT':
+        elif signal == "SIGINT":
             log.debug("Interrupting worker of task %s ...", self.name)
-            self.worker.send_signal(SIGMAP['SIGINT'])
+            self.worker.send_signal(SIGMAP["SIGINT"])
 
         else:
-            log.debug("Sending %s (%d) to worker of task %s ...",
-                      signal, signum, self.name)
-            self.worker.send_signal(SIGMAP[signal] if isinstance(signal, str)
-                                    else signal)
+            log.debug(
+                "Sending %s (%d) to worker of task %s ...",
+                signal,
+                signum,
+                self.name,
+            )
+            self.worker.send_signal(
+                SIGMAP[signal] if isinstance(signal, str) else signal
+            )
 
-        self._invoke_callback('after_signal')
+        self._invoke_callback("after_signal")
         return signal, signum
-
 
     # Private API .............................................................
 
-    def _prepare_process_args(self, *, args: tuple, read_stdout: bool,
-                              **kwargs) -> Tuple[tuple, dict]:
+    def _prepare_process_args(
+        self, *, args: tuple, read_stdout: bool, **kwargs
+    ) -> Tuple[tuple, dict]:
         """Prepares the arguments that will be passed to subprocess.Popen"""
         # Set encoding such that stream reading is in text mode; provides
         # backwards-compatibilibty to cases where popen_kwargs is empty.
-        kwargs['encoding'] = kwargs.get('encoding', 'utf8')
+        kwargs["encoding"] = kwargs.get("encoding", "utf8")
 
         # Set the buffer size
-        kwargs['bufsize'] = kwargs.get('bufsize', 1)
+        kwargs["bufsize"] = kwargs.get("bufsize", 1)
         # NOTE bufsize = 1 is important here as default, as we usually want
         #      lines to not be interrupted. As this only works in text mode,
         #      the encoding specified via popen_kwargs is crucial here.
@@ -843,12 +932,12 @@ class WorkerTask(Task):
             # same pipe. For the specification of that syntax, see the
             # subprocess.Popen docs:
             #   docs.python.org/3/library/subprocess.html#subprocess.Popen
-            kwargs['stdout'] = subprocess.PIPE
-            kwargs['stderr'] = subprocess.STDOUT
+            kwargs["stdout"] = subprocess.PIPE
+            kwargs["stderr"] = subprocess.STDOUT
 
         else:
             # No stream-reading is taking place; forward all streams to devnull
-            kwargs['stdout'] = kwargs['stderr'] = subprocess.DEVNULL
+            kwargs["stdout"] = kwargs["stderr"] = subprocess.DEVNULL
 
         return args, kwargs
 
@@ -867,13 +956,19 @@ class WorkerTask(Task):
                 f"Process arguments:  {repr(args)}"
             ) from err
 
-    def _spawn_worker(self, *, args: tuple, popen_kwargs: dict = None,
-                      read_stdout: bool = True, **_) -> subprocess.Popen:
+    def _spawn_worker(
+        self,
+        *,
+        args: tuple,
+        popen_kwargs: dict = None,
+        read_stdout: bool = True,
+        **_,
+    ) -> subprocess.Popen:
         """Helper function to spawn the worker subprocess"""
         args, popen_kwargs = self._prepare_process_args(
             args=args,
             read_stdout=read_stdout,
-            **(popen_kwargs if popen_kwargs else {})
+            **(popen_kwargs if popen_kwargs else {}),
         )
 
         if not isinstance(args, tuple):
@@ -888,34 +983,40 @@ class WorkerTask(Task):
 
         # ... it is running now.
         # Save the approximate creation time (as soon as possible)
-        self.profiling['create_time'] = time.time()
+        self.profiling["create_time"] = time.time()
         log.debug("Spawned worker process with PID %s.", proc.pid)
 
         return proc
 
-    def _setup_stream_reader(self, stream_name: str, *,
-                             stream,
-                             parser: str = 'default',
-                             follow: bool = False,
-                             save_streams: bool = False,
-                             save_streams_to: str = None,
-                             save_raw: bool = True,
-                             remove_ansi: bool = False,
-                             forward_streams: bool = False,
-                             forward_raw: bool = True,
-                             streams_log_lvl: int = None,
-                             **_):
+    def _setup_stream_reader(
+        self,
+        stream_name: str,
+        *,
+        stream,
+        parser: str = "default",
+        follow: bool = False,
+        save_streams: bool = False,
+        save_streams_to: str = None,
+        save_raw: bool = True,
+        remove_ansi: bool = False,
+        forward_streams: bool = False,
+        forward_raw: bool = True,
+        streams_log_lvl: int = None,
+        **_,
+    ):
         """Sets up the stream reader thread"""
         q = queue.Queue()  # will contain the stream
 
         log.debug("Using stream parse function: %s", parser)
         parse_func = self.STREAM_PARSE_FUNCS[parser]
-        enqueue_func = partial(enqueue_lines, parse_func=parse_func,
-                               follow=follow)
+        enqueue_func = partial(
+            enqueue_lines, parse_func=parse_func, follow=follow
+        )
 
         # Generate the thread that reads the stream and populates the queue
-        t = threading.Thread(target=enqueue_func,
-                             kwargs=dict(queue=q, stream=stream))
+        t = threading.Thread(
+            target=enqueue_func, kwargs=dict(queue=q, stream=stream)
+        )
         t.daemon = True  # ==> will die with the parent thread
 
         # Start the thread; this will lead to enqueue_func being called
@@ -925,17 +1026,28 @@ class WorkerTask(Task):
         # This includes two counters for the number of lines saved and
         # forwarded, which are used by the save_/forward_streams methods
         self.streams[stream_name] = dict(
-            queue=q, thread=t, stream=stream,
-            log=[], log_raw=[], log_parsed=[],
-            save=save_streams, save_path=None,
-            save_raw=save_raw, remove_ansi=remove_ansi,
-            forward=forward_streams, forward_raw=forward_raw,
+            queue=q,
+            thread=t,
+            stream=stream,
+            log=[],
+            log_raw=[],
+            log_parsed=[],
+            save=save_streams,
+            save_path=None,
+            save_raw=save_raw,
+            remove_ansi=remove_ansi,
+            forward=forward_streams,
+            forward_raw=forward_raw,
             log_level=streams_log_lvl,
-            lines_saved=0, lines_forwarded=0
+            lines_saved=0,
+            lines_forwarded=0,
         )
 
-        log.debug("Added thread to read worker %s's %s stream",
-                  self.name, stream_name)
+        log.debug(
+            "Added thread to read worker %s's %s stream",
+            self.name,
+            stream_name,
+        )
 
         if save_streams:
             if not save_streams_to:
@@ -945,7 +1057,7 @@ class WorkerTask(Task):
                 )
 
             save_path = save_streams_to.format(name=stream_name)
-            self.streams[stream_name]['save_path'] = save_path
+            self.streams[stream_name]["save_path"] = save_path
 
     def _stop_stream_reader(self, name: str):
         """Stops the stream reader with the given name by closing the
@@ -960,9 +1072,9 @@ class WorkerTask(Task):
         stream information is logged.
         """
         # Update profiling info
-        self.profiling['end_time'] = time.time()
-        self.profiling['run_time'] = (
-            self.profiling['end_time'] - self.profiling['create_time']
+        self.profiling["end_time"] = time.time()
+        self.profiling["run_time"] = (
+            self.profiling["end_time"] - self.profiling["create_time"]
         )
         # NOTE these are both approximate values as the worker process must
         # have ended prior to the call to this method
@@ -975,10 +1087,13 @@ class WorkerTask(Task):
         for stream_name in self.streams:
             self._stop_stream_reader(stream_name)
 
-        self._invoke_callback('finished')
+        self._invoke_callback("finished")
 
-        log.debug("Task %s: worker finished with status %s.",
-                  self.name, self.worker_status)
+        log.debug(
+            "Task %s: worker finished with status %s.",
+            self.name,
+            self.worker_status,
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -989,10 +1104,10 @@ def _target_wrapper(target, streams: dict, *args, **kwargs):
     """A wrapper around the multiprocessing.Process target function which
     takes care of stream handling.
     """
+    import logging
     import os
     import sys
     import traceback
-    import logging
 
     log = logging.getLogger(__name__)
 
@@ -1000,18 +1115,18 @@ def _target_wrapper(target, streams: dict, *args, **kwargs):
     # For stdout, there are the following options:
     #   - Leave as it is, which may lead to forwarding to the parent process
     #   - Redirect to file (which may be os.devnull)
-    if streams['stdout'] is not None:
-        sys.stdout = open(streams['stdout'], mode="w+")
+    if streams["stdout"] is not None:
+        sys.stdout = open(streams["stdout"], mode="w+")
         log.debug("Using file-based custom stdout:  %s", sys.stdout.name)
 
     # For stderr, there is one additional option: redirecting to stdout
-    if streams['stderr'] is not None:
-        if streams['stderr'] == streams['stdout']:
+    if streams["stderr"] is not None:
+        if streams["stderr"] == streams["stdout"]:
             sys.stderr = sys.stdout
             log.debug("Redirecting stderr to stdout now.")
 
         else:
-            sys.stderr = open(streams['stderr'], mode="w+")
+            sys.stderr = open(streams["stderr"], mode="w+")
             log.debug("Using file-based custom stderr:  %s", sys.stderr.name)
 
     # Target invocation . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -1033,9 +1148,16 @@ class PopenMPProcess:
     the interface of subprocess.Popen.
     """
 
-    def __init__(self, args: tuple, kwargs: dict={},
-                 stdin=None, stdout=None, stderr=None,
-                 bufsize: int=-1, encoding: str='utf8'):
+    def __init__(
+        self,
+        args: tuple,
+        kwargs: dict = {},
+        stdin=None,
+        stdout=None,
+        stderr=None,
+        bufsize: int = -1,
+        encoding: str = "utf8",
+    ):
         """Creates a ``multiprocessing.Process`` and starts it.
 
         The interface here is a subset of ``subprocess.Popen`` that makes those
@@ -1080,9 +1202,12 @@ class PopenMPProcess:
         # Prepare target and positional arguments, then spawn the process in a
         # custom context that always uses `spawn` (instead of `fork` on Linux).
         target, args = self._prepare_target_args(
-            args, stdin=stdin, stdout=stdout, stderr=stderr,
+            args,
+            stdin=stdin,
+            stdout=stdout,
+            stderr=stderr,
         )
-        _ctx = multiprocessing.get_context('spawn')
+        _ctx = multiprocessing.get_context("spawn")
         self._proc = _ctx.Process(
             target=_target_wrapper, args=args, kwargs=self.kwargs, daemon=True
         )
@@ -1090,9 +1215,14 @@ class PopenMPProcess:
         log.debug("Starting multiprocessing.Process for target %s ...", target)
         self._proc.start()
 
-    def _prepare_target_args(self, args: tuple, *,
-                             stdin, stdout, stderr,
-                             ) -> Tuple[Callable, tuple]:
+    def _prepare_target_args(
+        self,
+        args: tuple,
+        *,
+        stdin,
+        stdout,
+        stderr,
+    ) -> Tuple[Callable, tuple]:
         """Prepares the target callable and stream objects"""
         # Extract target and the actual positional arguments
         target, args = args[0], args[1:]
@@ -1106,19 +1236,22 @@ class PopenMPProcess:
 
         # Create lambdas that create file descriptors for the streams
         import tempfile
+
         File = tempfile.NamedTemporaryFile
-        get_tempfile = lambda: File(mode='x+',  # exclusive creation
-                                    buffering=self._bufsize,
-                                    encoding=self._encoding,
-                                    delete=False)
+        get_tempfile = lambda: File(
+            mode="x+",  # exclusive creation
+            buffering=self._bufsize,
+            encoding=self._encoding,
+            delete=False,
+        )
 
         # Need to map certain subprocess module flags to the stream creators
         get_stream = {
-            None:               lambda: None,
-            subprocess.DEVNULL: lambda: open(os.devnull, mode='w'),
-            True:               get_tempfile,
-            subprocess.PIPE:    get_tempfile,
-            subprocess.STDOUT:  get_tempfile,
+            None: lambda: None,
+            subprocess.DEVNULL: lambda: open(os.devnull, mode="w"),
+            True: get_tempfile,
+            subprocess.PIPE: get_tempfile,
+            subprocess.STDOUT: get_tempfile,
         }
 
         # Depending on the setting for stdout, let it create a file descriptor,
@@ -1146,14 +1279,20 @@ class PopenMPProcess:
 
     def __del__(self):
         """Custom destructor that closes the process and file descriptors"""
-        try: self._proc.close()
-        except: pass
+        try:
+            self._proc.close()
+        except:
+            pass
 
-        try: self._stdout.close()
-        except: pass
+        try:
+            self._stdout.close()
+        except:
+            pass
 
-        try: self._stderr.close()
-        except: pass
+        try:
+            self._stderr.close()
+        except:
+            pass
 
     def __str__(self) -> str:
         return f"<PopenMPProcess for process: {self._proc}>"
@@ -1185,10 +1324,10 @@ class PopenMPProcess:
 
     def send_signal(self, signal: int):
         """Send a signal to the process. Only works for SIGKILL and SIGTERM."""
-        if signal == SIGMAP['SIGTERM']:
+        if signal == SIGMAP["SIGTERM"]:
             return self.terminate()
 
-        elif signal == SIGMAP['SIGKILL']:
+        elif signal == SIGMAP["SIGKILL"]:
             return self.kill()
 
         raise NotImplementedError(
@@ -1257,6 +1396,7 @@ class PopenMPProcess:
 
 # .............................................................................
 
+
 class MPProcessTask(WorkerTask):
     """A WorkerTask specialization that uses multiprocessing.Process instead
     of subprocess.Popen.
@@ -1282,11 +1422,12 @@ class MPProcessTask(WorkerTask):
     def _stop_stream_reader(self, name: str):
         """Stops the stream reader thread with the given name by telling its
         follow function to stop, thus ending iteration."""
-        self.streams[name].get('thread').stop_follow = True
+        self.streams[name].get("thread").stop_follow = True
         super()._stop_stream_reader(name)
 
 
 # -----------------------------------------------------------------------------
+
 
 class TaskList:
     """The TaskList stores Task objects in it, ensuring that none is in there

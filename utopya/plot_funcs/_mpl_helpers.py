@@ -4,11 +4,10 @@ import copy
 import logging
 from typing import Union
 
-import numpy as np
-
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.legend_handler import HandlerPatch
 
 # Get a logger
@@ -18,26 +17,37 @@ log = logging.getLogger(__name__)
 
 # matplotlib color normalizations supported by the ColorManager
 NORMS = {
-    'Normalize':        mpl.colors.Normalize,
-    'BoundaryNorm':     mpl.colors.BoundaryNorm,
-    'NoNorm':           mpl.colors.NoNorm,
-    'LogNorm':          mpl.colors.LogNorm,
-    'PowerNorm':        mpl.colors.PowerNorm,
-    'SymLogNorm':       mpl.colors.SymLogNorm,
-    'TwoSlopeNorm':     mpl.colors.TwoSlopeNorm,
+    "Normalize": mpl.colors.Normalize,
+    "BoundaryNorm": mpl.colors.BoundaryNorm,
+    "NoNorm": mpl.colors.NoNorm,
+    "LogNorm": mpl.colors.LogNorm,
+    "PowerNorm": mpl.colors.PowerNorm,
+    "SymLogNorm": mpl.colors.SymLogNorm,
+    "TwoSlopeNorm": mpl.colors.TwoSlopeNorm,
 }
 
 # -----------------------------------------------------------------------------
 
+
 class HandlerEllipse(HandlerPatch):
     """Custom legend handler to turn an ellipse handle into a legend key."""
 
-    def create_artists(self, legend, orig_handle, xdescent, ydescent, width,
-                       height, fontsize, trans):
+    def create_artists(
+        self,
+        legend,
+        orig_handle,
+        xdescent,
+        ydescent,
+        width,
+        height,
+        fontsize,
+        trans,
+    ):
         """Create an ellipse as a matplotlib artist object."""
         center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
-        p = mpatches.Ellipse(xy=center, width=height + xdescent,
-                            height=height + ydescent)
+        p = mpatches.Ellipse(
+            xy=center, width=height + xdescent, height=height + ydescent
+        )
         self.update_prop(p, orig_handle, legend)
         p.set_transform(trans)
         return [p]
@@ -45,18 +55,20 @@ class HandlerEllipse(HandlerPatch):
 
 # -----------------------------------------------------------------------------
 
+
 class ColorManager:
     """Custom color manager which provides an interface to the
     ``matplotlib.colors`` module.
     """
+
     def __init__(
         self,
         *,
-        cmap: Union[str, dict, mpl.colors.Colormap]=None,
-        norm: Union[str, dict, mpl.colors.Normalize]=None,
-        labels: dict=None,
-        vmin: float=None,
-        vmax: float=None
+        cmap: Union[str, dict, mpl.colors.Colormap] = None,
+        norm: Union[str, dict, mpl.colors.Normalize] = None,
+        labels: dict = None,
+        vmin: float = None,
+        vmax: float = None,
     ):
         """Initializes the ``ColorManager`` by building the colormap, the norm,
         and the colorbar labels.
@@ -137,8 +149,8 @@ class ColorManager:
             norm_kwargs = copy.deepcopy(norm)
 
         # Parse configuration for custom discrete colormapping
-        if 'from_values' in cmap_kwargs:
-            mapping = cmap_kwargs.pop('from_values')
+        if "from_values" in cmap_kwargs:
+            mapping = cmap_kwargs.pop("from_values")
 
             # Parse shortcut notation
             if isinstance(mapping, list):
@@ -152,24 +164,26 @@ class ColorManager:
                 for k, v in mapping.items()
             }
 
-            cmap_kwargs['name'] = 'ListedColormap'
-            cmap_kwargs['colors'] = list(mapping.values())
+            cmap_kwargs["name"] = "ListedColormap"
+            cmap_kwargs["colors"] = list(mapping.values())
 
             # Overwrite the norm configuration
             norm_kwargs = {
-                'name': 'BoundaryNorm',
-                'ncolors': len(mapping),
-                'boundaries': self._parse_boundaries(list(mapping.keys()))
+                "name": "BoundaryNorm",
+                "ncolors": len(mapping),
+                "boundaries": self._parse_boundaries(list(mapping.keys())),
             }
 
-            log.remark("Configuring a discrete colormap 'from values'. "
-                       "Overwriting 'norm' to BoundaryNorm with %d colors.",
-                       norm_kwargs['ncolors'])
+            log.remark(
+                "Configuring a discrete colormap 'from values'. "
+                "Overwriting 'norm' to BoundaryNorm with %d colors.",
+                norm_kwargs["ncolors"],
+            )
 
         # BoundaryNorm has no vmin/vmax argument
-        if not norm_kwargs.get('name', None) == 'BoundaryNorm':
-            norm_kwargs['vmin'] = vmin
-            norm_kwargs['vmax'] = vmax
+        if not norm_kwargs.get("name", None) == "BoundaryNorm":
+            norm_kwargs["vmin"] = vmin
+            norm_kwargs["vmax"] = vmax
 
             log.remark("norm.vmin and norm.vmax set to %s and %s.", vmin, vmax)
 
@@ -211,19 +225,23 @@ class ColorManager:
         Raises:
             ValueError: On disconnected intervals or decreasing boundaries.
         """
+
         def from_intervals(intervals):
             """Extracts bin edges from sequence of connected intervals"""
             b = [intervals[0][0]]
 
             for low, up in intervals:
                 if up < low:
-                    raise ValueError("Received decreasing boundaries: "
-                                     f"{up} < {low}.")
+                    raise ValueError(
+                        "Received decreasing boundaries: " f"{up} < {low}."
+                    )
 
                 elif b[-1] != low:
-                    raise ValueError("Received disconnected intervals: Upper "
-                                     f"bound {b[-1]} and lower bound {low} of "
-                                     "the proximate interval do not match.")
+                    raise ValueError(
+                        "Received disconnected intervals: Upper "
+                        f"bound {b[-1]} and lower bound {low} of "
+                        "the proximate interval do not match."
+                    )
 
                 b.append(up)
 
@@ -235,14 +253,18 @@ class ColorManager:
             centers = np.array(centers)
 
             if len(centers) < 2:
-                raise ValueError("At least 2 bin centers must be given to "
-                                 f"create a BoundaryNorm. Got: {centers}")
+                raise ValueError(
+                    "At least 2 bin centers must be given to "
+                    f"create a BoundaryNorm. Got: {centers}"
+                )
 
-            halves = 0.5*np.diff(centers)
+            halves = 0.5 * np.diff(centers)
 
-            b = (  [centers[0]-halves[0]]
-                 + [c+h for c,h in zip(centers, halves)]
-                 + [centers[-1]+halves[-1]])
+            b = (
+                [centers[0] - halves[0]]
+                + [c + h for c, h in zip(centers, halves)]
+                + [centers[-1] + halves[-1]]
+            )
 
             return b
 
@@ -253,9 +275,15 @@ class ColorManager:
 
         return boundaries
 
-    def _create_cmap(self, name: str=None, *, bad: Union[str, dict]=None,
-                     under: Union[str, dict]=None, over: Union[str, dict]=None,
-                     **cmap_kwargs):
+    def _create_cmap(
+        self,
+        name: str = None,
+        *,
+        bad: Union[str, dict] = None,
+        under: Union[str, dict] = None,
+        over: Union[str, dict] = None,
+        **cmap_kwargs,
+    ):
         """Creates a colormap.
 
         Args:
@@ -278,7 +306,7 @@ class ColorManager:
         Raises:
             ValueError: On invalid colormap name.
         """
-        if name == 'ListedColormap':
+        if name == "ListedColormap":
             cmap = mpl.colors.ListedColormap(**cmap_kwargs)
 
         else:
@@ -286,9 +314,10 @@ class ColorManager:
                 cmap = copy.copy(mpl.cm.get_cmap(name, **cmap_kwargs))
 
             except ValueError as err:
-                raise ValueError(f"Received invalid colormap name: '{name}'. "
-                                 "Must name a registered colormap."
-                                 ) from err
+                raise ValueError(
+                    f"Received invalid colormap name: '{name}'. "
+                    "Must name a registered colormap."
+                ) from err
 
         if isinstance(bad, str):
             bad = dict(color=bad)
@@ -310,7 +339,7 @@ class ColorManager:
 
         return cmap
 
-    def _create_norm(self, name: str=None, **norm_kwargs):
+    def _create_norm(self, name: str = None, **norm_kwargs):
         """Creates a norm.
 
         Args:
@@ -327,12 +356,14 @@ class ColorManager:
             ValueError: On invalid norm specification.
         """
         if name is None:
-            name = 'Normalize'
+            name = "Normalize"
 
         if name not in NORMS:
-            available_norms = ', '.join(NORMS.keys())
-            raise ValueError(f"Received invalid norm specifier: '{name}'. "
-                             f"Must be one of: {available_norms}")
+            available_norms = ", ".join(NORMS.keys())
+            raise ValueError(
+                f"Received invalid norm specifier: '{name}'. "
+                f"Must be one of: {available_norms}"
+            )
 
         return NORMS[name](**norm_kwargs)
 
@@ -357,7 +388,7 @@ class ColorManager:
         label: str = None,
         label_kwargs: dict = None,
         tick_params: dict = None,
-        **cbar_kwargs
+        **cbar_kwargs,
     ):
         """Creates a colorbar.
 

@@ -1,37 +1,36 @@
 """Sets up the utopya package, test dependencies, and command line scripts"""
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Dependency lists
 INSTALL_DEPS = [
-    'numpy>=1.21',
-    'scipy>=1.7.3',
-    'matplotlib>=3.3',
-    'coloredlogs>=10.0',
-    'ruamel.yaml>=0.16.5',
-
-    'paramspace>=2.5.8',
-    'dantro>=0.17.1',
-
+    "numpy>=1.21",
+    "scipy>=1.7.3",
+    "matplotlib>=3.3",
+    "coloredlogs>=10.0",
+    "ruamel.yaml>=0.16.5",
+    "paramspace>=2.5.8",
+    "dantro>=0.17.1",
     # Required for testing:
-    'pytest>=6.2.1',
-    'pytest-cov>=2.10.1',
-    'psutil>=5.6.7',
-    'pre-commit>=2.16',
+    "pytest>=6.2.1",
+    "pytest-cov>=2.10.1",
+    "psutil>=5.6.7",
+    "pre-commit>=2.16",
 ]
 
 # .............................................................................
 
+
 def find_version(*file_paths) -> str:
     """Tries to extract a version from the given path sequence"""
+    import codecs
     import os
     import re
-    import codecs
 
     def read(*parts):
         """Reads a file from the given path sequence, relative to this file"""
         here = os.path.abspath(os.path.dirname(__file__))
-        with codecs.open(os.path.join(here, *parts), 'r') as fp:
+        with codecs.open(os.path.join(here, *parts), "r") as fp:
             return fp.read()
 
     # Read the file and match the __version__ string
@@ -41,29 +40,32 @@ def find_version(*file_paths) -> str:
         return match.group(1)
     raise RuntimeError("Unable to find version string in " + str(file_paths))
 
+
 # .............................................................................
 
 
 setup(
-    name='utopya',
+    name="utopya",
     #
     # Package information
-    version=find_version('utopya', '__init__.py'),
+    version=find_version("utopya", "__init__.py"),
     #
-    description='The Utopia Frontend Package',
-    url='https://gitlab.com/utopia-project/utopya',
-    author='TS-CCEES Utopia Developers',
-    author_email=('Benjamin Herdeanu '
-                  '<Benjamin.Herdeanu@iup.uni-heidelberg.de>, '
-                  'Yunus Sevinchan '
-                  '<Yunus.Sevinchan@iup.uni-heidelberg.de>'),
+    description="The Utopia Frontend Package",
+    url="https://gitlab.com/utopia-project/utopya",
+    author="TS-CCEES Utopia Developers",
+    author_email=(
+        "Benjamin Herdeanu "
+        "<Benjamin.Herdeanu@iup.uni-heidelberg.de>, "
+        "Yunus Sevinchan "
+        "<Yunus.Sevinchan@iup.uni-heidelberg.de>"
+    ),
     classifiers=[
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
-        'Topic :: Utilities'
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+        "Topic :: Utilities",
     ],
     #
     # Package content and dependencies
@@ -72,5 +74,5 @@ setup(
     install_requires=INSTALL_DEPS,
     #
     # Command line scripts, installed into the virtual environment
-    scripts=['bin/utopia']
+    scripts=["bin/utopia"],
 )

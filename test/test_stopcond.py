@@ -1,44 +1,51 @@
 """Test the stopcond module"""
 
 import io
-import time
 import subprocess
+import time
 
 import pytest
 import ruamel.yaml
 
-from utopya.tools import yaml
 import utopya.stopcond as sc
 import utopya.stopcond_funcs as sc_funcs
 from utopya.task import WorkerTask
+from utopya.tools import yaml
+
 
 # Fixtures --------------------------------------------------------------------
 @pytest.fixture
 def basic_sc():
     """Returns a basic StopCondition object that checks the mock timeout_wall method."""
-    return sc.StopCondition(to_check=[dict(func=sc_funcs.timeout_wall,
-                                           seconds=123)],
-                            name="wall timeout")
+    return sc.StopCondition(
+        to_check=[dict(func=sc_funcs.timeout_wall, seconds=123)],
+        name="wall timeout",
+    )
+
 
 @pytest.fixture
 def false_true_sc():
-    return sc.StopCondition(to_check=[dict(func=lambda _: False),
-                                      dict(func=lambda _: True)],
-                            name="false and true")
+    return sc.StopCondition(
+        to_check=[dict(func=lambda _: False), dict(func=lambda _: True)],
+        name="false and true",
+    )
+
 
 @pytest.fixture
 def task() -> WorkerTask:
     """Generates a WorkerTask object, manipulating it somewhat to act as a
     mock object.
     """
-    task = WorkerTask(name="foo", worker_kwargs=dict(args=('echo','$?')))
+    task = WorkerTask(name="foo", worker_kwargs=dict(args=("echo", "$?")))
 
-    task.profiling['create_time'] = time.time() - 124.
-    task.streams['out'] = dict(log_parsed=[])
+    task.profiling["create_time"] = time.time() - 124.0
+    task.streams["out"] = dict(log_parsed=[])
 
     return task
 
+
 # Tests of the class ----------------------------------------------------------
+
 
 def test_init():
     """Test StopCondition initialization"""
@@ -62,18 +69,21 @@ def test_init():
 
     # too many arguments
     with pytest.raises(ValueError, match="Please pass either"):
-        sc.StopCondition(to_check=[dict(func=sc_funcs.timeout_wall,
-                                        seconds=123)],
-                         func=sc_funcs.timeout_wall)
+        sc.StopCondition(
+            to_check=[dict(func=sc_funcs.timeout_wall, seconds=123)],
+            func=sc_funcs.timeout_wall,
+        )
+
 
 def test_constructor():
     """Tests the YAML constructor"""
     ymlstr1 = "sc: !stop-condition {to_check: [], name: foo, description: bar}"
-    assert isinstance(yaml.load(ymlstr1)['sc'], sc.StopCondition)
+    assert isinstance(yaml.load(ymlstr1)["sc"], sc.StopCondition)
 
     ymlstr2 = "sc: !stop-condition [1, 2, 3]"
     with pytest.raises(ruamel.yaml.constructor.ConstructorError):
         yaml.load(ymlstr2)
+
 
 def test_representer():
     """Tests the YAML constructor"""
@@ -82,8 +92,10 @@ def test_representer():
     with io.StringIO() as f:
         yaml.dump(sc1, stream=f)
         print(f.getvalue())
-        assert f.getvalue() == ("!stop-condition {func: timeout_wall, "
-                                "seconds: 123}\n")
+        assert f.getvalue() == (
+            "!stop-condition {func: timeout_wall, " "seconds: 123}\n"
+        )
+
 
 def test_magic_methods(basic_sc, false_true_sc):
     """Tests magic methods of the StopCond class."""
@@ -103,9 +115,11 @@ def test_magic_methods(basic_sc, false_true_sc):
     assert false_true_sc.name in s3
 
     # without name: auto-generating one
-    sc4 = sc.StopCondition(to_check=[dict(func=lambda _: False),
-                                     dict(func=lambda _: True)])
+    sc4 = sc.StopCondition(
+        to_check=[dict(func=lambda _: False), dict(func=lambda _: True)]
+    )
     assert "&&" in str(sc4)
+
 
 def test_fulfilled(basic_sc, false_true_sc, task):
     """Tests magic methods of the StopCond class."""
@@ -131,16 +145,19 @@ def test_fulfilled(basic_sc, false_true_sc, task):
 
 # Tests of the stop condition methods -----------------------------------------
 
+
 def test_check_monitor_entry(task):
     """Test the check_monitor_entry stop condition function"""
     check_monitor_entry = sc_funcs.check_monitor_entry
 
     # Without a parsed object, this is always false, and no other checks are
     # actually performed
-    assert not check_monitor_entry(task, entry_name="foo",
-                                   operator="bar", value="baz")
+    assert not check_monitor_entry(
+        task, entry_name="foo", operator="bar", value="baz"
+    )
 
     # Add a mock object
     task.outstream_objs.append(dict(foo="bar"))
-    assert check_monitor_entry(task, entry_name="foo",
-                               operator="==", value="bar")
+    assert check_monitor_entry(
+        task, entry_name="foo", operator="==", value="bar"
+    )

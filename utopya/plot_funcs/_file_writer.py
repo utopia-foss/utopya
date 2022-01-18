@@ -3,13 +3,12 @@
 NOTE This module is deprecated and will be removed!
 """
 
-import os
 import logging
+import os
 
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import matplotlib.animation
-
+import matplotlib.pyplot as plt
 
 # Get a logger
 log = logging.getLogger(__name__)
@@ -17,16 +16,21 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
-class FileWriter():
+
+class FileWriter:
     """The FileWriter class yields functionality to save individual frames.
 
     It adheres to the corresponding matplotlib animation interface.
     """
-    def __init__(self, *,
-                 file_format: str='png',
-                 name_padding: int=6,
-                 fstr: str="{dir:}/{num:0{pad:}d}.{ext:}",
-                 **savefig_kwargs):
+
+    def __init__(
+        self,
+        *,
+        file_format: str = "png",
+        name_padding: int = 6,
+        fstr: str = "{dir:}/{num:0{pad:}d}.{ext:}",
+        **savefig_kwargs,
+    ):
         """
         Initialize a FileWriter, which adheres to the matplotlib.animation
         interface and can be used to write individual files.
@@ -59,17 +63,24 @@ class FileWriter():
     def grab_frame(self):
         """Stores a single frame"""
         # Build the output path from the info of the context manager
-        outfile = self.fstr.format(dir=self.cm.out_dir,
-                                   num=self.cntr,
-                                   pad=self.name_padding,
-                                   ext=self.file_format)
+        outfile = self.fstr.format(
+            dir=self.cm.out_dir,
+            num=self.cntr,
+            pad=self.name_padding,
+            ext=self.file_format,
+        )
 
         # Save the frame using the context manager, then increment the cntr
-        self.cm.fig.savefig(outfile, format=self.file_format,
-                            **self.cm.kwargs, **self.savefig_kwargs)
+        self.cm.fig.savefig(
+            outfile,
+            format=self.file_format,
+            **self.cm.kwargs,
+            **self.savefig_kwargs,
+        )
         self.cntr += 1
 
-class FileWriterContextManager():
+
+class FileWriterContextManager:
     """This class is needed by the file writer to provide the same interface
     as the matplotlib movie writers do.
     """

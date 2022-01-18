@@ -96,7 +96,7 @@ invalid_norm:
 
 invalid_cmap:
   cmap: cmappp
-  
+
 disconnected_intervals:
   cmap:
     from_values:

@@ -1,10 +1,10 @@
 """I'm a docstring."""
-import os
 import copy
-from pkg_resources import resource_filename
+import os
 
 import numpy as np
 import pytest
+from pkg_resources import resource_filename
 
 import utopya.tools as t
 
@@ -15,13 +15,18 @@ import utopya.tools as t
 @pytest.fixture
 def testdict():
     """Create a dummy dictionary."""
-    return dict(foo="bar", bar=123.456,
-                baz=dict(foo="more_bar", bar=456.123, baz=[1,2,dict(three=3)]),
-                nothing=None, more_nothing=None)
+    return dict(
+        foo="bar",
+        bar=123.456,
+        baz=dict(foo="more_bar", bar=456.123, baz=[1, 2, dict(three=3)]),
+        nothing=None,
+        more_nothing=None,
+    )
 
 
 # Test YAML constructors ------------------------------------------------------
 # NOTE These are actually defined in the yaml module ... but available in tools
+
 
 def test_expr_constructor():
     """Tests the expression constructor"""
@@ -40,14 +45,14 @@ def test_expr_constructor():
     d = t.yaml.load(tstr)
 
     # Assert correctness
-    assert d['one'] == 1 * 2 * 3
-    assert d['two'] == 9 / 2
-    assert d['three'] == 2**4
-    assert d['four'] == eval('1e-10') == 10.0**(-10)
-    assert d['five'] == eval('1E10') == 10.0**10
-    assert d['six'] == np.inf
-    assert np.isnan(d['seven'])
-    assert d['eight'] == (2 + 3) * 4
+    assert d["one"] == 1 * 2 * 3
+    assert d["two"] == 9 / 2
+    assert d["three"] == 2 ** 4
+    assert d["four"] == eval("1e-10") == 10.0 ** (-10)
+    assert d["five"] == eval("1E10") == 10.0 ** 10
+    assert d["six"] == np.inf
+    assert np.isnan(d["seven"])
+    assert d["eight"] == (2 + 3) * 4
 
 
 def test_any_and_all_constructor():
@@ -62,13 +67,13 @@ def test_any_and_all_constructor():
     """
     d = t.yaml.load(tstr)
 
-    assert not d['any0']
-    assert d['any1']
-    assert d['any2']
+    assert not d["any0"]
+    assert d["any1"]
+    assert d["any2"]
 
-    assert not d['all0']
-    assert d['all1']
-    assert not d['all2']
+    assert not d["all0"]
+    assert d["all1"]
+    assert not d["all2"]
 
 
 @pytest.mark.skip(reason="The !model tag needs to be fixed.")
@@ -98,9 +103,9 @@ def test_model_cfg_constructor():
     d = t.yaml.load(tstr)
 
     # Assert correctness
-    assert d['model'] == dict(foo="baz", spam=1.23, lvl=0)
-    assert d['sub']['model1'] == dict(foo="bar", spam=2.34, lvl=1, num=1)
-    assert d['sub']['model2'] == dict(foo="bar", spam=1.23, lvl=1, num=2)
+    assert d["model"] == dict(foo="baz", spam=1.23, lvl=0)
+    assert d["sub"]["model1"] == dict(foo="bar", spam=2.34, lvl=1, num=1)
+    assert d["sub"]["model2"] == dict(foo="bar", spam=1.23, lvl=1, num=2)
 
     # It should fail without a model name
     with pytest.raises(KeyError, match="model_name"):
@@ -113,25 +118,33 @@ def test_model_cfg_constructor():
 
 # Function tests --------------------------------------------------------------
 
+
 def test_add_item():
     """Tests the add_item method"""
     # Basic case
     d = dict()
     t.add_item(123, add_to=d, key_path=["foo", "bar"])
-    assert d['foo']['bar'] == 123
+    assert d["foo"]["bar"] == 123
 
     # With function call
     d = dict()
-    t.add_item(123, add_to=d, key_path=["foo", "bar"],
-               value_func=lambda v: v**2)
-    assert d['foo']['bar'] == 123**2
+    t.add_item(
+        123, add_to=d, key_path=["foo", "bar"], value_func=lambda v: v ** 2
+    )
+    assert d["foo"]["bar"] == 123 ** 2
 
     # Invalid value
     with pytest.raises(ValueError, match="My custom error message with -123"):
-        t.add_item(-123, add_to=d, key_path=["foo", "bar"],
-                   is_valid=lambda v: v>0,
-                   ErrorMsg=lambda v: ValueError("My custom error message "
-                                                 "with {}".format(v)))
+        t.add_item(
+            -123,
+            add_to=d,
+            key_path=["foo", "bar"],
+            is_valid=lambda v: v > 0,
+            ErrorMsg=lambda v: ValueError(
+                "My custom error message " "with {}".format(v)
+            ),
+        )
+
 
 def test_recursive_update(testdict):
     """Testing if recursive update works as desired."""
@@ -139,26 +152,34 @@ def test_recursive_update(testdict):
     u = copy.deepcopy(d)
 
     # Make some changes
-    u['more_entries'] = dict(a=1, b=2)
-    u['foo'] = "changed_bar"
-    u['bar'] = 654.321
-    u['baz'] = dict(another_entry="hello", foo="more_changed_bars",
-                    nothing=dict(some="thing"))
-    u['nothing'] = dict(some="thing")
-    u['more_nothing'] = "something"
+    u["more_entries"] = dict(a=1, b=2)
+    u["foo"] = "changed_bar"
+    u["bar"] = 654.321
+    u["baz"] = dict(
+        another_entry="hello",
+        foo="more_changed_bars",
+        nothing=dict(some="thing"),
+    )
+    u["nothing"] = dict(some="thing")
+    u["more_nothing"] = "something"
 
     assert d != u
 
     # Perform the update
     d = t.recursive_update(d, u)
-    assert d['more_entries'] == dict(a=1, b=2)
-    assert d['foo'] == "changed_bar"
-    assert d['bar'] == 654.321
-    assert d['baz'] == dict(another_entry="hello", foo="more_changed_bars",
-                            bar=456.123, baz=[1,2,dict(three=3)],
-                            nothing=dict(some="thing"))
-    assert d['nothing'] == dict(some="thing")
-    assert d['more_nothing'] == "something"
+    assert d["more_entries"] == dict(a=1, b=2)
+    assert d["foo"] == "changed_bar"
+    assert d["bar"] == 654.321
+    assert d["baz"] == dict(
+        another_entry="hello",
+        foo="more_changed_bars",
+        bar=456.123,
+        baz=[1, 2, dict(three=3)],
+        nothing=dict(some="thing"),
+    )
+    assert d["nothing"] == dict(some="thing")
+    assert d["more_nothing"] == "something"
+
 
 def test_format_time():
     """Test the time formatting method"""
@@ -172,14 +193,24 @@ def test_format_time():
     assert t.format_time(61.127, ms_precision=2) == "1m 1s"
     assert t.format_time(123) == "2m 3s"
     assert t.format_time(123, ms_precision=2) == "2m 3s"
-    assert t.format_time(60*60*24 + 60*60*2 + 60*3 + 4 + .5) == "1d 2h 3m 4s"
-    assert t.format_time(60*60*24 + 60*60*2 + 60*3 + 4) == "1d 2h 3m 4s"
-    assert t.format_time(60*60*24 + 60*60*2 + 60*3 + 0) == "1d 2h 3m"
-    assert t.format_time(60*60*24 + 60*60*2 + 60*0 + 4) == "1d 2h 4s"
-    assert t.format_time(60*60*24 + 60*60*2 + 60*3 + 4,
-                         max_num_parts=3) == "1d 2h 3m"
-    assert t.format_time(60*60*24 + 60*60*2 + 60*3 + 4,
-                         max_num_parts=2) == "1d 2h"
+    assert (
+        t.format_time(60 * 60 * 24 + 60 * 60 * 2 + 60 * 3 + 4 + 0.5)
+        == "1d 2h 3m 4s"
+    )
+    assert (
+        t.format_time(60 * 60 * 24 + 60 * 60 * 2 + 60 * 3 + 4) == "1d 2h 3m 4s"
+    )
+    assert t.format_time(60 * 60 * 24 + 60 * 60 * 2 + 60 * 3 + 0) == "1d 2h 3m"
+    assert t.format_time(60 * 60 * 24 + 60 * 60 * 2 + 60 * 0 + 4) == "1d 2h 4s"
+    assert (
+        t.format_time(60 * 60 * 24 + 60 * 60 * 2 + 60 * 3 + 4, max_num_parts=3)
+        == "1d 2h 3m"
+    )
+    assert (
+        t.format_time(60 * 60 * 24 + 60 * 60 * 2 + 60 * 3 + 4, max_num_parts=2)
+        == "1d 2h"
+    )
+
 
 def test_fill_line():
     """Tests the fill_line and center_in_line methods"""
@@ -187,21 +218,22 @@ def test_fill_line():
     fill = lambda *args, **kwargs: t.fill_line(*args, num_cols=10, **kwargs)
 
     # Check that the expected number of characters are filled at the right spot
-    assert fill("foo") == "foo" + 7*" "
-    assert fill("foo", fill_char="-") == "foo" + 7*"-"
-    assert fill("foo", align='r') == 7*" " + "foo"
-    assert fill("foo", align='c') == "   foo    "
-    assert fill("foob", align='c') == "   foob   "
+    assert fill("foo") == "foo" + 7 * " "
+    assert fill("foo", fill_char="-") == "foo" + 7 * "-"
+    assert fill("foo", align="r") == 7 * " " + "foo"
+    assert fill("foo", align="c") == "   foo    "
+    assert fill("foob", align="c") == "   foob   "
 
     with pytest.raises(ValueError, match="length 1"):
         fill("foo", fill_char="---")
 
     with pytest.raises(ValueError, match="align argument 'bar' not supported"):
-        fill("foo", align='bar')
+        fill("foo", align="bar")
 
     # The center_in_line method has a fill_char given and adds a spacing
     assert t.center_in_line("foob", num_cols=10) == "·· foob ··"  # cdot!
     assert t.center_in_line("foob", num_cols=10, spacing=2) == "·  foob  ·"
+
 
 def test_parse_si_multiplier():
     """Tests the parse_si_multiplier function"""
@@ -235,6 +267,7 @@ def test_parse_si_multiplier():
     for s in ("1a", "1.23b", "--123k", "-1.23kk", "3M5"):
         with pytest.raises(ValueError, match="Cannot parse"):
             parse_si(s)
+
 
 def test_parse_num_steps():
     """Tests the parse_num_steps function"""

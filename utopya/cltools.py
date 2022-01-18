@@ -1,48 +1,56 @@
 """Methods needed to implement the utopia command line interface"""
 
-import os
-import re
+import argparse
 import glob
 import logging
-import argparse
+import os
+import re
 import readline
-from typing import Callable, Dict, Sequence, Tuple, List
+from typing import Callable, Dict, List, Sequence, Tuple
+
 from pkg_resources import resource_filename
 
-from .multiverse import Multiverse
-from .tools import recursive_update, add_item
+from . import MODELS as _MODELS
 from .cfg import load_from_cfg_dir, write_to_cfg_dir
 from .model_registry import get_info_bundle as _get_info_bundle
-from . import MODELS as _MODELS
+from .multiverse import Multiverse
+from .tools import add_item, recursive_update
 
 # Local constants
 log = logging.getLogger(__name__)
 
-USER_CFG_HEADER_PATH = resource_filename('utopya', 'cfg/user_cfg_header.yml')
-BASE_CFG_PATH = resource_filename('utopya', 'cfg/base_cfg.yml')
+USER_CFG_HEADER_PATH = resource_filename("utopya", "cfg/user_cfg_header.yml")
+BASE_CFG_PATH = resource_filename("utopya", "cfg/base_cfg.yml")
+
 
 class ANSIesc:
     """Some selected ANSI escape codes; usable in format strings"""
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-    DIM = '\033[2m'
-    UNDERLINE = '\033[4m'
 
-    BLACK = '\033[30m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    UNDERLINE = "\033[4m"
+
+    BLACK = "\033[30m"
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
+    MAGENTA = "\033[35m"
+    CYAN = "\033[36m"
+    WHITE = "\033[37m"
+
 
 # -----------------------------------------------------------------------------
 
-def add_from_kv_pairs(*pairs, add_to: dict,
-                      attempt_conversion: bool=True,
-                      allow_eval: bool=False,
-                      allow_deletion: bool=True) -> None:
+
+def add_from_kv_pairs(
+    *pairs,
+    add_to: dict,
+    attempt_conversion: bool = True,
+    allow_eval: bool = False,
+    allow_deletion: bool = True,
+) -> None:
     """Parses the key=value pairs and adds them to the given dict.
 
     Note that this happens directly on the object, i.e. making use of the
@@ -59,7 +67,9 @@ def add_from_kv_pairs(*pairs, add_to: dict,
             a key to remove the corresponding entry.
     """
     # Object to symbolise deletion
-    class _DEL: pass
+    class _DEL:
+        pass
+
     DEL = _DEL()
 
     def conversions(val):
@@ -72,17 +82,17 @@ def add_from_kv_pairs(*pairs, add_to: dict,
             return None
 
         # Floating point number (requiring '.' being present)
-        if re.match(r'^[-+]?[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?$', val):
+        if re.match(r"^[-+]?[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?$", val):
             try:
                 return float(val)
             except:
                 pass
 
         # Integer
-        if re.match(r'^[-+]?[0-9]+$', val):
+        if re.match(r"^[-+]?[0-9]+$", val):
             try:
                 return int(val)
-            except: # very unlike to be reached; regex is quite restrictive
+            except:  # very unlike to be reached; regex is quite restrictive
                 pass
 
         # Deletion placeholder
@@ -134,8 +144,10 @@ def add_from_kv_pairs(*pairs, add_to: dict,
         # Otherwise: need to check whether deletion is allowed and the entry
         # is present ...
         if not allow_deletion:
-            raise ValueError("Attempted deletion of value for key '{}', but "
-                             "deletion is not allowed.".format(key))
+            raise ValueError(
+                "Attempted deletion of value for key '{}', but "
+                "deletion is not allowed.".format(key)
+            )
 
         if last_key not in d:
             continue
@@ -150,7 +162,7 @@ def register_models(args, *, registry):
     # If there is project info to be updated, do so
     project_info = None
     if args.update_project_info:
-        project_info = register_project(args, arg_prefix='project_')
+        project_info = register_project(args, arg_prefix="project_")
 
     # The dict to hold all model info bundle arguments
     specs = dict()
@@ -159,63 +171,78 @@ def register_models(args, *, registry):
         # Will only register a single model.
         # Gather all the path-related arguments
         # TODO
-        raise NotImplementedError("Registering a single model is currently "
-                                  "not possible via the CLI!")
+        raise NotImplementedError(
+            "Registering a single model is currently "
+            "not possible via the CLI!"
+        )
         # paths = dict()
         # specs[args.model_name] = dict(paths=paths)
 
     else:
         # Got separator for lists of model names, binary paths, and source dirs
-        log.debug("Splitting given model registration arguments by '%s' ...",
-                  args.separator)
+        log.debug(
+            "Splitting given model registration arguments by '%s' ...",
+            args.separator,
+        )
 
         model_names = args.model_name.split(args.separator)
         bin_paths = args.bin_path.split(args.separator)
         src_dirs = args.src_dir.split(args.separator)
 
         if not (len(model_names) == len(bin_paths) == len(src_dirs)):
-            raise ValueError("Mismatch of sequence lengths during batch model "
-                             "registration! The model_name, bin_path, and "
-                             "src_dir lists should all be of equal length "
-                             "after having been split by separator '{}', but "
-                             "were: {}, {}, and {}, respectively."
-                             "".format(args.separator, model_names,
-                                       bin_paths, src_dirs))
+            raise ValueError(
+                "Mismatch of sequence lengths during batch model "
+                "registration! The model_name, bin_path, and "
+                "src_dir lists should all be of equal length "
+                "after having been split by separator '{}', but "
+                "were: {}, {}, and {}, respectively."
+                "".format(args.separator, model_names, bin_paths, src_dirs)
+            )
         # TODO Will ignore other path-related arguments! Warn if given.
 
         # Go over them, create the paths dict, and populate specs dict.
         # If there is project info given, use it to extend path information
         # with the python-related directories. Only do so if they exist.
-        for model_name, bin_path, src_dir in zip(model_names,
-                                                 bin_paths, src_dirs):
-            paths = dict(src_dir=src_dir,
-                         binary=bin_path,
-                         base_src_dir=args.base_src_dir,
-                         base_bin_dir=args.base_bin_dir)
+        for model_name, bin_path, src_dir in zip(
+            model_names, bin_paths, src_dirs
+        ):
+            paths = dict(
+                src_dir=src_dir,
+                binary=bin_path,
+                base_src_dir=args.base_src_dir,
+                base_bin_dir=args.base_bin_dir,
+            )
 
             if project_info:
-                for _k in ('python_model_tests_dir', 'python_model_plots_dir'):
+                for _k in ("python_model_tests_dir", "python_model_plots_dir"):
                     _path = os.path.join(project_info[_k], model_name)
                     if os.path.isdir(_path):
                         paths[_k] = _path
 
-            specs[model_name] = dict(paths=paths,
-                                     project_name=args.project_name)
+            specs[model_name] = dict(
+                paths=paths, project_name=args.project_name
+            )
 
-    log.debug("Received registry parameters for %d model%s.",
-              len(specs), "s" if len(specs) != 1 else "")
+    log.debug(
+        "Received registry parameters for %d model%s.",
+        len(specs),
+        "s" if len(specs) != 1 else "",
+    )
 
     # Now, actually register. Here, pass along the common arguments.
     for model_name, bundle_kwargs in specs.items():
-        registry.register_model_info(model_name, **bundle_kwargs,
-                                     exists_action=args.exists_action,
-                                     label=args.label,
-                                     overwrite_label=args.overwrite_label)
+        registry.register_model_info(
+            model_name,
+            **bundle_kwargs,
+            exists_action=args.exists_action,
+            label=args.label,
+            overwrite_label=args.overwrite_label,
+        )
 
     log.info("Model registration finished.\n\n%s\n", registry.info_str)
 
 
-def register_project(args: list, *, arg_prefix: str='') -> dict:
+def register_project(args: list, *, arg_prefix: str = "") -> dict:
     """Register or update information of an Utopia project, i.e. a repository
     that implements models.
 
@@ -229,46 +256,55 @@ def register_project(args: list, *, arg_prefix: str='') -> dict:
         dict: Information on the newly added or updated project
     """
     project_name = getattr(args, arg_prefix + "name")
-    log.debug("Adding or updating information for Utopia project '%s' ...",
-              project_name)
+    log.debug(
+        "Adding or updating information for Utopia project '%s' ...",
+        project_name,
+    )
 
     project_paths = dict()
-    for arg_name in ('base_dir', 'models_dir',
-                     'python_model_tests_dir', 'python_model_plots_dir'):
+    for arg_name in (
+        "base_dir",
+        "models_dir",
+        "python_model_tests_dir",
+        "python_model_plots_dir",
+    ):
         project_paths[arg_name] = getattr(args, arg_prefix + arg_name)
 
         if project_paths[arg_name]:
             project_paths[arg_name] = str(project_paths[arg_name])
 
     # Load existing project information, update it, store back to file
-    projects = load_from_cfg_dir('projects')  # empty dict if file is missing
+    projects = load_from_cfg_dir("projects")  # empty dict if file is missing
     projects[project_name] = project_paths
 
-    write_to_cfg_dir('projects', projects)
+    write_to_cfg_dir("projects", projects)
     log.info("Updated information for Utopia project '%s'.", project_name)
 
     # If python_model_plots_dir is given, update plot modules cfg file
-    if project_paths['python_model_plots_dir']:
+    if project_paths["python_model_plots_dir"]:
         log.debug("Additionally updating the python model plots path ...")
 
-        plot_module_paths = load_from_cfg_dir('plot_module_paths')
-        model_plots_dir = project_paths['python_model_plots_dir']
+        plot_module_paths = load_from_cfg_dir("plot_module_paths")
+        model_plots_dir = project_paths["python_model_plots_dir"]
 
         # Remove duplicate paths and instead store it under the project name
-        plot_module_paths = {k:v for k,v in plot_module_paths.items()
-                             if v != model_plots_dir}
+        plot_module_paths = {
+            k: v for k, v in plot_module_paths.items() if v != model_plots_dir
+        }
         plot_module_paths[project_name] = model_plots_dir
 
-        write_to_cfg_dir('plot_module_paths', plot_module_paths)
-        log.info("Updated plot module paths for Utopia project '%s'.",
-                 project_name)
+        write_to_cfg_dir("plot_module_paths", plot_module_paths)
+        log.info(
+            "Updated plot module paths for Utopia project '%s'.", project_name
+        )
 
     # Return the project information
     return projects[project_name]
 
 
-def deploy_user_cfg(user_cfg_path: str=Multiverse.USER_CFG_SEARCH_PATH
-                    ) -> None:
+def deploy_user_cfg(
+    user_cfg_path: str = Multiverse.USER_CFG_SEARCH_PATH,
+) -> None:
     """Deploys a copy of the full config to the specified location (usually
     the user config search path of the Multiverse class)
 
@@ -287,7 +323,7 @@ def deploy_user_cfg(user_cfg_path: str=Multiverse.USER_CFG_SEARCH_PATH
     if os.path.isfile(user_cfg_path):
         # There already is one. Ask if this should be overwritten...
         print("A config file already exists at " + str(user_cfg_path))
-        if input("Replace? [y, N]  ").lower() in ['yes', 'y']:
+        if input("Replace? [y, N]  ").lower() in ["yes", "y"]:
             # Delete the file
             os.remove(user_cfg_path)
             print("")
@@ -303,14 +339,14 @@ def deploy_user_cfg(user_cfg_path: str=Multiverse.USER_CFG_SEARCH_PATH
     os.makedirs(os.path.dirname(user_cfg_path), exist_ok=True)
 
     # Create a file at the given location
-    with open(user_cfg_path, 'x') as ucfg:
+    with open(user_cfg_path, "x") as ucfg:
         # Write header section, from user config header file
-        with open(USER_CFG_HEADER_PATH, 'r') as ucfg_header:
+        with open(USER_CFG_HEADER_PATH, "r") as ucfg_header:
             ucfg.write(ucfg_header.read())
 
         # Now go over the full config and write the content, commenting out
         # the lines that are not already commented out
-        with open(BASE_CFG_PATH, 'r') as bcfg:
+        with open(BASE_CFG_PATH, "r") as bcfg:
             past_prefix = False
 
             for line in bcfg:
@@ -333,21 +369,28 @@ def deploy_user_cfg(user_cfg_path: str=Multiverse.USER_CFG_SEARCH_PATH
                     # There is an entry on this line -> comment out before the
                     # first character (looks cleaner)
                     spaces = " " * (len(line.rstrip()) - len(line.strip()))
-                    ucfg.write(spaces + "# " + line[len(spaces):])
+                    ucfg.write(spaces + "# " + line[len(spaces) :])
         # Done
 
-    print("Deployed user config to: {}\n\nAll entries are commented out; "
-          "open the file to edit your configuration. Note that it is wise to "
-          "only enable those entries that you absolutely _need_ to set."
-          .format(user_cfg_path))
+    print(
+        "Deployed user config to: {}\n\nAll entries are commented out; "
+        "open the file to edit your configuration. Note that it is wise to "
+        "only enable those entries that you absolutely _need_ to set.".format(
+            user_cfg_path
+        )
+    )
 
 
-def copy_model_files(*, model_name: str,
-                     new_name: str=None, target_project: str=None,
-                     add_to_cmakelists: bool=True,
-                     skip_exts: Sequence[str]=None,
-                     use_prompts: bool=True,
-                     dry_run: bool=False) -> None:
+def copy_model_files(
+    *,
+    model_name: str,
+    new_name: str = None,
+    target_project: str = None,
+    add_to_cmakelists: bool = True,
+    skip_exts: Sequence[str] = None,
+    use_prompts: bool = True,
+    dry_run: bool = False,
+) -> None:
     """A helper function to conveniently copy model-related files, rename them,
     and adjust their content to the new name as well.
 
@@ -371,17 +414,22 @@ def copy_model_files(*, model_name: str,
     Returns:
         None
     """
+
     def apply_replacements(s, *replacements: Sequence[Tuple[str, str]]) -> str:
         """Applies multiple replacements onto the given string"""
         for replacement in replacements:
             s = s.replace(*replacement)
         return s
 
-    def create_file_map(*, source_dir: str, target_dir: str,
-                        abs_file_map: dict,
-                        replacements: Sequence[Tuple[str, str]],
-                        skip_exts: Sequence[str]=None,
-                        glob_args: Sequence[str]=("**",)) -> dict:
+    def create_file_map(
+        *,
+        source_dir: str,
+        target_dir: str,
+        abs_file_map: dict,
+        replacements: Sequence[Tuple[str, str]],
+        skip_exts: Sequence[str] = None,
+        glob_args: Sequence[str] = ("**",),
+    ) -> dict:
         """Given a file list with absolute paths, aggregates the file path
         changes into ``abs_file_map`` and gathers the relative file path
         changes into the returned dict.
@@ -405,8 +453,7 @@ def copy_model_files(*, model_name: str,
         Returns:
             dict: The file map relative to source and target dir.
         """
-        files = glob.glob(os.path.join(source_dir, *glob_args),
-                          recursive=True)
+        files = glob.glob(os.path.join(source_dir, *glob_args), recursive=True)
         rel_file_map = dict()
 
         for fpath in files:
@@ -424,22 +471,31 @@ def copy_model_files(*, model_name: str,
 
         return rel_file_map
 
-    def print_file_map(*, file_map: dict, source_dir: str, target_dir: str,
-                       label: str):
+    def print_file_map(
+        *, file_map: dict, source_dir: str, target_dir: str, label: str
+    ):
         """Prints a human-readable version of the given (relative) file map
         which copies from the source directory tree to the target directory
         tree.
         """
         max_key_len = min(max([len(k) for k in file_map]), 32)
-        files = ["\t{:{l:d}s}  ->  {:s}".format(k, v, l=max_key_len)
-                 for k, v in file_map.items()]
+        files = [
+            "\t{:{l:d}s}  ->  {:s}".format(k, v, l=max_key_len)
+            for k, v in file_map.items()
+        ]
 
-        print("\nThe following {num:d} {label:s} files from\n\t{from_dir:}\n"
-              "will be copied to\n\t{to_dir:}\nusing the following new file "
-              "names:\n{files:}"
-              "".format(num=len(file_map), label=label,
-                        from_dir=source_dir, to_dir=target_dir,
-                        files="\n".join(files)))
+        print(
+            "\nThe following {num:d} {label:s} files from\n\t{from_dir:}\n"
+            "will be copied to\n\t{to_dir:}\nusing the following new file "
+            "names:\n{files:}"
+            "".format(
+                num=len(file_map),
+                label=label,
+                from_dir=source_dir,
+                to_dir=target_dir,
+                files="\n".join(files),
+            )
+        )
 
     def add_model_to_cmakelists(*, fpath: str, new_name: str, write: bool):
         """Adds the relevant add_subdirectory command to the CMakeLists file
@@ -458,7 +514,7 @@ def copy_model_files(*, model_name: str,
                 file. In this case, the line has to be added manually.
         """
         # Read the file
-        with open(fpath, 'r') as f:
+        with open(fpath, "r") as f:
             lines = f.readlines()
 
         # Find the line to add the add_subdirectory command at
@@ -468,7 +524,7 @@ def copy_model_files(*, model_name: str,
                 continue
 
             insert_idx = i
-            _model = line[len("add_subdirectory("):-2]
+            _model = line[len("add_subdirectory(") : -2]
             if _model.lower() > new_name.lower():
                 break
         else:
@@ -476,34 +532,43 @@ def copy_model_files(*, model_name: str,
             insert_idx += 1
 
         if insert_idx is None:
-            raise ValueError("Found no add_subdirectory commands and thus do "
-                             "not know where to insert the command for the "
-                             "new model directory; please do it manually in "
-                             "the following file:  {}".format(fpath))
+            raise ValueError(
+                "Found no add_subdirectory commands and thus do "
+                "not know where to insert the command for the "
+                "new model directory; please do it manually in "
+                "the following file:  {}".format(fpath)
+            )
 
-        lines.insert(insert_idx if insert_idx
-                                else last_add_subdir_idx + 1,
-                                "add_subdirectory({})\n".format(new_name))
+        lines.insert(
+            insert_idx if insert_idx else last_add_subdir_idx + 1,
+            "add_subdirectory({})\n".format(new_name),
+        )
 
         if write:
-            with open(fpath, 'w') as f:
+            with open(fpath, "w") as f:
                 f.writelines(lines)
 
-            print("Subdirectory for model '{}' added to\n\t{}"
-                  "".format(new_name, fpath))
+            print(
+                "Subdirectory for model '{}' added to\n\t{}"
+                "".format(new_name, fpath)
+            )
 
         else:
-            print("Not writing. Preview of how the new\n\t{}\nfile _would_ "
-                  "look like:".format(fpath))
-            print("-"*79 + "\n")
+            print(
+                "Not writing. Preview of how the new\n\t{}\nfile _would_ "
+                "look like:".format(fpath)
+            )
+            print("-" * 79 + "\n")
             print("".join(lines))
-            print("-"*79)
+            print("-" * 79)
 
     # Gather information on model, project, and replacements . . . . . . . . .
     # Get the model information
     info_bundle = _get_info_bundle(model_name=model_name)
-    print("\nModel selected to copy:     {}  (from project: {})"
-          "".format(info_bundle.model_name, info_bundle.project_name))
+    print(
+        "\nModel selected to copy:     {}  (from project: {})"
+        "".format(info_bundle.model_name, info_bundle.project_name)
+    )
 
     # Find out the new name
     if not new_name:
@@ -516,14 +581,16 @@ def copy_model_files(*, model_name: str,
 
     # Check if the name is not already taken, being case-insensitive
     if new_name.lower() in [n.lower() for n in _MODELS.keys()]:
-        raise ValueError("A model with name '{}' is already registered! "
-                         "Make sure that the name is unique. If you keep "
-                         "receiving this error despite no other model with "
-                         "this name being implemented, remove the entry from "
-                         "the model registry, e.g. via the `utopia models rm` "
-                         "CLI command.\n"
-                         "Already registered models: {}"
-                         "".format(new_name, ", ".join(_MODELS.keys())))
+        raise ValueError(
+            "A model with name '{}' is already registered! "
+            "Make sure that the name is unique. If you keep "
+            "receiving this error despite no other model with "
+            "this name being implemented, remove the entry from "
+            "the model registry, e.g. via the `utopia models rm` "
+            "CLI command.\n"
+            "Already registered models: {}"
+            "".format(new_name, ", ".join(_MODELS.keys()))
+        )
 
     print("Name of the new model:      {}".format(new_name))
 
@@ -535,26 +602,30 @@ def copy_model_files(*, model_name: str,
     ]
 
     # Find out the project that the files are copied _to_
-    projects = load_from_cfg_dir('projects')
+    projects = load_from_cfg_dir("projects")
 
     if not target_project:
         if not use_prompts:
             raise ValueError("Missing target_project argument!")
         try:
-            target_project = input("\nWhich Utopia project (available: {}) "
-                                   "should the model be copied to?  "
-                                   "".format(", ".join(projects)))
+            target_project = input(
+                "\nWhich Utopia project (available: {}) "
+                "should the model be copied to?  "
+                "".format(", ".join(projects))
+            )
         except KeyboardInterrupt:
             return
     print("Utopia project to copy to:  {}".format(target_project))
 
     project_info = projects.get(target_project)
     if not project_info:
-        raise ValueError("No Utopia project with name '{}' is known to the "
-                         "frontend. Check the spelling and note that the "
-                         "project name is case-sensitive.\n"
-                         "Available projects: {}."
-                         "".format(target_project, ", ".join(projects)))
+        raise ValueError(
+            "No Utopia project with name '{}' is known to the "
+            "frontend. Check the spelling and note that the "
+            "project name is case-sensitive.\n"
+            "Available projects: {}."
+            "".format(target_project, ", ".join(projects))
+        )
 
     # Generate the file maps . . . . . . . . . . . . . . . . . . . . . . . . .
     # The mapping of all files that are to be copied and in which the content
@@ -568,58 +639,79 @@ def copy_model_files(*, model_name: str,
     py_p_file_map = None
 
     # Find out the target directories
-    target_models_dir = project_info.get('models_dir')
-    target_py_t_dir = project_info.get('python_model_tests_dir')
-    target_py_p_dir = project_info.get('python_model_plots_dir')
+    target_models_dir = project_info.get("models_dir")
+    target_py_t_dir = project_info.get("python_model_tests_dir")
+    target_py_p_dir = project_info.get("python_model_plots_dir")
 
     # Define the source and target directory paths of the implementation and
     # the python-related files, if the path information is available.
-    impl_source_dir = info_bundle.paths['source_dir']
+    impl_source_dir = info_bundle.paths["source_dir"]
     impl_target_dir = os.path.join(target_models_dir, new_name)
-    impl_file_map = create_file_map(source_dir=impl_source_dir,
-                                    target_dir=impl_target_dir,
-                                    abs_file_map=file_map,
-                                    replacements=replacements,
-                                    skip_exts=skip_exts)
+    impl_file_map = create_file_map(
+        source_dir=impl_source_dir,
+        target_dir=impl_target_dir,
+        abs_file_map=file_map,
+        replacements=replacements,
+        skip_exts=skip_exts,
+    )
 
-    if target_py_t_dir and info_bundle.paths.get('python_model_tests_dir'):
-        py_t_source_dir = info_bundle.paths['python_model_tests_dir']
+    if target_py_t_dir and info_bundle.paths.get("python_model_tests_dir"):
+        py_t_source_dir = info_bundle.paths["python_model_tests_dir"]
         py_t_target_dir = os.path.join(target_py_t_dir, new_name)
-        py_t_file_map = create_file_map(source_dir=py_t_source_dir,
-                                        target_dir=py_t_target_dir,
-                                        abs_file_map=file_map,
-                                        replacements=replacements,
-                                        skip_exts=skip_exts)
+        py_t_file_map = create_file_map(
+            source_dir=py_t_source_dir,
+            target_dir=py_t_target_dir,
+            abs_file_map=file_map,
+            replacements=replacements,
+            skip_exts=skip_exts,
+        )
 
-    if target_py_p_dir and info_bundle.paths.get('python_model_plots_dir'):
-        py_p_source_dir = info_bundle.paths['python_model_plots_dir']
+    if target_py_p_dir and info_bundle.paths.get("python_model_plots_dir"):
+        py_p_source_dir = info_bundle.paths["python_model_plots_dir"]
         py_p_target_dir = os.path.join(target_py_p_dir, new_name)
-        py_p_file_map = create_file_map(source_dir=py_p_source_dir,
-                                        target_dir=py_p_target_dir,
-                                        abs_file_map=file_map,
-                                        replacements=replacements,
-                                        skip_exts=skip_exts)
-
+        py_p_file_map = create_file_map(
+            source_dir=py_p_source_dir,
+            target_dir=py_p_target_dir,
+            abs_file_map=file_map,
+            replacements=replacements,
+            skip_exts=skip_exts,
+        )
 
     # Gathered all information now. . . . . . . . . . . . . . . . . . . . . . .
     # Inform about the file changes and the replacement in them.
-    print_file_map(file_map=impl_file_map, label="model implementation",
-                   source_dir=impl_source_dir, target_dir=impl_target_dir)
+    print_file_map(
+        file_map=impl_file_map,
+        label="model implementation",
+        source_dir=impl_source_dir,
+        target_dir=impl_target_dir,
+    )
 
     if py_t_file_map:
-        print_file_map(file_map=py_t_file_map, label="python model test",
-                       source_dir=py_t_source_dir, target_dir=py_t_target_dir)
+        print_file_map(
+            file_map=py_t_file_map,
+            label="python model test",
+            source_dir=py_t_source_dir,
+            target_dir=py_t_target_dir,
+        )
 
     if py_p_file_map:
-        print_file_map(file_map=py_p_file_map, label="python model plot",
-                       source_dir=py_p_source_dir, target_dir=py_p_target_dir)
+        print_file_map(
+            file_map=py_p_file_map,
+            label="python model plot",
+            source_dir=py_p_source_dir,
+            target_dir=py_p_target_dir,
+        )
 
     max_repl_len = max([len(rs) for rs, _ in replacements])
-    repl_info = ["\t'{:{l:d}s}'  ->  '{:s}'".format(*repl, l=max_repl_len)
-                 for repl in replacements]
-    print("\nInside all of these {:d} files, the following string "
-          "replacements will be carried out:\n{}\n"
-          "".format(len(file_map), "\n".join(repl_info)))
+    repl_info = [
+        "\t'{:{l:d}s}'  ->  '{:s}'".format(*repl, l=max_repl_len)
+        for repl in replacements
+    ]
+    print(
+        "\nInside all of these {:d} files, the following string "
+        "replacements will be carried out:\n{}\n"
+        "".format(len(file_map), "\n".join(repl_info))
+    )
 
     # Inform about dry run and ask whether to proceed
     if dry_run:
@@ -631,7 +723,7 @@ def copy_model_files(*, model_name: str,
             response = input("\nProceed [y/N]  ")
         except KeyboardInterrupt:
             response = "N"
-        if response.lower() not in ('y', 'yes'):
+        if response.lower() not in ("y", "yes"):
             print("\nNot proceeding ...")
             return
 
@@ -639,18 +731,22 @@ def copy_model_files(*, model_name: str,
 
     # Now, the actual copying . . . . . . . . . . . . . . . . . . . . . . . . .
     for i, (src_fpath, target_fpath) in enumerate(file_map.items()):
-        print("\nFile {:d}/{:d} ...".format(i+1, len(file_map)))
+        print("\nFile {:d}/{:d} ...".format(i + 1, len(file_map)))
         print("\t   {:s}\n\t-> {:s}".format(src_fpath, target_fpath))
 
         try:
-            with open(src_fpath, mode='r') as src_file:
+            with open(src_fpath, mode="r") as src_file:
                 src_lines = src_file.read()
 
         except Exception as exc:
-            print("\tReading FAILED due to {}: {}."
-                  "".format(exc.__class__.__name__, str(exc)))
-            print("\tIf you want this file copied and refactored, you will "
-                  "have to do it manually.")
+            print(
+                "\tReading FAILED due to {}: {}."
+                "".format(exc.__class__.__name__, str(exc))
+            )
+            print(
+                "\tIf you want this file copied and refactored, you will "
+                "have to do it manually."
+            )
             continue
 
         target_lines = apply_replacements(src_lines, *replacements)
@@ -660,34 +756,40 @@ def copy_model_files(*, model_name: str,
 
         # Create directories and write the file; failing if it already exists
         os.makedirs(os.path.dirname(target_fpath), exist_ok=True)
-        with open(target_fpath, mode='x') as target_file:
+        with open(target_fpath, mode="x") as target_file:
             target_file.write(target_lines)
 
     print("\nFinished copying.\n")
 
     # Prepare for CMakeLists.txt adjustments
-    cmakelists_fpath = os.path.abspath(os.path.join(impl_target_dir,
-                                                    "../CMakeLists.txt"))
+    cmakelists_fpath = os.path.abspath(
+        os.path.join(impl_target_dir, "../CMakeLists.txt")
+    )
 
     if not add_to_cmakelists:
         print("Not extending CMakeLists.txt automatically.")
-        print("Remember to register the new model in the relevant "
-              "CMakeLists.txt file at\n\t{}\nand invoke CMake to reconfigure."
-              "".format(cmakelists_fpath))
+        print(
+            "Remember to register the new model in the relevant "
+            "CMakeLists.txt file at\n\t{}\nand invoke CMake to reconfigure."
+            "".format(cmakelists_fpath)
+        )
         return
 
     print("Adding model directory to CMakeLists.txt ...")
-    add_model_to_cmakelists(fpath=cmakelists_fpath, new_name=new_name,
-                            write=not dry_run)
+    add_model_to_cmakelists(
+        fpath=cmakelists_fpath, new_name=new_name, write=not dry_run
+    )
 
     # All done now.
     print("\nFinished.")
 
 
-def prompt_for_new_plot_args(*, old_argv: List[str],
-                             old_args: argparse.Namespace,
-                             parser: argparse.ArgumentParser,
-                             ) -> Tuple[dict, argparse.Namespace]:
+def prompt_for_new_plot_args(
+    *,
+    old_argv: List[str],
+    old_args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> Tuple[dict, argparse.Namespace]:
     """Given some old arguments, prompts for new ones and returns a new
     list of argument values and the parsed argparse namespace result.
 
@@ -705,12 +807,18 @@ def prompt_for_new_plot_args(*, old_argv: List[str],
         ValueError: Upon error in parsing the new arguments.
     """
     # Specify those arguments that may not be given in the prompt
-    DISALLOWED_ARGS = ('run_cfg_path', 'run_dir_path', 'set_cfg',
-                       'cluster_mode', 'suppress_data_tree', 'full_data_tree')
+    DISALLOWED_ARGS = (
+        "run_cfg_path",
+        "run_dir_path",
+        "set_cfg",
+        "cluster_mode",
+        "suppress_data_tree",
+        "full_data_tree",
+    )
 
     # Create a new argument list for querying the user. For that, remove
     # those entries from the argvs that are meant to be in the query.
-    prefix_argv = ('--interactive', old_args.model_name)
+    prefix_argv = ("--interactive", old_args.model_name)
     to_query = [arg for arg in old_argv if arg not in prefix_argv]
     to_query_str = " ".join(to_query) + (" " if to_query else "")
 
@@ -719,12 +827,14 @@ def prompt_for_new_plot_args(*, old_argv: List[str],
     # allow tab completion for file paths after certain delimiters.
     readline.set_startup_hook(lambda: readline.insert_text(to_query_str))
     readline.parse_and_bind("tab: complete")
-    readline.set_completer_delims(' \t\n=')
+    readline.set_completer_delims(" \t\n=")
 
     # Generate the prompt and store the result, stripping whitespace
-    prompt_str = ("\n{ansi.CYAN}${ansi.MAGENTA} "
-                  "utopia eval -i {}"
-                  "{ansi.RESET} ".format(old_args.model_name, ansi=ANSIesc))
+    prompt_str = (
+        "\n{ansi.CYAN}${ansi.MAGENTA} "
+        "utopia eval -i {}"
+        "{ansi.RESET} ".format(old_args.model_name, ansi=ANSIesc)
+    )
     input_res = input(prompt_str).strip()
     print("")
 
@@ -732,7 +842,7 @@ def prompt_for_new_plot_args(*, old_argv: List[str],
     readline.set_startup_hook()
 
     # Prepare the new list of argument values.
-    add_argv = input_res.split(' ') if input_res else []
+    add_argv = input_res.split(" ") if input_res else []
     new_argv = list(prefix_argv) + add_argv
 
     # ... and parse it to the eval subparser.
@@ -741,20 +851,32 @@ def prompt_for_new_plot_args(*, old_argv: List[str],
     #      arguments that are not properly parsable.
 
     # Check that bad arguments were not used
-    bad_args = [arg for arg in DISALLOWED_ARGS
-                if getattr(new_args, arg) != parser.get_default(arg)]
+    bad_args = [
+        arg
+        for arg in DISALLOWED_ARGS
+        if getattr(new_args, arg) != parser.get_default(arg)
+    ]
     if bad_args:
-        print("{ansi.RED}During interactive plotting, arguments that are used "
-              "to update the Multiverse meta-configuration cannot be used!"
-              "{ansi.RESET}".format(ansi=ANSIesc))
-        print("{ansi.DIM}Remove the offending argument{} ({}) and try again. "
-              "Consult --help to find out the available plotting-related "
-              "arguments."
-              "{ansi.RESET}".format("s" if len(bad_args) != 1 else "",
-                                    ", ".join(bad_args), ansi=ANSIesc))
-        raise ValueError("Cannot specify arguments that are used for updating "
-                         "the (already-in-use) meta-configuration of the "
-                         "current Multiverse instance. Disallowed arguments: "
-                         "{}".format(", ".join(DISALLOWED_ARGS)))
+        print(
+            "{ansi.RED}During interactive plotting, arguments that are used "
+            "to update the Multiverse meta-configuration cannot be used!"
+            "{ansi.RESET}".format(ansi=ANSIesc)
+        )
+        print(
+            "{ansi.DIM}Remove the offending argument{} ({}) and try again. "
+            "Consult --help to find out the available plotting-related "
+            "arguments."
+            "{ansi.RESET}".format(
+                "s" if len(bad_args) != 1 else "",
+                ", ".join(bad_args),
+                ansi=ANSIesc,
+            )
+        )
+        raise ValueError(
+            "Cannot specify arguments that are used for updating "
+            "the (already-in-use) meta-configuration of the "
+            "current Multiverse instance. Disallowed arguments: "
+            "{}".format(", ".join(DISALLOWED_ARGS))
+        )
 
     return new_argv, new_args

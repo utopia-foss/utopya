@@ -7,8 +7,8 @@ from datetime import timedelta
 
 import pytest
 
-from utopya.workermanager import WorkerManager
 from utopya.reporter import Reporter, WorkerManagerReporter
+from utopya.workermanager import WorkerManager
 
 # Local constants
 MIN_REP_INTV = 0.1
@@ -16,12 +16,17 @@ SLEEP_TIME = 0.1
 
 # Fixtures --------------------------------------------------------------------
 
+
 @pytest.fixture
 def sleep_task() -> dict:
     """The kwargs for a sleep task"""
-    sleep_args = ('python3', '-c',
-                  'from time import sleep; sleep({})'.format(SLEEP_TIME))
+    sleep_args = (
+        "python3",
+        "-c",
+        "from time import sleep; sleep({})".format(SLEEP_TIME),
+    )
     return dict(worker_kwargs=dict(args=sleep_args, read_stdout=True))
+
 
 @pytest.fixture
 def wm(sleep_task) -> WorkerManager:
@@ -35,34 +40,45 @@ def wm(sleep_task) -> WorkerManager:
 
     return wm
 
+
 @pytest.fixture
 def rf_list() -> list:
     """Returns a list of report formats; this will invoke them with their
     default settings."""
-    return ['task_counters', 'progress', 'progress_bar', 'times']
+    return ["task_counters", "progress", "progress_bar", "times"]
+
 
 @pytest.fixture
 def rf_dict() -> dict:
     """Returns a report format dict."""
-    return dict(tasks=dict(parser='task_counters',
-                           min_report_intv=MIN_REP_INTV),
-                progress=dict(min_report_intv=MIN_REP_INTV,
-                              write_to=dict(log=dict(lvl=5),
-                                            stdout=dict(end='\r'),
-                                            stdout_noreturn=dict())),
-                short_progress_bar=dict(parser='progress_bar', num_cols=19),
-                times=dict(),
-                while_working=dict(parser='times'),
-                after_work=dict(parser='times'))
+    return dict(
+        tasks=dict(parser="task_counters", min_report_intv=MIN_REP_INTV),
+        progress=dict(
+            min_report_intv=MIN_REP_INTV,
+            write_to=dict(
+                log=dict(lvl=5), stdout=dict(end="\r"), stdout_noreturn=dict()
+            ),
+        ),
+        short_progress_bar=dict(parser="progress_bar", num_cols=19),
+        times=dict(),
+        while_working=dict(parser="times"),
+        after_work=dict(parser="times"),
+    )
+
 
 @pytest.fixture
 def rep(wm, rf_list, tmpdir) -> WorkerManagerReporter:
     """Returns a WorkerManagerReporter"""
-    return WorkerManagerReporter(wm, report_dir=tmpdir,
-                                 report_formats=rf_list,
-                                 default_format='task_counters')
+    return WorkerManagerReporter(
+        wm,
+        report_dir=tmpdir,
+        report_formats=rf_list,
+        default_format="task_counters",
+    )
+
 
 # Tests -----------------------------------------------------------------------
+
 
 def test_init(wm):
     """Test simplest initialisation of the WorkerManagerReporter"""
@@ -76,14 +92,18 @@ def test_init(wm):
     assert rep.wm is wm
     assert wm._reporter is rep
 
+
 def test_init_with_rf_list(wm, rf_list):
     """Test initialisation of the WorkerManagerReporter with report formats"""
     rep = WorkerManagerReporter(wm, report_formats=rf_list)
 
+
 def test_init_with_rf_dict(wm, rf_dict):
     """Test initialisation of the WorkerManagerReporter"""
-    rep = WorkerManagerReporter(wm, report_formats=rf_dict,
-                                default_format='progress')
+    rep = WorkerManagerReporter(
+        wm, report_formats=rf_dict, default_format="progress"
+    )
+
 
 def test_resolve_writers(rep):
     """Tests the _resolve_writers method."""
@@ -97,10 +117,14 @@ def test_resolve_writers(rep):
     assert rw((print,)) == {print.__name__: print}
 
     # A mixed list or tuple of strings and callables
-    assert rw([print, 'stdout']) == {print.__name__: print,
-                                     'stdout': rep._write_to_stdout}
-    assert rw((print, 'stdout')) == {print.__name__: print,
-                                     'stdout': rep._write_to_stdout}
+    assert rw([print, "stdout"]) == {
+        print.__name__: print,
+        "stdout": rep._write_to_stdout,
+    }
+    assert rw((print, "stdout")) == {
+        print.__name__: print,
+        "stdout": rep._write_to_stdout,
+    }
 
     # With invalid types, this should fail
     with pytest.raises(TypeError, match="Invalid type "):
@@ -108,7 +132,7 @@ def test_resolve_writers(rep):
     with pytest.raises(TypeError, match="One item of given `write_to` "):
         rw([print, 123])
     with pytest.raises(TypeError, match="One item of given `write_to` "):
-        rw(['stdout', 123])
+        rw(["stdout", 123])
 
     # With the callable already existing, this should also fail
     with pytest.raises(ValueError, match="Given writer callable with name "):
@@ -116,7 +140,8 @@ def test_resolve_writers(rep):
 
     # Invalid writer name
     with pytest.raises(ValueError, match="No writer named"):
-        rw('invalid')
+        rw("invalid")
+
 
 def test_add_report_format(rep):
     """Test the add_report_format method"""
@@ -125,40 +150,44 @@ def test_add_report_format(rep):
 
     # Adding formats with the same name should not work
     with pytest.raises(ValueError, match="A report format with the name"):
-        add_rf('task_counters')
+        add_rf("task_counters")
 
     # Invalid write_to argument
-    with pytest.raises(TypeError,
-                       match="Invalid type <class 'int'> for argument"):
-        add_rf('foo', parser='progress', write_to=1)
-    with pytest.raises(TypeError,
-                       match="One item of given `write_to` argument"):
-        add_rf('foo', parser='progress', write_to=(1,2,3))
+    with pytest.raises(
+        TypeError, match="Invalid type <class 'int'> for argument"
+    ):
+        add_rf("foo", parser="progress", write_to=1)
+    with pytest.raises(
+        TypeError, match="One item of given `write_to` argument"
+    ):
+        add_rf("foo", parser="progress", write_to=(1, 2, 3))
 
     # Invalid parser
     with pytest.raises(ValueError, match="No parser named"):
-        add_rf('invalid')
+        add_rf("invalid")
 
     # Invalid writer
     with pytest.raises(ValueError, match="No writer named"):
-        add_rf('foo', parser='progress', write_to='invalid')
+        add_rf("foo", parser="progress", write_to="invalid")
+
 
 def test_task_counter(rep):
     """Tests the task_counters property"""
 
     # Assert initial worker manager state is as desired
     tc = rep.task_counters
-    assert tc['total'] == 11
-    assert tc['active'] == 0
-    assert tc['finished'] == 0
+    assert tc["total"] == 11
+    assert tc["active"] == 0
+    assert tc["finished"] == 0
 
     # Let the WorkerManager work and then test again
     rep.wm.start_working()
 
     tc = rep.task_counters
-    assert tc['total'] == 11
-    assert tc['active'] == 0
-    assert tc['finished'] == 11
+    assert tc["total"] == 11
+    assert tc["active"] == 0
+    assert tc["finished"] == 11
+
 
 def test_wm_progress(sleep_task):
     """Tests the wm_progress property"""
@@ -166,34 +195,36 @@ def test_wm_progress(sleep_task):
     rep = WorkerManagerReporter(wm)
 
     # Should be zero if there are no tasks
-    assert rep.wm_progress == 0.
+    assert rep.wm_progress == 0.0
 
     # Should still be zero after having added a task
     wm.add_task(**sleep_task)
-    assert rep.wm_progress == 0.
+    assert rep.wm_progress == 0.0
 
     # Should be 1. after working
     wm.start_working()
-    assert rep.wm_progress == 1.
+    assert rep.wm_progress == 1.0
+
 
 def test_wm_times(rep):
     """Test the wm_times property"""
     t1 = rep.wm_times
-    assert t1['start'] is None
-    assert 'now' in t1
-    assert t1['elapsed'] is None
-    assert t1['est_left'] is None
-    assert t1['est_end'] is None
+    assert t1["start"] is None
+    assert "now" in t1
+    assert t1["elapsed"] is None
+    assert t1["est_left"] is None
+    assert t1["est_end"] is None
 
     # Work
     rep.wm.start_working()
 
     t2 = rep.wm_times
-    assert t2['start'] is rep.wm.times['start_working']
-    assert 'now' in t2 and t2['now'] > t1['now']
-    assert t2['elapsed']
-    assert t2['est_left'].total_seconds() == 0.
-    assert t2['est_end'] < dt.now()
+    assert t2["start"] is rep.wm.times["start_working"]
+    assert "now" in t2 and t2["now"] > t1["now"]
+    assert t2["elapsed"]
+    assert t2["est_left"].total_seconds() == 0.0
+    assert t2["est_end"] < dt.now()
+
 
 def test_parsers(rf_dict, sleep_task):
     """Tests the custom parser methods of the WorkerManagerReporter that is
@@ -210,8 +241,10 @@ def test_parsers(rf_dict, sleep_task):
         *a, num_cols=n, **kws
     )
     ppbt = lambda *a, n=30, **kws: rep._parse_progress_bar(
-        *a, num_cols=n, **kws,
-        info_fstr="{total_progress:>5.1f}%  of {cnt[total]} "
+        *a,
+        num_cols=n,
+        **kws,
+        info_fstr="{total_progress:>5.1f}%  of {cnt[total]} ",
     )
     ppbtt = lambda *a, n=60, **kws: rep._parse_progress_bar(
         *a, num_cols=n, show_times=True, **kws
@@ -271,16 +304,19 @@ def test_parsers(rf_dict, sleep_task):
         ppbtt(n="adaptive")
     seconds_needed = (dt.now() - t0).total_seconds()
     print(f"Needed {seconds_needed:.3g}s for parsing progress bar {N} times.")
-    assert float(seconds_needed/N) < 500.e-6  # very generous -> more robust
+    assert float(seconds_needed / N) < 500.0e-6  # very generous -> more robust
 
     # ... or with advanced ETA estimation
     t0 = dt.now()
     for _ in range(N):
         ppbtt(n="adaptive", times_kwargs=dict(mode="from_buffer"))
     seconds_needed = (dt.now() - t0).total_seconds()
-    print(f"Needed {seconds_needed:.3g}s for parsing progress bar (with "
-          f"advanced ETA estimation) {N} times.")
-    assert float(seconds_needed/N) < 500.e-6  # very generous -> more robust
+    print(
+        f"Needed {seconds_needed:.3g}s for parsing progress bar (with "
+        f"advanced ETA estimation) {N} times."
+    )
+    assert float(seconds_needed / N) < 500.0e-6  # very generous -> more robust
+
 
 def test_report(rep):
     """Tests the report method."""
@@ -288,24 +324,26 @@ def test_report(rep):
     assert rep.report()
 
     # Other, explicitly specified, report formats
-    assert rep.report('task_counters')
-    assert rep.report('progress')
-    assert rep.report('progress_bar')
-    assert rep.report('times')
+    assert rep.report("task_counters")
+    assert rep.report("progress")
+    assert rep.report("progress_bar")
+    assert rep.report("times")
 
     # Invalid report formats
     with pytest.raises(KeyError):
-        rep.report('foo')
+        rep.report("foo")
 
     # Without default format
     rep.default_format = None
     with pytest.raises(ValueError, match="Either a default format needs"):
         rep.report()
 
+
 def test_min_report_intv(wm, rf_dict):
     """Test correct behaviour of the minimum report interval"""
-    rep = WorkerManagerReporter(wm, report_formats=rf_dict,
-                                default_format='progress')
+    rep = WorkerManagerReporter(
+        wm, report_formats=rf_dict, default_format="progress"
+    )
 
     # This should work
     assert rep.report()
@@ -321,10 +359,12 @@ def test_min_report_intv(wm, rf_dict):
     # And blocked again ...
     assert not rep.report()
 
+
 def test_parse_and_write(rep):
     """Tests the parse_and_write function"""
-    rep.parse_and_write(parser='progress', write_to='stdout')
-    rep.parse_and_write(parser='progress', write_to='log')
+    rep.parse_and_write(parser="progress", write_to="stdout")
+    rep.parse_and_write(parser="progress", write_to="log")
+
 
 def test_runtime_statistics(rep):
     """Tests the runtime statistics gathering and parsing.
@@ -348,8 +388,8 @@ def test_runtime_statistics(rep):
 
     # All entries but the std should be larger than the sleep time of the task
     for key, val in rtstats.items():
-        if key == 'std':
-            assert val > 0.
+        if key == "std":
+            assert val > 0.0
         else:
             assert val > SLEEP_TIME
 
@@ -360,14 +400,17 @@ def test_runtime_statistics(rep):
     # Test the parsing method:
     assert rep._parse_runtime_stats()
 
+
 def test_parse_times(rep):
     """Test the _parse_elapsed function"""
     pt = rep._parse_times
 
     # Not having worked:
-    assert pt() == ("Elapsed:  (not started)  |  "
-                    "Est. left:  ∞         |  "
-                    "Est. end:  (unknown) ")
+    assert pt() == (
+        "Elapsed:  (not started)  |  "
+        "Est. left:  ∞         |  "
+        "Est. end:  (unknown) "
+    )
 
     # Start working and then check again
     rep.wm.start_working()
@@ -378,32 +421,43 @@ def test_parse_times(rep):
     now = dt.now()
 
     # Not started yet
-    times = dict(start=None, now=now, elapsed=None,
-                 est_left=None, est_end=None, end=None)
+    times = dict(
+        start=None,
+        now=now,
+        elapsed=None,
+        est_left=None,
+        est_end=None,
+        end=None,
+    )
     assert pt(times=times)
 
     # Just started, finish tomorrow
-    times = dict(start=now,
-                 now=now,
-                 elapsed=timedelta(0),
-                 est_left=timedelta(1),  # 1 day
-                 est_end=now + timedelta(1), # tomorrow
-                 end=None)
+    times = dict(
+        start=now,
+        now=now,
+        elapsed=timedelta(0),
+        est_left=timedelta(1),  # 1 day
+        est_end=now + timedelta(1),  # tomorrow
+        end=None,
+    )
 
     assert pt(times=times)
 
     # Move the est end into the future one more day
-    times['est_end'] += timedelta(1)
+    times["est_end"] += timedelta(1)
     assert pt(times=times)
 
     # Simulation started yesterday and ends today (~now)
-    times = dict(start=now - timedelta(1),
-                 now=now,
-                 elapsed=timedelta(1),
-                 est_left=timedelta(0),
-                 est_end=now,
-                 end=None)
+    times = dict(
+        start=now - timedelta(1),
+        now=now,
+        elapsed=timedelta(1),
+        est_left=timedelta(0),
+        est_end=now,
+        end=None,
+    )
     assert pt(times=times)
+
 
 def test_suppress_cr(wm, tmpdir, capsys):
     """Test whether the writers are able to suppress CR characters"""
@@ -415,7 +469,9 @@ def test_suppress_cr(wm, tmpdir, capsys):
     assert captured.out == "\n"
 
     # Write more
-    rep._write_to_stdout("foo",)
+    rep._write_to_stdout(
+        "foo",
+    )
     rep._write_to_stdout("bar", end="\n")
     rep._write_to_stdout("baz", end="\r")
     rep._write_to_stdout_noreturn("spam", prepend="")
@@ -424,20 +480,21 @@ def test_suppress_cr(wm, tmpdir, capsys):
     captured = capsys.readouterr()
     assert captured.out == "foo\nbar\nbaz\nspam\n"
 
+
 def test_write_to_file(wm, rf_dict, tmpdir):
     """Test writing to a file."""
     rep = WorkerManagerReporter(wm, report_dir=tmpdir)
 
-    rep.parse_and_write(parser='task_counters', write_to='file')
-    report_file = tmpdir.join('_report.txt')
+    rep.parse_and_write(parser="task_counters", write_to="file")
+    report_file = tmpdir.join("_report.txt")
     assert report_file.isfile()
 
     # Read file content
-    with open(str(report_file), 'r') as f:
+    with open(str(report_file), "r") as f:
         assert f.read() == "total: 11,  active: 0,  finished: 0,  stopped: 0"
 
     # Unset the report directory and try with relative path
     rep.report_dir = None
 
     with pytest.raises(ValueError):
-        rep.parse_and_write(parser='task_counters', write_to='file')
+        rep.parse_and_write(parser="task_counters", write_to="file")

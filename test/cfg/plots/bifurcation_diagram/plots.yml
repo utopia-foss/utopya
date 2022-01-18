@@ -41,7 +41,7 @@ bifurcation_endpoint:
   <<: *bifurcation_diagram
 
   enabled: true
-  
+
   # pass a Tuple(str, str): key, function name in utopya.dataprocessing.py
   analysis_steps: [[endpoint, find_endpoint]]
 
@@ -150,7 +150,7 @@ bifurcation_oscillation:
   analysis_steps: [oscillation, fixpoint]
   analysis_kwargs:
     oscillation:
-      height: 0.    # this 
+      height: 0.    # this
       prominence: 0.05
     fixpoint:
       spin_up_time: 25000

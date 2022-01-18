@@ -4,11 +4,11 @@ In order to make the plotting framework specific to Utopia, this module derives
 both from the dantro PlotManager and some PlotCreator classes.
 """
 
+import importlib
+import logging
 import os
 import sys
-import logging
 import traceback
-import importlib
 from typing import Callable, Union
 
 import dantro as dtr
@@ -17,11 +17,10 @@ import dantro.plot_mngr
 from dantro.plot_creators import is_plot_func
 from dantro.utils import register_operation as _register_operation
 
+from ._path_setup import temporary_sys_modules as _tmp_sys_modules
+from ._path_setup import temporary_sys_path as _tmp_sys_path
 from .cfg import load_from_cfg_dir as _load_from_cfg_dir
 from .model_registry import ModelInfoBundle
-from ._path_setup import temporary_sys_path as _tmp_sys_path
-from ._path_setup import temporary_sys_modules as _tmp_sys_modules
-
 
 # Configure and get logger
 log = logging.getLogger(__name__)
@@ -29,6 +28,7 @@ log = logging.getLogger(__name__)
 # Local constants
 
 # -----------------------------------------------------------------------------
+
 
 def register_operation(*, skip_existing=True, **kws) -> None:
     """Register an operation with the dantro data operations database.
@@ -47,6 +47,7 @@ def register_operation(*, skip_existing=True, **kws) -> None:
 
 # -----------------------------------------------------------------------------
 # PlotHelper specialisations
+
 
 class PlotHelper(dtr.plot_creators.PlotHelper):
     """A specialization of the dantro ``PlotHelper`` used in plot creators that
@@ -69,6 +70,7 @@ class PlotHelper(dtr.plot_creators.PlotHelper):
 # -----------------------------------------------------------------------------
 # Plot creators
 
+
 class ExternalPlotCreator(dtr.plot_creators.ExternalPlotCreator):
     """This is the Utopia-specific version of dantro's ``ExternalPlotCreator``.
 
@@ -79,20 +81,20 @@ class ExternalPlotCreator(dtr.plot_creators.ExternalPlotCreator):
     :py:mod:`utopya.plot_funcs`, which is an extension of those functions
     supplied by dantro.
     """
+
     # Extensions
-    EXTENSIONS = 'all'   # no checks performed
-    DEFAULT_EXT = 'pdf'  # most common
+    EXTENSIONS = "all"  # no checks performed
+    DEFAULT_EXT = "pdf"  # most common
 
     # Use utopya.plot_funcs as base package for relative module imports
-    BASE_PKG = 'utopya.plot_funcs'
+    BASE_PKG = "utopya.plot_funcs"
 
     # The PlotHelper class to use; here, the utopya-specific one
     PLOT_HELPER_CLS = PlotHelper
 
     # Additional parameters necessary for making model-specific plots available
     CUSTOM_PLOT_MODULE_NAME = "model_plots"
-    CUSTOM_PLOT_MODULE_PATHS = _load_from_cfg_dir('plot_module_paths')
-
+    CUSTOM_PLOT_MODULE_PATHS = _load_from_cfg_dir("plot_module_paths")
 
     def _get_module_via_import(self, module: str):
         """Extends the parent method by making the custom modules available if
@@ -102,18 +104,23 @@ class ExternalPlotCreator(dtr.plot_creators.ExternalPlotCreator):
             return super()._get_module_via_import(module)
 
         except ModuleNotFoundError as err:
-            if (   not self.CUSTOM_PLOT_MODULE_NAME
+            if (
+                not self.CUSTOM_PLOT_MODULE_NAME
                 or not self.CUSTOM_PLOT_MODULE_PATHS
-                or not module.startswith(self.CUSTOM_PLOT_MODULE_NAME)):
+                or not module.startswith(self.CUSTOM_PLOT_MODULE_NAME)
+            ):
                 # Should raise.
                 # This also implicitly asserts that no python package with a
                 # name equal to the prefix may be installed.
                 raise
 
-        log.debug("Module '%s' could not be imported with a default sys.path, "
-                  "but is marked as a custom plot module. Attempting to "
-                  "import it from %d additional path(s).",
-                  module, len(self.CUSTOM_PLOT_MODULE_PATHS))
+        log.debug(
+            "Module '%s' could not be imported with a default sys.path, "
+            "but is marked as a custom plot module. Attempting to "
+            "import it from %d additional path(s).",
+            module,
+            len(self.CUSTOM_PLOT_MODULE_PATHS),
+        )
 
         # A dict to gather error information in
         errors = dict()
@@ -142,17 +149,24 @@ class ExternalPlotCreator(dtr.plot_creators.ExternalPlotCreator):
                 except ModuleNotFoundError as err:
                     # Gather some information on the error
                     tb = err.__traceback__
-                    errors[parent_dir] = dict(err=err, tb=tb,
-                                              tb_lines=traceback.format_tb(tb))
+                    errors[parent_dir] = dict(
+                        err=err, tb=tb, tb_lines=traceback.format_tb(tb)
+                    )
 
                 else:
-                    log.debug("Found module '%s' after having added custom "
-                              "plot module path labelled '%s' (%s) to the "
-                              "sys.path.", mod, key, path)
+                    log.debug(
+                        "Found module '%s' after having added custom "
+                        "plot module path labelled '%s' (%s) to the "
+                        "sys.path.",
+                        mod,
+                        key,
+                        path,
+                    )
                     return mod
 
         # All imports failed. Inform extensively about errors to help debugging
-        raise ModuleNotFoundError("Could not import module '{mod:}'! It was "
+        raise ModuleNotFoundError(
+            "Could not import module '{mod:}'! It was "
             "found neither among the installed packages nor among the custom "
             "plot module paths.\n\n"
             "The following errors were encountered at the respective custom "
@@ -165,29 +179,48 @@ class ExternalPlotCreator(dtr.plot_creators.ExternalPlotCreator):
             "code.\n"
             "To debug, check the error messages and tracebacks above to find "
             "out which of the two is preventing module import."
-            "".format(mod=module,
-                      info="\n".join(["-- Error at custom plot module path "
-                                      "{} : {}\n\n  Shortened traceback:\n{}"
-                                      "".format(p, e['err'],
-                                                "".join([e['tb_lines'][0],
-                                                         "  ...\n",
-                                                         e['tb_lines'][-1]]))
-                                      for p, e in errors.items()])))
+            "".format(
+                mod=module,
+                info="\n".join(
+                    [
+                        "-- Error at custom plot module path "
+                        "{} : {}\n\n  Shortened traceback:\n{}"
+                        "".format(
+                            p,
+                            e["err"],
+                            "".join(
+                                [
+                                    e["tb_lines"][0],
+                                    "  ...\n",
+                                    e["tb_lines"][-1],
+                                ]
+                            ),
+                        )
+                        for p, e in errors.items()
+                    ]
+                ),
+            )
+        )
 
 
-class UniversePlotCreator(dtr.plot_creators.UniversePlotCreator,
-                          ExternalPlotCreator):
+class UniversePlotCreator(
+    dtr.plot_creators.UniversePlotCreator, ExternalPlotCreator
+):
     """Makes plotting with data from a single universe more convenient"""
-    PSGRP_PATH = 'multiverse'
+
+    PSGRP_PATH = "multiverse"
 
 
-class MultiversePlotCreator(dtr.plot_creators.MultiversePlotCreator,
-                            ExternalPlotCreator):
+class MultiversePlotCreator(
+    dtr.plot_creators.MultiversePlotCreator, ExternalPlotCreator
+):
     """Makes plotting with data from a all universes more convenient"""
-    PSGRP_PATH = 'multiverse'
+
+    PSGRP_PATH = "multiverse"
 
 
 # -----------------------------------------------------------------------------
+
 
 class PlotManager(dtr.plot_mngr.PlotManager):
     """This is the Utopia-specific version of the dantro PlotManager class
@@ -197,12 +230,13 @@ class PlotManager(dtr.plot_mngr.PlotManager):
     """
 
     # Register the supported plot creators
-    CREATORS = dict(universe=UniversePlotCreator,
-                    multiverse=MultiversePlotCreator)
+    CREATORS = dict(
+        universe=UniversePlotCreator, multiverse=MultiversePlotCreator
+    )
 
-
-    def __init__(self, *args, _model_info_bundle: ModelInfoBundle=None,
-                 **kwargs):
+    def __init__(
+        self, *args, _model_info_bundle: ModelInfoBundle = None, **kwargs
+    ):
         """Sets up a PlotManager.
 
         This additionally stores some Utopia-specific metadata about the
@@ -222,7 +256,7 @@ class PlotManager(dtr.plot_mngr.PlotManager):
 
         If there was no plot information yet, the return value will be empty.
         """
-        return os.path.commonprefix([d['target_dir'] for d in self.plot_info])
+        return os.path.commonprefix([d["target_dir"] for d in self.plot_info])
 
     def plot_from_cfg(
         self, *args, plots_cfg: Union[str, dict] = None, **kwargs
@@ -230,14 +264,18 @@ class PlotManager(dtr.plot_mngr.PlotManager):
         """Thin wrapper around parent method that shows which plot
         configuration file will be used.
         """
-        log.hilight("Now creating plots for '%s' model ...",
-                    self._model_info_bundle.model_name)
+        log.hilight(
+            "Now creating plots for '%s' model ...",
+            self._model_info_bundle.model_name,
+        )
         if isinstance(plots_cfg, str):
             log.note("Plots configuration:\n  %s\n", plots_cfg)
 
         elif plots_cfg is None:
-            log.note("Using default plots configuration:\n  %s\n",
-                     self._model_info_bundle.paths.get("default_plots"))
+            log.note(
+                "Using default plots configuration:\n  %s\n",
+                self._model_info_bundle.paths.get("default_plots"),
+            )
 
         return super().plot_from_cfg(*args, plots_cfg=plots_cfg, **kwargs)
 
@@ -247,6 +285,7 @@ class PlotManager(dtr.plot_mngr.PlotManager):
         model-specific dantro data operations and have them available prior to
         the invocation of the creator.
         """
+
         def preload_module(*, mod_path, model_name):
             """Helper function to carry out preloading of the module"""
             # Compile the module name
@@ -266,16 +305,21 @@ class PlotManager(dtr.plot_mngr.PlotManager):
 
             except Exception as exc:
                 if self.raise_exc:
-                    raise RuntimeError("Failed pre-loading the model-"
-                                       "specific plot module of the '{}' "
-                                       "model! Make sure that {}/__init__.py "
-                                       "can be loaded without errors; to "
-                                       "debug, inspect the chained traceback "
-                                       "above to find the cause of this error."
-                                       "".format(model_name, mod_path)
-                                       ) from exc
-                log.debug("Pre-loading model-specific plot module from %s "
-                          "failed: %s", mod_path, exc)
+                    raise RuntimeError(
+                        "Failed pre-loading the model-"
+                        "specific plot module of the '{}' "
+                        "model! Make sure that {}/__init__.py "
+                        "can be loaded without errors; to "
+                        "debug, inspect the chained traceback "
+                        "above to find the cause of this error."
+                        "".format(model_name, mod_path)
+                    ) from exc
+                log.debug(
+                    "Pre-loading model-specific plot module from %s "
+                    "failed: %s",
+                    mod_path,
+                    exc,
+                )
                 return
 
             else:
@@ -289,8 +333,8 @@ class PlotManager(dtr.plot_mngr.PlotManager):
         # Invoke the preloading routine
         mib = self._model_info_bundle
 
-        if mib is not None and mib.paths.get('python_model_plots_dir'):
-            mod_path = mib.paths.get('python_model_plots_dir')
+        if mib is not None and mib.paths.get("python_model_plots_dir"):
+            mod_path = mib.paths.get("python_model_plots_dir")
             if mod_path:
                 preload_module(mod_path=mod_path, model_name=mib.model_name)
 

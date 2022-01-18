@@ -1,4 +1,6 @@
 # pre-commit configuration for utopya
+#
+# NOTE See pyproject.toml for configuration options for some of these tools
 ---
 repos:
   # Manually run this every now and again .....................................
@@ -24,14 +26,12 @@ repos:
         additional_dependencies: [toml]
         files: \.py$
         args: [--project=utopya]
-        stages: [manual]
 
   - repo: https://github.com/psf/black
     rev: 21.12b0
     hooks:
       - id: black
         name: black code formatting
-        stages: [manual]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.9.0

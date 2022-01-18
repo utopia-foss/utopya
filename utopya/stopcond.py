@@ -4,7 +4,7 @@ WorkerManager to stop a worker process in certain situations."""
 import copy
 import logging
 import warnings
-from typing import List, Callable, Union, Set
+from typing import Callable, List, Set, Union
 
 import utopya.stopcond_funcs as sc_funcs
 
@@ -12,10 +12,11 @@ import utopya.stopcond_funcs as sc_funcs
 log = logging.getLogger(__name__)
 
 # Name of the signal to use for stopping workers with stop conditions fulfilled
-SIG_STOPCOND = 'SIGUSR1'
+SIG_STOPCOND = "SIGUSR1"
 
 
 # -----------------------------------------------------------------------------
+
 
 class StopCondition:
     """A StopCondition object holds information on the conditions in which a
@@ -26,9 +27,16 @@ class StopCondition:
     condition if fulfilled or not.
     """
 
-    def __init__(self, *, to_check: List[dict]=None, name: str=None,
-                 description: str=None, enabled: bool=True,
-                 func: Union[Callable, str]=None, **func_kwargs):
+    def __init__(
+        self,
+        *,
+        to_check: List[dict] = None,
+        name: str = None,
+        description: str = None,
+        enabled: bool = True,
+        func: Union[Callable, str] = None,
+        **func_kwargs,
+    ):
         """Create a new stop condition
 
         Args:
@@ -59,63 +67,86 @@ class StopCondition:
         # Carry over descriptive attributes
         self.enabled = enabled
         self.description = description
-        self.name = name if name else " && ".join([fspec[1]
-                                                   for fspec in self.to_check])
+        self.name = (
+            name
+            if name
+            else " && ".join([fspec[1] for fspec in self.to_check])
+        )
 
         # Keep track of tasks this stop condition was fulfilled for
         self._fulfilled_for = set()
 
         # Store the initialization kwargs such that they can be used for yaml
         # representation
-        self._init_kwargs = dict(to_check=to_check, name=name,
-                                 description=description, enabled=enabled,
-                                 func=func, **func_kwargs)
+        self._init_kwargs = dict(
+            to_check=to_check,
+            name=name,
+            description=description,
+            enabled=enabled,
+            func=func,
+            **func_kwargs,
+        )
 
-        log.debug("Initialized stop condition '%s' with %d checking "
-                  "function(s).", self.name, len(self.to_check))
+        log.debug(
+            "Initialized stop condition '%s' with %d checking " "function(s).",
+            self.name,
+            len(self.to_check),
+        )
 
     @property
-    def fulfilled_for(self) -> Set['utopya.task.Task']:
+    def fulfilled_for(self) -> Set["utopya.task.Task"]:
         """The set of tasks this stop condition was fulfilled for"""
         return self._fulfilled_for
 
     @staticmethod
-    def _resolve_sc_funcs(to_check: List[dict], func: Callable,
-                          func_kwargs: dict) -> List[tuple]:
+    def _resolve_sc_funcs(
+        to_check: List[dict], func: Callable, func_kwargs: dict
+    ) -> List[tuple]:
         """Resolves the functions and kwargs that are to be checked."""
 
         def retrieve_func(func_name: str) -> Callable:
             """Given a function name, returns the callable from the utopya
             module stopcond_funcs.
             """
-            log.debug("Getting function with name '%s' from the "
-                      "stopcond_funcs module ...", func_name)
+            log.debug(
+                "Getting function with name '%s' from the "
+                "stopcond_funcs module ...",
+                func_name,
+            )
             func = sc_funcs.__dict__.get(func_name)
 
             if not func or not callable(func):
-                raise ImportError("Could not find a callable named '{}' "
-                                  "in stopcond_funcs module!"
-                                  "".format(func_name))
+                raise ImportError(
+                    "Could not find a callable named '{}' "
+                    "in stopcond_funcs module!"
+                    "".format(func_name)
+                )
 
             return func
 
         # Check argument combinations
         if func and not to_check:
             # Not using the `to_check` argument
-            log.debug("Got `func` directly and no `to_check` argument; will "
-                      "use only this function for checking.")
+            log.debug(
+                "Got `func` directly and no `to_check` argument; will "
+                "use only this function for checking."
+            )
             func = retrieve_func(func)
             return [(func, func.__name__, func_kwargs)]
 
         elif to_check and (func or func_kwargs):
-            raise ValueError("Got arguments `to_check` and (one or more of) "
-                             "`func` or `func_kwargs`! Please pass either the "
-                             "`to_check` (list of dicts) or a single `func` "
-                             "with a dict of `func_kwargs`.")
+            raise ValueError(
+                "Got arguments `to_check` and (one or more of) "
+                "`func` or `func_kwargs`! Please pass either the "
+                "`to_check` (list of dicts) or a single `func` "
+                "with a dict of `func_kwargs`."
+            )
 
         elif to_check is None and func is None:
-            raise TypeError("Need at least one of the required "
-                            "keyword-arguments `to_check` or `func`!")
+            raise TypeError(
+                "Need at least one of the required "
+                "keyword-arguments `to_check` or `func`!"
+            )
 
         # Everything ok
         # Resolve the to_check list
@@ -126,7 +157,7 @@ class StopCondition:
             func_dict = copy.deepcopy(func_dict)
 
             # Pop the function off the dict and get its name
-            func = func_dict.pop('func')
+            func = func_dict.pop("func")
 
             # This might not actually be a function yet. Resolve it...
             if isinstance(func, str):
@@ -134,8 +165,10 @@ class StopCondition:
                 func = retrieve_func(func)
 
             elif not callable(func):
-                raise TypeError("Given `func` needs to be a callable, but was "
-                                f"{type(func)} with value {func}.")
+                raise TypeError(
+                    "Given `func` needs to be a callable, but was "
+                    f"{type(func)} with value {func}."
+                )
 
             # else: is callable, has the __name__ attribute
             func_name = func.__name__
@@ -144,8 +177,9 @@ class StopCondition:
             # Valid. Append the information to the list
             funcs_and_kws.append((func, func_name, func_dict))
 
-        log.debug("Resolved %d stop condition function(s).",
-                  len(funcs_and_kws))
+        log.debug(
+            "Resolved %d stop condition function(s).", len(funcs_and_kws)
+        )
         return funcs_and_kws
 
     def __str__(self) -> str:
@@ -156,7 +190,7 @@ class StopCondition:
             return f"StopCondition '{self.name}': {self.description}"
         return f"StopCondition '{self.name}'"
 
-    def fulfilled(self, task: 'utopya.task.Task') -> bool:
+    def fulfilled(self, task: "utopya.task.Task") -> bool:
         """Checks if the stop condition is fulfilled for the given worker,
         using the information from the dict.
 
@@ -190,7 +224,7 @@ class StopCondition:
         return True
 
     # YAML Constructor & Representer ..........................................
-    yaml_tag = u'!stop-condition'
+    yaml_tag = "!stop-condition"
 
     @classmethod
     def to_yaml(cls, representer, node):
@@ -206,10 +240,14 @@ class StopCondition:
         """
         # Filter out certain entries that are None
         d = copy.deepcopy(node._init_kwargs)
-        d = {k:v for k, v in d.items()
-             if not  (k in ['name', 'description', 'func', 'to_check']
-                      and v is None)
-             and not (k in ['enabled'] and v is True)}
+        d = {
+            k: v
+            for k, v in d.items()
+            if not (
+                k in ["name", "description", "func", "to_check"] and v is None
+            )
+            and not (k in ["enabled"] and v is True)
+        }
 
         # Create the mapping representation from the filtered dict
         return representer.represent_mapping(cls.yaml_tag, d)

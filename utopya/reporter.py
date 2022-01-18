@@ -1,19 +1,19 @@
 """Implementation of the Reporter class."""
 
+import logging
 import os
 import sys
-import logging
-from shutil import get_terminal_size as _get_terminal_size
-from functools import partial
+from collections import Counter, OrderedDict, deque
 from datetime import datetime as dt
 from datetime import timedelta
-from typing import Union, List, Callable, Dict
-from collections import OrderedDict, Counter, deque
+from functools import partial
+from shutil import get_terminal_size as _get_terminal_size
+from typing import Callable, Dict, List, Union
 
 import numpy as np
 import paramspace as psp
 
-from .tools import format_time, TTY_COLS
+from .tools import TTY_COLS, format_time
 
 # Initialise logger
 log = logging.getLogger(__name__)
@@ -21,10 +21,15 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
-class ReportFormat:
 
-    def __init__(self, *, parser: Callable, writers: List[Callable],
-                 min_report_intv: float=None):
+class ReportFormat:
+    def __init__(
+        self,
+        *,
+        parser: Callable,
+        writers: List[Callable],
+        min_report_intv: float = None,
+    ):
         """Initialises a ReportFormat object, which gathers callables needed to
         create a report in a certain format.
 
@@ -66,7 +71,9 @@ class ReportFormat:
         # Check time since last report
         return (dt.now() - self.last_report) < self.min_report_intv
 
-    def report(self, *, force: bool=False, parser_kwargs: dict=None) -> bool:
+    def report(
+        self, *, force: bool = False, parser_kwargs: dict = None
+    ) -> bool:
         """Parses and writes a report corresponding to this object's format.
 
         If within the minimum report interval, will return False.
@@ -86,8 +93,10 @@ class ReportFormat:
 
         # Generate the report
         log.debug("Creating report using parser %s ...", self.parser)
-        report = self.parser(report_no=self.num_reports,
-                             **(parser_kwargs if parser_kwargs else {}))
+        report = self.parser(
+            report_no=self.num_reports,
+            **(parser_kwargs if parser_kwargs else {}),
+        )
         log.debug("Created report of length %d.", len(report))
 
         # Write the report
@@ -104,16 +113,21 @@ class ReportFormat:
 
 # -----------------------------------------------------------------------------
 
+
 class Reporter:
     """The Reporter class holds general reporting capabilities.
 
     It needs to be subclassed in order to specialise its reporting functions.
     """
 
-    def __init__(self, *,
-                 report_formats: Union[List[str], Dict[str, dict]]=None,
-                 default_format: str=None, report_dir: str=None,
-                 suppress_cr: bool=False):
+    def __init__(
+        self,
+        *,
+        report_formats: Union[List[str], Dict[str, dict]] = None,
+        default_format: str = None,
+        report_dir: str = None,
+        suppress_cr: bool = False,
+    ):
         """Initialize the Reporter for the WorkerManager.
 
         Args:
@@ -215,10 +229,16 @@ class Reporter:
 
     # Public API ..............................................................
 
-    def add_report_format(self, name: str, *, parser: str=None,
-                          write_to: Union[str, Dict[str, dict]]='stdout',
-                          min_report_intv: float=None, rf_kwargs: dict=None,
-                          **parser_kwargs):
+    def add_report_format(
+        self,
+        name: str,
+        *,
+        parser: str = None,
+        write_to: Union[str, Dict[str, dict]] = "stdout",
+        min_report_intv: float = None,
+        rf_kwargs: dict = None,
+        **parser_kwargs,
+    ):
         """Add a report format to this reporter.
 
         Args:
@@ -238,24 +258,31 @@ class Reporter:
             ValueError: A report format with this `name` already exists
         """
         if name in self.report_formats:
-            raise ValueError("A report format with the name {} already exists."
-                             "".format(name))
+            raise ValueError(
+                "A report format with the name {} already exists."
+                "".format(name)
+            )
 
         # Get the parser and writer function
-        parser = self._resolve_parser(parser if parser else name,
-                                      **parser_kwargs)
+        parser = self._resolve_parser(
+            parser if parser else name, **parser_kwargs
+        )
         writers = self._resolve_writers(write_to)
 
         # Initialise the ReportFormat object with the parsers and writers
-        rf = ReportFormat(parser=parser, writers=writers,
-                          min_report_intv=min_report_intv,
-                          **(rf_kwargs if rf_kwargs else {}))
+        rf = ReportFormat(
+            parser=parser,
+            writers=writers,
+            min_report_intv=min_report_intv,
+            **(rf_kwargs if rf_kwargs else {}),
+        )
 
         self._report_formats[name] = rf
-        log.debug("Added report format '%s' to %s.",
-                  name, self.__class__.__name__)
+        log.debug(
+            "Added report format '%s' to %s.", name, self.__class__.__name__
+        )
 
-    def report(self, report_format: str=None, **kwargs) -> bool:
+    def report(self, report_format: str = None, **kwargs) -> bool:
         """Create a report with the given format; if none is given, the default
         format is used.
 
@@ -273,10 +300,12 @@ class Reporter:
         # Get the report format to use
         if report_format is None:
             if self.default_format is None:
-                raise ValueError("Either a default format needs to be set for "
-                                 "this {} or the name of the report format "
-                                 "needs to be supplied to the .report method."
-                                 "".format(self.__class__.__name__))
+                raise ValueError(
+                    "Either a default format needs to be set for "
+                    "this {} or the name of the report format "
+                    "needs to be supplied to the .report method."
+                    "".format(self.__class__.__name__)
+                )
 
             rf = self.default_format
 
@@ -286,8 +315,13 @@ class Reporter:
         # Delegate reporting to the ReportFormat class
         return rf.report(**kwargs)
 
-    def parse_and_write(self, *, parser: Union[str, Callable],
-                        write_to: Union[str, Callable], **parser_kwargs):
+    def parse_and_write(
+        self,
+        *,
+        parser: Union[str, Callable],
+        write_to: Union[str, Callable],
+        **parser_kwargs,
+    ):
         """This function allows to select a parser and writer explicitly.
 
         Args:
@@ -303,8 +337,11 @@ class Reporter:
 
         # Parse the report
         report = parser()
-        log.debug("Parsed report using %s, got string of length %d.",
-                  parser, len(report))
+        log.debug(
+            "Parsed report using %s, got string of length %d.",
+            parser,
+            len(report),
+        )
 
         # Determine the writers
         writers = self._resolve_writers(write_to)
@@ -316,8 +353,9 @@ class Reporter:
 
     # Private methods .........................................................
 
-    def _resolve_parser(self, parser: Union[str, Callable],
-                        **parser_kwargs) -> Callable:
+    def _resolve_parser(
+        self, parser: Union[str, Callable], **parser_kwargs
+    ) -> Callable:
         """Given a string or a callable, returns the corresponding callable.
 
         Args:
@@ -337,11 +375,12 @@ class Reporter:
         if not callable(parser):
             # A name was given; try to resolve from attributes
             try:
-                parser = getattr(self, '_parse_' + parser)
+                parser = getattr(self, "_parse_" + parser)
             except AttributeError as err:
-                raise ValueError("No parser named '{}' available in {}!"
-                                 "".format(parser,
-                                           self.__class__.__name__)) from err
+                raise ValueError(
+                    "No parser named '{}' available in {}!"
+                    "".format(parser, self.__class__.__name__)
+                ) from err
 
             log.debug("Resolved parser: %s", str(parser))
 
@@ -376,9 +415,10 @@ class Reporter:
                 with the given name is not available.
 
         """
+
         def get_callable_name(c) -> str:
             """Returns the name of the callable"""
-            if hasattr(c, '__name__'):
+            if hasattr(c, "__name__"):
                 return c.__name__
             # Does not have that attribute, e.g. because it is a partial func
             return str(c)
@@ -405,9 +445,11 @@ class Reporter:
                 if callable(item):
                     # Check if already present
                     if item in writers.values():
-                        raise ValueError("Given writer callable with name "
-                                         "'{}' was already added!"
-                                         "".format(get_callable_name(item)))
+                        raise ValueError(
+                            "Given writer callable with name "
+                            "'{}' was already added!"
+                            "".format(get_callable_name(item))
+                        )
                     writers[get_callable_name(item)] = item
 
                 elif isinstance(item, str):
@@ -415,28 +457,33 @@ class Reporter:
                     wt[item] = dict()
 
                 else:
-                    raise TypeError("One item of given `write_to` argument {} "
-                                    "of type {} was neither a string nor a "
-                                    "callable! "
-                                    "".format(write_to, type(write_to)))
+                    raise TypeError(
+                        "One item of given `write_to` argument {} "
+                        "of type {} was neither a string nor a "
+                        "callable! "
+                        "".format(write_to, type(write_to))
+                    )
 
             # Use the new write_to dict
             write_to = wt
 
         # Ensure that the format is a dict now
         if not isinstance(write_to, dict):
-            raise TypeError("Invalid type {} for argument `write_to`!"
-                            "".format(type(write_to)))
+            raise TypeError(
+                "Invalid type {} for argument `write_to`!"
+                "".format(type(write_to))
+            )
 
         # Now populate the writers dict with the remaining str-specified funcs
         for writer_name, params in write_to.items():
             try:
-                writer = getattr(self, '_write_to_' + writer_name)
+                writer = getattr(self, "_write_to_" + writer_name)
 
             except AttributeError as err:
-                raise ValueError("No writer named '{}' available in {}!"
-                                 "".format(writer_name,
-                                           self.__class__.__name__)) from err
+                raise ValueError(
+                    "No writer named '{}' available in {}!"
+                    "".format(writer_name, self.__class__.__name__)
+                ) from err
 
             # If given, partially apply the params
             if params:
@@ -454,7 +501,7 @@ class Reporter:
 
     # Writer methods ..........................................................
 
-    def _write_to_stdout(self, s: str, *, flush: bool=True, **print_kws):
+    def _write_to_stdout(self, s: str, *, flush: bool = True, **print_kws):
         """Writes the given string to stdout using the print function.
 
         Args:
@@ -462,9 +509,9 @@ class Reporter:
             flush (bool, optional): Whether to flush directly; default: True
             **print_kws: Other print function keyword arguments
         """
-        if self.suppress_cr and print_kws.get('end') == "\r":
+        if self.suppress_cr and print_kws.get("end") == "\r":
             # Enforce line feed
-            print_kws['end'] = "\n"
+            print_kws["end"] = "\n"
 
         print(s, flush=flush, **print_kws)
 
@@ -478,11 +525,13 @@ class Reporter:
             report_no (int, optional): accepted from ReportFormat call
         """
         if not self.suppress_cr:
-            print(prepend + s, flush=True, end='\r')
+            print(prepend + s, flush=True, end="\r")
         else:
-            print(prepend + s, flush=True, end='\n')
+            print(prepend + s, flush=True, end="\n")
 
-    def _write_to_log(self, s: str, *, lvl: int=10, skip_if_empty: bool=False):
+    def _write_to_log(
+        self, s: str, *, lvl: int = 10, skip_if_empty: bool = False
+    ):
         """Writes the given string via the logging module.
 
         Args:
@@ -495,8 +544,14 @@ class Reporter:
             return
         log.log(lvl, s)
 
-    def _write_to_file(self, s: str, *, path: str="_report.txt",
-                       mode: str='w', skip_if_empty: bool=False):
+    def _write_to_file(
+        self,
+        s: str,
+        *,
+        path: str = "_report.txt",
+        mode: str = "w",
+        skip_if_empty: bool = False,
+    ):
         """Writes the given string to a file
 
         Args:
@@ -519,11 +574,13 @@ class Reporter:
         # For given relative paths, join them to the report directory
         if not os.path.isabs(path):
             if not self.report_dir:
-                raise ValueError("Need either an absolute `path` argument or "
-                                 "initialise the {} with the `report_dir` "
-                                 "argument such that `path` can be "
-                                 "interpreted relative to that directory."
-                                 "".format(self.__class__.__name__))
+                raise ValueError(
+                    "Need either an absolute `path` argument or "
+                    "initialise the {} with the `report_dir` "
+                    "argument such that `path` can be "
+                    "interpreted relative to that directory."
+                    "".format(self.__class__.__name__)
+                )
 
             path = os.path.join(self.report_dir, path)
 
@@ -534,7 +591,9 @@ class Reporter:
 
         log.debug("Finished writing.")
 
+
 # -----------------------------------------------------------------------------
+
 
 class WorkerManagerReporter(Reporter):
     """This class reports on the state of the WorkerManager."""
@@ -549,8 +608,13 @@ class WorkerManagerReporter(Reporter):
 
     # .........................................................................
 
-    def __init__(self, wm: 'utopya.workermanager.WorkerManager', *,
-                 mv: 'utopya.multiverse.Multiverse'=None, **reporter_kwargs):
+    def __init__(
+        self,
+        wm: "utopya.workermanager.WorkerManager",
+        *,
+        mv: "utopya.multiverse.Multiverse" = None,
+        **reporter_kwargs,
+    ):
         """Initialize the Reporter for the WorkerManager.
 
         Args:
@@ -565,19 +629,27 @@ class WorkerManagerReporter(Reporter):
         super().__init__(**reporter_kwargs)
 
         # Make sure that formats 'while_working' and 'after_work' are available
-        if 'while_working' not in self.report_formats:
-            log.debug("No report format 'while_working' found; adding one "
-                      "because it is needed by the WorkerManager.")
+        if "while_working" not in self.report_formats:
+            log.debug(
+                "No report format 'while_working' found; adding one "
+                "because it is needed by the WorkerManager."
+            )
 
-            self.add_report_format('while_working', parser='progress_bar',
-                                   write_to='stdout_noreturn')
+            self.add_report_format(
+                "while_working",
+                parser="progress_bar",
+                write_to="stdout_noreturn",
+            )
 
-        if 'after_work' not in self.report_formats:
-            log.debug("No report format 'after_work' found; adding one "
-                      "because it is needed by the WorkerManager.")
+        if "after_work" not in self.report_formats:
+            log.debug(
+                "No report format 'after_work' found; adding one "
+                "because it is needed by the WorkerManager."
+            )
 
-            self.add_report_format('after_work', parser='progress_bar',
-                                   write_to='stdout_noreturn')
+            self.add_report_format(
+                "after_work", parser="progress_bar", write_to="stdout_noreturn"
+            )
 
         # Store the WorkerManager and associate it with this reporter
         self._wm = wm
@@ -605,18 +677,18 @@ class WorkerManagerReporter(Reporter):
     def task_counters(self) -> OrderedDict:
         """Returns a dict of task counters:
 
-            - ``total``: total number of registered WorkerManager tasks
-            - ``active``: number of currently active tasks
-            - ``finished``: number of finished tasks, *including* tasks that
-              were stopped via a stop condition
-            - ``stopped``: number of tasks for which stop conditions were
-              fulfilled, see :ref:`stop_conds`
+        - ``total``: total number of registered WorkerManager tasks
+        - ``active``: number of currently active tasks
+        - ``finished``: number of finished tasks, *including* tasks that
+          were stopped via a stop condition
+        - ``stopped``: number of tasks for which stop conditions were
+          fulfilled, see :ref:`stop_conds`
         """
         num = OrderedDict()
-        num['total'] = self.wm.task_count
-        num['active'] = len(self.wm.active_tasks)
-        num['finished'] = self.wm.num_finished_tasks
-        num['stopped'] = len(self.wm.stopped_tasks)
+        num["total"] = self.wm.task_count
+        num["active"] = len(self.wm.active_tasks)
+        num["finished"] = self.wm.num_finished_tasks
+        num["stopped"] = len(self.wm.stopped_tasks)
         return num
 
     @property
@@ -624,16 +696,18 @@ class WorkerManagerReporter(Reporter):
         """The WorkerManager progress, between 0 and 1."""
         cntr = self.task_counters
 
-        if cntr['total'] == 0:
+        if cntr["total"] == 0:
             # No tasks were added yet, progress is zero
-            return 0.
+            return 0.0
 
         # Get the active tasks' progress, in range [0, 1]
         active_progress = self.wm_active_tasks_progress
 
         # Calculate the total progress
-        return (  cntr['finished']/cntr['total']
-                + active_progress * cntr['active']/cntr['total'])
+        return (
+            cntr["finished"] / cntr["total"]
+            + active_progress * cntr["active"] / cntr["total"]
+        )
 
     @property
     def wm_active_tasks_progress(self) -> float:
@@ -644,23 +718,23 @@ class WorkerManagerReporter(Reporter):
         progs = [t.progress for t in self._wm.active_tasks]
         if progs:
             return np.mean(progs)
-        return 0.
+        return 0.0
 
     @property
     def wm_elapsed(self) -> Union[timedelta, None]:
         """Seconds elapsed since start of working or None if not yet started"""
         times = self.wm.times
 
-        if times['start_working'] is None:
+        if times["start_working"] is None:
             # Not started yet
             return None
 
-        elif times['end_working'] is None:
+        elif times["end_working"] is None:
             # Currently working: measure against now
-            return dt.now() - times['start_working']
+            return dt.now() - times["start_working"]
 
         # Finished working: measure against end of work
-        return times['end_working'] - times['start_working']
+        return times["end_working"] - times["start_working"]
 
     @property
     def wm_times(self) -> dict:
@@ -672,7 +746,7 @@ class WorkerManagerReporter(Reporter):
 
     # Methods working on data .................................................
 
-    def register_task(self, task: 'utopya.task.WorkerTask'):
+    def register_task(self, task: "utopya.task.WorkerTask"):
         """Given the task object, extracts and stores some information.
 
         The information currently extracted is the run time and the exit code.
@@ -684,13 +758,13 @@ class WorkerManagerReporter(Reporter):
                 information from.
         """
         # Register the runtime
-        if 'run_time' in task.profiling:
-            self.runtimes.append(task.profiling['run_time'])
+        if "run_time" in task.profiling:
+            self.runtimes.append(task.profiling["run_time"])
 
         # Increment the counter belonging to this exit status
         self.exit_codes[task.worker_status] += 1
 
-    def calc_runtime_statistics(self, min_num: int=10) -> OrderedDict:
+    def calc_runtime_statistics(self, min_num: int = 10) -> OrderedDict:
         """Calculates the current runtime statistics.
 
         Returns:
@@ -706,18 +780,18 @@ class WorkerManagerReporter(Reporter):
 
         # Calculate statistics
         d = OrderedDict()
-        d['total (CPU)'] = np.sum(rts)
-        d['total (wall)']= np.sum(rts) / min(self._wm.num_workers, len(rts))
-        d['mean']        = np.mean(rts)
-        d[' (last 50%)'] = np.mean(rts[-len(rts)//2:])
-        d[' (last 20%)'] = np.mean(rts[-len(rts)//5:])
-        d[' (last 5%)']  = np.mean(rts[-len(rts)//20:])
-        d['std']         = np.std(rts)
-        d['min']         = np.min(rts)
-        d['at 25%']      = np.percentile(rts, 25)
-        d['median']      = np.median(rts)
-        d['at 75%']      = np.percentile(rts, 75)
-        d['max']         = np.max(rts)
+        d["total (CPU)"] = np.sum(rts)
+        d["total (wall)"] = np.sum(rts) / min(self._wm.num_workers, len(rts))
+        d["mean"] = np.mean(rts)
+        d[" (last 50%)"] = np.mean(rts[-len(rts) // 2 :])
+        d[" (last 20%)"] = np.mean(rts[-len(rts) // 5 :])
+        d[" (last 5%)"] = np.mean(rts[-len(rts) // 20 :])
+        d["std"] = np.std(rts)
+        d["min"] = np.min(rts)
+        d["at 25%"] = np.percentile(rts, 25)
+        d["median"] = np.median(rts)
+        d["at 75%"] = np.percentile(rts, 75)
+        d["max"] = np.max(rts)
 
         return d
 
@@ -735,24 +809,24 @@ class WorkerManagerReporter(Reporter):
                 ``est_end``, and ``end``.
         """
         d = dict(
-            start=self.wm.times['start_working'],
+            start=self.wm.times["start_working"],
             now=dt.now(),
             elapsed=self.wm_elapsed,
             est_left=None,
             est_end=None,
-            end=self.wm.times['end_working'],
+            end=self.wm.times["end_working"],
         )
 
         # Add estimate time remaining and ETA, if the WorkerManager started.
-        if d['start'] is not None:
+        if d["start"] is not None:
             progress = self.wm_progress
-            if progress > 0.:
-                d['est_left'] = self._compute_est_left(progress=progress,
-                                                       elapsed=d['elapsed'],
-                                                       **eta_options)
+            if progress > 0.0:
+                d["est_left"] = self._compute_est_left(
+                    progress=progress, elapsed=d["elapsed"], **eta_options
+                )
 
-        if d['est_left'] is not None:
-            d['est_end'] = d['now'] + d['est_left']
+        if d["est_left"] is not None:
+            d["est_end"] = d["now"] + d["est_left"]
 
         return d
 
@@ -792,7 +866,7 @@ class WorkerManagerReporter(Reporter):
                 work session.
         """
         if mode is None or mode == "from_start":
-            return ((1. - progress) / progress) * elapsed
+            return ((1.0 - progress) / progress) * elapsed
 
         elif mode == "from_buffer":
             # Get / set up the progress buffer: a circular buffer which holds
@@ -802,10 +876,13 @@ class WorkerManagerReporter(Reporter):
                 pbuf = self._eta_info["progress_buffer"]
 
             except KeyError:
-                log.debug("Setting up progress buffer (maxlen: %d) ...",
-                          progress_buffer_size)
-                pbuf = deque([(0., timedelta(0.))],
-                             maxlen=progress_buffer_size)
+                log.debug(
+                    "Setting up progress buffer (maxlen: %d) ...",
+                    progress_buffer_size,
+                )
+                pbuf = deque(
+                    [(0.0, timedelta(0.0))], maxlen=progress_buffer_size
+                )
                 self._eta_info["progress_buffer"] = pbuf
 
             # Add new information to buffer
@@ -815,13 +892,13 @@ class WorkerManagerReporter(Reporter):
             _progress, _elapsed = pbuf[0]
             dp = progress - _progress
 
-            if elapsed == _elapsed or dp <= 1.e-16:
+            if elapsed == _elapsed or dp <= 1.0e-16:
                 # Buffer useless or too little progress made; use simpler mode
                 return self._compute_est_left(
                     progress=progress, elapsed=elapsed, mode="from_start"
                 )
 
-            return ((1. - progress) / dp) * (elapsed - _elapsed)
+            return ((1.0 - progress) / dp) * (elapsed - _elapsed)
 
         else:
             raise ValueError(
@@ -829,12 +906,11 @@ class WorkerManagerReporter(Reporter):
                 "Available modes: from_start, from_buffer"
             )
 
-
     # Parser methods ..........................................................
 
     # One-line parsers . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-    def _parse_task_counters(self, *, report_no: int=None) -> str:
+    def _parse_task_counters(self, *, report_no: int = None) -> str:
         """Return a string that shows the task counters of the WorkerManager
 
         Args:
@@ -843,10 +919,11 @@ class WorkerManagerReporter(Reporter):
         Returns:
             str: A str representation of the task counters of the WorkerManager
         """
-        return ",  ".join(["{}: {}".format(k, v)
-                           for k, v in self.task_counters.items()])
+        return ",  ".join(
+            ["{}: {}".format(k, v) for k, v in self.task_counters.items()]
+        )
 
-    def _parse_progress(self, *, report_no: int=None) -> str:
+    def _parse_progress(self, *, report_no: int = None) -> str:
         """Returns a progress string
 
         Args:
@@ -857,24 +934,27 @@ class WorkerManagerReporter(Reporter):
         """
         cntr = self.task_counters
 
-        if cntr['total'] <= 0:
+        if cntr["total"] <= 0:
             return "(No tasks assigned to WorkerManager yet.)"
 
-        return ("Finished  {fin:>{digs:}d} / {tot:d}  ({p:.1f}%)"
-                "".format(fin=cntr['finished'], tot=cntr['total'],
-                          digs=len(str(cntr['total'])),
-                          p=cntr['finished']/cntr['total'] * 100))
+        return "Finished  {fin:>{digs:}d} / {tot:d}  ({p:.1f}%)" "".format(
+            fin=cntr["finished"],
+            tot=cntr["total"],
+            digs=len(str(cntr["total"])),
+            p=cntr["finished"] / cntr["total"] * 100,
+        )
 
     def _parse_progress_bar(
-        self, *,
-        num_cols: Union[str, int]="fixed",
-        fstr: str="  ╠{ticks[0]:}{ticks[1]:}{ticks[2]:}{ticks[3]:}╣ {info:}{times:}",
-        info_fstr: str="{total_progress:>5.1f}% ",
-        show_times: bool=False,
-        times_fstr: str="| {elapsed:} elapsed | ~{est_left:} left ",
-        times_fstr_final: str="| finished in {elapsed:} ",
-        times_kwargs: dict={},
-        report_no: int=None,
+        self,
+        *,
+        num_cols: Union[str, int] = "fixed",
+        fstr: str = "  ╠{ticks[0]:}{ticks[1]:}{ticks[2]:}{ticks[3]:}╣ {info:}{times:}",
+        info_fstr: str = "{total_progress:>5.1f}% ",
+        show_times: bool = False,
+        times_fstr: str = "| {elapsed:} elapsed | ~{est_left:} left ",
+        times_fstr_final: str = "| finished in {elapsed:} ",
+        times_kwargs: dict = {},
+        report_no: int = None,
     ) -> str:
         """Returns a progress bar.
 
@@ -913,12 +993,12 @@ class WorkerManagerReporter(Reporter):
         # Get the task counter and check that some tasks have been assigned
         cntr = self.task_counters
 
-        if cntr['total'] <= 0:
+        if cntr["total"] <= 0:
             return "(No tasks assigned to WorkerManager yet.)"
 
         # Determine the format string for the times
         if show_times:
-            if self.wm_progress == 1.:
+            if self.wm_progress == 1.0:
                 times_fstr = times_fstr_final
             times_str = self._parse_times(fstr=times_fstr, **times_kwargs)
 
@@ -937,56 +1017,67 @@ class WorkerManagerReporter(Reporter):
         # Get the active tasks' mean progress and calculate the total progress
         # (calling the wm_progress property would lead to inconsistencies)
         active_progress = self.wm_active_tasks_progress
-        total_progress = (  cntr['finished']/cntr['total']
-                          + active_progress*cntr['active']/cntr['total'])
+        total_progress = (
+            cntr["finished"] / cntr["total"]
+            + active_progress * cntr["active"] / cntr["total"]
+        )
 
         # Get the information string ready
-        info_str = info_fstr.format(total_progress=total_progress * 100,
-                                    active_progress=active_progress * 100,
-                                    cnt=cntr)
+        info_str = info_fstr.format(
+            total_progress=total_progress * 100,
+            active_progress=active_progress * 100,
+            cnt=cntr,
+        )
 
         # Determine the progress bar width
         pb_width = num_cols - (5 + len(info_str) + len(times_str))
 
         # Only return percentage indicator if the width would be _very_ short
         if pb_width < 4:
-            return " {:>5.1f}% ".format(cntr['finished']/cntr['total'] * 100)
+            return " {:>5.1f}% ".format(cntr["finished"] / cntr["total"] * 100)
 
         # Calculate the ticks for finished tasks
         ticks = dict()
-        factor = pb_width / cntr['total']
-        ticks['finished'] = int(round(cntr['finished'] * factor))
+        factor = pb_width / cntr["total"]
+        ticks["finished"] = int(round(cntr["finished"] * factor))
 
         # Calculate the active ticks and those in progress
         # NOTE Important to round only one of the two, leads to artifacts
         #      otherwise
-        ticks['active_progress'] = int(active_progress * cntr['active']*factor)
-        ticks['active'] = (  int(round(cntr['active']*factor))
-                           - ticks['active_progress'])
+        ticks["active_progress"] = int(
+            active_progress * cntr["active"] * factor
+        )
+        ticks["active"] = (
+            int(round(cntr["active"] * factor)) - ticks["active_progress"]
+        )
 
         # Calculate spaces from the sum of all of the above
-        ticks['space'] = pb_width - sum(ticks.values())
+        ticks["space"] = pb_width - sum(ticks.values())
 
         # Have all info now, let's go format!
         syms = self.PROGRESS_BAR_SYMBOLS
         return fstr.format(
             ticks=(
-                syms['finished'] * ticks['finished'],
-                syms['active_progress'] * ticks['active_progress'],
-                syms['active'] * ticks['active'],
-                syms['space'] * ticks['space'],
+                syms["finished"] * ticks["finished"],
+                syms["active_progress"] * ticks["active_progress"],
+                syms["active"] * ticks["active"],
+                syms["space"] * ticks["space"],
             ),
-            info=info_str, times=times_str,
+            info=info_str,
+            times=times_str,
         )
 
-    def _parse_times(self, *,
-                     fstr: str="Elapsed:  {elapsed:<8s}  |  Est. left:  {est_left:<8s}  |  Est. end:  {est_end:<10s}",
-                     timefstr_short: str="%H:%M:%S",
-                     timefstr_full: str="%d.%m., %H:%M:%S",
-                     use_relative: bool=True,
-                     times: dict=None,
-                     report_no: int=None,
-                     **progress_info_kwargs) -> str:
+    def _parse_times(
+        self,
+        *,
+        fstr: str = "Elapsed:  {elapsed:<8s}  |  Est. left:  {est_left:<8s}  |  Est. end:  {est_end:<10s}",
+        timefstr_short: str = "%H:%M:%S",
+        timefstr_full: str = "%d.%m., %H:%M:%S",
+        use_relative: bool = True,
+        times: dict = None,
+        report_no: int = None,
+        **progress_info_kwargs,
+    ) -> str:
         """Parses the worker manager time information, including estimated
         time left or others.
 
@@ -1017,29 +1108,28 @@ class WorkerManagerReporter(Reporter):
         tstrs = dict()
 
         # Convert some values to duration strings
-        if times['elapsed']:
-            tstrs['elapsed'] = format_time(times['elapsed'])
+        if times["elapsed"]:
+            tstrs["elapsed"] = format_time(times["elapsed"])
         else:
-            tstrs['elapsed'] = "(not started)"
+            tstrs["elapsed"] = "(not started)"
 
-        if times['est_left']:
-            tstrs['est_left'] = format_time(times['est_left'],
-                                            max_num_parts=2)
+        if times["est_left"]:
+            tstrs["est_left"] = format_time(times["est_left"], max_num_parts=2)
         else:
             # No est_left available
             # Distinguish between finished and not started simulaltions
-            if self.wm_progress == 1.:
-                tstrs['est_left'] = "(finished)"
+            if self.wm_progress == 1.0:
+                tstrs["est_left"] = "(finished)"
             else:
-                tstrs['est_left'] = "∞"
+                tstrs["est_left"] = "∞"
 
         # Check if the start and end times are given
-        if not (times['start'] and times['est_end']):
+        if not (times["start"] and times["est_end"]):
             # Not given -> not started yet
-            tstrs['start'] = "(not started)"
-            tstrs['now'] = times['now'].strftime(timefstr_full)
-            tstrs['est_end'] = "(unknown)"
-            tstrs['end'] = "(unknown)"
+            tstrs["start"] = "(not started)"
+            tstrs["now"] = times["now"].strftime(timefstr_full)
+            tstrs["est_end"] = "(unknown)"
+            tstrs["end"] = "(unknown)"
 
         else:
             # Were given.
@@ -1049,8 +1139,7 @@ class WorkerManagerReporter(Reporter):
             prefixes = dict()
 
             # Calculate timedelta in days
-            delta_days = (times['est_end'].date()
-                          - times['start'].date()).days
+            delta_days = (times["est_end"].date() - times["start"].date()).days
 
             if delta_days == 0:
                 # All on the same day -> use short format, no prefixes
@@ -1061,28 +1150,28 @@ class WorkerManagerReporter(Reporter):
                 timefstr = timefstr_short
                 timefstr_abs = timefstr_full
 
-                if times['now'].date() == times['start'].date():
+                if times["now"].date() == times["start"].date():
                     # Same day as start -> end is tomorrow
-                    prefixes['start'] = "Today, "
-                    prefixes['est_end'] = "Tomorrow, "
+                    prefixes["start"] = "Today, "
+                    prefixes["est_end"] = "Tomorrow, "
                 else:
                     # Same day as est end -> start was yesterday
-                    prefixes['start'] = "Yesterday, "
-                    prefixes['est_end'] = "Today, "
+                    prefixes["start"] = "Yesterday, "
+                    prefixes["est_end"] = "Today, "
 
             else:
                 # Full format
                 timefstr = timefstr_abs = timefstr_full
 
             # Create the strings
-            tstrs['start'] = times['start'].strftime(timefstr)
-            tstrs['now'] = times['now'].strftime(timefstr_abs)
-            tstrs['est_end'] = times['est_end'].strftime(timefstr)
+            tstrs["start"] = times["start"].strftime(timefstr)
+            tstrs["now"] = times["now"].strftime(timefstr_abs)
+            tstrs["est_end"] = times["est_end"].strftime(timefstr)
 
-            if times['end']:
-                tstrs['end'] = times['end'].strftime(timefstr_abs)
+            if times["end"]:
+                tstrs["end"] = times["end"].strftime(timefstr_abs)
             else:
-                tstrs['end'] = "(unknown)"
+                tstrs["end"] = "(unknown)"
 
             # Add prefixes
             for key, prefix in prefixes.items():
@@ -1092,8 +1181,13 @@ class WorkerManagerReporter(Reporter):
 
     # Multi-line parsers . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-    def _parse_runtime_stats(self, *, fstr: str="  {k:<13s} {v:}",
-                             join_char="\n", report_no: int=None) -> str:
+    def _parse_runtime_stats(
+        self,
+        *,
+        fstr: str = "  {k:<13s} {v:}",
+        join_char="\n",
+        report_no: int = None,
+    ) -> str:
         """Parses the runtime statistics dict into a multiline string
 
         Args:
@@ -1109,17 +1203,23 @@ class WorkerManagerReporter(Reporter):
         """
         rtstats = self.calc_runtime_statistics()
 
-        parts = [fstr.format(k=k, v=format_time(v, ms_precision=1))
-                 for k, v in rtstats.items()]
+        parts = [
+            fstr.format(k=k, v=format_time(v, ms_precision=1))
+            for k, v in rtstats.items()
+        ]
 
         return join_char.join(parts)
 
-    def _parse_report(self, *, fstr: str="  {k:<{w:}s}  {v:}",
-                      min_num: int=4, report_no: int=None,
-                      show_individual_runtimes: bool=True,
-                      task_label_singular: str="task",
-                      task_label_plural: str="tasks",
-                      ) -> str:
+    def _parse_report(
+        self,
+        *,
+        fstr: str = "  {k:<{w:}s}  {v:}",
+        min_num: int = 4,
+        report_no: int = None,
+        show_individual_runtimes: bool = True,
+        task_label_singular: str = "task",
+        task_label_plural: str = "tasks",
+    ) -> str:
         """Parses a report for all tasks that were being worked on into a
         multiline string. The headings can be adjusted by keyword arguments.
 
@@ -1153,15 +1253,21 @@ class WorkerManagerReporter(Reporter):
             parts += ["Runtime Statistics"]
             parts += ["------------------"]
             parts += [""]
-            parts += ["The statistics below are calculated from all "
-                      f"individual {task_label_singular} run times."]
+            parts += [
+                "The statistics below are calculated from all "
+                f"individual {task_label_singular} run times."
+            ]
             parts += [""]
-            parts += ["  # {}:  {} / {}".format(task_label_plural,
-                                                len(self.runtimes),
-                                                len(self.wm.tasks))]
+            parts += [
+                "  # {}:  {} / {}".format(
+                    task_label_plural, len(self.runtimes), len(self.wm.tasks)
+                )
+            ]
             parts += [""]
-            parts += [fstr.format(k=k, v=format_time(v, ms_precision=1), w=12)
-                      for k, v in rtstats.items()]
+            parts += [
+                fstr.format(k=k, v=format_time(v, ms_precision=1), w=12)
+                for k, v in rtstats.items()
+            ]
             parts += [""]
             parts += [""]
 
@@ -1172,16 +1278,27 @@ class WorkerManagerReporter(Reporter):
             parts += ["Cluster Mode Information"]
             parts += ["------------------------"]
             parts += [""]
-            parts += [fstr.format(k=k, v=_rcps[k], w=12)
-                      for k in ('node_name', 'node_index', 'num_nodes',
-                                'node_list', 'job_id', 'job_name',
-                                'job_account', 'cluster_name', 'num_procs')
-                      if _rcps.get(k) is not None]
+            parts += [
+                fstr.format(k=k, v=_rcps[k], w=12)
+                for k in (
+                    "node_name",
+                    "node_index",
+                    "num_nodes",
+                    "node_list",
+                    "job_id",
+                    "job_name",
+                    "job_account",
+                    "cluster_name",
+                    "num_procs",
+                )
+                if _rcps.get(k) is not None
+            ]
             parts += [""]
             parts += [""]
 
         # If stop conditions were fulfilled, inform about those
         if self.wm.stop_conditions:
+
             def task_names(sc: set) -> str:
                 if not sc.fulfilled_for:
                     return "(None)"
@@ -1190,16 +1307,18 @@ class WorkerManagerReporter(Reporter):
             parts += ["Stop Conditions"]
             parts += ["---------------"]
             parts += [""]
-            parts += [f"  {len(self.runtimes)} / {len(self.wm.tasks)} "
-                      f"{task_label_plural} were stopped due to at least one "
-                      "of the following stop conditions:"]
+            parts += [
+                f"  {len(self.runtimes)} / {len(self.wm.tasks)} "
+                f"{task_label_plural} were stopped due to at least one "
+                "of the following stop conditions:"
+            ]
             parts += [""]
-            parts += [f"  {sc}\n"
-                      f"      {task_names(sc)}\n"
-                      for sc in self.wm.stop_conditions]
+            parts += [
+                f"  {sc}\n" f"      {task_names(sc)}\n"
+                for sc in self.wm.stop_conditions
+            ]
             parts += [""]
             parts += [""]
-
 
         # Add individual universe run times
         if show_individual_runtimes:
@@ -1210,15 +1329,19 @@ class WorkerManagerReporter(Reporter):
             max_name_len = max([12] + [len(t.name) for t in self.wm.tasks])
 
             for task in self.wm.tasks:
-                if 'run_time' in task.profiling:
-                    rt = task.profiling['run_time']
-                    parts += [fstr.format(k=task.name,
-                                          v=format_time(rt, ms_precision=1),
-                                          w=max_name_len)]
+                if "run_time" in task.profiling:
+                    rt = task.profiling["run_time"]
+                    parts += [
+                        fstr.format(
+                            k=task.name,
+                            v=format_time(rt, ms_precision=1),
+                            w=max_name_len,
+                        )
+                    ]
 
         return " \n".join(parts)
 
-    def _parse_pspace_info(self, *, fstr: str, report_no: int=None) -> str:
+    def _parse_pspace_info(self, *, fstr: str, report_no: int = None) -> str:
         """Provides information about the parameter space.
 
         Extracts the ``parameter_space`` from the associated Multiverse's meta
@@ -1239,25 +1362,31 @@ class WorkerManagerReporter(Reporter):
                 If not, returns a string denoting that there was only one task.
         """
         if self.mv is None:
-            raise ValueError("No Multiverse associated with this reporter! "
-                             "Cannot parse ParamSpace information.")
+            raise ValueError(
+                "No Multiverse associated with this reporter! "
+                "Cannot parse ParamSpace information."
+            )
 
-        pspace = self.mv.meta_cfg['parameter_space']
+        pspace = self.mv.meta_cfg["parameter_space"]
         if not isinstance(pspace, psp.ParamSpace):
             raise TypeError(f"Expected a ParamSpace object, got:\n\n{pspace}")
 
         if len(self.wm.tasks) <= 1:
             return ""
 
-        return fstr.format(num_tasks=len(self.wm.tasks),
-                           sweep_info=pspace.get_info_str())
-
+        return fstr.format(
+            num_tasks=len(self.wm.tasks), sweep_info=pspace.get_info_str()
+        )
 
     # Writer methods ..........................................................
 
-    def _write_to_file(self, *args, path: str='_report.txt',
-                       cluster_mode_path: str='{0:}_{node_name:}{ext:}',
-                       **kwargs):
+    def _write_to_file(
+        self,
+        *args,
+        path: str = "_report.txt",
+        cluster_mode_path: str = "{0:}_{node_name:}{ext:}",
+        **kwargs,
+    ):
         """Overloads the parent method with capabilities needed in cluster mode
 
         All args and kwargs are passed through. If in cluster mode, the path
@@ -1283,8 +1412,8 @@ class WorkerManagerReporter(Reporter):
         fstr_kwargs = dict(ext=ext)
 
         # Gather cluster mode arguments
-        fstr_kwargs['node_name'] = self.wm.resolved_cluster_params['node_name']
-        fstr_kwargs['job_id'] = self.wm.resolved_cluster_params['job_id']
+        fstr_kwargs["node_name"] = self.wm.resolved_cluster_params["node_name"]
+        fstr_kwargs["job_id"] = self.wm.resolved_cluster_params["job_id"]
 
         # Build the new path
         path = cluster_mode_path.format(*fstr_args, **fstr_kwargs)

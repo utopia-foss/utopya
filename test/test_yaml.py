@@ -4,14 +4,13 @@ import math
 from typing import Any
 
 import pytest
-
 import ruamel.yaml
 from ruamel.yaml.constructor import ConstructorError
 
 import utopya.yaml
 
-
 # -----------------------------------------------------------------------------
+
 
 def test_scalar_node_to_object():
     """Test the _scalar_node_to_object helper function
@@ -19,7 +18,8 @@ def test_scalar_node_to_object():
     NOTE It is important here to not only test with a tagged node, but also
          with untagged nodes, as the
     """
-    def to_node(d: Any, *, tag=None, set_tag: bool=True):
+
+    def to_node(d: Any, *, tag=None, set_tag: bool = True):
         """Given some data, represents it as a node and allows to remove the
         tag information.
         """
@@ -36,7 +36,6 @@ def test_scalar_node_to_object():
         (None, None),
         ("~", None),
         ("null", None),
-
         # Boolean
         (True, True),
         ("true", True),
@@ -44,21 +43,18 @@ def test_scalar_node_to_object():
         ("y", True),
         ("yEs", True),
         ("oN", True),
-
         (False, False),
         ("false", False),
         ("FaLsE", False),
         ("n", False),
         ("nO", False),
         ("oFf", False),
-
         # Int
         (123, 123),
         ("0", 0),
         ("1", 1),
         ("-123", -123),
         ("+123", 123),
-
         # Float
         # (1.23, 1.23),  # FIXME ... some upstream error here!
         ("1.23", 1.23),
@@ -70,14 +66,12 @@ def test_scalar_node_to_object():
         (".NaN", float("nan")),
         (".nan", float("nan")),
         ("nan", float("nan")),
-
         # String
         ("", ""),  # not null!
         ("some string", "some string"),
         ("123.45.67", "123.45.67"),
-
         # Exceptions
-        ([1,2,3], ConstructorError),
+        ([1, 2, 3], ConstructorError),
         (dict(foo="bar"), ConstructorError),
     )
 
@@ -91,13 +85,15 @@ def test_scalar_node_to_object():
             print(f"\t… should raise {expected}")
 
             with pytest.raises(expected):
-               to_obj(loader, node_tagged)
+                to_obj(loader, node_tagged)
             with pytest.raises(expected):
-               to_obj(loader, node_untagged)
+                to_obj(loader, node_untagged)
 
         else:
-            print(f"\t… should be converted to:  "
-                  f"{type(expected).__name__} {repr(expected)} ...")
+            print(
+                f"\t… should be converted to:  "
+                f"{type(expected).__name__} {repr(expected)} ..."
+            )
 
             actual_tagged = to_obj(loader, node_tagged)
             actual_untagged = to_obj(loader, node_untagged)

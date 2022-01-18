@@ -19,5 +19,5 @@ import pytest
 sys.path.insert(0, os.path.dirname(__file__))
 import utopya
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(pytest.main([__file__] + sys.argv[1:]))

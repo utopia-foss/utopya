@@ -6,5 +6,5 @@ specialized to work only for one kind of creator, but focus on the creating a
 visualization from the given data.
 """
 
-from .time_series import time_series
 from .graph import draw_graph
+from .time_series import time_series

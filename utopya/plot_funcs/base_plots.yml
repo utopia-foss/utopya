@@ -422,7 +422,7 @@
     <<: *default_helpers
   style:
     <<: *default_style
-    
+
 
 # .. Graph plots ..............................................................
 .dag.graph:

@@ -7,4 +7,3 @@ parameter_space:
   seed: !sweep
     default: 1337
     values: [23, 42, 665, 667]
-    

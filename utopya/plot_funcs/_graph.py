@@ -1,15 +1,15 @@
 """This module provides the GraphPlot class."""
 
-import os
 import copy
 import logging
+import os
 import warnings
-from typing import Sequence, Union, Callable, Dict, Tuple, Any
+from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
-import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 
 from utopya.plot_funcs._mpl_helpers import ColorManager
 
@@ -20,38 +20,40 @@ log = logging.getLogger(__name__)
 
 # Available networkx node layout options
 POSITIONING_MODELS_NETWORKX = {
-    'spring': nx.spring_layout,
-    'circular': nx.circular_layout,
-    'shell': nx.shell_layout,
-    'bipartite': nx.bipartite_layout,
-    'kamada_kawai': nx.kamada_kawai_layout,
-    'planar': nx.planar_layout,
-    'random': nx.random_layout,
-    'spectral': nx.spectral_layout,
-    'spiral': nx.spiral_layout,
+    "spring": nx.spring_layout,
+    "circular": nx.circular_layout,
+    "shell": nx.shell_layout,
+    "bipartite": nx.bipartite_layout,
+    "kamada_kawai": nx.kamada_kawai_layout,
+    "planar": nx.planar_layout,
+    "random": nx.random_layout,
+    "spectral": nx.spectral_layout,
+    "spiral": nx.spiral_layout,
 }
 
 # -----------------------------------------------------------------------------
 
+
 class GraphPlot:
-    """The ``GraphPlot`` class provides an interface for visualizing a 
+    """The ``GraphPlot`` class provides an interface for visualizing a
     ``networkx.Graph`` object or a graph created from a
     :py:class:`~utopya.datagroup.GraphGroup` via matplotlib.
     """
+
     def __init__(
         self,
         g: nx.Graph,
         *,
         fig=None,
         ax=None,
-        select: dict=None,
-        positions: dict=None,
-        nodes: dict=None,
-        edges: dict=None,
-        node_labels: dict=None,
-        edge_labels: dict=None,
-        mark_nodes: dict=None,
-        mark_edges: dict=None
+        select: dict = None,
+        positions: dict = None,
+        nodes: dict = None,
+        edges: dict = None,
+        node_labels: dict = None,
+        edge_labels: dict = None,
+        mark_nodes: dict = None,
+        mark_edges: dict = None,
     ):
         """Initializes a ``GraphPlot``, which provides drawing utilities for a
         fixed graph.
@@ -84,7 +86,7 @@ class GraphPlot:
             The ``from_property`` specifies the node or edge property to be
             mapped from. If ``scale_to_interval`` is given, the layout property
             values are rescaled linearly the specified interval.
-        
+
         Args:
             g (nx.Graph): The associated networkx graph
             fig (None, optional): The matplotlib figure used for drawing
@@ -152,7 +154,7 @@ class GraphPlot:
                     Single color (string or RGB(A) tuple or numeric value)
                     or sequence of colors (default: '#1f78b4'). If numeric
                     values are specified they will be mapped to colors using
-                    the cmap and vmin, vmax parameters. 
+                    the cmap and vmin, vmax parameters.
 
                     If mapped from property it may contain an additional
                     ``map_to_scalar``, which is a dict of numeric target values
@@ -189,11 +191,11 @@ class GraphPlot:
                 further kwargs:
                     Passed to `draw_networkx_nodes <https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_pylab.draw_networkx_nodes.html>`_
                     when calling :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
-                    
+
             edges (dict, optional):
                 Drawing configuration for the edges. The following arguments
                 are available for property mapping: ``edge_color``, ``width``.
-                
+
                 The ``edge_color``, ``edge_cmap``, and ``colorbar`` arguments
                 behave analogously for the edges as nodes.node_color,
                 nodes.cmap, and nodes.colorbar for the nodes. Any further
@@ -259,7 +261,7 @@ class GraphPlot:
                 existing ``nodes.edgecolors`` entry.
 
             mark_edges(dict, optional):
-                Mark specific edges by changing their color. Either specify a 
+                Mark specific edges by changing their color. Either specify a
                 ``color`` for a list of edges (``edgelist``), or specify a
                 ``colors`` dictionary of colors keyed by edge (2-tuple).
                 Updates an existing ``edges.edge_color`` entry.
@@ -273,7 +275,7 @@ class GraphPlot:
         self._edges_to_draw = None
         self._nodes_to_shrink = None
         self.positions = None
-        
+
         self._select_subgraph(**(select if select else {}))
         self.parse_positions(**(positions if positions else {}))
 
@@ -317,7 +319,7 @@ class GraphPlot:
     @property
     def g(self):
         """Get a deep copy of the graph associated with the GraphPlot instance.
-        
+
         Returns:
             nx.Graph: The networkx graph object
         """
@@ -331,25 +333,25 @@ class GraphPlot:
         *,
         fig=None,
         ax=None,
-        positions: dict=None,
-        nodes: dict=None,
-        edges: dict=None,
-        node_labels: dict=None,
-        edge_labels: dict=None,
-        mark_nodes: dict=None,
-        mark_edges: dict=None,
-        suppress_cbar: bool=False,
-        update_colormapping: bool=True,
-        **add_colorbars
+        positions: dict = None,
+        nodes: dict = None,
+        edges: dict = None,
+        node_labels: dict = None,
+        edge_labels: dict = None,
+        mark_nodes: dict = None,
+        mark_edges: dict = None,
+        suppress_cbar: bool = False,
+        update_colormapping: bool = True,
+        **add_colorbars,
     ):
         """
         Draws the graph associated with the ``GraphPlot`` using the current
         drawing configuration.
-        
+
         The current drawing configuration may be temporarily updated for this
         plot. The respective arguments accept the same input as in
         :py:class:`~utopya.plot_funcs._graph.GraphPlot`.
-        
+
         Args:
             fig (None, optional): matplotlib figure
             ax (None, optional): matplotlib axis
@@ -477,10 +479,10 @@ class GraphPlot:
         fig=None,
         ax=None,
         remove_previous=True,
-        **update_cbar_kwargs
+        **update_cbar_kwargs,
     ):
         """Adds colorbars for the drawn nodes and edges.
-        
+
         Args:
             show_node_cbar (bool, optional): Whether to create a colorbar for
                 the nodes
@@ -533,11 +535,11 @@ class GraphPlot:
                 **update_cbar_kwargs,
             )
 
-    def clear_plot(self, *, keep_colorbars: bool=False):
+    def clear_plot(self, *, keep_colorbars: bool = False):
         """Removes all matplotlib objects associated with the GraphPlot from
         the respective axis. The GraphPlot loses track of all those objects,
         the respective class attributes are reset.
-        
+
         Args:
             keep_colorbars (bool, optional): Whether to keep the node and edge
                 colorbars. If True, the GraphPlot still loses track of the
@@ -597,10 +599,10 @@ class GraphPlot:
         cls,
         graph_group,
         *,
-        graph_creation: dict=None,
-        register_property_maps: dict=None,
-        clear_existing_property_maps: bool=True,
-        **init_kwargs
+        graph_creation: dict = None,
+        register_property_maps: dict = None,
+        clear_existing_property_maps: bool = True,
+        **init_kwargs,
     ):
         """Initializes a ``GraphPlot`` from a
         :py:class:`~utopya.datagroup.GraphGroup`.
@@ -621,7 +623,7 @@ class GraphPlot:
             graph_group,
             register_property_maps=register_property_maps,
             clear_existing_property_maps=clear_existing_property_maps,
-            **(graph_creation if graph_creation is not None else {})
+            **(graph_creation if graph_creation is not None else {}),
         )
 
         return cls(g=g, **init_kwargs)
@@ -630,9 +632,9 @@ class GraphPlot:
     def create_graph_from_group(
         graph_group,
         *,
-        register_property_maps: dict=None,
-        clear_existing_property_maps: bool=True,
-        **graph_creation
+        register_property_maps: dict = None,
+        clear_existing_property_maps: bool = True,
+        **graph_creation,
     ) -> nx.Graph:
         """Creates a ``networkx.Graph`` from a ``GraphGroup``. Additional
         property maps may be added to the group beforehand.
@@ -668,9 +670,9 @@ class GraphPlot:
     def parse_positions(
         self,
         *,
-        from_dict: Dict[Any, Tuple[float, float]]=None,
-        model: Union[str, Callable]=None,
-        **kwargs
+        from_dict: Dict[Any, Tuple[float, float]] = None,
+        model: Union[str, Callable] = None,
+        **kwargs,
     ):
         """Parses the node positioning configuration. If a node positioning
         model is to be used, (re)calculates the positions.
@@ -701,7 +703,7 @@ class GraphPlot:
                     "model and explicitly via the `from_dict` argument. The "
                     "specified model will be ignored. To remove this warning, "
                     "set the graph_drawing.positions.model entry to None.",
-                    UserWarning
+                    UserWarning,
                 )
             self.positions = copy.deepcopy(from_dict)
 
@@ -709,11 +711,11 @@ class GraphPlot:
             log.remark(
                 "Calculating the node positions using a positioning model ..."
             )
-            
+
             if callable(model):
                 self.positions = model(self._g, **kwargs)
 
-            elif model.startswith('graphviz_'):
+            elif model.startswith("graphviz_"):
                 try:
                     # graphviz models
                     model = model[9:]
@@ -741,19 +743,19 @@ class GraphPlot:
         alpha=None,
         cmap=None,
         cmap_norm=None,
-        vmin: float=None,
-        vmax: float=None,
+        vmin: float = None,
+        vmax: float = None,
         edgecolors=None,
-        colorbar: dict=None,
-        update_colormapping: bool=True,
-        **kwargs
+        colorbar: dict = None,
+        update_colormapping: bool = True,
+        **kwargs,
     ):
         """Parses the node layout configuration and updates the node kwargs of
         the GraphPlot.
 
         The following arguments are available for property mapping:
         ``node_size``, ``node_color``, ``alpha``.
-        
+
         Args:
             node_size (None, optional): Size of nodes (default=300). Available
                 for property mapping. Can be mapped directly from the nodes'
@@ -789,7 +791,7 @@ class GraphPlot:
                 labels (dict, optional):
                     Colorbar tick-labels keyed by tick position (see
                     :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`).
-                further kwargs: 
+                further kwargs:
                     Passed on to :py:meth:`~utopya.plot_funcs._mpl_helpers.ColorManager.create_cbar`.
 
             update_colormapping (bool, optional): Whether to reconfigure the
@@ -804,13 +806,13 @@ class GraphPlot:
             warnings.warn(
                 "The 'nodelist' argument will be ignored. To draw a subset of "
                 "nodes use the 'select.nodelist' argument instead.",
-                UserWarning
+                UserWarning,
             )
 
         # Update node kwargs with simple kwargs. All kwargs that might need
         # extra treatment are caught explicitly and handled below.
         self._node_kwargs.update(kwargs)
-        
+
         self._node_kwargs["nodelist"] = self._nodes_to_draw
 
         # Do the property mapping ...
@@ -825,15 +827,15 @@ class GraphPlot:
                 )
             except KeyError as err:
                 if prop == "degree":
-                    _node_sizes =  node_sizes = np.array(
+                    _node_sizes = node_sizes = np.array(
                         [self._g.degree[n] for n in self._nodes_to_draw]
                     )
                 elif prop == "in_degree":
-                    _node_sizes =  node_sizes = np.array(
+                    _node_sizes = node_sizes = np.array(
                         [self._g.in_degree[n] for n in self._nodes_to_draw]
                     )
                 elif prop == "out_degree":
-                    _node_sizes =  node_sizes = np.array(
+                    _node_sizes = node_sizes = np.array(
                         [self._g.out_degree[n] for n in self._nodes_to_draw]
                     )
                 else:
@@ -898,8 +900,7 @@ class GraphPlot:
         ):
             _size = self._node_kwargs.get("node_size", 300)
             self._node_kwargs["node_size"] = [
-                0 if n in self._nodes_to_shrink
-                else _size
+                0 if n in self._nodes_to_shrink else _size
                 for n in self._nodes_to_draw
             ]
 
@@ -928,7 +929,7 @@ class GraphPlot:
             self._node_colormanager is None
             or any(
                 [
-                    arg is not None 
+                    arg is not None
                     for arg in (cmap, cmap_norm, vmin, vmax, cbar_labels)
                 ]
             )
@@ -964,18 +965,18 @@ class GraphPlot:
         edge_color=None,
         edge_cmap=None,
         cmap_norm=None,
-        edge_vmin: float=None,
-        edge_vmax: float=None,
-        colorbar: dict=None,
-        update_colormapping: bool=True,
-        **kwargs
+        edge_vmin: float = None,
+        edge_vmax: float = None,
+        colorbar: dict = None,
+        update_colormapping: bool = True,
+        **kwargs,
     ):
         """Parses the edge layout configuration and updates the edge kwargs of
         the GraphPlot.
 
         The following arguments are available for property mapping:
         ``width``, ``edge_color``.
-        
+
         Args:
             width (None, optional): Line width of edges
             edge_color (None, optional): Single color (string or RGB(A) tuple
@@ -1008,7 +1009,7 @@ class GraphPlot:
                 labels (dict, optional):
                     Colorbar tick-labels keyed by tick position (see
                     :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`).
-                further kwargs: 
+                further kwargs:
                     Passed on to :py:meth:`~utopya.plot_funcs._mpl_helpers.ColorManager.create_cbar`.
 
             update_colormapping (bool, optional): Whether to reconfigure the
@@ -1027,7 +1028,7 @@ class GraphPlot:
             warnings.warn(
                 "The 'edgelist' argument will be ignored. Use the select "
                 "configuration to specify a subgraph to be drawn.",
-                UserWarning
+                UserWarning,
             )
         self._edge_kwargs["edgelist"] = self._edges_to_draw
 
@@ -1077,16 +1078,20 @@ class GraphPlot:
         cbar_labels = colorbar.pop("labels", None)
         self._show_edge_cbar = colorbar.pop("enabled", self._show_edge_cbar)
         self._edge_cbar_kwargs.update(colorbar)
-        
+
         # (Re-)create the colormanager. Only do so if there is no colormanager
         # yet or if any kwargs are given.
         if update_colormapping and (
             self._edge_colormanager is None
             or any(
                 [
-                    arg is not None 
+                    arg is not None
                     for arg in (
-                        edge_cmap, cmap_norm, edge_vmin, edge_vmax, cbar_labels
+                        edge_cmap,
+                        cmap_norm,
+                        edge_vmin,
+                        edge_vmax,
+                        cbar_labels,
                     )
                 ]
             )
@@ -1136,16 +1141,16 @@ class GraphPlot:
     def parse_node_labels(
         self,
         *,
-        enabled: bool=False,
-        show_only: list=None,
-        labels: dict=None,
-        format: str="{label}",
-        decode: str=None,
-        **kwargs
+        enabled: bool = False,
+        show_only: list = None,
+        labels: dict = None,
+        format: str = "{label}",
+        decode: str = None,
+        **kwargs,
     ):
         """Parses the node labels configuration and updates the node label
         kwargs of the GraphPlot.
-        
+
         Args:
             enabled (bool, optional): Whether to draw node labels.
             show_only (list, optional): If given, labels are drawn only for the
@@ -1220,16 +1225,16 @@ class GraphPlot:
     def parse_edge_labels(
         self,
         *,
-        enabled: bool=False,
-        show_only: list=None,
-        edge_labels: dict=None,
-        format: str="{label}",
-        decode: str=None,
-        **kwargs
+        enabled: bool = False,
+        show_only: list = None,
+        edge_labels: dict = None,
+        format: str = "{label}",
+        decode: str = None,
+        **kwargs,
     ):
         """Parses the edge labels configuration and updates the edge label
         kwargs of the GraphPlot.
-        
+
         Args:
             enabled (bool, optional): Whether to draw edge labels.
             show_only (list, optional): If given, labels are drawn only for the
@@ -1309,7 +1314,7 @@ class GraphPlot:
         self._edge_label_kwargs["edge_labels"] = _labels
 
     def mark_nodes(
-        self, *, nodelist: list=None, color=None, colors: dict=None
+        self, *, nodelist: list = None, color=None, colors: dict = None
     ):
         """Mark specific nodes by changing their edgecolor.
 
@@ -1320,7 +1325,7 @@ class GraphPlot:
             specified via
             :py:meth:`~utopya.plot_funcs._graph.GraphPlot.parse_nodes`
             (and vice versa).
-        
+
         Args:
             nodelist (list, optional): Nodes to mark with the color specified
                 via ``color``
@@ -1389,7 +1394,7 @@ class GraphPlot:
             self._configure_node_patch_sizes()
 
     def mark_edges(
-        self, *, edgelist: list=None, color=None, colors: dict=None
+        self, *, edgelist: list = None, color=None, colors: dict = None
     ):
         """Mark specific edges by changing their color.
 
@@ -1400,7 +1405,7 @@ class GraphPlot:
             specified via
             :py:meth:`~utopya.plot_funcs._graph.GraphPlot.parse_edges`
             (and vice versa).
-        
+
         Args:
             edgelist (list, optional): Edges to mark with the color specified
                 via ``color``
@@ -1432,7 +1437,7 @@ class GraphPlot:
         # Create dict of colors keyed by node based on the current edge_color.
         # If there is none, use the default networkx edge color.
         base_color = self._edge_kwargs.get("edge_color", "k")
-        
+
         if mpl.colors.is_color_like(base_color):
             _colors = {e[:2]: base_color for e in self._edges_to_draw}
         else:
@@ -1485,9 +1490,9 @@ class GraphPlot:
         # (=no patch boundary).
         if edgecolors != "none":
             lw = self._node_kwargs.get(
-                "linewidths", mpl.rcParams['lines.linewidth']
+                "linewidths", mpl.rcParams["lines.linewidth"]
             )
-            
+
             if not isinstance(patch_size, (int, float)):
                 patch_size = np.array(patch_size)
 
@@ -1496,13 +1501,13 @@ class GraphPlot:
 
             # Adjust the patch size wherever a node boundary is to be drawn
             if mpl.colors.is_color_like(edgecolors):
-                patch_size = (np.sqrt(patch_size) + lw)**2
+                patch_size = (np.sqrt(patch_size) + lw) ** 2
 
             else:
                 patch_size = np.where(
                     [ec == "none" for ec in edgecolors],
                     patch_size,
-                    (np.sqrt(patch_size) + lw)**2,
+                    (np.sqrt(patch_size) + lw) ** 2,
                 )
 
         self._edge_kwargs["node_size"] = patch_size
@@ -1511,14 +1516,14 @@ class GraphPlot:
     def _scale_to_interval(data: list, interval=None) -> list:
         """Rescales the data linearly to the given interval. If no interval is
         given the data is returned as it is.
-        
+
         Args:
             data (list): data that is rescaled linearly to the given interval
             interval (optional): The target interval
-        
+
         Returns:
             list: rescaled data
-        
+
         Raises:
             ValueError: On invalid interval specification
         """
@@ -1538,21 +1543,22 @@ class GraphPlot:
         min_val = np.min(data)
 
         if max_val > min_val:
-            rescaled_data = (
-                (data - min_val) / (max_val - min_val)
-                * (lim_up - lim_low) + lim_low
-            )
+            rescaled_data = (data - min_val) / (max_val - min_val) * (
+                lim_up - lim_low
+            ) + lim_low
         else:
             # If all values are equal, set them to the mean of the interval
-            rescaled_data = np.zeros_like(data) + (lim_up - lim_low) / 2.
+            rescaled_data = np.zeros_like(data) + (lim_up - lim_low) / 2.0
 
         return list(rescaled_data)
 
-    def _select_subgraph(self, nodelist: list=None, drop: bool=True, **kwargs):
+    def _select_subgraph(
+        self, nodelist: list = None, drop: bool = True, **kwargs
+    ):
         """Select a subgraph to draw. Sets the lists of nodes and edges to draw
         and the nodes to shrink. Either a list of nodes is selected or radial
         selection is done.
-        
+
         Args:
             nodelist (list, optional): If given, select nodes from list
             drop (bool, optional): Whether to remove the non-selected nodes and
@@ -1560,15 +1566,15 @@ class GraphPlot:
             **kwargs: Passed to the selection routine
         """
 
-        def select_from_list(*, nodelist: list, open_edges: bool=False):
+        def select_from_list(*, nodelist: list, open_edges: bool = False):
             """Given a list of nodes, selects all nodes and edges needed for
             the graph drawing. If ``open_edges=False``, only those edges are
             selected for which both ends are in ``nodes``.
-            
+
             Args:
                 nodelist (list): Nodes to be selected
                 open_edges (bool, optional): Whether to draw loose edges
-            
+
             Returns:
                 Tuple containing list of selected nodes, list of selected
                 edges, and list of nodes to be shrinked to size zero.
@@ -1599,31 +1605,31 @@ class GraphPlot:
                 return (
                     list(subgraph_outer.nodes),
                     list(edges_to_plot),
-                    nodes_to_shrink
+                    nodes_to_shrink,
                 )
 
             return list(subgraph.nodes), list(subgraph.edges), []
 
         def select_radial(
-            *, center: int, radius: int, open_edges: bool=False
+            *, center: int, radius: int, open_edges: bool = False
         ):
             """Selects all nodes around a given center within a given radius
             (measured in numbers of neighborhoods). If ``open_edges=False``, those
             edges are selected for which both ends are in the set of selected
             nodes.
-            
+
             Args:
                 center (int): Index of the central node
                 radius (int): Selection radius
                 open_edges (bool, optional): Whether to draw loose edges
-            
+
             Returns:
                 Tuple containing list of selected nodes, list of selected
                 edges, and list of nodes to be shrinked to size zero.
             """
             # After num_nodes-1 iterations (below), all nodes would be selected
-            if radius > self._g.number_of_nodes()-1:
-                radius = self._g.number_of_nodes()-1
+            if radius > self._g.number_of_nodes() - 1:
+                radius = self._g.number_of_nodes() - 1
 
             # Identify nodes within the given radius around the central node.
             # Start by adding the central nodes and all its neighbors to a set.
@@ -1674,7 +1680,7 @@ class GraphPlot:
                 return (
                     list(subgraph_outer.nodes),
                     list(edges_to_plot),
-                    nodes_to_shrink
+                    nodes_to_shrink,
                 )
 
             subgraph = nx.induced_subgraph(self._g, node_selection)
@@ -1685,7 +1691,9 @@ class GraphPlot:
         if nodelist is None and not kwargs:
             # If no selection was specified, select all nodes and edges
             nodes_to_draw, edges_to_draw, nodes_to_shrink = (
-                list(self._g.nodes), list(self._g.edges), []
+                list(self._g.nodes),
+                list(self._g.edges),
+                [],
             )
         elif nodelist is not None:
             # Select from list of nodes

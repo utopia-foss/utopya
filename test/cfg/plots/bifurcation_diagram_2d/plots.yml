@@ -23,7 +23,7 @@ bifurcation_diagram_2d:
   <<: *bifurcation_diagram
 
   enabled: true
-  
+
   # pass a Tuple(str, str): key, function name in utopya.dataprocessing.py
   analysis_steps: [fixpoint, oscillation]
 
@@ -39,7 +39,7 @@ bifurcation_diagram_2d_fixpoint_to_plot:
   <<: *bifurcation_diagram
 
   enabled: true
-  
+
   # pass a Tuple(str, str): key, function name in utopya.dataprocessing.py
   analysis_steps: [fixpoint]
 
@@ -57,4 +57,3 @@ bifurcation_diagram_2d_fixpoint_to_plot:
           color: black
     oscillation:
       color: red
-

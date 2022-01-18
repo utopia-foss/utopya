@@ -8,4 +8,3 @@ parameter_space:
     cell_manager:
       grid:
         resolution: 4
-

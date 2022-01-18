@@ -6,8 +6,8 @@ Required signature:  ``(task: WorkerTask, **kws) -> bool``
 """
 
 import logging
-import time
 import operator
+import time
 
 from dantro.utils.data_ops import BOOLEAN_OPERATORS as OPERATORS
 from paramspace.tools import recursive_getitem as _recursive_getitem
@@ -21,7 +21,8 @@ _FAILED_MONITOR_ENTRY_CHECKS = []
 
 # -----------------------------------------------------------------------------
 
-def timeout_wall(task: 'utopya.task.WorkerTask', *, seconds: float) -> bool:
+
+def timeout_wall(task: "utopya.task.WorkerTask", *, seconds: float) -> bool:
     """Checks the wall timeout of the given worker
 
     Args:
@@ -31,11 +32,16 @@ def timeout_wall(task: 'utopya.task.WorkerTask', *, seconds: float) -> bool:
     Returns:
         bool: Whether the timeout is fulfilled
     """
-    return bool((time.time() - task.profiling['create_time']) > seconds)
+    return bool((time.time() - task.profiling["create_time"]) > seconds)
 
 
-def check_monitor_entry(task: 'utopya.task.WorkerTask', *, entry_name: str,
-                        operator: str, value: float) -> bool:
+def check_monitor_entry(
+    task: "utopya.task.WorkerTask",
+    *,
+    entry_name: str,
+    operator: str,
+    value: float,
+) -> bool:
     """Checks if a monitor entry compares in a certain way to a given value
 
     Args:
@@ -64,7 +70,8 @@ def check_monitor_entry(task: 'utopya.task.WorkerTask', *, entry_name: str,
             log.caution(
                 "Failed evaluating stop condition due to missing entry '%s' "
                 "in monitor output!\nAvailable monitor data: %s",
-                entry_name, latest_monitor,
+                entry_name,
+                latest_monitor,
             )
             _FAILED_MONITOR_ENTRY_CHECKS.append(entry_name)
         return False

@@ -2,7 +2,7 @@
 
 import itertools
 import logging
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import numpy as np
 import xarray as xr
@@ -12,13 +12,18 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
-def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
-                          x_scale: str='lin', y_scale: str='lin',
-                          default_pos: Tuple[float, float]=(0., 0.),
-                          default_distance: float=1.0,
-                          size_factor: float=1.0,
-                          extend: bool=False
-                          ) -> Tuple[xr.Dataset, Dict[str, tuple]]:
+
+def calc_pxmap_rectangles(
+    *,
+    x_coords: np.ndarray,
+    y_coords: np.ndarray,
+    x_scale: str = "lin",
+    y_scale: str = "lin",
+    default_pos: Tuple[float, float] = (0.0, 0.0),
+    default_distance: float = 1.0,
+    size_factor: float = 1.0,
+    extend: bool = False,
+) -> Tuple[xr.Dataset, Dict[str, tuple]]:
     """Calculates the positions and sizes of rectangles centered at the given
     coordinates in such a way that they fully cover the 2D space spanned by
     the coordinates.
@@ -68,14 +73,15 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
     """
 
     # Define some allowed linear and logarithmic scales
-    LIN_SCALES = ['lin', 'linear']
-    LOG_SCALES = ['log', 'symlog']
-    CATEGORIAL_SCALES = ['cat', 'categorical', 'cat_at_value']
+    LIN_SCALES = ["lin", "linear"]
+    LOG_SCALES = ["log", "symlog"]
+    CATEGORIAL_SCALES = ["cat", "categorical", "cat_at_value"]
 
     # Helper functions ........................................................
 
-    def determine_diffs_and_scale(coords: np.ndarray, *, scale: str,
-                                  axis_name: str) -> Tuple[np.ndarray, str]:
+    def determine_diffs_and_scale(
+        coords: np.ndarray, *, scale: str, axis_name: str
+    ) -> Tuple[np.ndarray, str]:
         """Given the coordinates and the scale, determine the distances
         between coordinates in one dimension. This is also used to check the
         scale.
@@ -100,17 +106,21 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
         elif scale in CATEGORIAL_SCALES:
             # For categorial scale at value, use just some arbitrary integeres
             # for the coordinates; the scale can then be assumed linear.
-            if scale != 'cat_at_value':
+            if scale != "cat_at_value":
                 coords = list(range(len(coords)))
             diffs = np.diff(coords)
-            scale = 'lin'
+            scale = "lin"
 
         else:
-            raise ValueError("Invalid scale argument for {} axis: '{}'! "
-                             "Expected one of: {}"
-                             "".format(scale, axis_name,
-                                       ", ".join(  LIN_SCALES + LOG_SCALES
-                                                 + CATEGORIAL_SCALES)))
+            raise ValueError(
+                "Invalid scale argument for {} axis: '{}'! "
+                "Expected one of: {}"
+                "".format(
+                    scale,
+                    axis_name,
+                    ", ".join(LIN_SCALES + LOG_SCALES + CATEGORIAL_SCALES),
+                )
+            )
 
         return diffs, scale
 
@@ -128,8 +138,8 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
 
         else:
             # No extension of borders desired --> add zeros to diffs
-            diffs = np.insert(diffs, 0, 0.)
-            diffs = np.append(diffs, 0.)
+            diffs = np.insert(diffs, 0, 0.0)
+            diffs = np.append(diffs, 0.0)
 
         return diffs
 
@@ -138,23 +148,24 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
         at the given coordinates and sizes.
         """
         if scale in LIN_SCALES:
-            return (float(coords[0])  - sizes[0],
-                    float(coords[-1]) + sizes[-1])
+            return (float(coords[0]) - sizes[0], float(coords[-1]) + sizes[-1])
 
         elif scale in LOG_SCALES:
-            return (np.exp(np.log(float(coords[0]))  - sizes[0]),
-                    np.exp(np.log(float(coords[-1])) + sizes[-1]))
+            return (
+                np.exp(np.log(float(coords[0])) - sizes[0]),
+                np.exp(np.log(float(coords[-1])) + sizes[-1]),
+            )
 
         # NOTE This point is not reached; scale is checked elsewhere
-
 
     # The functions below create a rectangle specifier given the x and y
     # positions and the desired sizes.
     # Have 4 explicit functions (one for each scale specification) because it's
     # very tedious to create the rectangle specifier in a general way ... Grml.
 
-    def calc_linlin_rect(x: float, y: float,
-                         x_sizes: tuple, y_sizes: tuple) -> tuple:
+    def calc_linlin_rect(
+        x: float, y: float, x_sizes: tuple, y_sizes: tuple
+    ) -> tuple:
         """
         Create the rectangle specification for a single rectangle embedded in
         a lin-lin plot.
@@ -172,28 +183,28 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
                     total y length)
         """
         return (
-            x            - x_sizes[0],
-            y            - y_sizes[0],
-            x_sizes[0]   + x_sizes[1],
-            y_sizes[0]   + y_sizes[1]
+            x - x_sizes[0],
+            y - y_sizes[0],
+            x_sizes[0] + x_sizes[1],
+            y_sizes[0] + y_sizes[1],
         )
 
     def calc_linlog_rect(x, y, x_sizes, y_sizes) -> tuple:
         """See calc_linlin_rect"""
         return (
-            x            - x_sizes[0],
+            x - x_sizes[0],
             np.exp(np.log(y) - y_sizes[0]),
-            x_sizes[0]   + x_sizes[1],
-            np.exp(np.log(y) + y_sizes[1]) - np.exp(np.log(y) - y_sizes[0])
+            x_sizes[0] + x_sizes[1],
+            np.exp(np.log(y) + y_sizes[1]) - np.exp(np.log(y) - y_sizes[0]),
         )
 
     def calc_loglin_rect(x, y, x_sizes, y_sizes) -> tuple:
         """See calc_linlin_rect"""
         return (
             np.exp(np.log(x) - x_sizes[0]),
-            y            - y_sizes[0],
+            y - y_sizes[0],
             np.exp(np.log(x) + x_sizes[1]) - np.exp(np.log(x) - x_sizes[0]),
-            y_sizes[0]   + y_sizes[1]
+            y_sizes[0] + y_sizes[1],
         )
 
     def calc_loglog_rect(x, y, x_sizes, y_sizes) -> tuple:
@@ -202,16 +213,16 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
             np.exp(np.log(x) - x_sizes[0]),
             np.exp(np.log(y) - y_sizes[0]),
             np.exp(np.log(x) + x_sizes[1]) - np.exp(np.log(x) - x_sizes[0]),
-            np.exp(np.log(y) + y_sizes[1]) - np.exp(np.log(y) - y_sizes[0])
+            np.exp(np.log(y) + y_sizes[1]) - np.exp(np.log(y) - y_sizes[0]),
         )
 
     # Create a map to select the callable via `in LIN_SCALES` boolean key pair
     FUNC_MAP = {
-        #x lin?  y lin?
-        (True,   True)  : calc_linlin_rect,
-        (True,   False) : calc_linlog_rect,
-        (False,  True)  : calc_loglin_rect,
-        (False,  False) : calc_loglog_rect
+        # x lin?  y lin?
+        (True, True): calc_linlin_rect,
+        (True, False): calc_linlog_rect,
+        (False, True): calc_loglin_rect,
+        (False, False): calc_loglog_rect,
     }
 
     # .........................................................................
@@ -225,15 +236,19 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
 
     # Check the lengths
     if len(x_coords) < 1 or len(y_coords) < 1:
-        raise ValueError("Coordinate sequences need to be at least of length "
-                         "one or None (to use defaults), but were: {} and {}"
-                         "".format(x_coords, y_coords))
+        raise ValueError(
+            "Coordinate sequences need to be at least of length "
+            "one or None (to use defaults), but were: {} and {}"
+            "".format(x_coords, y_coords)
+        )
 
     # Calculate distances, distinguishing between linear and logarithmic scale
-    x_diffs, x_scale = determine_diffs_and_scale(x_coords, scale=x_scale,
-                                                 axis_name="x")
-    y_diffs, y_scale = determine_diffs_and_scale(y_coords, scale=y_scale,
-                                                 axis_name="y")
+    x_diffs, x_scale = determine_diffs_and_scale(
+        x_coords, scale=x_scale, axis_name="x"
+    )
+    y_diffs, y_scale = determine_diffs_and_scale(
+        y_coords, scale=y_scale, axis_name="y"
+    )
 
     # Determine rectangle calculation method
     calc_rect = FUNC_MAP[(x_scale in LIN_SCALES, y_scale in LIN_SCALES)]
@@ -245,46 +260,47 @@ def calc_pxmap_rectangles(*, x_coords: np.ndarray, y_coords: np.ndarray,
 
     # Divide by two to have the _sizes_ of the rectangle, not the distance
     # between the points, and then apply the size factor.
-    x_sizes = x_diffs / 2. * size_factor
-    y_sizes = y_diffs / 2. * size_factor
+    x_sizes = x_diffs / 2.0 * size_factor
+    y_sizes = y_diffs / 2.0 * size_factor
 
     # Create rects Dataset, which is populated below. It contains the positions
     # and sizes as separate data variables.
     shape = (len(x_coords), len(y_coords))
-    rect_spec = np.dtype([('xy', (float, (2,))),
-                          ('width', float), ('height', float)])
-    rects = xr.Dataset(data_vars=dict(
-                            pos_x=(('x', 'y'), np.full(shape, np.nan)),
-                            pos_y=(('x', 'y'), np.full(shape, np.nan)),
-                            len_x=(('x', 'y'), np.full(shape, np.nan)),
-                            len_y=(('x', 'y'), np.full(shape, np.nan)),
-                            rect_spec=(('x', 'y'), np.full(shape, np.nan,
-                                                           dtype=rect_spec)),
-                            ),
-                       coords=dict(
-                            x=(('x',), x_coords),
-                            y=(('y',), y_coords)
-                       ))
+    rect_spec = np.dtype(
+        [("xy", (float, (2,))), ("width", float), ("height", float)]
+    )
+    rects = xr.Dataset(
+        data_vars=dict(
+            pos_x=(("x", "y"), np.full(shape, np.nan)),
+            pos_y=(("x", "y"), np.full(shape, np.nan)),
+            len_x=(("x", "y"), np.full(shape, np.nan)),
+            len_y=(("x", "y"), np.full(shape, np.nan)),
+            rect_spec=(("x", "y"), np.full(shape, np.nan, dtype=rect_spec)),
+        ),
+        coords=dict(x=(("x",), x_coords), y=(("y",), y_coords)),
+    )
 
     # Now, iterate over the coordinate combinations, calculate the rectangle
     # specification, and store it in the data array.
-    it = itertools.product(enumerate(rects.coords['x']),
-                           enumerate(rects.coords['y']))
+    it = itertools.product(
+        enumerate(rects.coords["x"]), enumerate(rects.coords["y"])
+    )
     for (x_idx, x_coord), (y_idx, y_coord) in it:
         # Get the relevant sizes calculated from the diffs and calculate the
         # rectangle specification from that
-        pos_x, pos_y, len_x, len_y = calc_rect(x_coord, y_coord,
-                                               (x_sizes[x_idx],      # left
-                                                x_sizes[x_idx + 1]), # right
-                                               (y_sizes[y_idx],      # bottom
-                                                y_sizes[y_idx+1]))   # top
+        pos_x, pos_y, len_x, len_y = calc_rect(
+            x_coord,
+            y_coord,
+            (x_sizes[x_idx], x_sizes[x_idx + 1]),  # left  # right
+            (y_sizes[y_idx], y_sizes[y_idx + 1]),  # bottom
+        )  # top
 
         # Store in the corresponding data variable in the xr.Dataset
-        rects['pos_x'][x_idx, y_idx] = pos_x
-        rects['pos_y'][x_idx, y_idx] = pos_y
-        rects['len_x'][x_idx, y_idx] = len_x
-        rects['len_y'][x_idx, y_idx] = len_y
-        rects['rect_spec'][x_idx, y_idx] = (pos_x, pos_y), len_x, len_y
+        rects["pos_x"][x_idx, y_idx] = pos_x
+        rects["pos_y"][x_idx, y_idx] = pos_y
+        rects["len_x"][x_idx, y_idx] = len_x
+        rects["len_y"][x_idx, y_idx] = len_y
+        rects["rect_spec"][x_idx, y_idx] = (pos_x, pos_y), len_x, len_y
 
     # Calculate limits of the space that is covered by the rectangles
     x_lims = determine_limits(coords=x_coords, sizes=x_sizes, scale=x_scale)

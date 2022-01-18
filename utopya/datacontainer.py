@@ -5,13 +5,12 @@ the NumpyDataContainer.
 """
 
 import logging
-from operator import mul
 from functools import reduce
-from typing import Union, List, Dict, Sequence, Tuple
+from operator import mul
+from typing import Dict, List, Sequence, Tuple, Union
 
 import numpy as np
 import xarray as xr
-
 from dantro.containers import NumpyDataContainer, XrDataContainer
 from dantro.mixins import Hdf5ProxySupportMixin
 
@@ -24,6 +23,7 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
+
 class NumpyDC(Hdf5ProxySupportMixin, NumpyDataContainer):
     """This is the base class for numpy data containers used in Utopia.
 
@@ -31,7 +31,7 @@ class NumpyDC(Hdf5ProxySupportMixin, NumpyDataContainer):
     with the Hdf5ProxySupportMixin, allowing to load the data from the Hdf5
     file only once it becomes necessary.
     """
-    
+
 
 class XarrayDC(Hdf5ProxySupportMixin, XrDataContainer):
     """This is the base class for xarray data containers used in Utopia.
@@ -39,32 +39,32 @@ class XarrayDC(Hdf5ProxySupportMixin, XrDataContainer):
     It is based on the XrDataContainer provided by dantro. As of now, it has
     no proxy support, but will gain it once available on dantro side.
     """
+
     # Configure proxy support .................................................
     # Which type to resolve the proxy to. None defaults to np.ndarray
     PROXY_RESOLVE_ASTYPE = None
 
     # Whether to retain a proxy after resolving it; allows .reinstate_proxy()
     PROXY_RETAIN = True
-    
-    # Which action to take if reinstating a proxy was not possible
-    PROXY_REINSTATE_FAIL_ACTION = 'log_warning'
 
+    # Which action to take if reinstating a proxy was not possible
+    PROXY_REINSTATE_FAIL_ACTION = "log_warning"
 
     # Specialize XrDataContainer for Utopia ...................................
     # Define as class variable the name of the attribute that determines the
     # dimensions of the xarray.DataArray
-    _XRC_DIMS_ATTR = 'dim_names'
-    
+    _XRC_DIMS_ATTR = "dim_names"
+
     # Attributes prefixed with this string can be used to set names for
     # specific dimensions. The prefix should be followed by an integer-parsable
     # string, e.g. `dim_name__0` would be the dimension name for the 0th dim.
-    _XRC_DIM_NAME_PREFIX = 'dim_name__'
+    _XRC_DIM_NAME_PREFIX = "dim_name__"
 
     # Attributes prefixed with this string determine the coordinate values for
     # a specific dimension. The prefix should be followed by the _name_ of the
     # dimension, e.g. `coords__time`. The values are interpreted according to
     # the default coordinate mode or, if given, the coords_mode__* attribute
-    _XRC_COORDS_ATTR_PREFIX = 'coords__'
+    _XRC_COORDS_ATTR_PREFIX = "coords__"
 
     # The default mode by which coordinates are interpreted. See the base
     # class, `dantro.containers.XrDataContainer` for more information.
@@ -81,12 +81,12 @@ class XarrayDC(Hdf5ProxySupportMixin, XrDataContainer):
     #       of the corresponding dimension.
     #   - ``linked``: Load the coordinates from a linked object within the
     #       tree, specified by a relative path from the current object.
-    _XRC_COORDS_MODE_DEFAULT = 'values'
+    _XRC_COORDS_MODE_DEFAULT = "values"
 
     # Prefix for the coordinate mode if a custom mode is to be used. To, e.g.,
     # use mode 'start_and_step' for time dimension, set the coords_mode__time
     # attribute to value 'start_and_step'
-    _XRC_COORDS_MODE_ATTR_PREFIX = 'coords_mode__'
+    _XRC_COORDS_MODE_ATTR_PREFIX = "coords_mode__"
 
     # Whether to inherit the other container attributes
     _XRC_INHERIT_CONTAINER_ATTRIBUTES = False
@@ -98,6 +98,7 @@ class XarrayDC(Hdf5ProxySupportMixin, XrDataContainer):
 
 
 # -----------------------------------------------------------------------------
+
 
 class XarrayYamlDC(XarrayDC):
     """An XarrayDC specialization that assumes that each array entry is a
@@ -117,47 +118,52 @@ class XarrayYamlDC(XarrayDC):
                 if isinstance(element, bytes):
                     return yaml.load(element.decode("utf8"))
                 return yaml.load(element)
-            
+
             except Exception as exc:
-                raise ValueError("Could not convert element of type {} to "
-                                 "yaml! Element value was:  {}"
-                                 "".format(type(element), element)) from exc
+                raise ValueError(
+                    "Could not convert element of type {} to "
+                    "yaml! Element value was:  {}"
+                    "".format(type(element), element)
+                ) from exc
 
         self._data = xr.apply_ufunc(np.vectorize(convert_to_yaml), self._data)
 
 
 # -----------------------------------------------------------------------------
 
+
 class GridDC(XarrayDC):
     """This is the base class for all grid data used in Utopia.
 
     It is based on the XarrayDC and reshapes the data to the grid shape.
-    The last dimension is assumed to be the dimension that goes along the 
+    The last dimension is assumed to be the dimension that goes along the
     grid cell IDs.
     """
+
     # Define class variables to allow specializing behaviour ..................
     # The attribute to read the desired grid shape from
-    _GDC_grid_shape_attr = 'grid_shape'
+    _GDC_grid_shape_attr = "grid_shape"
 
     # The attribute to read the space extent from
-    _GDC_space_extent_attr = 'space_extent'
+    _GDC_space_extent_attr = "space_extent"
 
     # The attribute to read the index order from
-    _GDC_index_order_attr = 'index_order'
+    _GDC_index_order_attr = "index_order"
 
     # The attribute to read the desired grid structure from
-    _GDC_grid_structure_attr = 'grid_structure'
+    _GDC_grid_structure_attr = "grid_structure"
 
     # .........................................................................
 
-    def __init__(self, *, name: str, data: Union[np.ndarray, xr.DataArray],
-                 **dc_kwargs):
+    def __init__(
+        self, *, name: str, data: Union[np.ndarray, xr.DataArray], **dc_kwargs
+    ):
         """Initialize a GridDC which represents grid-like data.
 
         Given the container attribute for _GDC_grid_shape_attr, this container
         takes care to reshape the underlying data such that it represents that
         grid, even if it is saved in another shape.
-        
+
         Args:
             name (str): The name of the data container
             data (np.ndarray): The not yet reshaped data. If this is 1D, it is
@@ -175,7 +181,7 @@ class GridDC(XarrayDC):
         # Store the old and determine the new shape of the data; needed for
         # proxy property support
         self._data_shape = self.shape
-        
+
         # Now, determine the shapes ... Will set the following attributes:
         self._new_shape = None
         self._grid_shape = None
@@ -213,9 +219,12 @@ class GridDC(XarrayDC):
 
         # Iterate over new dimension names and grid shape and use the dim names
         # and shape determined and cached by _determine_shape.
-        return tuple([(n, l) for i, (n, l) in enumerate(zip(self._new_dims,
-                                                            self.shape))])
-
+        return tuple(
+            [
+                (n, l)
+                for i, (n, l) in enumerate(zip(self._new_dims, self.shape))
+            ]
+        )
 
     # Properties ..............................................................
 
@@ -258,7 +267,6 @@ class GridDC(XarrayDC):
             return len(self.shape)
         return self.data.ndim
 
-
     # Reshaping ...............................................................
 
     def _determine_shape(self):
@@ -267,14 +275,18 @@ class GridDC(XarrayDC):
             self._grid_shape = tuple(self.attrs[self._GDC_grid_shape_attr])
 
         except KeyError as err:
-            raise ValueError("Missing attribute '{}' in {} to extract the "
-                             "desired grid shape from! Available: {}"
-                             "".format(self._GDC_grid_shape_attr, self.logstr,
-                                       ", ".join(self.attrs.keys()))
-                             ) from err
-        
-        # To get the new shape, add up the old data shape without the grid 
-        # dimension and the expected grid shape. 
+            raise ValueError(
+                "Missing attribute '{}' in {} to extract the "
+                "desired grid shape from! Available: {}"
+                "".format(
+                    self._GDC_grid_shape_attr,
+                    self.logstr,
+                    ", ".join(self.attrs.keys()),
+                )
+            ) from err
+
+        # To get the new shape, add up the old data shape without the grid
+        # dimension and the expected grid shape.
         # NOTE It is assumed that the _last_ dimension goes along cell IDs and
         #      the reshaped x-y data dimensions are thus appended.
         self._new_shape = tuple(self._data_shape[:-1] + self._grid_shape)
@@ -286,14 +298,16 @@ class GridDC(XarrayDC):
 
         # Determine new dimension names
         if len(data_shape) == 2:
-            new_dims = ('time',) + ('x', 'y', 'z')[:len(grid_shape)]
-        
+            new_dims = ("time",) + ("x", "y", "z")[: len(grid_shape)]
+
         elif len(data_shape) == 1:
-            new_dims = ('x', 'y', 'z')[:len(grid_shape)]
+            new_dims = ("x", "y", "z")[: len(grid_shape)]
 
         else:
-            raise ValueError("Can only reshape from 1D or 2D data, got {}!"
-                             "".format(data_shape))
+            raise ValueError(
+                "Can only reshape from 1D or 2D data, got {}!"
+                "".format(data_shape)
+            )
 
         # Determine new coordinates
         new_coords = dict()
@@ -306,30 +320,35 @@ class GridDC(XarrayDC):
             # Trivial coordinate generator
             coord_gen = lambda n, _: range(n)
             extent = (None,) * len(grid_shape)  # dummy for the iterator below
-            for n, l, dim_name in zip(grid_shape, extent, ('x', 'y', 'z')):
+            for n, l, dim_name in zip(grid_shape, extent, ("x", "y", "z")):
                 new_coords[dim_name] = coord_gen(n, l)
 
-        elif structure is None or structure == 'square':
+        elif structure is None or structure == "square":
             # Actual cell position coordinate generator
-            coord_gen = lambda n, l: np.linspace(0., l, n, False) + (.5*l/n)
-            for n, l, dim_name in zip(grid_shape, extent, ('x', 'y', 'z')):
+            coord_gen = lambda n, l: np.linspace(0.0, l, n, False) + (
+                0.5 * l / n
+            )
+            for n, l, dim_name in zip(grid_shape, extent, ("x", "y", "z")):
                 new_coords[dim_name] = coord_gen(n, l)
 
-        elif structure == 'hexagonal':
+        elif structure == "hexagonal":
             if len(grid_shape) != 2:
-                raise ValueError("Unknown grid structure '{}' in {} dimensions",
-                                 structure, len(grid_shape))
-            new_coords['x'] = (  np.linspace(0., extent[0],
-                                             grid_shape[0], False)
-                               + .5 * extent[0] / grid_shape[0])
-            new_coords['y'] = (  np.linspace(0., extent[1], grid_shape[1],
-                                             False)
-                               + .5 * extent[1] / grid_shape[1] / 0.75)
+                raise ValueError(
+                    "Unknown grid structure '{}' in {} dimensions",
+                    structure,
+                    len(grid_shape),
+                )
+            new_coords["x"] = (
+                np.linspace(0.0, extent[0], grid_shape[0], False)
+                + 0.5 * extent[0] / grid_shape[0]
+            )
+            new_coords["y"] = (
+                np.linspace(0.0, extent[1], grid_shape[1], False)
+                + 0.5 * extent[1] / grid_shape[1] / 0.75
+            )
 
         else:
             raise ValueError("Unknown grid structure '{}'", structure)
-        
-
 
         # NOTE Time coordinates are not changed, thus need not be determined
 
@@ -348,7 +367,7 @@ class GridDC(XarrayDC):
         new_coords = self._new_coords
 
         # Determine index order
-        index_order = self.attrs.get(self._GDC_index_order_attr, 'F')
+        index_order = self.attrs.get(self._GDC_index_order_attr, "F")
 
         # Have to postprocess this if order is stored as array of strings
         if isinstance(index_order, np.ndarray):
@@ -358,36 +377,50 @@ class GridDC(XarrayDC):
                 index_order = index_order.flatten()[0]
 
         # Reshape data now
-        log.debug("Reshaping data of shape %s to %s (assuming order '%s') to "
-                  "match given grid shape %s ...",
-                  data_shape, new_shape, index_order, grid_shape)
+        log.debug(
+            "Reshaping data of shape %s to %s (assuming order '%s') to "
+            "match given grid shape %s ...",
+            data_shape,
+            new_shape,
+            index_order,
+            grid_shape,
+        )
 
         try:
             data = np.reshape(self._data.values, new_shape, order=index_order)
 
         except ValueError as err:
-            raise ValueError("Reshaping failed! This is probably due to a "
-                             "mismatch between the written dataset attribute " 
-                             "for the grid shape ('{}': {}, configured by " 
-                             "class variable `_GDC_grid_shape_attr`) and the "
-                             "actual shape {} of the written data."
-                             "".format(self._GDC_grid_shape_attr, 
-                                       grid_shape, data_shape)
-                             ) from err
+            raise ValueError(
+                "Reshaping failed! This is probably due to a "
+                "mismatch between the written dataset attribute "
+                "for the grid shape ('{}': {}, configured by "
+                "class variable `_GDC_grid_shape_attr`) and the "
+                "actual shape {} of the written data."
+                "".format(self._GDC_grid_shape_attr, grid_shape, data_shape)
+            ) from err
 
         # All succeeded. Based on the existing data, create a new DataArray
-        new_data = xr.DataArray(name=self.name, data=data,
-                                dims=new_dims, coords=new_coords,
-                                attrs={k: v for k, v in self.attrs.items()
-                                       if k in (self._GDC_space_extent_attr,
-                                                self._GDC_grid_shape_attr,
-                                                self._GDC_grid_structure_attr)})
+        new_data = xr.DataArray(
+            name=self.name,
+            data=data,
+            dims=new_dims,
+            coords=new_coords,
+            attrs={
+                k: v
+                for k, v in self.attrs.items()
+                if k
+                in (
+                    self._GDC_space_extent_attr,
+                    self._GDC_grid_shape_attr,
+                    self._GDC_grid_structure_attr,
+                )
+            },
+        )
 
         # Carry over the time coordinates
-        if 'time' in self._data.dims:
-            new_data.coords['time'] = self._data.coords['time']
+        if "time" in self._data.dims:
+            new_data.coords["time"] = self._data.coords["time"]
 
         # Done.
         log.debug("Successfully reshaped data to represent a spatial grid.")
         return new_data
-

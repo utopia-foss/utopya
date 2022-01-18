@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
+
 class UniverseGroup(dtr.groups.ParamSpaceStateGroup):
     """This group represents the data of a single universe"""
 
@@ -34,6 +35,7 @@ class MultiverseGroup(dtr.groups.ParamSpaceGroup):
     Furthermore, via dantro, an easy data selector method is available, see
     `dantro.groups.ParamSpaceGroup.select`.
     """
+
     _NEW_GROUP_CLS = UniverseGroup
 
     # Make the transformation interface available to the select method
@@ -45,6 +47,7 @@ class TimeSeriesGroup(dtr.groups.TimeSeriesGroup):
     """This group is meant to manage time series data, with the container names
     being interpreted as the time coordinate.
     """
+
     _NEW_CONTAINER_CLS = XarrayDC
 
 
@@ -52,6 +55,7 @@ class HeterogeneousTimeSeriesGroup(dtr.groups.HeterogeneousTimeSeriesGroup):
     """This group is meant to manage time series data, with the container names
     being interpreted as the time coordinate.
     """
+
     _NEW_CONTAINER_CLS = XarrayDC
 
 
@@ -59,6 +63,7 @@ class GraphGroup(dtr.groups.GraphGroup):
     """This group is meant to manage graph data and create a NetworkX graph
     from it.
     """
+
     # Let new groups contain only time series
     _NEW_GROUP_CLS = TimeSeriesGroup
 

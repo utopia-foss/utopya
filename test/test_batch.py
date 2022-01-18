@@ -1,27 +1,27 @@
 """Tests the utopya.batch module"""
 
 import builtins
-import copy
 import contextlib
-from pkg_resources import resource_filename
-import pytest
+import copy
 
+import pytest
+from pkg_resources import resource_filename
+
+from utopya.batch import BatchTaskManager
 from utopya.model import Model
 from utopya.tools import load_yml, recursive_update
-from utopya.batch import BatchTaskManager
 
 BATCH_FILE_PATH = resource_filename("test", "cfg/batch_file.yml")
 BATCH_CFG = load_yml(resource_filename("test", "cfg/batch.yml"))
 
 # -----------------------------------------------------------------------------
 
+
 def test_BatchTaskManager_basics():
     """Tests BatchTaskManager"""
     # Make sure the required models have some output generated
     for model_name in ("dummy",):
-        Model(
-            name=model_name
-        ).create_mv(
+        Model(name=model_name).create_mv(
             paths=dict(model_note="btm-basics")
         ).run()
 
@@ -37,11 +37,7 @@ def test_BatchTaskManager(tmpdir):
     """Tests BatchTaskManager"""
     # Make sure the required models have some output generated
     for model_name in ("dummy", "SEIRD"):
-        Model(
-            name=model_name
-        ).create_mv(
-            paths=dict(model_note="btm")
-        ).run()
+        Model(name=model_name).create_mv(paths=dict(model_note="btm")).run()
 
     # Test multiple scenarios
     for test_case, test_cfg in copy.deepcopy(BATCH_CFG).items():
@@ -55,7 +51,7 @@ def test_BatchTaskManager(tmpdir):
                     out_dir=str(tmpdir.join(test_case)),
                     note=test_case,
                 )
-            )
+            ),
         )
 
         # Error handling
@@ -76,9 +72,7 @@ def test_batch_file():
     """Tests the BatchTaskManager via a batch file"""
     # Make sure the required models have some output generated
     for model_name in ("dummy",):
-        Model(
-            name=model_name
-        ).create_mv(
+        Model(name=model_name).create_mv(
             paths=dict(model_note="batch-file")
         ).run()
 

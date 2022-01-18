@@ -12,30 +12,39 @@ import numpy as np
 import xarray as xr
 
 from .. import DataManager, UniverseGroup
-from ..plotting import is_plot_func, PlotHelper, UniversePlotCreator
 from ..dataprocessing import transform
+from ..plotting import PlotHelper, UniversePlotCreator, is_plot_func
 
 # Get a logger
 log = logging.getLogger(__name__)
 
 # Global variables, e.g. shared helper settings
-_density_hlpr_kwargs = dict(set_labels=dict(x="Time [Iteration Steps]",
-                                            y="Density"),
-                            set_limits=dict(x=('min', 'max'),
-                                            y=(0., 1.)))
+_density_hlpr_kwargs = dict(
+    set_labels=dict(x="Time [Iteration Steps]", y="Density"),
+    set_limits=dict(x=("min", "max"), y=(0.0, 1.0)),
+)
 
 # -----------------------------------------------------------------------------
 
-@is_plot_func(creator_type=UniversePlotCreator,
-              helper_defaults=dict(**_density_hlpr_kwargs)
-              )
-def density(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
-            model_name: str, path_to_data: str,
-            mean_of: Tuple[str],
-            preprocess: Tuple[Union[str, dict]]=None,
-            transformations_log_level: int=10,
-            sizes_from: str=None, size_factor: float=1.,
-            **plot_kwargs) -> None:
+
+@is_plot_func(
+    creator_type=UniversePlotCreator,
+    helper_defaults=dict(**_density_hlpr_kwargs),
+)
+def density(
+    dm: DataManager,
+    *,
+    uni: UniverseGroup,
+    hlpr: PlotHelper,
+    model_name: str,
+    path_to_data: str,
+    mean_of: Tuple[str],
+    preprocess: Tuple[Union[str, dict]] = None,
+    transformations_log_level: int = 10,
+    sizes_from: str = None,
+    size_factor: float = 1.0,
+    **plot_kwargs,
+) -> None:
     """Plot the density of a mask, i.e. of a dataset holding booleans.
 
     This plotting function is useful when creating a plot from data that is
@@ -92,50 +101,65 @@ def density(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
         None: Description
     """
     # Get the data
-    data = uni['data'][model_name][path_to_data]
+    data = uni["data"][model_name][path_to_data]
 
     # Apply a mask, if configured
     if preprocess:
-        data = transform(data, *preprocess,
-                         log_level=transformations_log_level)
+        data = transform(
+            data, *preprocess, log_level=transformations_log_level
+        )
 
     # Check if the data is binary now, which is required for all below
-    if data.dtype is not np.dtype('bool'):
-        raise ValueError("Data at '{}' was of dtype {}, which needs to be "
-                         "converted to a binary mask for use in the "
-                         "density plot function. To do so, provide the "
-                         "`transformations` argument to the method."
-                         "".format(data.path, data.dtype))
+    if data.dtype is not np.dtype("bool"):
+        raise ValueError(
+            "Data at '{}' was of dtype {}, which needs to be "
+            "converted to a binary mask for use in the "
+            "density plot function. To do so, provide the "
+            "`transformations` argument to the method."
+            "".format(data.path, data.dtype)
+        )
 
     # Calculate the mean over the specified dimensions, if specified to do so
     density = data.mean(dim=mean_of) if mean_of else data
 
     # Associate time coordinates, if not already the case
-    if 'time' not in density.coords:
-        log.warning("Missing time coordinates for density data! Got:\n%s",
-                    density)
+    if "time" not in density.coords:
+        log.warning(
+            "Missing time coordinates for density data! Got:\n%s", density
+        )
 
     # If there are no sizes to be plotted, can directly do the line plot
     if sizes_from is None:
-        hlpr.ax.plot(density.coords['time'], density, **plot_kwargs)
+        hlpr.ax.plot(density.coords["time"], density, **plot_kwargs)
         return
 
     # Otherwise, need to get the sizes and performs a scatter plot
-    sizes = uni['data'][model_name][sizes_from]
+    sizes = uni["data"][model_name][sizes_from]
     # Need to normalize the sizes to the maximum value, otherwise it get's
     # really hard to choose a sensible size_factor.
 
     # Can now call the scatter plot
-    hlpr.ax.scatter(density.coords['time'], density,
-                    s=(sizes.data / sizes.max() * size_factor),
-                    **plot_kwargs)
+    hlpr.ax.scatter(
+        density.coords["time"],
+        density,
+        s=(sizes.data / sizes.max() * size_factor),
+        **plot_kwargs,
+    )
 
 
-@is_plot_func(creator_type=UniversePlotCreator,
-              helper_defaults=dict(**_density_hlpr_kwargs)
-              )
-def densities(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
-              model_name: str, to_plot: dict, **common_plot_kwargs):
+@is_plot_func(
+    creator_type=UniversePlotCreator,
+    helper_defaults=dict(**_density_hlpr_kwargs),
+)
+def densities(
+    dm: DataManager,
+    *,
+    uni: UniverseGroup,
+    hlpr: PlotHelper,
+    model_name: str,
+    to_plot: dict,
+    **common_plot_kwargs,
+):
     """Like density, but for several specifications given by the ``to_plot``
     argument.
 
@@ -155,24 +179,41 @@ def densities(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
     """
     for path_to_data, specs in to_plot.items():
         if not isinstance(specs, dict):
-            raise TypeError("Parameters for `path_to_data` '{}' were not a "
-                            "dict but {} with value: '{}'!"
-                            "".format(path_to_data, type(specs), specs))
+            raise TypeError(
+                "Parameters for `path_to_data` '{}' were not a "
+                "dict but {} with value: '{}'!"
+                "".format(path_to_data, type(specs), specs)
+            )
 
-        density(dm, uni=uni, hlpr=hlpr, model_name=model_name,
-                path_to_data=path_to_data, **specs, **common_plot_kwargs)
+        density(
+            dm,
+            uni=uni,
+            hlpr=hlpr,
+            model_name=model_name,
+            path_to_data=path_to_data,
+            **specs,
+            **common_plot_kwargs,
+        )
 
     if len(to_plot) > 1:
-        hlpr.provide_defaults('set_legend', use_legend=True, loc='best')
+        hlpr.provide_defaults("set_legend", use_legend=True, loc="best")
 
 
-@is_plot_func(creator_type=UniversePlotCreator,
-              helper_defaults=dict(
-                set_limits=dict(x=(0., None), y=(0., None))
-              ))
-def phase_space(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
-                model_name: str, x: str, y: str,
-                cmap: str=None, **scatter_kwargs):
+@is_plot_func(
+    creator_type=UniversePlotCreator,
+    helper_defaults=dict(set_limits=dict(x=(0.0, None), y=(0.0, None))),
+)
+def phase_space(
+    dm: DataManager,
+    *,
+    uni: UniverseGroup,
+    hlpr: PlotHelper,
+    model_name: str,
+    x: str,
+    y: str,
+    cmap: str = None,
+    **scatter_kwargs,
+):
     """Plots ``x`` and ``y`` data in a phase space plot. If ``cmap`` is given,
     the time development will be colour coded.
 
@@ -194,21 +235,25 @@ def phase_space(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
             development. If not given, will not color-code it.
         \**scatter_kwargs: Passed on to plt.scatter
     """
-    x = uni['data'][model_name][x]
-    y = uni['data'][model_name][y]
+    x = uni["data"][model_name][x]
+    y = uni["data"][model_name][y]
 
     # To reduce dimensionality, take the mean of all but the time dimension.
-    f_x = x.mean(dim=[d for d in x.dims if d != 'time'])
-    f_y = y.mean(dim=[d for d in y.dims if d != 'time'])
+    f_x = x.mean(dim=[d for d in x.dims if d != "time"])
+    f_y = y.mean(dim=[d for d in y.dims if d != "time"])
 
     # If a colormap was given, use it to color-code the time
-    cc_kwargs = ({} if cmap is None
-                 else dict(c=f_y.coords['time'], cmap=cmap))
+    cc_kwargs = {} if cmap is None else dict(c=f_y.coords["time"], cmap=cmap)
 
     # Plot the phase space
     sc = hlpr.ax.scatter(f_x, f_y, **cc_kwargs, **scatter_kwargs)
 
     # Add a colorbar
     if cc_kwargs:
-        hlpr.fig.colorbar(sc, ax=hlpr.ax, fraction=0.05, pad=0.02,
-                          label="Time [Iteration Steps]")
+        hlpr.fig.colorbar(
+            sc,
+            ax=hlpr.ax,
+            fraction=0.05,
+            pad=0.02,
+            label="Time [Iteration Steps]",
+        )

@@ -7,7 +7,7 @@ ModelInfoBundle_path_parsing:
     paths: &minimal_paths
       binary: /some/abs/path
       default_cfg: /some/abs/path
-  
+
   with_src_dir:
     <<: *minimal
     paths:
@@ -22,7 +22,7 @@ ModelInfoBundle_path_parsing:
     paths:
       <<: *minimal_paths
       default_cfg: some/rel/path
-  
+
   with_more_paths:
     <<: *minimal
     _raises: ValueError
@@ -44,15 +44,15 @@ ModelInfoBundle_path_parsing:
   missing_path_action_ignore:
     <<: *minimal
     missing_path_action: ignore
-  
+
   missing_path_action_log:
     <<: *minimal
     missing_path_action: log
-  
+
   missing_path_action_warn:
     <<: *minimal
     missing_path_action: warn
-  
+
   missing_path_action_raise:
     <<: *minimal
     _raises: ValueError
@@ -64,4 +64,3 @@ ModelInfoBundle_path_parsing:
     _raises: ValueError
     _match: Invalid missing_path_action
     missing_path_action: bad_value
-  

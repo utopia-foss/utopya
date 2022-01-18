@@ -30,7 +30,7 @@ test_cases:
 
 
   # Case 1
-  - max_rss: !expr 15 *1024*1024 
+  - max_rss: !expr 15 *1024*1024
 
     # Update uni config for this test case
     uni_cfg:

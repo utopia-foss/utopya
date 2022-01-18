@@ -2,12 +2,11 @@
 
 import copy
 import logging
-from typing import Union, Sequence
+from typing import Sequence, Union
 
 import xarray as xr
 
-from utopya.plotting import is_plot_func, PlotHelper
-
+from utopya.plotting import PlotHelper, is_plot_func
 
 # Local variables
 log = logging.getLogger(__name__)
@@ -15,22 +14,30 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
+
 @is_plot_func(
-    use_dag=True, required_dag_tags=('counts',),
+    use_dag=True,
+    required_dag_tags=("counts",),
     supports_animation=True,
     helper_defaults=dict(
         set_legend=dict(use_legend=True, loc="best", fontsize="small"),
         set_labels=dict(y="Counts"),
-    )
+    ),
 )
-def histogram(*, data: dict, hlpr: PlotHelper,
-              x: str, hue: str=None, frames: str=None,
-              coarsen_by: int=None,
-              align: str='edge',
-              bin_widths: Union[str, Sequence[float]]=None,
-              suptitle_kwargs: dict=None,
-              show_histogram_info: bool=True,
-              **bar_kwargs):
+def histogram(
+    *,
+    data: dict,
+    hlpr: PlotHelper,
+    x: str,
+    hue: str = None,
+    frames: str = None,
+    coarsen_by: int = None,
+    align: str = "edge",
+    bin_widths: Union[str, Sequence[float]] = None,
+    suptitle_kwargs: dict = None,
+    show_histogram_info: bool = True,
+    **bar_kwargs,
+):
     """Shows a distribution as a stacked bar plot, allowing animation.
 
     Expects as DAG result ``counts`` an xr.DataArray of one, two, or three
@@ -67,6 +74,7 @@ def histogram(*, data: dict, hlpr: PlotHelper,
     Raises:
         ValueError: Bad dimensionality or missing ``bin_widths`` DAG result
     """
+
     def stacked_bar_plot(ax, dists: xr.DataArray, bin_widths):
         """Given a 2D xr.DataArray, plots a stacked barplot"""
         bottom = None  # to keep track of the bottom edges for stacking
@@ -82,46 +90,62 @@ def histogram(*, data: dict, hlpr: PlotHelper,
         # Create the plots for each hue value
         for label, dist in dist_iter:
             dist = dist.squeeze(drop=True)
-            ax.bar(dist.coords[x], dist,
-                   align=align, width=bin_widths,
-                   bottom=bottom, label=label, **bar_kwargs)
+            ax.bar(
+                dist.coords[x],
+                dist,
+                align=align,
+                width=bin_widths,
+                bottom=bottom,
+                label=label,
+                **bar_kwargs,
+            )
             bottom = dist.data if bottom is None else bottom + dist.data
 
         # Annotate it
         if not show_histogram_info:
             return
         total_sum = dists.sum().item()
-        hlpr.ax.text(1, 1,
-                     (f"$N_{{bins}} = {dist.coords[x].size}$, "
-                      fr"$\Sigma_{{{x}}} = {total_sum:.4g}$"),
-                     transform=hlpr.ax.transAxes,
-                     verticalalignment='bottom', horizontalalignment='right',
-                     fontdict=dict(fontsize="smaller"),
-                     bbox=dict(facecolor="white", linewidth=.5, pad=2))
+        hlpr.ax.text(
+            1,
+            1,
+            (
+                f"$N_{{bins}} = {dist.coords[x].size}$, "
+                fr"$\Sigma_{{{x}}} = {total_sum:.4g}$"
+            ),
+            transform=hlpr.ax.transAxes,
+            verticalalignment="bottom",
+            horizontalalignment="right",
+            fontdict=dict(fontsize="smaller"),
+            bbox=dict(facecolor="white", linewidth=0.5, pad=2),
+        )
 
     # Retrieve the data
-    dists = data['counts']
+    dists = data["counts"]
 
     # Check expected dimensions
     expected_ndim = 1 + bool(hue) + bool(frames)
     if dists.ndim != expected_ndim:
-        raise ValueError(f"With `hue: {hue}` and `frames: {frames}`, expected "
-                         f"{expected_ndim}-dimensional data, but got:\n"
-                         f"{dists}")
+        raise ValueError(
+            f"With `hue: {hue}` and `frames: {frames}`, expected "
+            f"{expected_ndim}-dimensional data, but got:\n"
+            f"{dists}"
+        )
 
     # Calculate bin widths
     if bin_widths is None:
         bin_widths = dists.coords[x].diff(x)
-        bin_widths = bin_widths.pad({x: (0, 1)}, mode='edge')
+        bin_widths = bin_widths.pad({x: (0, 1)}, mode="edge")
 
     elif isinstance(bin_widths, str):
         log.remark("Using DAG result '%s' for bin widths ...", bin_widths)
         try:
             bin_widths = data[bin_widths]
         except KeyError:
-            raise ValueError(f"No DAG result '{bin_widths}' available for bin "
-                             "widths. Make sure `compute_only` is set such "
-                             "that the result will be computed.")
+            raise ValueError(
+                f"No DAG result '{bin_widths}' available for bin "
+                "widths. Make sure `compute_only` is set such "
+                "that the result will be computed."
+            )
 
     # Allow dynamically plotting without animation
     if not frames:
@@ -136,16 +160,18 @@ def histogram(*, data: dict, hlpr: PlotHelper,
 
     # Prepare some parameters for the update routine
     suptitle_kwargs = suptitle_kwargs if suptitle_kwargs else {}
-    if 'title' not in suptitle_kwargs:
-        suptitle_kwargs['title'] = "{dim:} = {value:d}"
+    if "title" not in suptitle_kwargs:
+        suptitle_kwargs["title"] = "{dim:} = {value:d}"
 
     # Define an animation update function. All frames are plotted therein.
     # There is no need to plot the first frame _outside_ the update function,
     # because it would be discarded anyway.
     def update():
         """The animation update function: a python generator"""
-        log.note("Commencing histogram animation for %d time steps ...",
-                 len(dists.coords[frames]))
+        log.note(
+            "Commencing histogram animation for %d time steps ...",
+            len(dists.coords[frames]),
+        )
 
         for t, _dists in dists.groupby(frames):
             # Plot a frame onto an empty canvas
@@ -153,12 +179,12 @@ def histogram(*, data: dict, hlpr: PlotHelper,
             stacked_bar_plot(hlpr.ax, _dists, bin_widths)
 
             # Set the y-limits
-            hlpr.invoke_helper('set_limits', y=[0, max_counts*1.05])
+            hlpr.invoke_helper("set_limits", y=[0, max_counts * 1.05])
 
             # Apply the suptitle format string, then invoke the helper
             st_kwargs = copy.deepcopy(suptitle_kwargs)
-            st_kwargs['title'] = st_kwargs['title'].format(dim='time', value=t)
-            hlpr.invoke_helper('set_suptitle', **st_kwargs)
+            st_kwargs["title"] = st_kwargs["title"].format(dim="time", value=t)
+            hlpr.invoke_helper("set_suptitle", **st_kwargs)
 
             # Done with this frame. Let the writer grab it.
             yield

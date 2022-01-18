@@ -1,4 +1,3 @@
-
 """This module provides plotting functions to visualize distributions."""
 
 import logging
@@ -7,38 +6,45 @@ from typing import Tuple, Union
 import numpy as np
 
 from .. import DataManager, UniverseGroup
-from ..plotting import is_plot_func, PlotHelper, UniversePlotCreator
 from ..dataprocessing import transform
+from ..plotting import PlotHelper, UniversePlotCreator, is_plot_func
 
 # Get a logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
-@is_plot_func(creator_type=UniversePlotCreator,
-              helper_defaults=dict(
-                set_labels=dict(x="Values", y="Counts")
-              ))
-def histogram(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
-              model_name: str, path_to_data: str,
-              histogram_kwargs: dict=None,
-              use_unique: bool=False,
-              preprocess: Tuple[Union[dict, str]]=None,
-              postprocess: Tuple[Union[dict, str]]=None,
-              mask_repeated: bool=False,
-              show_histogram_info: bool=True,
-              transformations_log_level: int=10,
-              pyplot_func_name: str='bar',
-              **pyplot_func_kwargs):
+
+@is_plot_func(
+    creator_type=UniversePlotCreator,
+    helper_defaults=dict(set_labels=dict(x="Values", y="Counts")),
+)
+def histogram(
+    dm: DataManager,
+    *,
+    uni: UniverseGroup,
+    hlpr: PlotHelper,
+    model_name: str,
+    path_to_data: str,
+    histogram_kwargs: dict = None,
+    use_unique: bool = False,
+    preprocess: Tuple[Union[dict, str]] = None,
+    postprocess: Tuple[Union[dict, str]] = None,
+    mask_repeated: bool = False,
+    show_histogram_info: bool = True,
+    transformations_log_level: int = 10,
+    pyplot_func_name: str = "bar",
+    **pyplot_func_kwargs,
+):
     """Calculates a histogram from the data and plots it.
-    
+
     This function is very versatile. Its capabilities range from a plain old
     histogram (only required arguments set) to the plot of a complementary
     cumulative probability distribution function.
-    
+
     Don't despair. The documentation of arguments below should give a good
     idea of what each parameter does.
-    
+
     Args:
         dm (DataManager): The data manager from which to retrieve the data
         uni (UniverseGroup): The selected universe data
@@ -77,19 +83,20 @@ def histogram(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
             passed to the plot call and can not be adjusted.
         **pyplot_func_kwargs: The kwargs passed on to the pyplot function
             chosen via the `pyplot_func_name` argument.
-    
+
     Raises:
         ValueError: When trying to make a bar plot with `use_unique` option
             enabled.
     """
     # Get the data
-    data = uni['data'][model_name][path_to_data]
+    data = uni["data"][model_name][path_to_data]
 
     # Assuming this is an xr.DataArray now
     # Apply transformations, e.g. to reduce dimensionality
     if preprocess:
-        data = transform(data, *preprocess,
-                         log_level=transformations_log_level)
+        data = transform(
+            data, *preprocess, log_level=transformations_log_level
+        )
 
     # Calculate the histogram, either via np.histogram or np.unique
     if not use_unique:
@@ -97,27 +104,32 @@ def histogram(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
         histogram_kwargs = histogram_kwargs if histogram_kwargs else {}
 
         # Replace None in `range` argument with min or max value
-        if None in histogram_kwargs.get('range', []):
-            rg = tuple(histogram_kwargs['range'])
-            histogram_kwargs['range'] = (rg[0] if rg[0] is not None
-                                         else float(data.min()),
-                                         rg[1] if rg[1] is not None
-                                         else float(data.max()))
-            log.debug("Auto-determined histogram range to %s",
-                      histogram_kwargs['range'])
+        if None in histogram_kwargs.get("range", []):
+            rg = tuple(histogram_kwargs["range"])
+            histogram_kwargs["range"] = (
+                rg[0] if rg[0] is not None else float(data.min()),
+                rg[1] if rg[1] is not None else float(data.max()),
+            )
+            log.debug(
+                "Auto-determined histogram range to %s",
+                histogram_kwargs["range"],
+            )
 
         # Calculate the histogram
         counts, bin_edges = np.histogram(data, **histogram_kwargs)
 
         # Calculate bin positions, i.e. midpoint of bin edges
-        bin_pos = bin_edges[:-1] + (np.diff(bin_edges) / 2.)
+        bin_pos = bin_edges[:-1] + (np.diff(bin_edges) / 2.0)
 
     else:
         if not np.issubdtype(data.dtype, np.integer):
-            log.warning("Calculating a histogram via np.unique with data of "
-                        "non-integer dtype %s might not lead to the desired "
-                        "results! You should reconsider your choice of the "
-                        "`use_unique` argument.", data.dtype)
+            log.warning(
+                "Calculating a histogram via np.unique with data of "
+                "non-integer dtype %s might not lead to the desired "
+                "results! You should reconsider your choice of the "
+                "`use_unique` argument.",
+                data.dtype,
+            )
 
         bin_pos, counts = np.unique(data, return_counts=True)
 
@@ -130,50 +142,62 @@ def histogram(dm: DataManager, *, uni: UniverseGroup, hlpr: PlotHelper,
 
     # Postprocessing
     if postprocess:
-        counts = transform(counts, *postprocess,
-                           log_level=transformations_log_level)
+        counts = transform(
+            counts, *postprocess, log_level=transformations_log_level
+        )
 
     # Plot the data using the given plot function name
-    if pyplot_func_name == 'bar':
+    if pyplot_func_name == "bar":
         if use_unique:
-            raise ValueError("Cannot do a 'bar' plot with `use_unique` option "
-                             "enabled! Select a different pyplot function by "
-                             "setting `pyplot_func_name` to, e.g., 'plot'.")
+            raise ValueError(
+                "Cannot do a 'bar' plot with `use_unique` option "
+                "enabled! Select a different pyplot function by "
+                "setting `pyplot_func_name` to, e.g., 'plot'."
+            )
 
         # Special case of bar plot, where the bar widths need be given
-        hlpr.ax.bar(bin_pos, counts, width=np.diff(bin_edges),
-                    **pyplot_func_kwargs)
+        hlpr.ax.bar(
+            bin_pos, counts, width=np.diff(bin_edges), **pyplot_func_kwargs
+        )
 
     else:
         plt_func = getattr(hlpr.ax, pyplot_func_name)
-        plt_func(bin_pos, counts,
-                 **pyplot_func_kwargs)
+        plt_func(bin_pos, counts, **pyplot_func_kwargs)
 
     # Add histogram information
     if show_histogram_info:
         # Generate an info string, containing total count and bin count and,
         # for the non-unique histogram: the range info
         if not use_unique:
-            info_str = ("$N_{{data}} = {Ntot:}$\n"
-                        "$N_{{bins}} = {Nbins:d}$\n"
-                        "bin width: ${bin_width:.3g}$\n"
-                        "bin range: $[{rg_min:.3g},\ {rg_max:.3g}]$"
-                        "".format(Ntot=data.size,
-                                  Nbins=len(bin_pos),
-                                  bin_width=np.mean(np.diff(bin_edges)),
-                                  rg_min=bin_edges[0],
-                                  rg_max=bin_edges[-1]))
+            info_str = (
+                "$N_{{data}} = {Ntot:}$\n"
+                "$N_{{bins}} = {Nbins:d}$\n"
+                "bin width: ${bin_width:.3g}$\n"
+                "bin range: $[{rg_min:.3g},\ {rg_max:.3g}]$"
+                "".format(
+                    Ntot=data.size,
+                    Nbins=len(bin_pos),
+                    bin_width=np.mean(np.diff(bin_edges)),
+                    rg_min=bin_edges[0],
+                    rg_max=bin_edges[-1],
+                )
+            )
             # NOTE .format operations can be escaped with '{' and '}'
-        
-        else:
-            info_str = ("$N_{{data}} = {Ntot:}$\n"
-                        "$N_{{unique}} = {Nunique:d}$"
-                        "".format(Ntot=data.size,
-                                  Nunique=len(bin_pos)))
 
-        hlpr.ax.text(1, 1, info_str,
-                     transform=hlpr.ax.transAxes,
-                     verticalalignment='top', horizontalalignment='right',
-                     fontdict=dict(fontsize="small"),
-                     bbox=dict(facecolor="white", linewidth=1.))
-    
+        else:
+            info_str = (
+                "$N_{{data}} = {Ntot:}$\n"
+                "$N_{{unique}} = {Nunique:d}$"
+                "".format(Ntot=data.size, Nunique=len(bin_pos))
+            )
+
+        hlpr.ax.text(
+            1,
+            1,
+            info_str,
+            transform=hlpr.ax.transAxes,
+            verticalalignment="top",
+            horizontalalignment="right",
+            fontdict=dict(fontsize="small"),
+            bbox=dict(facecolor="white", linewidth=1.0),
+        )

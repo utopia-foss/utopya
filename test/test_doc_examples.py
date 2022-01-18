@@ -33,55 +33,57 @@ be any significant imports on the global level of this test file!
 """
 
 from itertools import chain
+
+import numpy as np
+import pytest
 from pkg_resources import resource_filename
 
-import pytest
-import numpy as np
-
 import utopya
-from utopya.tools import load_yml
 from utopya.parameter import Parameter
-
+from utopya.tools import load_yml
 
 # Fixtures --------------------------------------------------------------------
 
 
 # -----------------------------------------------------------------------------
 
+
 def test_faq_frontend_yaml_tags():
     """Tests the YAML tag examples given in faq/frontend.rst"""
     # NOTE literalinclude is done from that file rather than from here
     path = resource_filename("test", "cfg/doc_examples/faq_frontend.yml")
-    cfg =load_yml(path)
+    cfg = load_yml(path)
 
     # Make some assertions for the more complex examples
-    g = cfg['yaml_tags_general']
-    assert g['fourtytwo'] == 42.
-    assert g['seconds_per_day'] == 60 * 60 * 24
-    assert g['powers'] == 2**10
-    assert g['parentheses'] == (2 + 3) * 4 / (5 - 6)
-    assert g['exp_notation'] == (2.34 / 3.45) * 1e-10
+    g = cfg["yaml_tags_general"]
+    assert g["fourtytwo"] == 42.0
+    assert g["seconds_per_day"] == 60 * 60 * 24
+    assert g["powers"] == 2 ** 10
+    assert g["parentheses"] == (2 + 3) * 4 / (5 - 6)
+    assert g["exp_notation"] == (2.34 / 3.45) * 1e-10
 
-    assert g['list_foo'] == list(range(10))
-    assert g['list_bar'] == [4, 6, 8, 10, 12, 14, 16, 18]
-    assert g['list_fancy'] == [10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100]
-    assert g['list_nested'] == [0, 2, 4, 6, 8, 10, 20, 40, 60, 80]
+    assert g["list_foo"] == list(range(10))
+    assert g["list_bar"] == [4, 6, 8, 10, 12, 14, 16, 18]
+    assert g["list_fancy"] == [10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100]
+    assert g["list_nested"] == [0, 2, 4, 6, 8, 10, 20, 40, 60, 80]
 
-    assert g['will_be_true'] is True
-    assert g['will_be_false'] is False
+    assert g["will_be_true"] is True
+    assert g["will_be_false"] is False
 
-    p = cfg['yaml_tags_python_only']
-    assert np.isnan(p['some_nan'])
-    assert p['some_inf'] == np.inf
-    assert p['some_ninf'] == - np.inf
+    p = cfg["yaml_tags_python_only"]
+    assert np.isnan(p["some_nan"])
+    assert p["some_inf"] == np.inf
+    assert p["some_ninf"] == -np.inf
+
 
 def test_config_validation_doc_params():
     """Tests the validation parameter objects in frontend/config_validation.rst"""
     path = resource_filename("test", "cfg/doc_examples/param_validation.yml")
     cfg = load_yml(path)
 
-    for param_key, param in chain(cfg["basic_tags"].items(),
-                                  cfg["shorthand_tags"].items()):
+    for param_key, param in chain(
+        cfg["basic_tags"].items(), cfg["shorthand_tags"].items()
+    ):
         # For those on the top level, perform validation
         if isinstance(param, Parameter):
             assert param.validate(param.default)

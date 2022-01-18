@@ -2,20 +2,19 @@
 objects and makes it possible to register new models.
 """
 
-import os
 import copy
 import logging
+import os
 from itertools import chain
 from typing import Dict
 
 import dantro.utils
 
-from .._yaml import yaml, write_yml, load_yml
+from .._yaml import load_yml, write_yml, yaml
 from ..cfg import UTOPIA_CFG_DIR
 from ..tools import pformat, recursive_update
-
-from .entry import ModelRegistryEntry
 from ._exceptions import BundleExistsError
+from .entry import ModelRegistryEntry
 
 # Local constants
 log = logging.getLogger(__name__)
@@ -23,13 +22,17 @@ log.setLevel(logging.WARNING)
 
 # -----------------------------------------------------------------------------
 
+
 class KeyOrderedDict(dantro.utils.KeyOrderedDict):
     """A key-ordered dict that expects string keys and sorts by the lower-case
     representation of keys.
     """
+
     DEFAULT_KEY_COMPARATOR = lambda _, k: k.lower()
 
+
 # -----------------------------------------------------------------------------
+
 
 class ModelRegistry:
     """The ModelRegistry class takes care of providing model information to the
@@ -46,7 +49,7 @@ class ModelRegistry:
     # TODO Consider making this class a singleton?
     """
 
-    def __init__(self, utopia_cfg_dir_path: str=UTOPIA_CFG_DIR):
+    def __init__(self, utopia_cfg_dir_path: str = UTOPIA_CFG_DIR):
         """Loads the utopia model registry from the configuration at the given
         path.
 
@@ -56,9 +59,10 @@ class ModelRegistry:
         """
         # Store paths
         self._paths = dict()
-        self._paths['utopia_cfg'] = utopia_cfg_dir_path
-        self._paths['registry'] = os.path.join(self._paths['utopia_cfg'],
-                                               'models')
+        self._paths["utopia_cfg"] = utopia_cfg_dir_path
+        self._paths["registry"] = os.path.join(
+            self._paths["utopia_cfg"], "models"
+        )
 
         # If the directories at these paths do not exist, create them
         if not os.path.exists(self.registry_dir):
@@ -71,13 +75,16 @@ class ModelRegistry:
         self._registry = KeyOrderedDict()
         self._load_from_registry_dir()
 
-        log.info("Ready. Have %d model%s registered.",
-                 len(self), "s" if len(self) != 1 else "")
+        log.info(
+            "Ready. Have %d model%s registered.",
+            len(self),
+            "s" if len(self) != 1 else "",
+        )
 
     @property
     def registry_dir(self) -> str:
         """The model registry directory path"""
-        return self._paths['registry']
+        return self._paths["registry"]
 
     def __len__(self) -> int:
         return len(self._registry)
@@ -85,14 +92,17 @@ class ModelRegistry:
     # Information .............................................................
 
     def __str__(self) -> str:
-        return ("<Utopia Model Registry; {} model{} registered>"
-                "".format(len(self), "s" if len(self) != 1 else ""))
+        return "<Utopia Model Registry; {} model{} registered>" "".format(
+            len(self), "s" if len(self) != 1 else ""
+        )
 
     @property
     def info_str(self) -> str:
         lines = []
-        lines.append("Utopia Model Registry ({} model{} registered)"
-                     "".format(len(self), "s" if len(self) != 1 else ""))
+        lines.append(
+            "Utopia Model Registry ({} model{} registered)"
+            "".format(len(self), "s" if len(self) != 1 else "")
+        )
 
         for model_name, _ in self.items():
             lines.append("  - {}".format(model_name))
@@ -102,8 +112,10 @@ class ModelRegistry:
     @property
     def info_str_detailed(self) -> str:
         lines = []
-        lines.append("Utopia Model Registry ({} model{} registered)"
-                     "".format(len(self), "s" if len(self) != 1 else ""))
+        lines.append(
+            "Utopia Model Registry ({} model{} registered)"
+            "".format(len(self), "s" if len(self) != 1 else "")
+        )
 
         for model_name, entry in self.items():
             lines.append("  - {:19s} {}".format(model_name, entry))
@@ -137,13 +149,15 @@ class ModelRegistry:
             return self._registry[model_name]
 
         except KeyError as err:
-            raise KeyError("No model with name '{}' found! Did you forget "
-                           "to register it? Available models: {}"
-                           "".format(model_name, ", ".join(self.keys()))
-                           ) from err
+            raise KeyError(
+                "No model with name '{}' found! Did you forget "
+                "to register it? Available models: {}"
+                "".format(model_name, ", ".join(self.keys()))
+            ) from err
 
-    def register_model_info(self, model_name: str, *, exists_action: str=None,
-                            **bundle_kwargs) -> ModelRegistryEntry:
+    def register_model_info(
+        self, model_name: str, *, exists_action: str = None, **bundle_kwargs
+    ) -> ModelRegistryEntry:
         """Register information for a single model. This method also allows to
         create a new entry if a model does not exist.
 
@@ -174,35 +188,43 @@ class ModelRegistry:
             ValueError: On ``exists_action == 'raise'`` and model already
                 existing.
         """
-        ACTIONS = ('skip', 'raise', 'clear', 'validate')
+        ACTIONS = ("skip", "raise", "clear", "validate")
 
         # Check exists_action
         if exists_action and exists_action not in ACTIONS:
-            raise ValueError("Invalid value for argument exists_action: '{}'! "
-                             "Possible actions: None, {}."
-                             "".format(exists_action, ", ".join(ACTIONS)))
+            raise ValueError(
+                "Invalid value for argument exists_action: '{}'! "
+                "Possible actions: None, {}."
+                "".format(exists_action, ", ".join(ACTIONS))
+            )
 
         # Register the model, if not already done
         if model_name not in self:
             self._add_entry(model_name)
 
         # Handle the exists_action argument
-        if exists_action == 'skip':
-            log.debug("Model '%s' already registered. Skipping ...",
-                      model_name)
+        if exists_action == "skip":
+            log.debug(
+                "Model '%s' already registered. Skipping ...", model_name
+            )
             return self[model_name]
 
-        elif exists_action == 'clear':
-            log.debug("Removing existing configuration bundles for model "
-                      "'%s' ...", model_name)
+        elif exists_action == "clear":
+            log.debug(
+                "Removing existing configuration bundles for model "
+                "'%s' ...",
+                model_name,
+            )
             self[model_name].clear()
 
-        elif exists_action == 'raise':
-            raise ValueError("A registry entry for model '{}' already exists! "
-                             "To add a configuration bundle to it, use its "
-                             "add_bundle method or set the exists_action "
-                             "argument to control the behaviour."
-                             "".format(model_name))
+        elif exists_action == "raise":
+            raise ValueError(
+                "A registry entry for model '{}' already exists! "
+                "To add a configuration bundle to it, use its "
+                "add_bundle method or set the exists_action "
+                "argument to control the behaviour."
+                "".format(model_name)
+            )
 
         # If this point is reached, a bundle is also to be added.
         if bundle_kwargs:
@@ -211,7 +233,7 @@ class ModelRegistry:
 
             except BundleExistsError:
                 # The exact same bundle already exists; this is the validation.
-                if exists_action != 'validate':
+                if exists_action != "validate":
                     # ... but it was not to be validated. Raise.
                     raise
 
@@ -225,17 +247,20 @@ class ModelRegistry:
             entry = self._registry.pop(model_name)
 
         except KeyError as err:
-            raise KeyError("Could not remove entry for model '{}', because "
-                           "no such model is registered. Available models: "
-                           "{}".format(model_name, ", ".join(self.keys()))
-                           ) from err
+            raise KeyError(
+                "Could not remove entry for model '{}', because "
+                "no such model is registered. Available models: "
+                "{}".format(model_name, ", ".join(self.keys()))
+            ) from err
         else:
-            log.info("Removed entry for model '%s' from model registry.",
-                     model_name)
+            log.info(
+                "Removed entry for model '%s' from model registry.", model_name
+            )
 
         os.remove(entry.registry_file_path)
-        log.debug("Removed associated registry file:  %s",
-                  entry.registry_file_path)
+        log.debug(
+            "Removed associated registry file:  %s", entry.registry_file_path
+        )
         # Entry goes out of scope now and is then be garbage-collected if it
         # does not exist anywhere else... Only if some action is taken on that
         # entry does it lead to file being created again.
@@ -258,9 +283,11 @@ class ModelRegistry:
             ModelRegistryEntry: The newly created entry
         """
         if model_name in self:
-            raise ValueError("There already is a model registered under the "
-                             "name of '{}'! Use the add_bundle method to add "
-                             "information to it.".format(model_name))
+            raise ValueError(
+                "There already is a model registered under the "
+                "name of '{}'! Use the add_bundle method to add "
+                "information to it.".format(model_name)
+            )
 
         entry = ModelRegistryEntry(model_name, registry_dir=self.registry_dir)
         self._registry[entry.model_name] = entry
@@ -274,8 +301,10 @@ class ModelRegistry:
         If called multiple times, will only load entries that are not already
         registered.
         """
-        log.info("Loading entries from model registry directory:\n  %s ...",
-                 self.registry_dir)
+        log.info(
+            "Loading entries from model registry directory:\n  %s ...",
+            self.registry_dir,
+        )
 
         # Go over files in registery directory
         new_entries = []
@@ -284,12 +313,15 @@ class ModelRegistry:
             model_name, ext = os.path.splitext(fname)
 
             # Continue only if it is a YAML file
-            if not ext.lower() == '.yml' or model_name in self:
+            if not ext.lower() == ".yml" or model_name in self:
                 continue
 
             self._add_entry(model_name)
             new_entries.append(model_name)
 
-        log.debug("Loaded %s new entr%s: %s",
-                  len(new_entries), "ies" if len(new_entries) != 1 else "y",
-                  ", ".join(new_entries))
+        log.debug(
+            "Loaded %s new entr%s: %s",
+            len(new_entries),
+            "ies" if len(new_entries) != 1 else "y",
+            ", ".join(new_entries),
+        )

@@ -1,21 +1,21 @@
 """This module provides graph plotting functions."""
 
-import os
 import copy
 import logging
+import os
 import warnings
-from itertools import product, chain
-from typing import Sequence, Union, Callable, Dict, Tuple, Any
+from itertools import chain, product
+from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
-import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import xarray as xr
 
-from utopya.plotting import is_plot_func, PlotHelper
 from utopya.plot_funcs._graph import GraphPlot
 from utopya.plot_funcs._mpl_helpers import ColorManager
+from utopya.plotting import PlotHelper, is_plot_func
 
 # Get a logger
 log = logging.getLogger(__name__)
@@ -23,24 +23,25 @@ log = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 # Helper Methods
 
+
 def graph_array_from_group(
     graph_group,
     *,
-    graph_creation: dict=None,
-    register_property_maps: dict=None,
-    clear_existing_property_maps: bool=True,
-    times: dict=None,
-    sel: dict=None,
-    isel: dict=None
+    graph_creation: dict = None,
+    register_property_maps: dict = None,
+    clear_existing_property_maps: bool = True,
+    times: dict = None,
+    sel: dict = None,
+    isel: dict = None,
 ) -> xr.DataArray:
     """From a ``GraphGroup`` creates a DataArray containing the networkx graphs
     created from the graph group at the specified points in the group's
     coordinate space.
-    
+
     From all coordinates provided via the selection kwargs the cartesian
     product is taken. Each of those points represents one entry in the returned
     DataArray. The selection kwargs in ``graph_creation`` are ignored silently.
-    
+
     Args:
         graph_group: The graph group
         graph_creation (dict, optional): Graph creation configuration
@@ -51,7 +52,7 @@ def graph_array_from_group(
         times (dict, optional): *Deprecated*: Equivalent to a sel.time entry
         sel (dict, optional): Select by value
         isel (dict, optional): Select by index
-    
+
     Returns:
         xr.DataArray: networkx graphs with the respective graph group coordinates
     """
@@ -74,7 +75,7 @@ def graph_array_from_group(
         warnings.warn(
             "The 'times' argument is deprecated and will be removed. Use the "
             "'sel' and 'isel' arguments instead to specify a time selection.",
-            DeprecationWarning
+            DeprecationWarning,
         )
 
         if len(times) > 1:
@@ -86,7 +87,8 @@ def graph_array_from_group(
         if "from_property" in times:
             sel["time"] = list(
                 graph_group._get_item_or_pmap(times["from_property"])
-                .coords["time"].values
+                .coords["time"]
+                .values
             )
 
         elif "sel" in times:
@@ -100,7 +102,8 @@ def graph_array_from_group(
         if isinstance(sel[dim], dict) and "from_property" in sel[dim]:
             sel[dim] = list(
                 graph_group._get_item_or_pmap(sel[dim]["from_property"])
-                .coords[dim].values
+                .coords[dim]
+                .values
             )
 
     # With the given selectors, can now set up the graph-DataArray and create
@@ -109,19 +112,19 @@ def graph_array_from_group(
     # collect them all and separate them again afterwards.
     dims = list(sel.keys()) + list(isel.keys())
     coords = {d: [] for d in dims}
-    
+
     all_selectors = [
         c if isinstance(c, (list, tuple, np.ndarray)) else [c]
         for c in chain(sel.values(), isel.values())
     ]
 
     graphs = np.empty(tuple(len(c) for c in all_selectors), dtype="object")
-    
+
     indices = [[i for i in range(len(c))] for c in all_selectors]
 
     for idxs, selector in zip(product(*indices), product(*all_selectors)):
-        sel_coords = selector[:len(sel)]
-        isel_coords = selector[len(sel):]
+        sel_coords = selector[: len(sel)]
+        isel_coords = selector[len(sel) :]
 
         # Prepare the selectors for the single points in coordinate space
         select = {d: c for d, c in zip(sel.keys(), sel_coords)}
@@ -150,18 +153,19 @@ def graph_array_from_group(
 
     return graphs
 
+
 def graph_animation_update(
     *,
     hlpr: PlotHelper,
-    graphs: xr.DataArray=None,
+    graphs: xr.DataArray = None,
     graph_group=None,
-    graph_creation: dict=None,
-    register_property_maps: dict=None,
-    clear_existing_property_maps: bool=True,
-    positions: dict=None,
-    animation_kwargs: dict=None,
-    suptitle_kwargs: dict=None,
-    **drawing_kwargs
+    graph_creation: dict = None,
+    register_property_maps: dict = None,
+    clear_existing_property_maps: bool = True,
+    positions: dict = None,
+    animation_kwargs: dict = None,
+    suptitle_kwargs: dict = None,
+    **drawing_kwargs,
 ):
     """Graph animation frame generator. Yields whenever the plot helper may
     grab the current frame.
@@ -261,7 +265,7 @@ def graph_animation_update(
         suptitle_kwargs["title"] = "; ".join(
             [f"{dim}" + " = {" + dim + "}" for dim in graphs.coords]
         )
- 
+
     def get_graph_and_coords(graphs: xr.DataArray):
         """Generator that yields the (graph, coordinates) pairs"""
         dims = graphs.dims
@@ -277,11 +281,7 @@ def graph_animation_update(
                 }
                 # Also get the scalar coordinates which were not stacked
                 coords.update(
-                    {
-                        d: c.item()
-                        for d, c in el.coords.items()
-                        if d != "_flat"
-                    }
+                    {d: c.item() for d, c in el.coords.items() if d != "_flat"}
                 )
                 yield g, coords
 
@@ -346,11 +346,11 @@ def graph_animation_update(
 
         # Let the writer grab the current frame
         yield
-        
+
         if not _missing_val:
             # Clean up the frame
             gp.clear_plot(keep_colorbars=not _update_colormapping)
-            
+
             if _first_graph:
                 # If the positions should be fixed, overwrite the positions arg
                 if not update_positions:
@@ -359,22 +359,24 @@ def graph_animation_update(
                 # Done handling the first GraphPlot.draw call
                 _first_graph = False
 
+
 # -----------------------------------------------------------------------------
 # Plot functions
+
 
 @is_plot_func(use_dag=True, supports_animation=True)
 def draw_graph(
     *,
     hlpr: PlotHelper,
     data: dict,
-    graph_group_tag: str="graph_group",
-    graph: Union[nx.Graph, xr.DataArray]=None,
-    graph_creation: dict=None,
-    graph_drawing: dict=None,
-    graph_animation: dict=None,
-    register_property_maps: Sequence[str]=None,
-    clear_existing_property_maps: bool=True,
-    suptitle_kwargs: dict=None
+    graph_group_tag: str = "graph_group",
+    graph: Union[nx.Graph, xr.DataArray] = None,
+    graph_creation: dict = None,
+    graph_drawing: dict = None,
+    graph_animation: dict = None,
+    register_property_maps: Sequence[str] = None,
+    clear_existing_property_maps: bool = True,
+    suptitle_kwargs: dict = None,
 ):
     """Draws a graph either from a :py:class:`~utopya.datagroup.GraphGroup` or
     directly from a ``networkx.Graph`` using the
@@ -515,7 +517,7 @@ def draw_graph(
                     "Received both a 'graph' argument and a 'graph_creation' "
                     "configuration. The latter will be ignored. To remove "
                     "this warning set graph_creation to None.",
-                    UserWarning
+                    UserWarning,
                 )
 
             if isinstance(graph, xr.DataArray):
@@ -533,7 +535,7 @@ def draw_graph(
 
             else:
                 g = graph
-            
+
             # Create a GraphPlot from a nx.Graph
             gp = GraphPlot(g=g, fig=hlpr.fig, ax=hlpr.ax, **graph_drawing)
 

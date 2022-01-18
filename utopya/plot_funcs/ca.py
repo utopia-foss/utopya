@@ -2,30 +2,29 @@
 
 import copy
 import logging
-from typing import Union, Dict, Callable
-
-import numpy as np
-import xarray as xr
+from typing import Callable, Dict, Union
 
 import matplotlib as mpl
-from matplotlib.colors import ListedColormap
+import numpy as np
+import xarray as xr
 from matplotlib.collections import RegularPolyCollection
+from matplotlib.colors import ListedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from .. import DataManager, UniverseGroup
-from ..plotting import UniversePlotCreator, PlotHelper, is_plot_func
 from ..dataprocessing import transform
+from ..plotting import PlotHelper, UniversePlotCreator, is_plot_func
 from ..tools import recursive_update
-
 
 # Get a logger
 log = logging.getLogger(__name__)
 
 # Increase log threshold for animation module
-logging.getLogger('matplotlib.animation').setLevel(logging.WARNING)
+logging.getLogger("matplotlib.animation").setLevel(logging.WARNING)
 
 
 # -----------------------------------------------------------------------------
+
 
 def _get_ax_size(ax, fig) -> tuple:
     """The width and height of the given axis in pixels"""
@@ -36,10 +35,13 @@ def _get_ax_size(ax, fig) -> tuple:
     return width, height
 
 
-def imshow_hexagonal(data: xr.DataArray, *, hlpr: PlotHelper,
-                     colormap: Union[str, mpl.colors.Colormap],
-                     **kwargs
-                     ) -> mpl.image.AxesImage:
+def imshow_hexagonal(
+    data: xr.DataArray,
+    *,
+    hlpr: PlotHelper,
+    colormap: Union[str, mpl.colors.Colormap],
+    **kwargs,
+) -> mpl.image.AxesImage:
     """Display data as an image, i.e., on a 2D hexagonal grid.
 
     Args:
@@ -53,7 +55,7 @@ def imshow_hexagonal(data: xr.DataArray, *, hlpr: PlotHelper,
     width, height = _get_ax_size(hlpr.ax, hlpr.fig)
     s = (height / data.y.size) / 0.75 / 2
     # NOTE the 0.75 factor is required because of the hexagonal offset geometry
-    area = 3**1.5 / 2 * s**2
+    area = 3 ** 1.5 / 2 * s ** 2
 
     # distinguish pair and impair rows (impair have offset)
     hex_s = 2 * data.isel(y=0).y
@@ -61,15 +63,15 @@ def imshow_hexagonal(data: xr.DataArray, *, hlpr: PlotHelper,
 
     # compute offsets of polygons
     xx, yy = np.meshgrid(data.x, data.y)
-    x_offsets = xr.DataArray(data=xx,
-                             dims=("y", "x"),
-                             coords=dict(x=data.x, y=data.y))
-    y_offsets = xr.DataArray(data=yy,
-                             dims=("y", "x"),
-                             coords=dict(x=data.x, y=data.y))
+    x_offsets = xr.DataArray(
+        data=xx, dims=("y", "x"), coords=dict(x=data.x, y=data.y)
+    )
+    y_offsets = xr.DataArray(
+        data=yy, dims=("y", "x"), coords=dict(x=data.x, y=data.y)
+    )
 
     # ... and add an x-offset for impair rows
-    x_origin = data.isel(x=0, y=0).coords['x']
+    x_origin = data.isel(x=0, y=0).coords["x"]
     x_offsets[y_ids % 2 == 1] += x_origin
 
     # # assign the true coordinates
@@ -84,7 +86,9 @@ def imshow_hexagonal(data: xr.DataArray, *, hlpr: PlotHelper,
     map_color = mpl.cm.ScalarMappable(cmap=cmap)
 
     pcoll = RegularPolyCollection(
-        6, sizes=(area,), rotation=0,
+        6,
+        sizes=(area,),
+        rotation=0,
         facecolor=map_color.to_rgba(data.data.flatten()),
         offsets=np.transpose(
             [x_offsets.data.flatten(), y_offsets.data.flatten()]
@@ -95,33 +99,36 @@ def imshow_hexagonal(data: xr.DataArray, *, hlpr: PlotHelper,
     hlpr.ax.add_collection(pcoll)
 
     # use same length scale in x and y
-    hlpr.ax.set_aspect('equal')
+    hlpr.ax.set_aspect("equal")
 
     # rescale cmap
     im = mpl.image.AxesImage(hlpr.ax)
 
     im.set_cmap(colormap)
-    if 'vmin' in kwargs and 'vmax' in kwargs:
+    if "vmin" in kwargs and "vmax" in kwargs:
         # From `limits` argument; will either have none or both
-        im.set_clim(kwargs['vmin'], kwargs['vmax'])
-
+        im.set_clim(kwargs["vmin"], kwargs["vmax"])
 
     return im
 
 
 # -----------------------------------------------------------------------------
 
-@is_plot_func(creator_type=UniversePlotCreator,
-              supports_animation=True)
-def state(dm: DataManager, *,
-          uni: UniverseGroup,
-          hlpr: PlotHelper,
-          model_name: str,
-          to_plot: dict,
-          time_idx: int,
-          transform_data: dict=None, transformations_log_level: int=10,
-          preprocess_funcs: Dict[str, Callable]=None,
-          default_imshow_kwargs: dict=None):
+
+@is_plot_func(creator_type=UniversePlotCreator, supports_animation=True)
+def state(
+    dm: DataManager,
+    *,
+    uni: UniverseGroup,
+    hlpr: PlotHelper,
+    model_name: str,
+    to_plot: dict,
+    time_idx: int,
+    transform_data: dict = None,
+    transformations_log_level: int = 10,
+    preprocess_funcs: Dict[str, Callable] = None,
+    default_imshow_kwargs: dict = None,
+):
     """Plots the state of the cellular automaton as a 2D heat map.
     This plot function can be used for a single plot, but also supports
     animation.
@@ -179,32 +186,44 @@ def state(dm: DataManager, *,
     """
     # Helper functions ........................................................
 
-    def prepare_data(prop_name: str, *,
-                     all_data: dict, time_idx: int) -> np.ndarray:
+    def prepare_data(
+        prop_name: str, *, all_data: dict, time_idx: int
+    ) -> np.ndarray:
         """Prepares the data for plotting"""
         # Get the data from the dict of 2d data
         data = all_data[prop_name][time_idx]
 
         # If preprocessing is available for this property, call that function
         if transform_data and preprocess_funcs:
-            log.warning("Received both arguments `transform_data` and "
-                        "`preprocess_funcs`! Will perform first the "
-                        "transformations, then the additional preprocessing.")
+            log.warning(
+                "Received both arguments `transform_data` and "
+                "`preprocess_funcs`! Will perform first the "
+                "transformations, then the additional preprocessing."
+            )
 
         if transform_data:
-            data = transform(data, *transform_data.get(prop_name, {}),
-                             log_level=transformations_log_level)
+            data = transform(
+                data,
+                *transform_data.get(prop_name, {}),
+                log_level=transformations_log_level,
+            )
 
         if preprocess_funcs and prop_name in preprocess_funcs:
             data = preprocess_funcs[prop_name](data)
 
         return data
 
-    def plot_property(prop_name: str, *, data: xr.DataArray,
-                      limits: list=None, cmap: Union[str, dict]='viridis',
-                      title: str=None,
-                      no_cbar_markings: bool=False, imshow_kwargs: dict=None,
-                      **cbar_kwargs):
+    def plot_property(
+        prop_name: str,
+        *,
+        data: xr.DataArray,
+        limits: list = None,
+        cmap: Union[str, dict] = "viridis",
+        title: str = None,
+        no_cbar_markings: bool = False,
+        imshow_kwargs: dict = None,
+        **cbar_kwargs,
+    ):
         """Helper function to plot a property on a given axis and return
         an imshow object
 
@@ -238,44 +257,56 @@ def state(dm: DataManager, *,
             norm = mpl.colors.BoundaryNorm(bounds, colormap.N)
 
         else:
-            raise TypeError("Argument cmap needs to be either a string with "
-                            "name of the colormap or a dict with values for a "
-                            "discrete colormap. Was: {} with value: '{}'"
-                            "".format(type(cmap), cmap))
+            raise TypeError(
+                "Argument cmap needs to be either a string with "
+                "name of the colormap or a dict with values for a "
+                "discrete colormap. Was: {} with value: '{}'"
+                "".format(type(cmap), cmap)
+            )
 
         # Parse additional colorbar kwargs and set some default values
         add_cbar_kwargs = dict()
-        if 'fraction' not in cbar_kwargs:
-            add_cbar_kwargs['fraction'] = 0.05
+        if "fraction" not in cbar_kwargs:
+            add_cbar_kwargs["fraction"] = 0.05
 
-        if 'pad' not in cbar_kwargs:
-            add_cbar_kwargs['pad'] = 0.02
+        if "pad" not in cbar_kwargs:
+            add_cbar_kwargs["pad"] = 0.02
 
         # Fill imshow_kwargs, using defaults
         imshow_kwargs = imshow_kwargs if imshow_kwargs else {}
-        imshow_kwargs = recursive_update(copy.deepcopy(imshow_kwargs),
-                                         default_imshow_kwargs
-                                         if default_imshow_kwargs else {})
+        imshow_kwargs = recursive_update(
+            copy.deepcopy(imshow_kwargs),
+            default_imshow_kwargs if default_imshow_kwargs else {},
+        )
         if limits:
-            imshow_kwargs['vmin'] = limits[0]
-            imshow_kwargs['vmax'] = limits[1]
+            imshow_kwargs["vmin"] = limits[0]
+            imshow_kwargs["vmax"] = limits[1]
 
         # Create imshow object on the currently selected axis
-        structure = data.attrs.get('grid_structure')
-        if structure == 'square' or structure is None:
-            im = hlpr.ax.imshow(data.T, cmap=colormap, animated=True,
-                                origin='lower', aspect='equal',
-                                **imshow_kwargs)
+        structure = data.attrs.get("grid_structure")
+        if structure == "square" or structure is None:
+            im = hlpr.ax.imshow(
+                data.T,
+                cmap=colormap,
+                animated=True,
+                origin="lower",
+                aspect="equal",
+                **imshow_kwargs,
+            )
 
-        elif structure == 'hexagonal':
+        elif structure == "hexagonal":
             hlpr.ax.clear()
-            im = imshow_hexagonal(data=data, hlpr=hlpr, animated=True,
-                                  colormap=colormap, **imshow_kwargs)
-            title=(title if title else prop_name)
+            im = imshow_hexagonal(
+                data=data,
+                hlpr=hlpr,
+                animated=True,
+                colormap=colormap,
+                **imshow_kwargs,
+            )
+            title = title if title else prop_name
             hlpr.ax.set_title(title)
 
-
-        elif structure == 'triangular':
+        elif structure == "triangular":
             raise ValueError("Plotting of triangular grid not implemented!")
 
         else:
@@ -285,19 +316,23 @@ def state(dm: DataManager, *,
         # For hexagonal grids, manually create a separate axis next to the current
         # plotting axis. Add a cbar and manually set the ticks and boundaries (as
         # the cbar returned by the mpl.image.AxesImage has default range (0, 1)
-        if structure == 'hexagonal':
+        if structure == "hexagonal":
             cax.clear()
             if bounds:
                 num_colors = len(cmap)
-                boundaries = [i/num_colors for i in range(num_colors+1)]
-                tick_locs = [(2*i+1)/(2*num_colors) for i in range(num_colors)]
+                boundaries = [i / num_colors for i in range(num_colors + 1)]
+                tick_locs = [
+                    (2 * i + 1) / (2 * num_colors) for i in range(num_colors)
+                ]
             else:
                 boundaries = None
-                tick_locs = [i*0.25 for i in range(5)]
+                tick_locs = [i * 0.25 for i in range(5)]
                 if isinstance(colormap, str):
                     colormap = mpl.cm.get_cmap(name=colormap)
 
-            cbar = mpl.colorbar.ColorbarBase(cax, cmap=colormap, boundaries = boundaries)
+            cbar = mpl.colorbar.ColorbarBase(
+                cax, cmap=colormap, boundaries=boundaries
+            )
             cbar.set_ticks(tick_locs)
 
             # For discrete colorbars, set the tick labels at the positions
@@ -313,17 +348,21 @@ def state(dm: DataManager, *,
                 else:
                     diff = upper - lower
 
-                ticklabels = [i*diff/4+lower for i in range(5)]
+                ticklabels = [i * diff / 4 + lower for i in range(5)]
                 cbar.ax.set_yticklabels(ticklabels)
 
         else:
-            cbar = hlpr.fig.colorbar(im, ax=hlpr.ax, ticks=bounds,
-                                     **cbar_kwargs, **add_cbar_kwargs)
+            cbar = hlpr.fig.colorbar(
+                im, ax=hlpr.ax, ticks=bounds, **cbar_kwargs, **add_cbar_kwargs
+            )
             # For a discrete colormap, adjust the tick positions
             if bounds:
                 num_colors = len(cmap)
-                tick_locs = (  (np.arange(num_colors) + 0.5)
-                             * (num_colors-1)/num_colors)
+                tick_locs = (
+                    (np.arange(num_colors) + 0.5)
+                    * (num_colors - 1)
+                    / num_colors
+                )
                 cbar.set_ticks(tick_locs)
                 cbar.ax.set_yticklabels(cmap.keys())
 
@@ -333,39 +372,43 @@ def state(dm: DataManager, *,
             cbar.ax.set_yticklabels([])
 
         # Remove main axis labels and ticks
-        hlpr.ax.axis('off')
+        hlpr.ax.axis("off")
 
         # Provide configuration options to plot helper
-        hlpr.provide_defaults('set_title',
-                              title=(title if title else prop_name))
+        hlpr.provide_defaults(
+            "set_title", title=(title if title else prop_name)
+        )
 
         return im
 
     # Prepare the data ........................................................
     # Get the group that all datasets are in
-    grp = uni['data'][model_name]
+    grp = uni["data"][model_name]
 
     # Collect all data
     all_data = {p: grp[p] for p in to_plot.keys()}
     shapes = [d.shape for p, d in all_data.items()]
 
     if any([shape != shapes[0] for shape in shapes]):
-        raise ValueError("Shape mismatch of properties {}: {}! Cannot plot."
-                         "".format(", ".join(to_plot.keys()), shapes))
+        raise ValueError(
+            "Shape mismatch of properties {}: {}! Cannot plot."
+            "".format(", ".join(to_plot.keys()), shapes)
+        )
 
     # Can now be sure they all have the same shape,
     # so its fine to take the first shape to extract the number of steps
     num_steps = shapes[0][0]  # TODO use xarray
 
-    structure = prepare_data(list(to_plot.keys())[0],
-                      all_data=all_data, time_idx=0).attrs.get('grid_structure')
-
+    structure = prepare_data(
+        list(to_plot.keys())[0], all_data=all_data, time_idx=0
+    ).attrs.get("grid_structure")
 
     # Prepare the figure ......................................................
     # Prepare the figure to have as many columns as there are properties
-    hlpr.setup_figure(ncols=len(to_plot),
-                      scale_figsize_with_subplots_shape=True)
-    if structure == 'hexagonal':
+    hlpr.setup_figure(
+        ncols=len(to_plot), scale_figsize_with_subplots_shape=True
+    )
+    if structure == "hexagonal":
         old_figsize = hlpr.fig.get_size_inches()  # (width, height)
         hlpr.fig.set_size_inches(
             old_figsize[0] * 1.25,
@@ -382,7 +425,7 @@ def state(dm: DataManager, *,
         hlpr.select_axis(col_no, 0)
 
         # For hexagonal grids, add custom colorbar axis
-        if structure == 'hexagonal':
+        if structure == "hexagonal":
             divider = make_axes_locatable(hlpr.ax)
             cax = divider.append_axes("right", size="5%", pad=0.2)
             hlpr.select_axis(col_no, 0)
@@ -399,9 +442,12 @@ def state(dm: DataManager, *,
 
     def update_data():
         """Updates the data of the imshow objects"""
-        log.info("Plotting animation with %d frames of %d %s each ...",
-                 num_steps, len(to_plot),
-                 "property" if len(to_plot) == 1 else "properties")
+        log.info(
+            "Plotting animation with %d frames of %d %s each ...",
+            num_steps,
+            len(to_plot),
+            "property" if len(to_plot) == 1 else "properties",
+        )
 
         for time_idx in range(num_steps):
             log.debug("Plotting frame for time index %d ...", time_idx)
@@ -412,19 +458,21 @@ def state(dm: DataManager, *,
                 hlpr.select_axis(col_no, 0)
 
                 # Get the data for this time step
-                data = prepare_data(prop_name,
-                                    all_data=all_data, time_idx=time_idx)
+                data = prepare_data(
+                    prop_name, all_data=all_data, time_idx=time_idx
+                )
 
                 # Get the structure of the grid data
-                structure = data.attrs.get('grid_structure')
+                structure = data.attrs.get("grid_structure")
 
                 # For hexagonal grids recreate the plot each time.
                 # Just resetting the data does not show the updated states
                 # otherwise because the facecolors have to be updated, too.
                 # For other grid structures just update the data and colormap.
-                if structure == 'hexagonal':
-                    ims[prop_name] = plot_property(prop_name, data=data,
-                                                   **props)
+                if structure == "hexagonal":
+                    ims[prop_name] = plot_property(
+                        prop_name, data=data, **props
+                    )
 
                 else:
                     # Update imshow data without creating a new object
@@ -434,8 +482,8 @@ def state(dm: DataManager, *,
                     # the case of continuous colormaps. A discrete colormap,
                     # that is provided as a dict, should never have to
                     # autoscale.
-                    if not isinstance(props.get('cmap'), dict):
-                        if not props.get('limits'):
+                    if not isinstance(props.get("cmap"), dict):
+                        if not props.get("limits"):
                             ims[prop_name].autoscale()
 
             # Done with this frame; yield control to the animation framework

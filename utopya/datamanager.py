@@ -7,8 +7,8 @@ Utopia data.
 import logging
 
 import dantro as dtr
-import dantro.data_mngr
 import dantro.data_loaders
+import dantro.data_mngr
 
 import utopya.datacontainer as udc
 import utopya.datagroup as udg
@@ -22,8 +22,8 @@ def _condense_thresh_func(*, level, num_items, total_item_count) -> int:
     element.
     """
     # For high item counts, always condense
-    if total_item_count > 100: # NOTE This is along one recursion branch!
-        return 7 # shows first three and last three
+    if total_item_count > 100:  # NOTE This is along one recursion branch!
+        return 7  # shows first three and last three
 
     # Now, distinguish by level
     if level == 1:
@@ -39,10 +39,13 @@ def _condense_thresh_func(*, level, num_items, total_item_count) -> int:
     # All other cases: do not condense
     return None
 
+
 # -----------------------------------------------------------------------------
 
-class DataManager(dtr.data_loaders.AllAvailableLoadersMixin,
-                  dtr.data_mngr.DataManager):
+
+class DataManager(
+    dtr.data_loaders.AllAvailableLoadersMixin, dtr.data_mngr.DataManager
+):
     """This class manages the data that is written out by Utopia simulations.
 
     It is based on the dantro.DataManager class and adds the functionality for
@@ -53,8 +56,9 @@ class DataManager(dtr.data_loaders.AllAvailableLoadersMixin,
     """
 
     # Register known group types
-    _DATA_GROUP_CLASSES = dict(MultiverseGroup=udg.MultiverseGroup,
-                               GraphGroup=udg.GraphGroup)
+    _DATA_GROUP_CLASSES = dict(
+        MultiverseGroup=udg.MultiverseGroup, GraphGroup=udg.GraphGroup
+    )
 
     # Tell the HDF5 loader which container class to use
     _HDF5_DSET_DEFAULT_CLS = udc.XarrayDC
@@ -63,16 +67,20 @@ class DataManager(dtr.data_loaders.AllAvailableLoadersMixin,
     _HDF5_MAP_FROM_ATTR = "content"
 
     # The mapping of different content values to a data group type
-    _HDF5_GROUP_MAP = dict(network=udg.GraphGroup,
-                           graph=udg.GraphGroup,
-                           time_series=udg.TimeSeriesGroup,
-                           time_series_heterogeneous=udg.HeterogeneousTimeSeriesGroup)
+    _HDF5_GROUP_MAP = dict(
+        network=udg.GraphGroup,
+        graph=udg.GraphGroup,
+        time_series=udg.TimeSeriesGroup,
+        time_series_heterogeneous=udg.HeterogeneousTimeSeriesGroup,
+    )
 
     # The mapping of different content values to a data container types
-    _HDF5_DSET_MAP = dict(grid=udc.GridDC,
-                          unlabelled_data=udc.NumpyDC,
-                          labelled_data=udc.XarrayDC,
-                          array_of_yaml_strings=udc.XarrayYamlDC)
+    _HDF5_DSET_MAP = dict(
+        grid=udc.GridDC,
+        unlabelled_data=udc.NumpyDC,
+        labelled_data=udc.XarrayDC,
+        array_of_yaml_strings=udc.XarrayYamlDC,
+    )
 
     # Condensed tree representation: maximum level
     _COND_TREE_MAX_LEVEL = 10

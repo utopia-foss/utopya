@@ -11,11 +11,11 @@ import time
 import pytest
 
 import utopya
+from utopya.cfg import load_from_cfg_dir, write_to_cfg_dir
 from utopya.testtools import ModelTest
-from utopya.cfg import write_to_cfg_dir, load_from_cfg_dir
-
 
 # Fixtures --------------------------------------------------------------------
+
 
 @pytest.fixture
 def tmp_utopya_cfg():
@@ -29,14 +29,13 @@ def tmp_utopya_cfg():
     write_to_cfg_dir("utopya", previous_state)
 
 
-
 # Tests -----------------------------------------------------------------------
+
 
 def test_ModelTest_init():
     """Tests the initialisation and properties of the ModelTest class"""
     # Initialize
     mtc = ModelTest("dummy", test_file=__file__)
-
 
     # Assert that property access works
     assert mtc.name == "dummy"
@@ -59,6 +58,7 @@ def test_ModelTest_init():
     with pytest.raises(ValueError, match="Given base_dir path /some/imag"):
         ModelTest("dummy", test_file="/some/imaginary/path/to/a/testfile")
 
+
 def test_ModelTest_create_mv():
     """Tests the creation of Multiverses using the ModelTest class"""
     mtc = ModelTest("dummy", test_file=__file__)
@@ -70,9 +70,11 @@ def test_ModelTest_create_mv():
     # Pass some more information to the function to call other branches of the
     # function where arguments are inserted (nonzero exit handling and the
     # temporary file path)
-    mv2 = mtc.create_mv(from_cfg="cfg/run_cfg.yml",
-                        worker_manager=dict(num_workers=1),
-                        paths=dict(model_note="foo"))
+    mv2 = mtc.create_mv(
+        from_cfg="cfg/run_cfg.yml",
+        worker_manager=dict(num_workers=1),
+        paths=dict(model_note="foo"),
+    )
     assert isinstance(mv2, utopya.Multiverse)
     assert mv2.wm.num_workers == 1
 
@@ -81,6 +83,7 @@ def test_ModelTest_create_mv():
     mv3 = mtc.create_mv(from_cfg_set="universe_example")
     assert isinstance(mv3, utopya.Multiverse)
     assert mv3.meta_cfg["parameter_space"].default["write_every"] == 5
+
 
 def test_ModelTest_create_run_load():
     """Tests the chained version of create_mv"""
@@ -98,8 +101,9 @@ def test_ModelTest_create_run_load():
         mtc.create_run_load(from_cfg_set="foobar")
 
     # With run_cfg_path
-    mtc.create_run_load(run_cfg_path=os.path.join(mtc.base_dir,
-                                                  "cfg", "run_cfg.yml"))
+    mtc.create_run_load(
+        run_cfg_path=os.path.join(mtc.base_dir, "cfg", "run_cfg.yml")
+    )
 
     # More than one argument is not possible
     with pytest.raises(ValueError, match="Can pass at most one of the arg"):
@@ -110,6 +114,7 @@ def test_ModelTest_create_run_load():
 
     with pytest.raises(ValueError, match="Can pass at most one of the arg"):
         mtc.create_run_load(from_cfg="foo", from_cfg_set="bar")
+
 
 def test_ModelTest_create_frozen_mv():
     """Tests the creation of a FrozenMultiverse using the ModelTest class"""
@@ -122,8 +127,9 @@ def test_ModelTest_create_frozen_mv():
     # Now, load it as a frozen multiverse
     # Need to wait a sec to have a different timestamp for the eval directory
     time.sleep(1.1)
-    fmv = mtc.create_frozen_mv(run_dir=mv.dirs['run'])
-    assert fmv.dirs['run'] == mv.dirs['run']
+    fmv = mtc.create_frozen_mv(run_dir=mv.dirs["run"])
+    assert fmv.dirs["run"] == mv.dirs["run"]
+
 
 def test_ModelTest_tmpdir_is_tmp():
     """This test is to assert that the temporary directory is really temporary"""
@@ -131,7 +137,7 @@ def test_ModelTest_tmpdir_is_tmp():
     mv = mtc.create_mv(from_cfg="cfg/run_cfg.yml")
 
     # Extract the path to the temporary directory and assert it was created
-    tmpdir_path = mtc._mvs[0]['out_dir'].name
+    tmpdir_path = mtc._mvs[0]["out_dir"].name
     assert os.path.isdir(tmpdir_path)
 
     # Let the Multiverse and the ModelTest class go out of scope
@@ -140,6 +146,7 @@ def test_ModelTest_tmpdir_is_tmp():
 
     # Check if the directory was removed
     assert not os.path.exists(tmpdir_path)
+
 
 def test_ModelTest_default_config_sets():
     """Tests the default config sets"""
@@ -153,14 +160,15 @@ def test_ModelTest_default_config_sets():
     ff_mtc = ModelTest("ForestFire")
     ff_cfgs = ff_mtc.default_config_sets
     assert ff_cfgs
-    assert 'multiverse_example' in ff_cfgs
-    assert 'universe_example' in ff_cfgs
-    assert os.path.isdir(ff_cfgs['multiverse_example']['dir'])
-    assert os.path.isfile(ff_cfgs['multiverse_example']['run'])
-    assert os.path.isfile(ff_cfgs['multiverse_example']['eval'])
+    assert "multiverse_example" in ff_cfgs
+    assert "universe_example" in ff_cfgs
+    assert os.path.isdir(ff_cfgs["multiverse_example"]["dir"])
+    assert os.path.isfile(ff_cfgs["multiverse_example"]["run"])
+    assert os.path.isfile(ff_cfgs["multiverse_example"]["eval"])
 
-    mv_set = ff_mtc.get_config_set('multiverse_example')
-    assert mv_set == ff_cfgs['multiverse_example']
+    mv_set = ff_mtc.get_config_set("multiverse_example")
+    assert mv_set == ff_cfgs["multiverse_example"]
+
 
 def test_ModelTest_config_sets_custom_search_dirs(tmp_utopya_cfg, tmpdir):
     """Tests that users can specify a custom search directory via the utopya
