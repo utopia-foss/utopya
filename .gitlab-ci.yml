@@ -6,7 +6,7 @@ stages:
   - deploy
   - post_deploy
 
-# Define global pipeline rules
+# Global pipeline rules
 workflow:
   rules:
     # Run pipelines on tags
@@ -14,8 +14,7 @@ workflow:
     # Run pipelines on branches
     - if: $CI_COMMIT_BRANCH
 
-# Image to use in all jobs that are not version-dependent
-base_image: python:3.10
+image: python:3.10
 
 
 # -- Hidden Jobs --------------------------------------------------------------
@@ -61,21 +60,17 @@ test:py38:
     - .reports
   needs: []
   before_script:
-    - pip3 install tox
+    - pip3 install .[dev]
   script:
-    - tox -v -e py38
+    - python test/run.py -v --cov=utopya --cov-report=term-missing --cov-report=xml --durations=10 --junitxml=report.xml test/.
 
 test:py39:
   extends: test:py38
   image: python:3.9
-  script:
-    - tox -v -e py39
 
 test:py310:
   extends: test:py38
   image: python:3.10
-  script:
-    - tox -v -e py310
 
 
 

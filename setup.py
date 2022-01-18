@@ -13,15 +13,28 @@ INSTALL_DEPS = [
     # related to utopya:
     "paramspace>=2.5.8",
     "dantro>=0.17.2",
-    #
-    # required for development:
-    "pytest>=6.2.1",
-    "pytest-cov>=2.10.1",
-    "psutil>=5.6.7",
-    "pre-commit>=2.16",
-    "tox>=3.24",
 ]
-# TODO Separate requirements into extras and add doc requirements
+
+# NOTE When changing any of the dependencies, make sure to update the table of
+#      dependencies in README.md.
+#      When adding a NEW dependency, make sure to denote it in the isort
+#      configuration, see pyproject.toml.
+
+# Dependencies for running tests and general development of dantro
+TEST_DEPS = [
+    "pytest>=6.2",
+    "pytest-cov>=2.10",
+    "pre-commit>=2.16",
+    "psutil>=5.6.7",
+]
+
+# Dependencies for building the dantro documentation
+DOC_DEPS = [
+    "sphinx>=4",
+    "sphinx-book-theme",
+    "ipython>=7.0",
+]
+
 
 # .............................................................................
 
@@ -59,10 +72,8 @@ setup(
     url="https://gitlab.com/utopia-project/utopya",
     author="utopya developers",
     author_email=(
-        "Benjamin Herdeanu "
-        "<Benjamin.Herdeanu@iup.uni-heidelberg.de>, "
-        "Yunus Sevinchan "
-        "<Yunus.Sevinchan@iup.uni-heidelberg.de>"
+        "Benjamin Herdeanu <Benjamin.Herdeanu@iup.uni-heidelberg.de>, "
+        "Yunus Sevinchan <Yunus.Sevinchan@iup.uni-heidelberg.de>"
     ),
     classifiers=[
         "Programming Language :: Python :: 3.8",
@@ -77,7 +88,12 @@ setup(
     packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test"]),
     package_data=dict(utopya=["cfg/*.yml"]),
     install_requires=INSTALL_DEPS,
+    extras_require=dict(
+        test=TEST_DEPS,
+        doc=DOC_DEPS,
+        dev=TEST_DEPS + DOC_DEPS,
+    ),
     #
-    # Command line scripts, installed into the virtual environment
-    scripts=["bin/utopia"],
+    # Command line scripts
+    scripts=["bin/utopya"],
 )
