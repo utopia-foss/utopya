@@ -1,0 +1,40 @@
+/*
+utopya-specific customizations to the Sphinx Book Theme
+=======================================================
+
+For some adjustments, the !important tag is required to overwrite dominant
+theme-specific values.
+
+To assign a specific class to some content, use the following sphinx directive:
+
+    .. cssclass:: my-class
+
+        Lorem ipsum dolor sit amet ...
+*/
+
+/* Use Fira font */
+@import url(https://fonts.googleapis.com/css?family=Fira+Sans);
+
+html, body, h1, h2, h3, h4, h5, h6 {
+    font-family: "Fira Sans", var(--pst-font-family-base) !important;
+}
+
+/* Markup `contents` diretive in a more appealing way */
+div.contents {
+    /* Light blue background */
+    /* background-color: #F7F9FF; */ /* Utopia's light blue */
+    background-color: rgba(var(--pst-color-admonition-note), 0.04);
+
+    /* Style like admonition boxes */
+    border-radius: .1rem;
+    box-shadow: 0 .2rem .5rem rgba(0,0,0,.05),0 0 .05rem rgba(0,0,0,.1);
+    border-left: .2rem solid;
+    border-color: rgba(var(--pst-color-admonition-note), 1);
+}
+
+
+/* In lists, adjust margins to be more asymmetic than the default (12px) */
+ul, ol {
+    margin-top: 4px !important;
+    margin-bottom: 8px !important;
+}

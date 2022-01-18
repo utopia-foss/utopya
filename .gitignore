@@ -1,0 +1,22 @@
+# Ignore files created by test system
+.coverage
+!.coveragerc
+.pytest_cache
+.tox
+__pycache__
+coverage.xml
+report.xml
+
+# Ignore packaging-related files and directories
+dantro.egg-info
+
+# Ignore documentation build directory and auto-generated API reference
+doc/_build
+doc/api
+doc/**/*.log
+
+# To be on the safe side, ignore potential plotting output
+**.pdf
+**.png
+**.jpg
+**.mp4
