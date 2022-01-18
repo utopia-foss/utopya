@@ -16,12 +16,9 @@ INSTALL_DEPS = [
     # Required for testing:
     'pytest>=6.2.1',
     'pytest-cov>=2.10.1',
-    'psutil>=5.6.7'
+    'psutil>=5.6.7',
+    'pre-commit>=2.16',
 ]
-# NOTE To force a re-installation of the dependencies, e.g. when adding one or
-#      changing a requirement, do the following:
-#           - In utopya/__init__.py bump the patch version
-#           - In python/CMakeLists.txt, set the utopya requirement accordingly
 
 # .............................................................................
 
@@ -54,16 +51,16 @@ setup(
     version=find_version('utopya', '__init__.py'),
     #
     description='The Utopia Frontend Package',
-    url='https://ts-gitlab.iup.uni-heidelberg.de/utopia/utopia',
+    url='https://gitlab.com/utopia-project/utopya',
     author='TS-CCEES Utopia Developers',
     author_email=('Benjamin Herdeanu '
                   '<Benjamin.Herdeanu@iup.uni-heidelberg.de>, '
                   'Yunus Sevinchan '
                   '<Yunus.Sevinchan@iup.uni-heidelberg.de>'),
     classifiers=[
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
         'Topic :: Utilities'
