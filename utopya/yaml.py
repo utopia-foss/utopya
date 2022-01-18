@@ -1,22 +1,19 @@
 """Takes care of the YAML setup for Utopya"""
 
+import functools
 import logging
 import re
-from functools import partial
 from typing import Callable, Tuple
 
 import numpy as np
 import paramspace.yaml_constructors as pspyc
 import ruamel.yaml
 
-import utopya.tools as t
-
-from . import MODELS
 from ._yaml import load_yml, write_yml, yaml
 from .model_registry import ModelInfoBundle, ModelRegistryEntry, load_model_cfg
 from .parameter import Parameter
 from .stopcond import StopCondition
-from .tools import recursive_update
+from .tools import recursive_update as _recursive_update
 
 # Local constants
 log = logging.getLogger(__name__)
@@ -114,7 +111,7 @@ def _model_cfg_constructor(loader, node) -> dict:
     mcfg, _, _ = load_model_cfg(model_name=model_name, bundle_key=bundle_key)
 
     # Update the loaded config with the remaining keys
-    mcfg = recursive_update(mcfg, d)
+    mcfg = _recursive_update(mcfg, d)
 
     # Return the updated dictionary
     return mcfg
@@ -159,12 +156,12 @@ yaml.constructor.add_constructor("!expr", _expr_constructor)
 
 # Apply the any operator to a sequence
 yaml.constructor.add_constructor(
-    "!any", partial(_func_on_sequence_constructor, func=any)
+    "!any", functools.partial(_func_on_sequence_constructor, func=any)
 )
 
 # Apply the all operator to a sequence
 yaml.constructor.add_constructor(
-    "!all", partial(_func_on_sequence_constructor, func=all)
+    "!all", functools.partial(_func_on_sequence_constructor, func=all)
 )
 
 # Load a model configuration

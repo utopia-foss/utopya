@@ -7,16 +7,21 @@ INSTALL_DEPS = [
     "numpy>=1.21",
     "scipy>=1.7.3",
     "matplotlib>=3.3",
-    "coloredlogs>=10.0",
+    "coloredlogs>=15.0",
     "ruamel.yaml>=0.16.5",
+    #
+    # related to utopya:
     "paramspace>=2.5.8",
-    "dantro>=0.17.1",
-    # Required for testing:
+    "dantro>=0.17.2",
+    #
+    # required for development:
     "pytest>=6.2.1",
     "pytest-cov>=2.10.1",
     "psutil>=5.6.7",
     "pre-commit>=2.16",
+    "tox>=3.24",
 ]
+# TODO Separate requirements into extras and add doc requirements
 
 # .............................................................................
 
@@ -52,7 +57,7 @@ setup(
     #
     description="The Utopia Frontend Package",
     url="https://gitlab.com/utopia-project/utopya",
-    author="TS-CCEES Utopia Developers",
+    author="utopya developers",
     author_email=(
         "Benjamin Herdeanu "
         "<Benjamin.Herdeanu@iup.uni-heidelberg.de>, "
