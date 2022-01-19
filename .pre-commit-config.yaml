@@ -25,13 +25,14 @@ repos:
         name: sort imports
         additional_dependencies: [toml]
         files: \.py$
-        args: [--project=utopya]
+        args: [--project=utopya, bin/utopya]
 
   - repo: https://github.com/psf/black
     rev: 21.12b0
     hooks:
       - id: black
         name: black code formatting
+        args: [bin/utopya]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.9.0

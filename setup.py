@@ -14,7 +14,6 @@ INSTALL_DEPS = [
     "paramspace>=2.5.8",
     "dantro>=0.17.2",
 ]
-
 # NOTE When changing any of the dependencies, make sure to update the table of
 #      dependencies in README.md.
 #      When adding a NEW dependency, make sure to denote it in the isort
