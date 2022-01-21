@@ -62,7 +62,7 @@ test:py38:
   before_script:
     - pip3 install .[dev]
   script:
-    - python test/run.py -v --cov=utopya --cov-report=term-missing --cov-report=xml --durations=10 --junitxml=report.xml test/.
+    - python tests/run.py -v --cov=utopya --cov-report=term-missing --cov-report=xml --durations=10 --junitxml=report.xml tests/.
 
 test:py39:
   extends: test:py38
