@@ -84,3 +84,19 @@ py:class ParamSpace
 # NOTE Before adding something here, make sure that these really are to be
 #      ignored! There is a good chance that these entries could actually be
 #      referenced when specified correctly.
+
+
+
+# -- Regex patterns -----------------------------------------------------------
+# These are added to the nitpick_ignore_regex list and allow regex patterns in
+# both the reference type and the target.
+# To add to that list, lines need to start with `re: `.
+#
+# NOTE That the regex pattern needs to match the whole string, as if ^ and $
+#      would be inserted.
+
+# There are a bunch of warnings from inherited code that uses a different way
+# to denote types, thus leading to invalid docstring syntax that we can't
+# address directly.
+# Therefore, we mute those as specifically as possible ...
+#
