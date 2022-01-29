@@ -9,10 +9,10 @@ from typing import Sequence, Tuple, Union
 
 from ..tools import load_selected_keys, pformat
 
-# Local constants
 log = logging.getLogger(__name__)
 
 TIME_FSTR = "%y%m%d-%H%M%S"
+"""Format string to use for generating readable time stamps"""
 
 # -----------------------------------------------------------------------------
 

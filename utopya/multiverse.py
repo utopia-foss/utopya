@@ -1,6 +1,6 @@
-"""Implementation of the Multiverse class.
-
-The Multiverse supplies the main user interface of the frontend.
+"""Implementation of the :py:class:`~utopya.multiverse.Multiverse` class which
+sits at the heart of utopya and supplies the main user interface for the
+frontend. It allows to run a simulation and then evaluate it.
 """
 import copy
 import itertools
@@ -26,7 +26,6 @@ from .tools import parse_num_steps, pformat, recursive_update
 from .workermanager import WorkerManager
 from .yaml import load_yml, write_yml
 
-# Configure and get logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
@@ -39,25 +38,28 @@ class Multiverse:
     of the selected model with the parameters specified by the meta
     configuration.
 
-    The WorkerManager takes care to perform these simulations in parallel, the
-    DataManager allows loading the created data, and the PlotManager handles
-    plotting of that data.
+    The :py:class:`~utopya.workermanager.WorkerManager` takes care to perform
+    these simulations in parallel, the
+    :py:class:`~utopya.datamanager.DataManager` allows loading the created
+    data, and the :py:class:`~utopya.plotting.PlotManager` handles plotting of
+    that data.
     """
 
-    # Where the default meta configuration can be found
     BASE_META_CFG_PATH = resource_filename("utopya", "cfg/base_cfg.yml")
+    """Where the default meta configuration can be found"""
 
-    # Where to look for the user configuration
     USER_CFG_SEARCH_PATH = _get_cfg_path("user")
+    """Where to look for the user configuration"""
 
-    # The time format string for the run directory
     RUN_DIR_TIME_FSTR = "%y%m%d-%H%M%S"
+    """The time format string for the run directory"""
 
-    # Where the utopya base plots configuration can be found; this is passed to
-    # the PlotManager
     UTOPYA_BASE_PLOTS_PATH = resource_filename(
         "utopya", "plot_funcs/base_plots.yml"
     )
+    """Where the utopya base plots configuration can be found; this is passed
+    to the :py:class:`~utopya.plotting.PlotManager`.
+    """
 
     def __init__(
         self,
@@ -180,7 +182,7 @@ class Multiverse:
         # Create a DataManager instance
         self._dm = DataManager(
             self.dirs["run"],
-            name=self.model_name + "_data",
+            name=f"{self.model_name}_data",
             **self.meta_cfg["data_manager"],
             **dm_cluster_kwargs,
         )
@@ -334,9 +336,8 @@ class Multiverse:
 
         except Exception as exc:
             raise ValueError(
-                "Failed setting up a new PlotManager! The old "
-                "PlotManager remains."
-                ""
+                "Failed setting up a new PlotManager! "
+                "The old PlotManager remains."
             ) from exc
 
         self._pm = pm
@@ -1020,7 +1021,7 @@ class Multiverse:
 
         # Generate the universe basename, which will be used for the folder
         # and the task name
-        uni_basename = "uni" + uni_id_str
+        uni_basename = f"uni{uni_id_str}"
 
         # Create the dict that will be passed as arguments to setup_universe
         setup_kwargs = dict(
@@ -1049,13 +1050,10 @@ class Multiverse:
             )
 
         except RuntimeError as err:
-            # Task list was locked, probably due to a run already having taken
-            # place...
+            # Task list was locked, probably because there already was a run
             raise RuntimeError(
-                "Could not add simulation task for universe "
-                "'{}'! Did you already perform a run with this "
-                "Multiverse?"
-                "".format(uni_basename)
+                "Could not add simulation task for universe '{uni_basename}'! "
+                "Did you already perform a run with this Multiverse?"
             ) from err
 
         log.debug("Added simulation task: %s.", uni_basename)
@@ -1194,8 +1192,8 @@ class Multiverse:
         if not (to_validate or self.meta_cfg.get("perform_validation", True)):
             log.info("Not performing parameter validation.")
             return None
-        log.info("Validating %d parameters ...", len(to_validate))
 
+        log.info("Validating %d parameters ...", len(to_validate))
         pspace = self.meta_cfg["parameter_space"]
         log.remark("Parameter space volume:      %d", pspace.volume)
 
@@ -1264,11 +1262,13 @@ class Multiverse:
 class FrozenMultiverse(Multiverse):
     """A frozen Multiverse is like a Multiverse, but frozen.
 
-    It is initialized from a finished Multiverse run and re-creates all the
-    attributes from that data, e.g.: the meta configuration, a DataManager,
-    and a PlotManager.
+    It is initialized from a finished :py:class:`~utopya.multiverse.Multiverse`
+    run and re-creates all the attributes from that data, e.g.: the meta
+    configuration, a DataManager, and a PlotManager.
 
-    Note that it is no longer able to perform any simulations.
+    .. note::
+
+        A frozen multiverse is no longer able to perform any simulations.
     """
 
     def __init__(
@@ -1329,7 +1329,6 @@ class FrozenMultiverse(Multiverse):
             and isinstance(run_dir, str)
             and os.path.isabs(run_dir)
         ):
-
             raise NotImplementedError("use_meta_cfg_from_run_dir")
 
             # Find the meta config backup file and load it
@@ -1393,7 +1392,7 @@ class FrozenMultiverse(Multiverse):
         # Create a data manager
         self._dm = DataManager(
             self.dirs["run"],
-            name=self.model_name + "_data",
+            name=f"{self.model_name}_data",
             **self.meta_cfg["data_manager"],
             **dm_cluster_kwargs,
         )

@@ -34,7 +34,6 @@ class Parameter:
     parameters, corresponding specializing classes are to be implemeted.
     """
 
-    # Available modes for :py:meth:`~utopya.parameter.Parameter.from_shorthand`
     SHORTHAND_MODES = (
         "is-probability",
         "is-positive",
@@ -46,20 +45,22 @@ class Parameter:
         "is-bool",
         "is-unsigned",
     )
+    """Available modes for
+    :py:meth:`~utopya.parameter.Parameter.from_shorthand`"""
 
-    # Comparators for the ``limits`` check, depending on ``limits_mode``
     LIMIT_COMPS = {
         "[": operator.ge,
         "(": operator.gt,
         "]": operator.le,
         ")": operator.lt,
     }
+    """Comparators for the ``limits`` check, depending on ``limits_mode``"""
 
-    # Possible limit modes
     LIMIT_MODES = ("[]", "()", "[)", "(]")
+    """Possible limit modes"""
 
-    # Default YAML tag to use for representing
     yaml_tag = "!param"
+    """Default YAML tag to use for representing"""
 
     # .........................................................................
 

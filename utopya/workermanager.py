@@ -10,12 +10,12 @@ import warnings
 from datetime import datetime as dt
 from typing import Callable, Dict, List, Sequence, Set, Union
 
+from .exceptions import *
 from .reporter import WorkerManagerReporter
 from .stopcond import SIG_STOPCOND, StopCondition
 from .task import SIGMAP, TaskList, WorkerTask
 from .tools import format_time
 
-# Initialise logger
 log = logging.getLogger(__name__)
 
 
@@ -229,14 +229,13 @@ class WorkerManager:
         if val <= 0 or not isinstance(val, int):
             raise ValueError(
                 "Need positive integer for number of workers, "
-                "got {} of value {}.".format(type(val), val)
+                f"got {type(val)} of value {val}."
             )
 
         elif val > os.cpu_count():
             warnings.warn(
-                "Set WorkerManager to use more parallel workers ({})"
-                "than there are cpu cores ({}) on this "
-                "machine.".format(val, os.cpu_count()),
+                f"Set WorkerManager to use more parallel workers ({val})"
+                f"than there are CPU cores ({os.cpu_count()}) on this machine",
                 UserWarning,
             )
 
@@ -275,9 +274,7 @@ class WorkerManager:
         will be emitted.
         """
         if val <= 0.0:
-            raise ValueError(
-                "Poll delay needs to be positive, was " + str(val)
-            )
+            raise ValueError(f"Poll delay needs to be positive, was {val}!")
         elif val < 0.01:
             warnings.warn(
                 "Setting a poll delay of {} < 0.01s can lead to "
@@ -312,16 +309,17 @@ class WorkerManager:
         """Set the ``nonzero_exit_handling`` attribute.
 
         Args:
-            val (str): The value to set it to. Can be: ignore, warn, raise
+            val (str): The value to set it to. Can be: ``ignore``, ``warn``,
+                ``raise``.
 
         Raises:
             ValueError: For invalid value
         """
-        allowed_vals = ["ignore", "warn", "warn_all", "raise"]
+        allowed_vals = ("ignore", "warn", "warn_all", "raise")
         if val not in allowed_vals:
             raise ValueError(
-                "`nonzero_exit_handling` needs to be one of {}, "
-                "but was '{}'.".format(allowed_vals, val)
+                f"`nonzero_exit_handling` needs to be one of {allowed_vals}, "
+                f"but was '{val}'."
             )
 
         self._nonzero_exit_handling = val
@@ -343,7 +341,7 @@ class WorkerManager:
         if not isinstance(reporter, WorkerManagerReporter):
             raise TypeError(
                 "Need a WorkerManagerReporter for reporting from "
-                "WorkerManager, got {}.".format(type(reporter))
+                f"WorkerManager, got {type(reporter)}."
             )
         elif self.reporter:
             raise RuntimeError("Already set the reporter; cannot change it.")
@@ -360,9 +358,9 @@ class WorkerManager:
     @property
     def resolved_cluster_params(self) -> dict:
         """Returns a copy of the cluster configuration with all parameters
-        resolved. This makes some additional keys available on the top level.
+        resolved (thus making some additional keys available on the top level).
+        It is returned as a deep copy to avoid mutability issues.
         """
-        # Return the cached value as a _copy_ to secure it against changes
         return copy.deepcopy(self._resolved_cluster_params)
 
     # Public API ..............................................................
@@ -521,8 +519,8 @@ class WorkerManager:
         if timeout:
             if timeout <= 0:
                 raise ValueError(
-                    "Invalid value for argument `timeout`: {} -- "
-                    "needs to be positive.".format(timeout)
+                    f"Invalid value for argument `timeout`: {timeout} -- "
+                    "needs to be positive."
                 )
 
             # Already calculate the time after which a timeout would be reached
@@ -534,11 +532,9 @@ class WorkerManager:
 
         # Determine whether to detach the whole working loop
         if detach:
-            # TODO implement the content of this in a separate thread.
             raise NotImplementedError(
-                "It is currently not possible to "
-                "detach the WorkerManager from the "
-                "main thread."
+                "It is currently not possible to detach the WorkerManager "
+                "from the main thread."
             )
 
         # Set some variables needed during the run
@@ -911,9 +907,8 @@ class WorkerManager:
                 tasks = self.active_tasks
             else:
                 raise ValueError(
-                    "Tasks cannot be specified by string '{}', "
+                    f"Tasks cannot be specified by string '{tasks}', "
                     "allowed strings are: 'all', 'active'."
-                    "".format(tasks)
                 )
 
         if not tasks:
@@ -1032,53 +1027,3 @@ class WorkerManager:
 
         # The pending_exceptions list is now empty
         log.debug("Handled all pending exceptions.")
-
-
-# Custom exceptions -----------------------------------------------------------
-
-
-class WorkerManagerError(BaseException):
-    """The base exception class for WorkerManager errors"""
-
-
-class WorkerManagerTotalTimeout(WorkerManagerError):
-    """Raised when a total timeout occurred"""
-
-
-class WorkerTaskError(WorkerManagerError):
-    """Raised when there was an error in a WorkerTask"""
-
-
-class WorkerTaskNonZeroExit(WorkerTaskError):
-    """Can be raised when a WorkerTask exited with a non-zero exit code."""
-
-    def __init__(self, task: WorkerTask, *args, **kwargs):
-        # Store the task
-        self.task = task
-
-        # Pass everything else to the parent init
-        super().__init__(*args, **kwargs)
-
-    def __str__(self) -> str:
-        """Returns information on the error"""
-        signals = [
-            signal
-            for signal, signum in SIGMAP.items()
-            if signum == abs(self.task.worker_status)
-        ]
-
-        return (
-            f"Task '{self.task.name}' exited with non-zero exit "
-            f"status: {self.task.worker_status}.\nThis may originate from "
-            f"the following signals:  {', '.join(signals)}.\n"
-            "Googling these might help with identifying the error. "
-            "Also, inspect the log and the log file for further error "
-            "messages. To increase verbosity, run in debug mode, e.g. by "
-            "passing the --debug flag to the CLI."
-        )
-
-
-class WorkerTaskStopConditionFulfilled(WorkerTaskNonZeroExit):
-    """An exception that is raised when a worker-specific stop condition was
-    fulfilled. This allows being handled separately to other non-zero exits.
-    """

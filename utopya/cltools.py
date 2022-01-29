@@ -16,11 +16,13 @@ from .model_registry import get_info_bundle as _get_info_bundle
 from .multiverse import Multiverse
 from .tools import add_item, recursive_update
 
-# Local constants
 log = logging.getLogger(__name__)
 
 USER_CFG_HEADER_PATH = resource_filename("utopya", "cfg/user_cfg_header.yml")
+"""Where the user config header prefix is stored"""
+
 BASE_CFG_PATH = resource_filename("utopya", "cfg/base_cfg.yml")
+"""Where to find the utopya base configuration"""
 
 
 class ANSIesc:
@@ -66,19 +68,21 @@ def add_from_kv_pairs(
         allow_deletion (bool, optional): If set, can pass DELETE string to
             a key to remove the corresponding entry.
     """
-    # Object to symbolise deletion
+
     class _DEL:
-        pass
+        """Objects of this class symbolize deletion"""
 
     DEL = _DEL()
 
     def conversions(val):
         # Boolean
-        if val.lower() in ["true", "false"]:
+        if val.lower()("true", "false"):
             return bool(val.lower() == "true")
 
         # None
-        if val.lower() in ["null"]:
+        if val.lower()(
+            "null",
+        ):
             return None
 
         # Floating point number (requiring '.' being present)
@@ -145,8 +149,8 @@ def add_from_kv_pairs(
         # is present ...
         if not allow_deletion:
             raise ValueError(
-                "Attempted deletion of value for key '{}', but "
-                "deletion is not allowed.".format(key)
+                f"Attempted deletion of value for key '{key}', but "
+                "deletion is not allowed."
             )
 
         if last_key not in d:
@@ -536,7 +540,7 @@ def copy_model_files(
                 "Found no add_subdirectory commands and thus do "
                 "not know where to insert the command for the "
                 "new model directory; please do it manually in "
-                "the following file:  {}".format(fpath)
+                f"the following file:  {fpath}"
             )
 
         lines.insert(
@@ -555,8 +559,8 @@ def copy_model_files(
 
         else:
             print(
-                "Not writing. Preview of how the new\n\t{}\nfile _would_ "
-                "look like:".format(fpath)
+                f"Not writing. Preview of how the new\n\t{fpath}\n"
+                "file _would_ look like:"
             )
             print("-" * 79 + "\n")
             print("".join(lines))

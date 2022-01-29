@@ -16,7 +16,6 @@ from ..tools import pformat, recursive_update
 from ._exceptions import BundleExistsError
 from .entry import ModelRegistryEntry
 
-# Local constants
 log = logging.getLogger(__name__)
 log.setLevel(logging.WARNING)
 

@@ -41,60 +41,68 @@ class XarrayDC(Hdf5ProxySupportMixin, XrDataContainer):
     """
 
     # Configure proxy support .................................................
-    # Which type to resolve the proxy to. None defaults to np.ndarray
     PROXY_RESOLVE_ASTYPE = None
+    """Which type to resolve the proxy to. None defaults to np.ndarray"""
 
-    # Whether to retain a proxy after resolving it; allows .reinstate_proxy()
     PROXY_RETAIN = True
+    """Whether to retain a proxy after resolving it; allows reinstating
+    proxy objects"""
 
-    # Which action to take if reinstating a proxy was not possible
     PROXY_REINSTATE_FAIL_ACTION = "log_warning"
+    """Which action to take if reinstating a proxy was not possible"""
 
     # Specialize XrDataContainer for Utopia ...................................
-    # Define as class variable the name of the attribute that determines the
-    # dimensions of the xarray.DataArray
     _XRC_DIMS_ATTR = "dim_names"
+    """Define as class variable the name of the attribute that determines the
+    dimensions of the xarray.DataArray
+    """
 
-    # Attributes prefixed with this string can be used to set names for
-    # specific dimensions. The prefix should be followed by an integer-parsable
-    # string, e.g. `dim_name__0` would be the dimension name for the 0th dim.
     _XRC_DIM_NAME_PREFIX = "dim_name__"
+    """Attributes prefixed with this string can be used to set names for
+    specific dimensions. The prefix should be followed by an integer-parsable
+    string, e.g. ``dim_name__0`` would be the dimension name for the 0th dim
+    """
 
-    # Attributes prefixed with this string determine the coordinate values for
-    # a specific dimension. The prefix should be followed by the _name_ of the
-    # dimension, e.g. `coords__time`. The values are interpreted according to
-    # the default coordinate mode or, if given, the coords_mode__* attribute
     _XRC_COORDS_ATTR_PREFIX = "coords__"
+    """Attributes prefixed with this string determine the coordinate values for
+    a specific dimension. The prefix should be followed by the _name_ of the
+    dimension, e.g. ``coords__time``. The values are interpreted according to
+    the default coordinate mode or, if given, the ``coords_mode__*`` attribute
+    """
 
-    # The default mode by which coordinates are interpreted. See the base
-    # class, `dantro.containers.XrDataContainer` for more information.
-    # Available modes:
-    #   - ``values``: the explicit values (iterable) to use for coordinates
-    #   - ``trivial``: The trivial indices; ignores the coordinate argument
-    #   - ``scalar``: makes sure only a single coordinate is provided
-    #   - ``range``: python built-in range function arguments
-    #   - ``arange``: np.arange arguments
-    #   - ``linspace``: np.linspace arguments
-    #   - ``logspace``: np.logspace arguments
-    #   - ``start_and_step``: the start and step values of an integer range
-    #       expression; the stop value is deduced by looking at the length
-    #       of the corresponding dimension.
-    #   - ``linked``: Load the coordinates from a linked object within the
-    #       tree, specified by a relative path from the current object.
     _XRC_COORDS_MODE_DEFAULT = "values"
+    """The default mode by which coordinates are interpreted. See the base
+    class, ``dantro.containers.XrDataContainer`` for more information.
 
-    # Prefix for the coordinate mode if a custom mode is to be used. To, e.g.,
-    # use mode 'start_and_step' for time dimension, set the coords_mode__time
-    # attribute to value 'start_and_step'
+    Available modes:
+      - ``values``: the explicit values (iterable) to use for coordinates
+      - ``trivial``: The trivial indices; ignores the coordinate argument
+      - ``scalar``: makes sure only a single coordinate is provided
+      - ``range``: python built-in range function arguments
+      - ``arange``: np.arange arguments
+      - ``linspace``: np.linspace arguments
+      - ``logspace``: np.logspace arguments
+      - ``start_and_step``: the start and step values of an integer range
+          expression; the stop value is deduced by looking at the length
+          of the corresponding dimension.
+      - ``linked``: Load the coordinates from a linked object within the
+          tree, specified by a relative path from the current object.
+    """
+
     _XRC_COORDS_MODE_ATTR_PREFIX = "coords_mode__"
+    """Prefix for the coordinate mode if a custom mode is to be used.
+    To, e.g., use mode ``start_and_step`` for time dimension, set the
+    ``coords_mode__time`` attribute to value ``start_and_step``
+    """
 
-    # Whether to inherit the other container attributes
     _XRC_INHERIT_CONTAINER_ATTRIBUTES = False
+    """Whether to inherit the other container attributes"""
 
-    # Whether to use strict attribute checking; throws errors if there are
-    # container attributes available that match the prefix but don't match a
-    # valid dimension name. Can be disabled for speed improvements
     _XRC_STRICT_ATTR_CHECKING = True
+    """Whether to use strict attribute checking; throws errors if there are
+    container attributes available that match the prefix but don't match a
+    valid dimension name. Can be disabled for speed improvements.
+    """
 
 
 # -----------------------------------------------------------------------------
@@ -121,9 +129,8 @@ class XarrayYamlDC(XarrayDC):
 
             except Exception as exc:
                 raise ValueError(
-                    "Could not convert element of type {} to "
-                    "yaml! Element value was:  {}"
-                    "".format(type(element), element)
+                    f"Could not convert element of type {type(element)} to "
+                    f"yaml! Element value was:  {element}"
                 ) from exc
 
         self._data = xr.apply_ufunc(np.vectorize(convert_to_yaml), self._data)
@@ -141,17 +148,17 @@ class GridDC(XarrayDC):
     """
 
     # Define class variables to allow specializing behaviour ..................
-    # The attribute to read the desired grid shape from
     _GDC_grid_shape_attr = "grid_shape"
+    """The attribute to read the desired grid shape from"""
 
-    # The attribute to read the space extent from
     _GDC_space_extent_attr = "space_extent"
+    """The attribute to read the space extent from"""
 
-    # The attribute to read the index order from
     _GDC_index_order_attr = "index_order"
+    """The attribute to read the index order from"""
 
-    # The attribute to read the desired grid structure from
     _GDC_grid_structure_attr = "grid_structure"
+    """The attribute to read the desired grid structure from"""
 
     # .........................................................................
 
@@ -203,10 +210,7 @@ class GridDC(XarrayDC):
         resolved, this takes care to apply the reshaping operation onto the
         underlying data.
         """
-        # First let the XarrayDC do its thing
         super()._postprocess_proxy_resolution()
-
-        # Now do the reshaping
         self._data = self._reshape_data()
 
     def _parse_sizes_from_metadata(self) -> Sequence[Tuple[str, int]]:

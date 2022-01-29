@@ -1,4 +1,6 @@
-"""Implementation of the Reporter class."""
+"""Implementation of the reporter framework which can be used to report on the
+progress or result of operations within utopya.
+"""
 
 import logging
 import os
@@ -15,7 +17,6 @@ import paramspace as psp
 
 from .tools import TTY_COLS, format_time
 
-# Initialise logger
 log = logging.getLogger(__name__)
 
 
@@ -23,6 +24,14 @@ log = logging.getLogger(__name__)
 
 
 class ReportFormat:
+    """A report format aggregates callables for a single report parser and
+    potentially multiple report writers. As a whole, it contains all arguments
+    needed to generate a certain kind of report.
+
+    It is used in :py:class:`utopya.reporter.Reporter` and derived classes,
+    which are the classes that actually implement the parsers and writers.
+    """
+
     def __init__(
         self,
         *,
@@ -30,74 +39,79 @@ class ReportFormat:
         writers: List[Callable],
         min_report_intv: float = None,
     ):
-        """Initialises a ReportFormat object, which gathers callables needed to
+        """Initializes a ReportFormat object, which gathers callables needed to
         create a report in a certain format.
 
         Args:
             parser (Callable): The parser method to use
             writers (List[Callable]): The writer method(s) to use
             min_report_intv (float, optional): The minimum report interval of
-                reports in this format.
+                reports in this format. Determines the time (in seconds) that
+                needs to have passed before the next report will be emitted.
         """
-
-        # Store parser and writers
         self.parser = parser
         self.writers = writers
 
-        # Set minimum report interval
         self._min_report_intv = None
         self.min_report_intv = min_report_intv
 
-        # Store num of reports and time of last report
         self.num_reports = 0
         self.last_report = dt.fromtimestamp(0)  # waaay back
 
     @property
     def min_report_intv(self) -> Union[timedelta, None]:
-        """Returns the minimum report intv"""
+        """Returns the minimum report interval, i.e. the time that needs to
+        have passed between two reports.
+        """
         return self._min_report_intv
 
     @min_report_intv.setter
     def min_report_intv(self, sec: float):
-        """Set the minimum report interval"""
+        """Set the minimum report interval, directly converting it into a
+        timedelta value.
+        """
         self._min_report_intv = timedelta(seconds=sec) if sec else None
 
     @property
     def reporting_blocked(self) -> bool:
-        """Determines whether this ReportFormat was generated"""
+        """Determines whether this ReportFormat may be blocked from emission,
+        e.g. because of the minimum report interval not having passed yet.
+
+        If no minimum report interval is given, will always return False.
+        Otherwise checks if at least that interval has passed since the last
+        report.
+        """
         if not self.min_report_intv:
-            # Never blocked
             return False
-        # Check time since last report
+
         return (dt.now() - self.last_report) < self.min_report_intv
 
     def report(
         self, *, force: bool = False, parser_kwargs: dict = None
     ) -> bool:
-        """Parses and writes a report corresponding to this object's format.
-
-        If within the minimum report interval, will return False.
+        """Parses and writes a report corresponding to the callables defined in
+        this report format.
 
         Args:
-            force (bool, optional): If True, will ignore the min_report_intv
+            force (bool, optional): If True, will ignore the minimum report
+                interval and always perform a report.
             parser_kwargs (dict, optional): Keyword arguments passed on to the
                 parser
 
         Returns:
             bool: Whether a report was generated or not
-
         """
         if not force and self.reporting_blocked:
             # Do not report
             return False
 
         # Generate the report
-        log.debug("Creating report using parser %s ...", self.parser)
+        log.debug("Creating report using parser '%s' ...", self.parser)
         report = self.parser(
             report_no=self.num_reports,
             **(parser_kwargs if parser_kwargs else {}),
         )
-        log.debug("Created report of length %d.", len(report))
+        log.debug("Parser created report of length %d.", len(report))
 
         # Write the report
         for writer_name, writer in self.writers.items():
@@ -117,7 +131,7 @@ class ReportFormat:
 class Reporter:
     """The Reporter class holds general reporting capabilities.
 
-    It needs to be subclassed in order to specialise its reporting functions.
+    It needs to be subclassed in order to specialize its reporting functions.
     """
 
     def __init__(
@@ -128,7 +142,7 @@ class Reporter:
         report_dir: str = None,
         suppress_cr: bool = False,
     ):
-        """Initialize the Reporter for the WorkerManager.
+        """Initialize the Reporter base class.
 
         Args:
             report_formats (Union[List[str], Dict[str, dict]], optional): The
@@ -150,27 +164,26 @@ class Reporter:
 
         super().__init__()
 
-        # Initialise property-managed attributes
+        # Property-managed attributes
         self._report_formats = dict()
         self._default_format = None
         self._suppress_cr = False
 
-        # Ensure the report_formats argument is a dict
+        # Ensure the report_formats argument is a dict, then register them
         if report_formats is None:
             report_formats = dict()
 
         elif isinstance(report_formats, (list, tuple)):
             report_formats = {f: dict() for f in report_formats}
 
-        # And add these report formats to the reporter
         for name, params in report_formats.items():
             self.add_report_format(name, **params)
 
-        # Set the default report format, if given
+        # Set default report format
         if default_format:
             self.default_format = default_format
 
-        # Store the report dir
+        # Store report directory
         if report_dir:
             self.report_dir = os.path.expanduser(str(report_dir))
         else:
@@ -220,11 +233,9 @@ class Reporter:
         order to not overwrite any previously written lines that ended with
         a carriage return character.
         """
-        # Go to the next line
         if val and not self.suppress_cr:
             print("")
 
-        # Set the value
         self._suppress_cr = val
 
     # Public API ..............................................................
@@ -259,8 +270,7 @@ class Reporter:
         """
         if name in self.report_formats:
             raise ValueError(
-                "A report format with the name {} already exists."
-                "".format(name)
+                f"A report format with the name '{name}' already exists."
             )
 
         # Get the parser and writer function
@@ -301,10 +311,9 @@ class Reporter:
         if report_format is None:
             if self.default_format is None:
                 raise ValueError(
-                    "Either a default format needs to be set for "
-                    "this {} or the name of the report format "
-                    "needs to be supplied to the .report method."
-                    "".format(self.__class__.__name__)
+                    "Either a default format needs to be set for this "
+                    f"{self.__class__.__name__} or the name of the report "
+                    "format needs to be supplied to the .report method."
                 )
 
             rf = self.default_format
@@ -331,22 +340,19 @@ class Reporter:
                 specification formats, see the ._resolve_writers method.
             **parser_kwargs: Passed to the parser, if given
         """
-
-        # Determine the parser
         parser = self._resolve_parser(parser, **parser_kwargs)
 
         # Parse the report
         report = parser()
         log.debug(
-            "Parsed report using %s, got string of length %d.",
+            "Parsed report using '%s', got string of length %d.",
             parser,
             len(report),
         )
 
-        # Determine the writers
+        # Determine the writers and write
         writers = self._resolve_writers(write_to)
 
-        # Write the report
         for writer_name, writer in writers.items():
             writer(report)
             log.debug("Wrote report using %s .", writer_name)
@@ -378,17 +384,16 @@ class Reporter:
                 parser = getattr(self, "_parse_" + parser)
             except AttributeError as err:
                 raise ValueError(
-                    "No parser named '{}' available in {}!"
-                    "".format(parser, self.__class__.__name__)
+                    f"No parser named '{parser}' available in "
+                    f"{self.__class__.__name__}!"
                 ) from err
 
             log.debug("Resolved parser: %s", str(parser))
 
-        # parser is now a callable
-
-        # If given, partially apply the kwargs
+        # `parser` is now a callable.
+        # May want to partially apply kwargs
         if parser_kwargs:
-            log.debug("Binding parser_kwargs to parser method ...")
+            log.debug("Binding `parser_kwargs` to parser method ...")
             parser = partial(parser, **parser_kwargs)
 
         return parser
@@ -399,6 +404,7 @@ class Reporter:
         Args:
             write_to: a specification of the writers to use. Allows many
                 different ways of specifying the writer functions:
+
                 - str: the name of the writer method of this reporter
                 - Callable: the writer function to use
                 - sequence of str and/or Callable: the names and/or functions
@@ -410,14 +416,13 @@ class Reporter:
             Dict[str, Callable]: the writers (key: name, value: writer method)
 
         Raises:
-            TypeError: Invalid `write_to` argument
+            TypeError: Invalid ``write_to`` argument
             ValueError: A writer with that name was already added or a writer
                 with the given name is not available.
-
         """
 
         def get_callable_name(c) -> str:
-            """Returns the name of the callable"""
+            """Returns the name of the callable by inspecting attributes"""
             if hasattr(c, "__name__"):
                 return c.__name__
             # Does not have that attribute, e.g. because it is a partial func
@@ -427,18 +432,17 @@ class Reporter:
         writers = {}
 
         # First, need to bring the argument into a uniform structure.
-        # This requires checking the many possible input formats
+        # This requires checking the many possible input formats.
 
-        # If a single callable is already given, return that
+        # -- Single callable: can directly return
         if callable(write_to):
             return {get_callable_name(write_to): write_to}
 
-        # If a single string is given, bring it into dict format
+        # -- Single string: bring it into dict format
         elif isinstance(write_to, str):
             write_to = {write_to: {}}
 
-        # If a list is given, move the callables to the writers dict; the items
-        # that are strings remain.
+        # -- list: move the callables to the writers dict; string items remain.
         elif isinstance(write_to, (list, tuple)):
             wt = {}
             for item in write_to:
@@ -447,8 +451,7 @@ class Reporter:
                     if item in writers.values():
                         raise ValueError(
                             "Given writer callable with name "
-                            "'{}' was already added!"
-                            "".format(get_callable_name(item))
+                            f"'{get_callable_name(item)}' was already added!"
                         )
                     writers[get_callable_name(item)] = item
 
@@ -458,10 +461,9 @@ class Reporter:
 
                 else:
                     raise TypeError(
-                        "One item of given `write_to` argument {} "
-                        "of type {} was neither a string nor a "
-                        "callable! "
-                        "".format(write_to, type(write_to))
+                        f"One item of given `write_to` argument {write_to} "
+                        f"of type {type(write_to)} was neither a string nor a "
+                        "callable!"
                     )
 
             # Use the new write_to dict
@@ -470,8 +472,7 @@ class Reporter:
         # Ensure that the format is a dict now
         if not isinstance(write_to, dict):
             raise TypeError(
-                "Invalid type {} for argument `write_to`!"
-                "".format(type(write_to))
+                f"Invalid type {type(write_to)} for argument `write_to`!"
             )
 
         # Now populate the writers dict with the remaining str-specified funcs
@@ -536,7 +537,8 @@ class Reporter:
 
         Args:
             s (str): The string to log
-            lvl (int, optional): The level at which to log at; default: DEBUG (10)
+            lvl (int, optional): The level at which to log at; default is 10,
+                corresponding to the ``DEBUG`` level
             skip_if_empty (bool, optional): Whether to skip writing if ``s`` is
                 empty.
         """
@@ -575,11 +577,10 @@ class Reporter:
         if not os.path.isabs(path):
             if not self.report_dir:
                 raise ValueError(
-                    "Need either an absolute `path` argument or "
-                    "initialise the {} with the `report_dir` "
+                    "Need either an absolute `path` argument or initialize "
+                    f"the {self.__class__.__name__} with the `report_dir` "
                     "argument such that `path` can be "
                     "interpreted relative to that directory."
-                    "".format(self.__class__.__name__)
                 )
 
             path = os.path.join(self.report_dir, path)
@@ -596,15 +597,18 @@ class Reporter:
 
 
 class WorkerManagerReporter(Reporter):
-    """This class reports on the state of the WorkerManager."""
+    """This class specializes the base :py:class:`~utopya.reporter.Reporter`
+    to report on the :py:class:`~utopya.workermanager.WorkerManager` state and
+    its progress.
+    """
 
-    # Margin to use when writing to terminal
     TTY_MARGIN = 4
+    """Margin to use when writing to terminal"""
 
-    # Symbols to use in progress bar parser
     PROGRESS_BAR_SYMBOLS = dict(
         finished="▓", active_progress="▒", active="░", space=" "
     )
+    """Symbols to use in progress bar parser"""
 
     # .........................................................................
 
@@ -615,15 +619,20 @@ class WorkerManagerReporter(Reporter):
         mv: "utopya.multiverse.Multiverse" = None,
         **reporter_kwargs,
     ):
-        """Initialize the Reporter for the WorkerManager.
+        """Initialize the specialized reporter for the
+        :py:class:`~utopya.workermanager.WorkerManager`.
+
+        It is aware of the WorkerManager and may additionally have acces to the
+        :py:class:`~utopya.multiverse.Multiverse` it is embedded in, which
+        provides additional information to report parsers.
 
         Args:
             wm (utopya.workermanager.WorkerManager): The associated
                 WorkerManager instance
             mv (utopya.multiverse.Multiverse, optional): The Multiverse this
-                reporter is used in.
-                If this is provided, it can be used in report parsers, e.g. to
-                provide additional information on simulations.
+                reporter is used in. If this is provided, it can be used in
+                report parsers, e.g. to provide additional information on
+                simulations.
             **reporter_kwargs: Passed on to parent method
         """
         super().__init__(**reporter_kwargs)
@@ -660,22 +669,22 @@ class WorkerManagerReporter(Reporter):
         self.mv = mv
         self.runtimes = []
         self.exit_codes = Counter()
-
-        # For retaining some information for ETA calculation
         self._eta_info = dict()
 
         log.debug("WorkerManagerReporter initialised.")
 
     @property
-    def wm(self):
-        """Returns the associated WorkerManager."""
+    def wm(self) -> "utopya.workermanager.WorkerManager":
+        """Returns the associated
+        :py:class:`~utopya.workermanager.WorkerManager`
+        """
         return self._wm
 
     # Properties that extract info from the WorkerManager .....................
 
     @property
     def task_counters(self) -> OrderedDict:
-        """Returns a dict of task counters:
+        """Returns a dict of task counters containing the following entries:
 
         - ``total``: total number of registered WorkerManager tasks
         - ``active``: number of currently active tasks
@@ -693,17 +702,13 @@ class WorkerManagerReporter(Reporter):
 
     @property
     def wm_progress(self) -> float:
-        """The WorkerManager progress, between 0 and 1."""
+        """The WorkerManager's progress, between 0 and 1."""
         cntr = self.task_counters
 
         if cntr["total"] == 0:
-            # No tasks were added yet, progress is zero
             return 0.0
 
-        # Get the active tasks' progress, in range [0, 1]
-        active_progress = self.wm_active_tasks_progress
-
-        # Calculate the total progress
+        active_progress = self.wm_active_tasks_progress  # in [0, 1]
         return (
             cntr["finished"] / cntr["total"]
             + active_progress * cntr["active"] / cntr["total"]
@@ -711,9 +716,8 @@ class WorkerManagerReporter(Reporter):
 
     @property
     def wm_active_tasks_progress(self) -> float:
-        """The active tasks' progress
-
-        If there are no active tasks in the worker manager, returns 0
+        """The active tasks' progress.
+        If there are no active tasks in the worker manager, returns 0.
         """
         progs = [t.progress for t in self._wm.active_tasks]
         if progs:
@@ -738,7 +742,7 @@ class WorkerManagerReporter(Reporter):
 
     @property
     def wm_times(self) -> dict:
-        """Return the characteristics WorkerManager times. Calls
+        """Return the characteristics of WorkerManager times. Calls
         :py:meth:`~utopya.reporter.WorkerManagerReporter.get_progress_info`
         without any additional arguments.
         """
@@ -747,9 +751,9 @@ class WorkerManagerReporter(Reporter):
     # Methods working on data .................................................
 
     def register_task(self, task: "utopya.task.WorkerTask"):
-        """Given the task object, extracts and stores some information.
-
-        The information currently extracted is the run time and the exit code.
+        """Given the task object, extracts and stores some information like
+        its run time or its exit code.
+        Exit codes are aggregated over multiple registrations.
 
         This can be used as a callback function from a WorkerTask object.
 
@@ -757,31 +761,34 @@ class WorkerManagerReporter(Reporter):
             task (utopya.task.WorkerTask): The WorkerTask to extract
                 information from.
         """
-        # Register the runtime
         if "run_time" in task.profiling:
             self.runtimes.append(task.profiling["run_time"])
 
-        # Increment the counter belonging to this exit status
         self.exit_codes[task.worker_status] += 1
 
-    def calc_runtime_statistics(self, min_num: int = 10) -> OrderedDict:
+    def calc_runtime_statistics(
+        self, min_num: int = 10
+    ) -> Union[OrderedDict, None]:
         """Calculates the current runtime statistics.
 
+        Args:
+            min_num (int, optional): Minimum number of runtimes that need to
+                be registered for these statistics to actually be computed.
+                If below this number, will return None.
+
         Returns:
-            OrderedDict: name of the calculated statistic and its value, i.e.
-                the runtime in seconds
+            Union[OrderedDict, None]: The runtime statistics or None, if there
+                were too few entries.
         """
-        if len(self.runtimes) < min_num:
-            # Only calculate if there is enough data
+        if not self.runtimes or len(self.runtimes) < min_num:
             return None
 
         # Throw out Nones and convert to np.array
         rts = np.array([rt for rt in self.runtimes if rt is not None])
 
-        # Calculate statistics
         d = OrderedDict()
         d["total (CPU)"] = np.sum(rts)
-        d["total (wall)"] = np.sum(rts) / min(self._wm.num_workers, len(rts))
+        d["total (wall)"] = self.wm_elapsed.total_seconds()
         d["mean"] = np.mean(rts)
         d[" (last 50%)"] = np.mean(rts[-len(rts) // 2 :])
         d[" (last 20%)"] = np.mean(rts[-len(rts) // 5 :])
@@ -914,7 +921,9 @@ class WorkerManagerReporter(Reporter):
         """Return a string that shows the task counters of the WorkerManager
 
         Args:
-            report_no (int, optional): Passed by ReportFormat call
+            report_no (int, optional): A counter variable passed by the
+                :py:class:`~utopya.reporter.ReportFormat` call, indicating
+                how often this parser was called so far.
 
         Returns:
             str: A str representation of the task counters of the WorkerManager
@@ -925,7 +934,9 @@ class WorkerManagerReporter(Reporter):
         """Returns a progress string
 
         Args:
-            report_no (int, optional): Passed by ReportFormat call
+            report_no (int, optional): A counter variable passed by the
+                :py:class:`~utopya.reporter.ReportFormat` call, indicating
+                how often this parser was called so far.
 
         Returns:
             str: A simple progress indicator
@@ -983,7 +994,9 @@ class WorkerManagerReporter(Reporter):
                 information once the work session has ended
             times_kwargs (dict, optional): Passed on to ``times`` parser.
                 Only used if ``show_times`` is set.
-            report_no (int, optional): Passed by ReportFormat call
+            report_no (int, optional): A counter variable passed by the
+                :py:class:`~utopya.reporter.ReportFormat` call, indicating
+                how often this parser was called so far.
 
         Returns:
             str: The one-line progress bar
@@ -1076,19 +1089,20 @@ class WorkerManagerReporter(Reporter):
         report_no: int = None,
         **progress_info_kwargs,
     ) -> str:
-        """Parses the worker manager time information, including estimated
+        """Parses the WorkerManager's time information, including estimated
         time left or others.
 
         Args:
             fstr (str, optional): The main format string; gets as keys the
-                results of the WorkerManager time information. Available keys:
-                'elapsed', 'est_left', 'est_end', 'start', 'now', 'end'
+                results of the WorkerManager time information.
+                Available keys: ``elapsed``, ``est_left``, ``est_end``,
+                ``start``, ``now``, ``end``.
             timefstr_short (str, optional): A time format string for absolute
                 dates; short version.
             timefstr_full (str, optional): A time format string for absolute
                 dates; long (ideally: full) version.
             use_relative (bool, optional): Whether for a date difference of 1
-                to use relative dates, e.g. "Today, 13:37"
+                to use relative dates, e.g. ``Today, 13:37``.
             times (dict, optional): A dict of times to use; this is mainly
                 for testing purposes!
             report_no (int, optional): The report number passed by ReportFormat
@@ -1184,17 +1198,22 @@ class WorkerManagerReporter(Reporter):
         *,
         fstr: str = "  {k:<13s} {v:}",
         join_char="\n",
+        ms_precision: int = 1,
         report_no: int = None,
     ) -> str:
         """Parses the runtime statistics dict into a multiline string
 
         Args:
             fstr (str, optional): The format string to use. Gets passed the
-                keys 'k' and 'v' where k is the name of the entry and v its
-                value.
-            join_char (str, optional): The join character / string to put the
+                keys ``k`` and ``v`` where ``k`` is the name of the entry and
+                ``v`` its value. Note that ``v`` is a non-numeric value.
+            join_char (str, optional): The join character / string to join the
                 elements together.
-            report_no (int, optional): Passed by ReportFormat call
+            ms_precision (int, optional): Number of digits to represent the
+                milliseconds part of the runtimes.
+            report_no (int, optional): A counter variable passed by the
+                :py:class:`~utopya.reporter.ReportFormat` call, indicating
+                how often this parser was called so far.
 
         Returns:
             str: The multi-line runtime statistics
@@ -1202,7 +1221,7 @@ class WorkerManagerReporter(Reporter):
         rtstats = self.calc_runtime_statistics()
 
         parts = [
-            fstr.format(k=k, v=format_time(v, ms_precision=1))
+            fstr.format(k=k, v=format_time(v, ms_precision=ms_precision))
             for k, v in rtstats.items()
         ]
 
@@ -1229,7 +1248,9 @@ class WorkerManagerReporter(Reporter):
                 to have a key column of constant width.
             min_num (int, optional): The minimum number of universes needed to
                 calculate runtime statistics.
-            report_no (int, optional): Passed by ReportFormat call
+            report_no (int, optional): A counter variable passed by the
+                :py:class:`~utopya.reporter.ReportFormat` call, indicating
+                how often this parser was called so far.
             show_individual_runtimes (bool, optional): Whether to report
                 individual universe runtimes; default: True. This should be
                 disabled if there are a huge number of universes.
@@ -1352,7 +1373,9 @@ class WorkerManagerReporter(Reporter):
         If only a single task was defined, returns an empty string.
 
         Args:
-            report_no (int, optional): Passed by ReportFormat call
+            report_no (int, optional): A counter variable passed by the
+                :py:class:`~utopya.reporter.ReportFormat` call, indicating
+                how often this parser was called so far.
 
         Returns:
             str: If there is more than one task, returns the result of
@@ -1395,26 +1418,23 @@ class WorkerManagerReporter(Reporter):
             path (str, optional): The path to save to
             cluster_mode_path (str, optional): The format string to use for the
                 path in cluster mode. _Requires_ to contain the format key
-                '{0:}' which retains the given `path`, extension split off.
-                Extension can be used via 'ext' (already includes the dot).
-                Additional format keys: 'node_name', 'job_id'.
+                ``{0:}`` which retains the given ``path``, extension split off.
+                Extension can be used via ``ext`` (already includes the dot).
+                Additional format keys: ``node_name``, ``job_id``.
             **kwargs: Passed on to parent method
         """
         if not self.wm.cluster_mode:
             return super()._write_to_file(*args, path=path, **kwargs)
 
         # else: in cluster mode. Use the information to build a new path
-        # Existing information
         base_path, ext = os.path.splitext(path)
         fstr_args = [base_path]
         fstr_kwargs = dict(ext=ext)
 
-        # Gather cluster mode arguments
         fstr_kwargs["node_name"] = self.wm.resolved_cluster_params["node_name"]
         fstr_kwargs["job_id"] = self.wm.resolved_cluster_params["job_id"]
 
-        # Build the new path
+        # Build the new path, then let the parent do the rest
         path = cluster_mode_path.format(*fstr_args, **fstr_kwargs)
 
-        # And call the parent method
         return super()._write_to_file(*args, path=path, **kwargs)

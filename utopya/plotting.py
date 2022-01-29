@@ -165,41 +165,30 @@ class ExternalPlotCreator(dtr.plot_creators.ExternalPlotCreator):
                     return mod
 
         # All imports failed. Inform extensively about errors to help debugging
+        err_info = "\n".join(
+            [
+                f"-- Error at custom plot module path {p} : {e['err']}\n\n"
+                "  Abbreviated traceback:\n"
+                f"{e['tb_lines'][0]} ...\n"
+                f"{e['tb_lines'][-1]}"
+                for p, e in errors.items()
+            ]
+        )
         raise ModuleNotFoundError(
-            "Could not import module '{mod:}'! It was "
-            "found neither among the installed packages nor among the custom "
-            "plot module paths.\n\n"
+            f"Could not import module '{module}'! It was found neither among "
+            "the installed packages nor among the custom plot module paths.\n"
+            "\n"
             "The following errors were encountered at the respective custom "
-            "plot module search paths:\n\n{info:}\n"
+            "plot module search paths:\n\n"
+            f"{err_info}\n"
             "NOTE: This error can have two reasons:\n"
-            "  (1) the '{mod:}' module does not exist in the specified search "
-            "location.\n"
+            f"  (1) the '{module}' module does not exist in the specified "
+            " search location.\n"
             "  (2) during import of the plot module you specified, an "
             "_unrelated_ ModuleNotFoundError occurred somewhere inside _your_ "
             "code.\n"
             "To debug, check the error messages and tracebacks above to find "
             "out which of the two is preventing module import."
-            "".format(
-                mod=module,
-                info="\n".join(
-                    [
-                        "-- Error at custom plot module path "
-                        "{} : {}\n\n  Shortened traceback:\n{}"
-                        "".format(
-                            p,
-                            e["err"],
-                            "".join(
-                                [
-                                    e["tb_lines"][0],
-                                    "  ...\n",
-                                    e["tb_lines"][-1],
-                                ]
-                            ),
-                        )
-                        for p, e in errors.items()
-                    ]
-                ),
-            )
         )
 
 
@@ -306,13 +295,11 @@ class PlotManager(dtr.plot_mngr.PlotManager):
             except Exception as exc:
                 if self.raise_exc:
                     raise RuntimeError(
-                        "Failed pre-loading the model-"
-                        "specific plot module of the '{}' "
-                        "model! Make sure that {}/__init__.py "
-                        "can be loaded without errors; to "
-                        "debug, inspect the chained traceback "
+                        "Failed pre-loading the model-specific plot module of "
+                        f"the '{model_name}' model! Make sure that "
+                        f"{mod_path}/__init__.py can be loaded without "
+                        "errors; to debug, inspect the chained traceback "
                         "above to find the cause of this error."
-                        "".format(model_name, mod_path)
                     ) from exc
                 log.debug(
                     "Pre-loading model-specific plot module from %s "

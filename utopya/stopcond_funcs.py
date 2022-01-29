@@ -1,8 +1,8 @@
-"""Here, functions that are used in the StopCondition class are defined.
+"""Implements :py:class:`~utopya.stopcond.StopCondition` functions which will
+carry out the conditional check.
 
-These all get passed the worker task, information and additional kwargs.
-
-Required signature:  ``(task: WorkerTask, **kws) -> bool``
+These all get passed a :py:class:`~utopya.task.WorkerTask`, the information in which can be used to determine whether the condition is fulfilled.
+The required signature is: ``(task: WorkerTask, **kws) -> bool``
 """
 
 import logging
@@ -12,7 +12,6 @@ import time
 from dantro.utils.data_ops import BOOLEAN_OPERATORS as OPERATORS
 from paramspace.tools import recursive_getitem as _recursive_getitem
 
-# Initialise logger
 log = logging.getLogger(__name__)
 
 # To not repeatedly show warnings, keep track of failed checks
@@ -76,5 +75,5 @@ def check_monitor_entry(
             _FAILED_MONITOR_ENTRY_CHECKS.append(entry_name)
         return False
 
-    # And perform the comparison
+    # Now perform the comparison
     return OPERATORS[operator](entry, value)

@@ -1,6 +1,7 @@
 """Helper module that can manipulate system path, e.g. to make additional
 utopya-related modules available.
 """
+
 import copy
 import logging
 import os
@@ -9,16 +10,16 @@ from typing import Sequence
 
 from .cfg import load_from_cfg_dir
 
-# Local constants
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
 
 class temporary_sys_path:
-    """A sys.path context manager, temporarily adding a path and removing it
-    again upon exiting. If the given path already exists in the sys.path, it
-    is neither added nor removed and the sys.path remains unchanged.
+    """A ``sys.path`` context manager, temporarily adding a path and removing
+    it again upon exiting.
+    If the given path already exists in the ``sys.path``, it is neither added
+    nor removed and the ``sys.path`` remains unchanged.
     """
 
     def __init__(self, path: str):
@@ -37,8 +38,8 @@ class temporary_sys_path:
 
 
 class temporary_sys_modules:
-    """A context manager for the sys.modules cache, ensuring that it is in the
-    same state after exiting as it was before entering the context manager.
+    """A context manager for the ``sys.modules`` cache, ensuring that it is in
+    the same state after exiting as it was before entering the context manager.
     """
 
     def __init__(self):
@@ -77,8 +78,7 @@ def add_modules_to_path(
             if ignore_missing:
                 continue
             raise KeyError(
-                "Missing configuration entry for '{}' module!"
-                "".format(module_name)
+                f"Missing configuration entry for '{module_name}' module!"
             ) from err
 
         if path not in sys.path:

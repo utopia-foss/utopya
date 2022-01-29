@@ -6,30 +6,27 @@ they are imported and configured to suit the needs of the Utopia data structes.
 
 import logging
 
-import dantro as dtr
+import dantro
 import dantro.groups
 
-from .datacontainer import XarrayDC
-from .dataprocessing import transform
+from .datacontainer import XarrayDC as _XarrayDC
 
-# Configure and get logger
 log = logging.getLogger(__name__)
-
-# Local constants
 
 # -----------------------------------------------------------------------------
 
 
-class UniverseGroup(dtr.groups.ParamSpaceStateGroup):
+class UniverseGroup(dantro.groups.ParamSpaceStateGroup):
     """This group represents the data of a single universe"""
 
 
-class MultiverseGroup(dtr.groups.ParamSpaceGroup):
-    """This group is meant to manage the `uni` group of the loaded data, i.e.
-    the group where output of all universe groups is stored in.
+class MultiverseGroup(dantro.groups.ParamSpaceGroup):
+    """This group is meant to manage the ``multiverse`` group of the loaded
+    data, i.e. the group where output of the individual
+    :py:class:`~utopya.datagroup.UniverseGroup` objects is stored in.
 
     Its main aim is to provide easy access to universes. By default, universes
-    are only identified by their ID, which is a zero-padded _string_. This
+    are only identified by their ID, which is a zero-padded *string*. This
     group adds the ability to access them via integer indices.
 
     Furthermore, via dantro, an easy data selector method is available, see
@@ -38,28 +35,24 @@ class MultiverseGroup(dtr.groups.ParamSpaceGroup):
 
     _NEW_GROUP_CLS = UniverseGroup
 
-    # Make the transformation interface available to the select method
-    _PSPGRP_TRANSFORMATOR = lambda _, d, *ops, **kws: transform(d, *ops, **kws)
-    # NOTE first argument (self) not needed here
 
-
-class TimeSeriesGroup(dtr.groups.TimeSeriesGroup):
+class TimeSeriesGroup(dantro.groups.TimeSeriesGroup):
     """This group is meant to manage time series data, with the container names
     being interpreted as the time coordinate.
     """
 
-    _NEW_CONTAINER_CLS = XarrayDC
+    _NEW_CONTAINER_CLS = _XarrayDC
 
 
-class HeterogeneousTimeSeriesGroup(dtr.groups.HeterogeneousTimeSeriesGroup):
+class HeterogeneousTimeSeriesGroup(dantro.groups.HeterogeneousTimeSeriesGroup):
     """This group is meant to manage time series data, with the container names
     being interpreted as the time coordinate.
     """
 
-    _NEW_CONTAINER_CLS = XarrayDC
+    _NEW_CONTAINER_CLS = _XarrayDC
 
 
-class GraphGroup(dtr.groups.GraphGroup):
+class GraphGroup(dantro.groups.GraphGroup):
     """This group is meant to manage graph data and create a NetworkX graph
     from it.
     """
@@ -68,7 +61,7 @@ class GraphGroup(dtr.groups.GraphGroup):
     _NEW_GROUP_CLS = TimeSeriesGroup
 
     # Define allowed member container types
-    _ALLOWED_CONT_TYPES = (TimeSeriesGroup, XarrayDC)
+    _ALLOWED_CONT_TYPES = (TimeSeriesGroup, _XarrayDC)
 
     # Expected names for the containers that hold vertex/edge information
     _GG_node_container = "_vertices"

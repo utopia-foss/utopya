@@ -16,7 +16,6 @@ from ..tools import pformat
 from ._exceptions import BundleExistsError, ModelRegistryError
 from .info_bundle import TIME_FSTR, ModelInfoBundle
 
-# Local constants
 log = logging.getLogger(__name__)
 
 

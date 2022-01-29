@@ -1,5 +1,7 @@
-"""This module implements the StopCondition class, which is used by the
-WorkerManager to stop a worker process in certain situations."""
+"""This module implements the :py:class:`~utopya.stopcond.StopCondition`
+class, which is used by the :py:class:`~utopya.workermanager.WorkerManager` to
+stop a worker process in certain situations.
+"""
 
 import copy
 import logging
@@ -8,11 +10,10 @@ from typing import Callable, List, Set, Union
 
 import utopya.stopcond_funcs as sc_funcs
 
-# Local constants
 log = logging.getLogger(__name__)
 
-# Name of the signal to use for stopping workers with stop conditions fulfilled
 SIG_STOPCOND = "SIGUSR1"
+"""Signal to use for stopping workers with fulfilled stop conditions"""
 
 
 # -----------------------------------------------------------------------------
@@ -42,9 +43,9 @@ class StopCondition:
         Args:
             to_check (List[dict], optional): A list of dicts, that holds the
                 functions to call and the arguments to call them with. The only
-                requirement for the dict is that the `func` key is available.
+                requirement for the dict is that the ``func`` key is available.
                 All other keys are unpacked and passed as kwargs to the given
-                function. The `func` key can be either a callable or a string
+                function. The ``func`` key can be either a callable or a string
                 corresponding to a name in the utopya.stopcond_funcs module.
             name (str, optional): The name of this stop condition
             description (str, optional): A short description of this stop
@@ -53,18 +54,15 @@ class StopCondition:
                 checked; if False, it will be created but will always be un-
                 fulfilled when checked.
             func (Union[Callable, str], optional): (For the short syntax
-                only!) If no `to_check` argument is given, a function can be
+                only!) If no ``to_check`` argument is given, a function can be
                 given here that will be the only one that is checked. If this
                 argument is a string, it is also resolved from the utopya
                 stopcond_funcs module.
             **func_kwargs: (For the short syntax) The kwargs that are passed
                 to the single stop condition function
         """
-
-        # Resolve functions that are to be checked
         self.to_check = self._resolve_sc_funcs(to_check, func, func_kwargs)
 
-        # Carry over descriptive attributes
         self.enabled = enabled
         self.description = description
         self.name = (
@@ -117,9 +115,8 @@ class StopCondition:
 
             if not func or not callable(func):
                 raise ImportError(
-                    "Could not find a callable named '{}' "
+                    f"Could not find a callable named '{func_name}' "
                     "in stopcond_funcs module!"
-                    "".format(func_name)
                 )
 
             return func
@@ -208,7 +205,6 @@ class StopCondition:
                 worker and its current information
         """
         if not self.enabled or not self.to_check:
-            # Never fulfilled
             return False
 
         # Now perform the check on this task with all stop condition functions
@@ -244,9 +240,9 @@ class StopCondition:
             k: v
             for k, v in d.items()
             if not (
-                k in ["name", "description", "func", "to_check"] and v is None
+                k in ("name", "description", "func", "to_check") and v is None
             )
-            and not (k in ["enabled"] and v is True)
+            and not (k == "enabled" and v is True)
         }
 
         # Create the mapping representation from the filtered dict
@@ -255,6 +251,6 @@ class StopCondition:
     @classmethod
     def from_yaml(cls, constructor, node):
         """Creates a StopCondition object by unpacking the given mapping such
-        that all stored arguments are available to __init__.
+        that all stored arguments are available to ``__init__``.
         """
         return cls(**constructor.construct_mapping(node, deep=True))

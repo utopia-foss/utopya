@@ -1,4 +1,4 @@
-"""Module that coordinates the Utopia Configuration Directory"""
+"""Module that coordinates utopya's persistent config directory"""
 
 import logging
 import os
@@ -8,10 +8,10 @@ from ._yaml import load_yml, write_yml
 log = logging.getLogger(__name__)
 
 # Some globally relevant variables --------------------------------------------
-# Path to the persistent Utopia configuration directory
-UTOPIA_CFG_DIR = os.path.expanduser("~/.config/utopia")
 
-# Names of configuration entries
+UTOPIA_CFG_DIR = os.path.expanduser("~/.config/utopia")
+"""Path to the persistent utopya configuration directory"""
+
 UTOPIA_CFG_FILE_NAMES = dict(
     user="user_cfg.yml",
     utopya="utopya_cfg.yml",
@@ -20,12 +20,13 @@ UTOPIA_CFG_FILE_NAMES = dict(
     external_module_paths="external_module_paths.yml",
     plot_module_paths="plot_module_paths.yml",
 )
+"""Names of configuration entries"""
 
-# Corresponding absolute paths
 UTOPIA_CFG_FILE_PATHS = {
     k: os.path.join(UTOPIA_CFG_DIR, fname)
     for k, fname in UTOPIA_CFG_FILE_NAMES.items()
 }
+"""Absolute configuration file paths"""
 
 # -----------------------------------------------------------------------------
 

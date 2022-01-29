@@ -15,7 +15,6 @@ from .parameter import Parameter
 from .stopcond import StopCondition
 from .tools import recursive_update as _recursive_update
 
-# Local constants
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------

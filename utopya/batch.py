@@ -19,13 +19,19 @@ from .yaml import load_yml as _load_yml
 from .yaml import write_yml as _write_yml
 
 _BTM_BASE_CFG_PATH = _resource_filename("utopya", "cfg/btm_cfg.yml")
+"""Base configuration path of the batch task manager"""
+
 _BTM_BASE_CFG = _load_yml(_BTM_BASE_CFG_PATH)
+"""Actual base configuration of the batch task manager"""
+
 _BTM_USER_DEFAULTS = _load_from_cfg_dir("batch")
+"""User defaults for the batch task manager"""
+
 _BTM_DEFAULTS = _recursive_update(
     _deepcopy(_BTM_BASE_CFG), _deepcopy(_BTM_USER_DEFAULTS)
 )
+"""Aggregated and recursively updated default batch task manager config"""
 
-# Substrings that may not appear in task names
 INVALID_TASK_NAME_CHARS = (
     "/",
     ":",
@@ -33,6 +39,7 @@ INVALID_TASK_NAME_CHARS = (
     "?",
     "*",
 )
+"""Substrings that may not appear in task names"""
 
 log = logging.getLogger(__name__)
 
@@ -154,8 +161,8 @@ def _eval_task(
 class BatchTaskManager:
     """A manager for batch tasks"""
 
-    # The time format string for the run directory
     RUN_DIR_TIME_FSTR = "%y%m%d-%H%M%S"
+    """The time format string for the run directory"""
 
     # .........................................................................
 
