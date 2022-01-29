@@ -1,5 +1,9 @@
 """This module provides plotting functions to visualize the attractive set of
 a dynamical system.
+
+.. todo::
+
+    Migrate these to the more generic DAG-based interface.
 """
 
 import copy
@@ -22,7 +26,6 @@ from utopya.plot_funcs._utils import calc_pxmap_rectangles
 from utopya.plotting import MultiversePlotCreator, PlotHelper, is_plot_func
 from utopya.tools import recursive_update
 
-# Get a logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
@@ -230,8 +233,8 @@ def bifurcation_diagram(
 
         Args:
             data (xr.Dataset): The data to analyse.
-            analysis_steps (Sequence[Union[str, Tuple[str, str]]]): The analysis steps that are to be made
-                until one is conclusive. Applied per universe.
+            analysis_steps (Sequence[Union[str, Tuple[str, str]]]): The analysis steps that are to be made until one is conclusive.
+                Applied per universe.
             analysis_funcs (dict): The entries need to match the
                 analysis_steps. Map of the analysis_steps to their Callables
             analysis_kwargs (dict): The entries need to match the
@@ -405,10 +408,10 @@ def bifurcation_diagram(
 
             except KeyError as err:
                 raise KeyError(
-                    "No bifurcation parameter coordinate '{}' "
+                    f"No bifurcation parameter coordinate '{dim}' "
                     "could be found! Either have it as a "
                     "coordinate in 'attractor' or pass it to "
-                    "'plot_attractor' explicitly.".format(dim)
+                    "'plot_attractor' explicitly."
                 ) from err
 
         # Resolve the scatter kwargs depending on attractor key
@@ -460,10 +463,9 @@ def bifurcation_diagram(
 
         elif attractor_key:
             raise KeyError(
-                "Invalid attractor-key '{}'! "
+                f"Invalid attractor-key '{attrator_key}'! "
                 "Available keys: 'endpoint', fixpoint',"
                 " 'multistability', 'scatter', 'oscillation'."
-                "".format(attractor_key)
             )
 
         return scatter_kwargs
@@ -496,7 +498,7 @@ def bifurcation_diagram(
 
     if dims is not None and len(dims) != 2:
         raise ValueError(
-            "Argument dims should be of length 2, but was: {}" "".format(dims)
+            f"Argument dims should be of length 2, but was: {dims}"
         )
 
     # TODO In the future, consider not using `dim` below here but handling it

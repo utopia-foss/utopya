@@ -16,7 +16,6 @@ from ..dataprocessing import transform
 from ..plotting import PlotHelper, UniversePlotCreator, is_plot_func
 from ..tools import recursive_update
 
-# Get a logger
 log = logging.getLogger(__name__)
 
 # Increase log threshold for animation module

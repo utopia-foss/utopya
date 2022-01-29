@@ -15,7 +15,6 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
-# matplotlib color normalizations supported by the ColorManager
 NORMS = {
     "Normalize": mpl.colors.Normalize,
     "BoundaryNorm": mpl.colors.BoundaryNorm,
@@ -25,6 +24,9 @@ NORMS = {
     "SymLogNorm": mpl.colors.SymLogNorm,
     "TwoSlopeNorm": mpl.colors.TwoSlopeNorm,
 }
+"""matplotlib color normalizations supported by the
+:py:class:`~utopya.plot_funcs._mpl.ColorManager`
+"""
 
 # -----------------------------------------------------------------------------
 

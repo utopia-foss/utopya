@@ -11,9 +11,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from utopya.plot_funcs._mpl_helpers import ColorManager
+from ._mpl import ColorManager
 
-# Get a logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
@@ -162,10 +161,10 @@ class GraphPlot:
                     (e.g. categorical) properties.
                 cmap (optional):
                     The colormap. Passed as ``cmap`` to
-                    :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`.
+                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
                 cmap_norm (optional):
                     The norm used for the color mapping. Passed as ``norm`` to
-                    :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`.
+                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
                     Is overwritten, if a discrete colormap is specified in
                     ``cmap``.
                 colorbar (dict, optional):
@@ -177,7 +176,7 @@ class GraphPlot:
                         ``node_color`` is mapped from property.
                     labels (dict, optional):
                         Colorbar tick-labels keyed by tick position (see
-                        :py:meth:`~utopya.plot_funcs._mpl_helpers.ColorManager.create_cbar`).
+                        :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`).
                     tick_params (dict, optional):
                         Colorbar axis tick parameters
                     label (str, optional):
@@ -186,7 +185,7 @@ class GraphPlot:
                         Further keyword arguments to adjust the aesthetics of
                         the colorbar label
                     further kwargs:
-                        Passed on to :py:meth:`~utopya.plot_funcs._mpl_helpers.ColorManager.create_cbar`.
+                        Passed on to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
 
                 further kwargs:
                     Passed to `draw_networkx_nodes <https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_pylab.draw_networkx_nodes.html>`_
@@ -370,7 +369,7 @@ class GraphPlot:
                 colorbars
             update_colormapping (bool, optional): Whether to reconfigure the
                 nodes' and edges'
-                :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`
+                :py:class:`~utopya.plot_funcs._mpl.ColorManager`
                 (default=True). If True, the respective configuration entries
                 are ignored. Set to False if doing repetitive plotting with
                 fixed colormapping.
@@ -495,7 +494,7 @@ class GraphPlot:
                 If False, the GraphPlot still loses track of the colorbars,
                 they can not be removed via the GraphPlot afterwards.
             **update_cbar_kwargs: Update both node and edge colorbar kwargs,
-                passed to :py:meth:`~utopya.plot_funcs._mpl_helpers.ColorManager.create_cbar`.
+                passed to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
         """
         fig = fig if fig is not None else self.fig
         ax = ax if ax is not None else self.ax
@@ -772,10 +771,10 @@ class GraphPlot:
                 (e.g. categorical) properties.
             alpha (None, optional): The node transparency
             cmap (None, optional): The colormap. Passed as ``cmap`` to
-                :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`.
+                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
             cmap_norm (None, optional): The norm used for the color mapping.
                 Passed as ``norm`` to
-                :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`.
+                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
                 Is overwritten, if a discrete colormap is specified in
                 ``cmap``.
             vmin (float, optional): Minimum for the colormap scaling
@@ -790,12 +789,12 @@ class GraphPlot:
                     ``node_color`` is mapped from property.
                 labels (dict, optional):
                     Colorbar tick-labels keyed by tick position (see
-                    :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`).
+                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`).
                 further kwargs:
-                    Passed on to :py:meth:`~utopya.plot_funcs._mpl_helpers.ColorManager.create_cbar`.
+                    Passed on to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
 
             update_colormapping (bool, optional): Whether to reconfigure the
-                nodes' :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`
+                nodes' :py:class:`~utopya.plot_funcs._mpl.ColorManager`
                 (default=True). If False, the respective arguments are ignored.
                 Set to False if doing repetitive plotting with fixed
                 colormapping.
@@ -989,10 +988,10 @@ class GraphPlot:
                 keyed by property value. This allows to map from non-numeric
                 (e.g. categorical) properties.
             edge_cmap (None, optional): The colormap. Passed as ``cmap`` to
-                :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`.
+                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
             cmap_norm (None, optional): The norm used for the color mapping.
                 Passed as ``norm`` to
-                :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`.
+                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
                 Is overwritten, if a discrete colormap is specified in
                 ``edge_cmap``.
                 If arrows are to be drawn (i.e. for directed edges with
@@ -1008,12 +1007,12 @@ class GraphPlot:
                     ``edge_color`` is mapped from property.
                 labels (dict, optional):
                     Colorbar tick-labels keyed by tick position (see
-                    :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`).
+                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`).
                 further kwargs:
-                    Passed on to :py:meth:`~utopya.plot_funcs._mpl_helpers.ColorManager.create_cbar`.
+                    Passed on to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
 
             update_colormapping (bool, optional): Whether to reconfigure the
-                edges' :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager`
+                edges' :py:class:`~utopya.plot_funcs._mpl.ColorManager`
                 (default=True). If False, the respective arguments are ignored.
                 Set to False if doing repetitive plotting with fixed
                 colormapping.

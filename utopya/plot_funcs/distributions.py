@@ -1,4 +1,4 @@
-"""Generic DAG-based plotting functions"""
+"""DAG-based distribution plotting functions"""
 
 import copy
 import logging
@@ -6,9 +6,8 @@ from typing import Sequence, Union
 
 import xarray as xr
 
-from utopya.plotting import PlotHelper, is_plot_func
+from . import PlotHelper, is_plot_func
 
-# Local variables
 log = logging.getLogger(__name__)
 
 

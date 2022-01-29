@@ -13,11 +13,10 @@ import networkx as nx
 import numpy as np
 import xarray as xr
 
-from utopya.plot_funcs._graph import GraphPlot
-from utopya.plot_funcs._mpl_helpers import ColorManager
-from utopya.plotting import PlotHelper, is_plot_func
+from . import PlotHelper, is_plot_func
+from ._graph import GraphPlot
+from ._mpl import ColorManager
 
-# Get a logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
@@ -213,7 +212,7 @@ def graph_animation_update(
                 (default=False).
             update_colormapping (bool, optional):
                 Whether to reconfigure the nodes' and edges'
-                :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager` for
+                :py:class:`~utopya.plot_funcs._mpl.ColorManager` for
                 each frame (default=False). If False, the colormapping (and the
                 colorbar) is configured with the first frame and then fixed.
             skip_empty_frames (bool, optional):
@@ -432,7 +431,7 @@ def draw_graph(
                 fixed.
             update_colormapping (bool, optional):
                 Whether to reconfigure the nodes' and edges'
-                :py:class:`~utopya.plot_funcs._mpl_helpers.ColorManager` for
+                :py:class:`~utopya.plot_funcs._mpl.ColorManager` for
                 each frame (default=False). If False, the colormapping (and the
                 colorbar) is configured with the first frame and then fixed.
             skip_empty_frames (bool, optional):

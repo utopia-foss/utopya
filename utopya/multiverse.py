@@ -54,9 +54,7 @@ class Multiverse:
     RUN_DIR_TIME_FSTR = "%y%m%d-%H%M%S"
     """The time format string for the run directory"""
 
-    UTOPYA_BASE_PLOTS_PATH = resource_filename(
-        "utopya", "plot_funcs/base_plots.yml"
-    )
+    UTOPYA_BASE_PLOTS_PATH = resource_filename("utopya", "cfg/base_plots.yml")
     """Where the utopya base plots configuration can be found; this is passed
     to the :py:class:`~utopya.plotting.PlotManager`.
     """

@@ -7,7 +7,6 @@ from typing import Dict, Tuple
 import numpy as np
 import xarray as xr
 
-# Local Variables
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
