@@ -119,11 +119,10 @@ class ModelRegistryEntry:
         """Retrieve the single bundle for this model, if not ambiguous."""
         if len(self) != 1:
             raise ModelRegistryError(
-                "Could not select single bundle from {}, "
+                f"Could not select single bundle from {self}, "
                 "because there are zero or more than one "
                 "bundles stored in it. Use __getitem__ "
                 "and the .available property instead."
-                "".format(self)
             )
 
         return self[list(self.keys())[0]]
@@ -183,10 +182,8 @@ class ModelRegistryEntry:
 
         if bundle in self:
             raise BundleExistsError(
-                "A bundle that compared equal to the to-"
-                "be-added bundle already exists in {}! "
-                "Not adding it again.\n{}"
-                "".format(self, bundle)
+                "A bundle that compared equal to the to-be-added bundle "
+                f"already exists in {self}! Not adding it again.\n{bundle}"
             )
             # TODO should this warn instead of raising?!
 
@@ -202,16 +199,14 @@ class ModelRegistryEntry:
         else:
             if isinstance(label, int):
                 raise TypeError(
-                    "Argument label for model registry entry '{}' "
-                    "may not be an int!"
-                    "".format(self.model_name)
+                    "Argument label for model registry entry "
+                    f"'{self.model_name}' may not be an int!"
                 )
 
             if not overwrite_label and label in self._labelled:
                 raise ModelRegistryError(
-                    "A bundle with label '{}' already "
-                    "exists in {}! Remove it first."
-                    "".format(label, self)
+                    f"A bundle with label '{label}' already "
+                    f"exists in {self}! Remove it first."
                 )
 
             log.debug(
@@ -280,14 +275,11 @@ class ModelRegistryEntry:
         # If a model name is given, make sure it matches the file name
         if self.model_name != obj.get("model_name", self.model_name):
             raise ValueError(
-                "Mismatch between expected model name '{}' "
-                "and the model name '{}' specified in the "
-                "registry file at {}! Check the file name and "
-                "the registry file and make sure the model name "
-                "matches exactly."
-                "".format(
-                    self.model_name, obj["model_name"], self.registry_file_path
-                )
+                f"Mismatch between expected model name '{self.model_name}' "
+                f"and the model name '{obj['model_name']}' specified in the "
+                f"registry file at {self.registry_file_path}! "
+                "Check the file name and the registry file and make sure the "
+                "model name matches exactly."
             )
 
         # Populate self. Need not update because content is freshly loaded.
@@ -321,12 +313,12 @@ class ModelRegistryEntry:
             if fn.lower() == fname.lower()
         ]
         if lc_duplicates and not overwrite_existing:
+            _duplicates = ", ".join(lc_duplicates)
             raise FileExistsError(
-                "At least one file with a file name "
-                "conflicting with '{}' was found in {}: {}. "
+                "At least one file with a file name conflicting with "
+                f"'{fname}' was found in {self.registry_dir}: {_duplicates}. "
                 "Manually delete or rename the conflicting "
                 "file(s), taking care to not mix cases."
-                "".format(fname, self.registry_dir, ", ".join(lc_duplicates))
             )
 
         # Write to separate location; move only after write was successful.

@@ -57,9 +57,6 @@ class temporary_sys_modules:
             )
 
 
-# -----------------------------------------------------------------------------
-
-
 def add_modules_to_path(
     *modules,
     cfg_name: str = "external_module_paths",

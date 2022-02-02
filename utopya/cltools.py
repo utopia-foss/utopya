@@ -179,8 +179,6 @@ def register_models(args, *, registry):
             "Registering a single model is currently "
             "not possible via the CLI!"
         )
-        # paths = dict()
-        # specs[args.model_name] = dict(paths=paths)
 
     else:
         # Got separator for lists of model names, binary paths, and source dirs
@@ -196,11 +194,10 @@ def register_models(args, *, registry):
         if not (len(model_names) == len(bin_paths) == len(src_dirs)):
             raise ValueError(
                 "Mismatch of sequence lengths during batch model "
-                "registration! The model_name, bin_path, and "
-                "src_dir lists should all be of equal length "
-                "after having been split by separator '{}', but "
-                "were: {}, {}, and {}, respectively."
-                "".format(args.separator, model_names, bin_paths, src_dirs)
+                "registration! The model_name, bin_path, and src_dir lists "
+                "should all be of equal length after having been split by "
+                f"separator '{args.separator}', but were: "
+                f"{model_name}, {bin_paths}, and {src_dirs}, respectively."
             )
         # TODO Will ignore other path-related arguments! Warn if given.
 
@@ -323,17 +320,14 @@ def deploy_user_cfg(
     Returns:
         None
     """
-    # Check if a user config already exists
+    # Check if a user config already exists and ask if it should be overwritten
     if os.path.isfile(user_cfg_path):
-        # There already is one. Ask if this should be overwritten...
         print("A config file already exists at " + str(user_cfg_path))
         if input("Replace? [y, N]  ").lower() in ["yes", "y"]:
-            # Delete the file
             os.remove(user_cfg_path)
             print("")
 
         else:
-            # Abort here
             print("Not deploying user config.")
             return
 
@@ -377,11 +371,10 @@ def deploy_user_cfg(
         # Done
 
     print(
-        "Deployed user config to: {}\n\nAll entries are commented out; "
-        "open the file to edit your configuration. Note that it is wise to "
-        "only enable those entries that you absolutely _need_ to set.".format(
-            user_cfg_path
-        )
+        f"Deployed user config to: {user_cfg_path}\n\n"
+        "All entries are commented out; open the file to edit your "
+        "configuration. Note that it is wise to only uncomment those entries "
+        "that you absolutely *need* to set."
     )
 
 
@@ -570,8 +563,8 @@ def copy_model_files(
     # Get the model information
     info_bundle = _get_info_bundle(model_name=model_name)
     print(
-        "\nModel selected to copy:     {}  (from project: {})"
-        "".format(info_bundle.model_name, info_bundle.project_name)
+        f"\nModel selected to copy:     {info_bundle.model_name}  "
+        f"(from project: {info_bundle.project_name})"
     )
 
     # Find out the new name
@@ -585,15 +578,15 @@ def copy_model_files(
 
     # Check if the name is not already taken, being case-insensitive
     if new_name.lower() in [n.lower() for n in _MODELS.keys()]:
+        _avail = ", ".join(_MODELS.keys())
         raise ValueError(
-            "A model with name '{}' is already registered! "
+            f"A model with name '{new_name}' is already registered! "
             "Make sure that the name is unique. If you keep "
             "receiving this error despite no other model with "
             "this name being implemented, remove the entry from "
             "the model registry, e.g. via the `utopia models rm` "
             "CLI command.\n"
-            "Already registered models: {}"
-            "".format(new_name, ", ".join(_MODELS.keys()))
+            "Already registered models: {_avail}"
         )
 
     print(f"Name of the new model:      {new_name}")
@@ -613,9 +606,8 @@ def copy_model_files(
             raise ValueError("Missing target_project argument!")
         try:
             target_project = input(
-                "\nWhich Utopia project (available: {}) "
+                f"\nWhich Utopia project (available: {', '.join(projects)}) "
                 "should the model be copied to?  "
-                "".format(", ".join(projects))
             )
         except KeyboardInterrupt:
             return
@@ -624,11 +616,10 @@ def copy_model_files(
     project_info = projects.get(target_project)
     if not project_info:
         raise ValueError(
-            "No Utopia project with name '{}' is known to the "
+            f"No Utopia project with name '{target_project}' is known to the "
             "frontend. Check the spelling and note that the "
             "project name is case-sensitive.\n"
-            "Available projects: {}."
-            "".format(target_project, ", ".join(projects))
+            f"Available projects: {', '.join(projects)}."
         )
 
     # Generate the file maps . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -712,9 +703,8 @@ def copy_model_files(
         for repl in replacements
     ]
     print(
-        "\nInside all of these {:d} files, the following string "
-        "replacements will be carried out:\n{}\n"
-        "".format(len(file_map), "\n".join(repl_info))
+        f"\nInside all of these {len(file_map):d} files, the following string "
+        f"replacements will be carried out:\n{'\n'.join(repl_info)}\n"
     )
 
     # Inform about dry run and ask whether to proceed
@@ -743,10 +733,7 @@ def copy_model_files(
                 src_lines = src_file.read()
 
         except Exception as exc:
-            print(
-                "\tReading FAILED due to {}: {}."
-                "".format(exc.__class__.__name__, str(exc))
-            )
+            print(f"\tReading FAILED due to {type(exc).__name__}: {str(exc)}.")
             print(
                 "\tIf you want this file copied and refactored, you will "
                 "have to do it manually."
@@ -774,8 +761,8 @@ def copy_model_files(
         print("Not extending CMakeLists.txt automatically.")
         print(
             "Remember to register the new model in the relevant "
-            "CMakeLists.txt file at\n\t{}\nand invoke CMake to reconfigure."
-            "".format(cmakelists_fpath)
+            f"CMakeLists.txt file at\n\t{cmakelists_fpath}\n"
+            "and invoke CMake to reconfigure."
         )
         return
 
@@ -784,7 +771,6 @@ def copy_model_files(
         fpath=cmakelists_fpath, new_name=new_name, write=not dry_run
     )
 
-    # All done now.
     print("\nFinished.")
 
 
@@ -877,10 +863,9 @@ def prompt_for_new_plot_args(
             )
         )
         raise ValueError(
-            "Cannot specify arguments that are used for updating "
-            "the (already-in-use) meta-configuration of the "
-            "current Multiverse instance. Disallowed arguments: "
-            "{}".format(", ".join(DISALLOWED_ARGS))
+            "Cannot specify arguments that are used for updating the "
+            "(already-in-use) meta-configuration of the current Multiverse "
+            f"instance. Disallowed arguments: {', '.join(DISALLOWED_ARGS)}"
         )
 
     return new_argv, new_args

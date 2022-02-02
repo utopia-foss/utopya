@@ -37,9 +37,10 @@ def get_cfg_path(cfg_name: str) -> str:
         return UTOPIA_CFG_FILE_PATHS[cfg_name]
 
     except KeyError as err:
-        raise KeyError(
-            "No configuration entry '{}' available! Possible keys: "
-            "{}".format(cfg_name, ", ".join(UTOPIA_CFG_FILE_NAMES.keys()))
+        _avail = ", ".join(UTOPIA_CFG_FILE_NAMES.keys())
+        raise ValueError(
+            f"No configuration entry '{cfg_name}' available! "
+            f"Possible keys: {_avail}"
         ) from err
 
 

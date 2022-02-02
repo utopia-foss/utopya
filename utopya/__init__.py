@@ -5,15 +5,15 @@ __version__ = "1.0.0a0"
 
 # Use the dantro-provided logging module (with additional log levels)
 from dantro.logging import REMARK as DEFAULT_LOG_LEVEL
-from dantro.logging import getLogger
+from dantro.logging import getLogger as _getLogger
 
-log = getLogger(__name__)
+log = _getLogger(__name__)
 
 # Add colour logging to the root logger
 # See API reference:  https://coloredlogs.readthedocs.io/en/latest/api.html
-import coloredlogs
+import coloredlogs as _coloredlogs
 
-coloredlogs.install(
+_coloredlogs.install(
     logger=log,
     level=DEFAULT_LOG_LEVEL,
     fmt="%(levelname)-8s %(module)-15s %(message)s",
@@ -35,17 +35,12 @@ coloredlogs.install(
         levelname=dict(bold=True, faint=True), module=dict(faint=True)
     ),
 )
-
 log.debug("Logging configured.")
 
-# Define or import some global variables ......................................
+# -- The most frequently used objects -----------------------------------------
 
 from .datagroup import MultiverseGroup, UniverseGroup
 from .datamanager import DataManager
 from .model import Model
-
-# The global model registry object
 from .model_registry import MODELS
-
-# Import classes that should be easily accessible .............................
 from .multiverse import FrozenMultiverse, Multiverse

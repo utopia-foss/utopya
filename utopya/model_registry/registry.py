@@ -148,10 +148,10 @@ class ModelRegistry:
             return self._registry[model_name]
 
         except KeyError as err:
-            raise KeyError(
-                "No model with name '{}' found! Did you forget "
-                "to register it? Available models: {}"
-                "".format(model_name, ", ".join(self.keys()))
+            _avail = ", ".join(self.keys())
+            raise ValueError(
+                f"No model with name '{model_name}' found! Did you forget "
+                f"to register it? Available models: {_avail}"
             ) from err
 
     def register_model_info(
@@ -191,10 +191,10 @@ class ModelRegistry:
 
         # Check exists_action
         if exists_action and exists_action not in ACTIONS:
+            _avail = ", ".join(ACTIONS)
             raise ValueError(
-                "Invalid value for argument exists_action: '{}'! "
-                "Possible actions: None, {}."
-                "".format(exists_action, ", ".join(ACTIONS))
+                f"Invalid value for argument exists_action: '{exists_action}'!"
+                f" Possible actions: None, {_avail}."
             )
 
         # Register the model, if not already done
@@ -218,11 +218,10 @@ class ModelRegistry:
 
         elif exists_action == "raise":
             raise ValueError(
-                "A registry entry for model '{}' already exists! "
+                f"A registry entry for model '{model_name}' already exists! "
                 "To add a configuration bundle to it, use its "
                 "add_bundle method or set the exists_action "
                 "argument to control the behaviour."
-                "".format(model_name)
             )
 
         # If this point is reached, a bundle is also to be added.
@@ -246,10 +245,10 @@ class ModelRegistry:
             entry = self._registry.pop(model_name)
 
         except KeyError as err:
+            _avail = ", ".join(self.keys())
             raise KeyError(
-                "Could not remove entry for model '{}', because "
-                "no such model is registered. Available models: "
-                "{}".format(model_name, ", ".join(self.keys()))
+                f"Could not remove entry for model '{model_name}', because "
+                f"no such model is registered. Available models: {_avail}"
             ) from err
         else:
             log.info(
@@ -283,9 +282,9 @@ class ModelRegistry:
         """
         if model_name in self:
             raise ValueError(
-                "There already is a model registered under the "
-                "name of '{}'! Use the add_bundle method to add "
-                "information to it.".format(model_name)
+                "There already is a model registered under the name of "
+                f"'{model_name}'! "
+                "Use the add_bundle method to add information to it."
             )
 
         entry = ModelRegistryEntry(model_name, registry_dir=self.registry_dir)

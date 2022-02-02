@@ -222,9 +222,8 @@ class ModelInfoBundle:
                 # Is relative. Need a source directory to join it to ...
                 if not abs_src_path:
                     raise ValueError(
-                        "Given '{}' path ({}) was relative, but "
+                        f"Given '{key}' path ({path}) was relative, but "
                         "no source directory was specified!"
-                        "".format(key, path)
                     )
 
                 path = os.path.join(abs_src_path, path)
@@ -239,16 +238,15 @@ class ModelInfoBundle:
         for key, path in paths.items():
             if not os.path.isabs(path):
                 raise ValueError(
-                    "The given '{}' path ({}) for config bundle "
-                    "of model '{}' was not absolute! Please "
+                    f"The given '{key}' path ({path}) for config bundle "
+                    f"of model '{self.model_name}' was not absolute! Please "
                     "provide only absolute paths (may include ~)."
-                    "".format(key, path, self.model_name)
                 )
 
             if not os.path.exists(path):
                 msg = (
-                    "Given '{}' path for model '{}' does not exist: {}"
-                    "".format(key, self.model_name, path)
+                    f"Given '{key}' path for model '{self.model_name}' does "
+                    f"not exist: {path}"
                 )
 
                 if missing_path_action == "warn":
@@ -268,9 +266,8 @@ class ModelInfoBundle:
 
                 else:
                     raise ValueError(
-                        "Invalid missing_path_action '{}'! "
-                        "Choose from: ignore, log, warn, raise."
-                        "".format(missing_path_action)
+                        f"Invalid missing_path_action '{missing_path_action}'!"
+                        " Choose from: ignore, log, warn, raise."
                     )
 
         return paths

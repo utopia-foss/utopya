@@ -1,4 +1,4 @@
-"""This module holds functions used in the Multiverse cluster mode"""
+"""This module holds functions used in the Multiverse's cluster mode"""
 
 import re
 from typing import List

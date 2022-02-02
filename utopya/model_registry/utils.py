@@ -86,8 +86,7 @@ def load_model_cfg(**get_info_bundle_kwargs) -> Tuple[dict, str, dict]:
     except FileNotFoundError as err:
         raise FileNotFoundError(
             "Could not locate default configuration for "
-            "'{}' model! Expected to find it at: {}"
-            "".format(bundle.model_name, path)
+            f"'{bundle.model_name}' model! Expected to find it at: {path}"
         ) from err
 
     # Collect the validation objects from the model configuration and replace

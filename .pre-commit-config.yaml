@@ -32,7 +32,7 @@ repos:
     hooks:
       - id: black
         name: black code formatting
-        args: [bin/utopya]
+        args: [--safe, bin/utopya]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.9.0

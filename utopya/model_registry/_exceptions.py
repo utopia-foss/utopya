@@ -1,4 +1,9 @@
-"""All model registry related error types"""
+"""All model registry related error types
+
+.. todo::
+
+    Should be migrated to utopya.exceptions
+"""
 
 
 class ModelRegistryError(ValueError):
