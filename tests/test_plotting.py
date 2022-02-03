@@ -33,16 +33,16 @@ DAG_PLOTS = resource_filename("tests", "cfg/plots/dag.yml")
 
 # Bifurcation diagram, 1D and 2D
 BIFURCATION_DIAGRAM_RUN = resource_filename(
-    "test", "cfg/plots/bifurcation_diagram/run.yml"
+    "tests", "cfg/plots/bifurcation_diagram/run.yml"
 )
 BIFURCATION_DIAGRAM_PLOTS = resource_filename(
-    "test", "cfg/plots/bifurcation_diagram/plots.yml"
+    "tests", "cfg/plots/bifurcation_diagram/plots.yml"
 )
 BIFURCATION_DIAGRAM_2D_RUN = resource_filename(
-    "test", "cfg/plots/bifurcation_diagram_2d/run.yml"
+    "tests", "cfg/plots/bifurcation_diagram_2d/run.yml"
 )
 BIFURCATION_DIAGRAM_2D_PLOTS = resource_filename(
-    "test", "cfg/plots/bifurcation_diagram_2d/plots.yml"
+    "tests", "cfg/plots/bifurcation_diagram_2d/plots.yml"
 )
 GRAPH_RUN = resource_filename("tests", "cfg/graphgroup_cfg.yml")
 
