@@ -38,7 +38,7 @@ def test_add_modules_to_path(tmp_sys_path, tmp_cfg_dir):
     assert all([p in sys.path for p in paths.values()])
 
     # Error on missing module
-    with pytest.raises(KeyError, match="Missing configuration entry"):
+    with pytest.raises(ValueError, match="Missing configuration entry"):
         add_modules_to_path("invalid")
 
     # ... but can also ignore it

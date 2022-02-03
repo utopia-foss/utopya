@@ -150,7 +150,7 @@ def test_register_models(tmp_model_registry, tmp_cfg_dir, tmpdir):
     args.update_project_info = False
 
     # Try registration ... will fail, because files are missing in this test
-    with pytest.raises(KeyError, match="Missing required key: default_cfg"):
+    with pytest.raises(ValueError, match="Missing required key: default_cfg"):
         clt.register_models(args, registry=tmp_model_registry)
     # NOTE It's not crucial to test a full registration here, because that's
     #      done in the test there. We just want to ascertain that the cltools

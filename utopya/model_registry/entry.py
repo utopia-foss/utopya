@@ -12,8 +12,8 @@ from typing import Generator, Iterator, Tuple, Union
 
 from .._yaml import load_yml, write_yml
 from ..cfg import UTOPIA_CFG_DIR
+from ..exceptions import BundleExistsError, ModelRegistryError
 from ..tools import pformat
-from ._exceptions import BundleExistsError, ModelRegistryError
 from .info_bundle import TIME_FSTR, ModelInfoBundle
 
 log = logging.getLogger(__name__)

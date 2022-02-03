@@ -64,7 +64,7 @@ def load_selected_keys(
         if k not in src:
             if not required:
                 continue
-            raise KeyError(
+            raise ValueError(
                 "{}Missing required key: {}"
                 "".format(err_msg_prefix + " " if err_msg_prefix else "", k)
             )

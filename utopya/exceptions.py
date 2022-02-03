@@ -53,3 +53,14 @@ class WorkerTaskStopConditionFulfilled(WorkerTaskNonZeroExit):
     """An exception that is raised when a worker-specific stop condition was
     fulfilled. This allows being handled separately to other non-zero exits.
     """
+
+
+# -----------------------------------------------------------------------------
+
+
+class ModelRegistryError(UtopyaException, ValueError):
+    """Raised on errors with model registry"""
+
+
+class BundleExistsError(ModelRegistryError):
+    """Raised when a bundle that compared equal already exists."""

@@ -12,8 +12,8 @@ import dantro.utils
 
 from .._yaml import load_yml, write_yml, yaml
 from ..cfg import UTOPIA_CFG_DIR
+from ..exceptions import BundleExistsError
 from ..tools import pformat, recursive_update
-from ._exceptions import BundleExistsError
 from .entry import ModelRegistryEntry
 
 log = logging.getLogger(__name__)
@@ -246,7 +246,7 @@ class ModelRegistry:
 
         except KeyError as err:
             _avail = ", ".join(self.keys())
-            raise KeyError(
+            raise ValueError(
                 f"Could not remove entry for model '{model_name}', because "
                 f"no such model is registered. Available models: {_avail}"
             ) from err

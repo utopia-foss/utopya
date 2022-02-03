@@ -407,7 +407,7 @@ def bifurcation_diagram(
                 coord = attractor[dim]
 
             except KeyError as err:
-                raise KeyError(
+                raise ValueError(
                     f"No bifurcation parameter coordinate '{dim}' "
                     "could be found! Either have it as a "
                     "coordinate in 'attractor' or pass it to "
@@ -462,7 +462,7 @@ def bifurcation_diagram(
                 )
 
         elif attractor_key:
-            raise KeyError(
+            raise ValueError(
                 f"Invalid attractor-key '{attrator_key}'! "
                 "Available keys: 'endpoint', fixpoint',"
                 " 'multistability', 'scatter', 'oscillation'."
@@ -482,14 +482,14 @@ def bifurcation_diagram(
 
     # Check argument values
     if not dim and not dims:
-        raise KeyError(
+        raise ValueError(
             "No dim (str) or dims (Tuple[str, str]) specified. "
             "Use dim for a 1d-bifurcation diagram and dims for a "
             "2d-bifurcation diagram."
         )
 
     if dim and dims:
-        raise KeyError(
+        raise ValueError(
             "dim='{}' and dims='{}' specified. "
             "Use either dim for a 1d-bifurcation diagram or dims "
             "for a 2d-bifurcation diagram."

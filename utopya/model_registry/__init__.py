@@ -1,7 +1,7 @@
 """This submodule implements a registry of Utopia models, which is used to
 provide the required model information to the frontend and use it throughout.
 """
-from ._exceptions import BundleExistsError, ModelRegistryError
+from ..exceptions import BundleExistsError, ModelRegistryError
 from .entry import ModelRegistryEntry
 
 # Make names of class definitions available

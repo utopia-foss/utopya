@@ -74,7 +74,7 @@ def add_modules_to_path(
         except KeyError as err:
             if ignore_missing:
                 continue
-            raise KeyError(
+            raise ValueError(
                 f"Missing configuration entry for '{module_name}' module!"
             ) from err
 

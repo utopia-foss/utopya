@@ -52,5 +52,5 @@ def test_cfg(tmp_cfg_dir):
     assert ucfg.load_from_cfg_dir("user") == dict(spam="spam")
 
     # Error messages
-    with pytest.raises(KeyError, match="invalid"):
+    with pytest.raises(ValueError, match="invalid"):
         ucfg.load_from_cfg_dir("invalid")

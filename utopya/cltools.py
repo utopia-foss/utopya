@@ -76,13 +76,11 @@ def add_from_kv_pairs(
 
     def conversions(val):
         # Boolean
-        if val.lower()("true", "false"):
+        if val.lower() in ("true", "false"):
             return bool(val.lower() == "true")
 
         # None
-        if val.lower()(
-            "null",
-        ):
+        if val.lower() == "null":
             return None
 
         # Floating point number (requiring '.' being present)
@@ -197,7 +195,7 @@ def register_models(args, *, registry):
                 "registration! The model_name, bin_path, and src_dir lists "
                 "should all be of equal length after having been split by "
                 f"separator '{args.separator}', but were: "
-                f"{model_name}, {bin_paths}, and {src_dirs}, respectively."
+                f"{model_names}, {bin_paths}, and {src_dirs}, respectively."
             )
         # TODO Will ignore other path-related arguments! Warn if given.
 

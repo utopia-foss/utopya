@@ -350,7 +350,7 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
 
     # Error messages
     # Invalid key
-    with pytest.raises(KeyError, match="No model with name .* model1, .*"):
+    with pytest.raises(ValueError, match="No model with name .* model1, .*"):
         mr["i_do_not_exist12312312312"]
 
     # Adding one that already exists does not work
@@ -362,5 +362,5 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
     mr.remove_entry("model2")
     assert not os.path.isfile(entry2.registry_file_path)
 
-    with pytest.raises(KeyError, match="Could not remove .* model1"):
+    with pytest.raises(ValueError, match="Could not remove .* model1"):
         mr.remove_entry("i_do_not_exist12312312312")
