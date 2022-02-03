@@ -24,7 +24,6 @@ TEST_DEPS = [
     "pytest>=6.2",
     "pytest-cov>=2.10",
     "pre-commit>=2.16",
-    "psutil>=5.6.7",
 ]
 
 # Dependencies for building the dantro documentation
