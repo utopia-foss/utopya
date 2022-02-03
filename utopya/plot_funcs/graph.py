@@ -13,7 +13,7 @@ import networkx as nx
 import numpy as np
 import xarray as xr
 
-from . import PlotHelper, is_plot_func
+from ..plotting import PlotHelper, is_plot_func
 from ._graph import GraphPlot
 from ._mpl import ColorManager
 

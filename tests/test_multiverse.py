@@ -20,10 +20,10 @@ from utopya.parameter import ValidationError
 # Get the test resources
 RUN_CFG_PATH = resource_filename("tests", "cfg/run_cfg.yml")
 RUN_CFG_PATH_VALID = resource_filename(
-    "test", "cfg/run_cfg_validation_valid.yml"
+    "tests", "cfg/run_cfg_validation_valid.yml"
 )
 RUN_CFG_PATH_INVALID = resource_filename(
-    "test", "cfg/run_cfg_validation_invalid.yml"
+    "tests", "cfg/run_cfg_validation_invalid.yml"
 )
 USER_CFG_PATH = resource_filename("tests", "cfg/user_cfg.yml")
 BASE_PLOTS_PATH = resource_filename("tests", "cfg/base_plots.yml")
@@ -32,7 +32,7 @@ UPDATE_BASE_PLOTS_PATH = resource_filename(
 )
 SWEEP_CFG_PATH = resource_filename("tests", "cfg/sweep_cfg.yml")
 STOP_COND_CFG_PATH = resource_filename(
-    "test", "cfg/stop_conds_integration.yml"
+    "tests", "cfg/stop_conds_integration.yml"
 )
 CLUSTER_MODE_CFG_PATH = resource_filename("tests", "cfg/cluster_mode_cfg.yml")
 
@@ -151,7 +151,7 @@ def test_invalid_model_name_and_operation(default_mv, mv_kwargs):
     """Tests for correct behaviour upon invalid model names"""
     # Try to instantiate with invalid model name
     mv_kwargs["model_name"] = "invalid_model_RandomShit_bgsbjkbkfvwuRfopiwehGP"
-    with pytest.raises(KeyError, match="No model with name 'invalid_model_"):
+    with pytest.raises(ValueError, match="No model with name 'invalid_model_"):
         Multiverse(**mv_kwargs)
 
 

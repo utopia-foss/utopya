@@ -155,6 +155,7 @@ def test_dag_plotting():
         print(f"Successfully plotted '{cfg_name}'!\n\n")
 
 
+@pytest.mark.skip(reason="Plot function no longer included")
 def test_pcr_ext_extensions():
     """Test the changes and extensions to the ExternalPlotCreator
 
@@ -224,25 +225,14 @@ def test_pcr_ext_extensions():
 
 def test_dummy_plotting():
     """Test plotting of the dummy model works"""
-    mv, _ = ModelTest("CopyMeGrid").create_run_load()
-
-    # Plot the default configuration
+    mv, _ = ModelTest("dummy").create_run_load()
     mv.pm.plot_from_cfg()
 
 
 def test_CopyMeGrid_plotting():
     """Test plotting of the CopyMeGrid model works"""
     mv, _ = ModelTest("CopyMeGrid").create_run_load()
-
-    # Plot the default configuration
     mv.pm.plot_from_cfg()
-
-
-def test_basic_plotting(tmpdir):
-    """Tests the plot_funcs.basic_* modules"""
-    mv, _ = ModelTest("CopyMeGrid").create_run_load()
-
-    mv.pm.plot_from_cfg(plots_cfg=BASIC_UNI_PLOTS, plot_only=["distance_map"])
 
 
 def test_ca_plotting():
@@ -291,6 +281,7 @@ def test_ca_plotting_hexagonal():
     mv.pm.plot_from_cfg(plot_only=["strategy_and_payoff_frames"])
 
 
+@pytest.mark.skip(reason="Plot function no longer included")
 def test_time_series_plots():
     """Tests the plot_funcs.time_series module"""
     mv, _ = ModelTest("SandPile").create_run_load()
@@ -307,6 +298,7 @@ def test_time_series_plots():
     mv.pm.plot_from_cfg(plot_only=["species_densities", "phase_space"])
 
 
+@pytest.mark.skip(reason="Plot function no longer included")
 def test_distribution_plots():
     """Tests the plot_funcs.distribution module"""
     mv, _ = ModelTest("SandPile").create_run_load()

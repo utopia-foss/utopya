@@ -51,7 +51,7 @@ def test_ModelTest_init():
     assert isinstance(mtc.default_model_cfg, dict)
 
     # Non-registered model names should not be possible
-    with pytest.raises(KeyError, match="No model with name 'invalid' found"):
+    with pytest.raises(ValueError, match="No model with name 'invalid' found"):
         ModelTest("invalid")
 
     # And a non-existing test_file path should not work out either

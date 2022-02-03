@@ -33,6 +33,7 @@ def test_BatchTaskManager_basics():
     # ...
 
 
+@pytest.mark.skip(reason="Missing plot functions")
 def test_BatchTaskManager(tmpdir):
     """Tests BatchTaskManager"""
     # Make sure the required models have some output generated

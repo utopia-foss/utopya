@@ -352,7 +352,7 @@
 # -- Generic Multiverse or Universe plots -------------------------------------
 # .. Time series ..............................................................
 .dag.generic.time_series:
-  module: .dag.time_series
+  module: .time_series
   plot_func: time_series
 
   helpers:
@@ -402,7 +402,7 @@
   creator: universe
   universes: all
 
-  module: .dag.generic
+  module: .generic
   plot_func: histogram
 
   helpers:
@@ -429,7 +429,7 @@
   creator: universe
   universes: all
 
-  module: .dag.graph
+  module: .graph
   plot_func: draw_graph
 
   graph_drawing:
