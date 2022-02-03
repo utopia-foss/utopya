@@ -11,8 +11,8 @@ from utopya.batch import BatchTaskManager
 from utopya.model import Model
 from utopya.tools import load_yml, recursive_update
 
-BATCH_FILE_PATH = resource_filename("test", "cfg/batch_file.yml")
-BATCH_CFG = load_yml(resource_filename("test", "cfg/batch.yml"))
+BATCH_FILE_PATH = resource_filename("tests", "cfg/batch_file.yml")
+BATCH_CFG = load_yml(resource_filename("tests", "cfg/batch.yml"))
 
 # -----------------------------------------------------------------------------
 

@@ -702,9 +702,10 @@ def copy_model_files(
         "\t'{:{l:d}s}'  ->  '{:s}'".format(*repl, l=max_repl_len)
         for repl in replacements
     ]
+    _repl_info = "\n".join(repl_info)
     print(
         f"\nInside all of these {len(file_map):d} files, the following string "
-        f"replacements will be carried out:\n{'\n'.join(repl_info)}\n"
+        f"replacements will be carried out:\n{_repl_info}\n"
     )
 
     # Inform about dry run and ask whether to proceed

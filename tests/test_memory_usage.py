@@ -13,7 +13,7 @@ from utopya.tools import recursive_update
 from utopya.yaml import load_yml
 
 # Some constants
-TEST_CFG_PATH = resource_filename("test", "cfg/memory_usage.yml")
+TEST_CFG_PATH = resource_filename("tests", "cfg/memory_usage.yml")
 
 # Fixtures --------------------------------------------------------------------
 

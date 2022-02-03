@@ -18,21 +18,23 @@ from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
 
 # Get the test resources
-RUN_CFG_PATH = resource_filename("test", "cfg/run_cfg.yml")
+RUN_CFG_PATH = resource_filename("tests", "cfg/run_cfg.yml")
 RUN_CFG_PATH_VALID = resource_filename(
     "test", "cfg/run_cfg_validation_valid.yml"
 )
 RUN_CFG_PATH_INVALID = resource_filename(
     "test", "cfg/run_cfg_validation_invalid.yml"
 )
-USER_CFG_PATH = resource_filename("test", "cfg/user_cfg.yml")
-BASE_PLOTS_PATH = resource_filename("test", "cfg/base_plots.yml")
-UPDATE_BASE_PLOTS_PATH = resource_filename("test", "cfg/update_base_plots.yml")
-SWEEP_CFG_PATH = resource_filename("test", "cfg/sweep_cfg.yml")
+USER_CFG_PATH = resource_filename("tests", "cfg/user_cfg.yml")
+BASE_PLOTS_PATH = resource_filename("tests", "cfg/base_plots.yml")
+UPDATE_BASE_PLOTS_PATH = resource_filename(
+    "tests", "cfg/update_base_plots.yml"
+)
+SWEEP_CFG_PATH = resource_filename("tests", "cfg/sweep_cfg.yml")
 STOP_COND_CFG_PATH = resource_filename(
     "test", "cfg/stop_conds_integration.yml"
 )
-CLUSTER_MODE_CFG_PATH = resource_filename("test", "cfg/cluster_mode_cfg.yml")
+CLUSTER_MODE_CFG_PATH = resource_filename("tests", "cfg/cluster_mode_cfg.yml")
 
 # Fixtures ----------------------------------------------------------------
 @pytest.fixture

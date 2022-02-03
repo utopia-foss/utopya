@@ -16,7 +16,7 @@ from utopya.yaml import load_yml, yaml
 
 # -- Test resources -----------------------------------------------------------
 
-PM_CFG_PATH = resource_filename("test", "cfg/parameter.yml")
+PM_CFG_PATH = resource_filename("tests", "cfg/parameter.yml")
 
 
 # -- Fixtures -----------------------------------------------------------------

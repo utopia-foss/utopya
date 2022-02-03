@@ -14,8 +14,8 @@ from utopya import DataManager, Multiverse
 from utopya.datamanager import _condense_thresh_func
 
 # Local constants
-RUN_CFG_PATH = resource_filename("test", "cfg/run_cfg.yml")
-LARGE_SWEEP_CFG_PATH = resource_filename("test", "cfg/large_sweep_cfg.yml")
+RUN_CFG_PATH = resource_filename("tests", "cfg/run_cfg.yml")
+LARGE_SWEEP_CFG_PATH = resource_filename("tests", "cfg/large_sweep_cfg.yml")
 
 # Fixtures --------------------------------------------------------------------
 

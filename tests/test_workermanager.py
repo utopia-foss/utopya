@@ -13,7 +13,9 @@ from utopya.workermanager import WorkerManager, WorkerManagerTotalTimeout
 from utopya.yaml import load_yml
 
 # Some constants
-STOP_CONDS_PATH = pkg_resources.resource_filename("test", "cfg/stop_conds.yml")
+STOP_CONDS_PATH = pkg_resources.resource_filename(
+    "tests", "cfg/stop_conds.yml"
+)
 
 # Fixtures --------------------------------------------------------------------
 @pytest.fixture

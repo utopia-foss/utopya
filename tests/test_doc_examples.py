@@ -51,7 +51,7 @@ from utopya.tools import load_yml
 def test_faq_frontend_yaml_tags():
     """Tests the YAML tag examples given in faq/frontend.rst"""
     # NOTE literalinclude is done from that file rather than from here
-    path = resource_filename("test", "cfg/doc_examples/faq_frontend.yml")
+    path = resource_filename("tests", "cfg/doc_examples/faq_frontend.yml")
     cfg = load_yml(path)
 
     # Make some assertions for the more complex examples
@@ -78,7 +78,7 @@ def test_faq_frontend_yaml_tags():
 
 def test_config_validation_doc_params():
     """Tests the validation parameter objects in frontend/config_validation.rst"""
-    path = resource_filename("test", "cfg/doc_examples/param_validation.yml")
+    path = resource_filename("tests", "cfg/doc_examples/param_validation.yml")
     cfg = load_yml(path)
 
     for param_key, param in chain(

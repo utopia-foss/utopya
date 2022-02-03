@@ -30,6 +30,8 @@ class WorkerTaskNonZeroExit(WorkerTaskError):
 
     def __str__(self) -> str:
         """Returns information on the error"""
+        from ._signal import SIGMAP
+
         signals = [
             signal
             for signal, signum in SIGMAP.items()

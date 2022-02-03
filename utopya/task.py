@@ -23,17 +23,16 @@ from typing.io import TextIO
 
 import numpy as np
 
+from ._signal import SIGMAP
 from .tools import yaml
 
-# Local variables
 log = logging.getLogger(__name__)
 
-# A map from signal names to corresponding integer exit codes
-SIGMAP = {a: int(getattr(signal, a)) for a in dir(signal) if a[:3] == "SIG"}
-
-# A regex pattern to remove ANSI escape characters, needed for stream saving
-# From: https://stackoverflow.com/a/14693789/1827608
 _ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+"""A regex pattern to remove ANSI escape characters, needed for stream saving
+
+From: https://stackoverflow.com/a/14693789/1827608
+"""
 
 
 # -----------------------------------------------------------------------------
@@ -595,7 +594,7 @@ class WorkerTask(Task):
 
             Returns true, if a parsed object was among the read stream entries
             """
-            log.debug("Reading stream '%s' ...", stream_name)
+            log.trace("Reading stream '%s' ...", stream_name)
 
             q = stream["queue"]
 
@@ -636,7 +635,7 @@ class WorkerTask(Task):
             return contained_parsed_obj
 
         if not self.streams:
-            log.debug(
+            log.trace(
                 "No streams to read for WorkerTask '%s' (uid: %s).",
                 self.name,
                 self.uid,
@@ -820,7 +819,7 @@ class WorkerTask(Task):
 
         # Check whether there are streams that could be printed
         if not self.streams:
-            log.debug(
+            log.trace(
                 "No streams to print for WorkerTask '%s' (uid: %s).",
                 self.name,
                 self.uid,
@@ -835,7 +834,7 @@ class WorkerTask(Task):
             stream = self.streams[stream_name]
 
             if not stream.get("forward"):
-                log.debug("Not forwarding stream '%s' ...", stream_name)
+                log.trace("Not forwarding stream '%s' ...", stream_name)
                 continue
             # else: this stream is to be forwarded
 
@@ -851,7 +850,7 @@ class WorkerTask(Task):
 
             # There was output -> set flag
             rv = True
-            log.debug(
+            log.trace(
                 "Forwarded %d lines for stream '%s' of WorkerTask '%s'.",
                 len(lines),
                 stream_name,

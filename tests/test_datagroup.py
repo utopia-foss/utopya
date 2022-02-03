@@ -9,7 +9,7 @@ from utopya.datagroup import GraphGroup, UniverseGroup
 from utopya.testtools import ModelTest
 
 # Local constants
-GG_CFG_PATH = resource_filename("test", "cfg/graphgroup_cfg.yml")
+GG_CFG_PATH = resource_filename("tests", "cfg/graphgroup_cfg.yml")
 
 # -----------------------------------------------------------------------------
 

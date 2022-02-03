@@ -26,10 +26,10 @@ from utopya.yaml import load_yml
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 # Basic universe plots
-BASIC_UNI_PLOTS = resource_filename("test", "cfg/plots/basic_uni.yml")
+BASIC_UNI_PLOTS = resource_filename("tests", "cfg/plots/basic_uni.yml")
 
 # DAG-based plots
-DAG_PLOTS = resource_filename("test", "cfg/plots/dag.yml")
+DAG_PLOTS = resource_filename("tests", "cfg/plots/dag.yml")
 
 # Bifurcation diagram, 1D and 2D
 BIFURCATION_DIAGRAM_RUN = resource_filename(
@@ -44,11 +44,11 @@ BIFURCATION_DIAGRAM_2D_RUN = resource_filename(
 BIFURCATION_DIAGRAM_2D_PLOTS = resource_filename(
     "test", "cfg/plots/bifurcation_diagram_2d/plots.yml"
 )
-GRAPH_RUN = resource_filename("test", "cfg/graphgroup_cfg.yml")
+GRAPH_RUN = resource_filename("tests", "cfg/graphgroup_cfg.yml")
 
-GRAPH_PLOTS = resource_filename("test", "cfg/plots/graph_plot_cfg.yml")
+GRAPH_PLOTS = resource_filename("tests", "cfg/plots/graph_plot_cfg.yml")
 
-GRAPH_PLOT_CLS = resource_filename("test", "cfg/graphplot_class_cfg.yml")
+GRAPH_PLOT_CLS = resource_filename("tests", "cfg/graphplot_class_cfg.yml")
 
 # Fixtures --------------------------------------------------------------------
 
