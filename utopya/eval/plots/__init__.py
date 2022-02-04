@@ -5,3 +5,8 @@ which this subpackage is the base package to use for relative module imports.
 
 It extends those capabilities provided by the dantro plotting framework.
 """
+
+from dantro.plot_creators import is_plot_func
+
+from ..plotcreators import MultiversePlotCreator, UniversePlotCreator
+from ..plothelper import PlotHelper

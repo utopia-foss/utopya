@@ -9,7 +9,7 @@ import logging
 import dantro
 import dantro.groups
 
-from .datacontainer import XarrayDC as _XarrayDC
+from .containers import XarrayDC as _XarrayDC
 
 log = logging.getLogger(__name__)
 

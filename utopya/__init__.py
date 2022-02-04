@@ -39,8 +39,7 @@ log.debug("Logging configured.")
 
 # -- The most frequently used objects -----------------------------------------
 
-from .datagroup import MultiverseGroup, UniverseGroup
-from .datamanager import DataManager
+from .eval import DataManager, MultiverseGroup, UniverseGroup
 from .model import Model
 from .model_registry import MODELS
 from .multiverse import FrozenMultiverse, Multiverse

@@ -4,7 +4,7 @@ import logging
 from typing import Tuple, Union
 
 from .. import DataManager, UniverseGroup
-from ..plotting import PlotHelper, UniversePlotCreator, is_plot_func
+from . import PlotHelper, UniversePlotCreator, is_plot_func
 
 log = logging.getLogger(__name__)
 

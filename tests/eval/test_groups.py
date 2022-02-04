@@ -5,7 +5,7 @@ import pytest
 from pkg_resources import resource_filename
 
 import utopya
-from utopya.datagroup import GraphGroup, UniverseGroup
+from utopya.eval.groups import GraphGroup, UniverseGroup
 from utopya.testtools import ModelTest
 
 # Local constants

@@ -11,10 +11,9 @@ from matplotlib.collections import RegularPolyCollection
 from matplotlib.colors import ListedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from ...tools import recursive_update
 from .. import DataManager, UniverseGroup
-from ..dataprocessing import transform
-from ..plotting import PlotHelper, UniversePlotCreator, is_plot_func
-from ..tools import recursive_update
+from . import PlotHelper, UniversePlotCreator, is_plot_func
 
 log = logging.getLogger(__name__)
 
@@ -133,6 +132,10 @@ def state(
     animation.
 
     Which properties of the state to plot can be defined in ``to_plot``.
+
+    .. todo::
+
+        Remove ``transform`` and make DAG-compatible
 
     Args:
         dm (DataManager): The DataManager that holds all loaded data

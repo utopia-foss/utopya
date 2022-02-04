@@ -17,7 +17,7 @@ from pkg_resources import resource_filename
 
 from utopya import Multiverse
 from utopya._path_setup import temporary_sys_path as tmp_sys_path
-from utopya.plot_funcs._graph import GraphPlot
+from utopya.eval.plots._graph import GraphPlot
 from utopya.testtools import ModelTest
 from utopya.yaml import load_yml
 

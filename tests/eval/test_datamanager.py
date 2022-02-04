@@ -8,10 +8,10 @@ import pytest
 from paramspace import ParamSpace
 from pkg_resources import resource_filename
 
-import utopya.datacontainer as udc
-import utopya.datagroup as udg
+import utopya.eval.containers as udc
+import utopya.eval.groups as udg
 from utopya import DataManager, Multiverse
-from utopya.datamanager import _condense_thresh_func
+from utopya.eval.datamanager import _condense_thresh_func
 
 # Local constants
 RUN_CFG_PATH = resource_filename("tests", "cfg/run_cfg.yml")

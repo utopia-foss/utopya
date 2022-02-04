@@ -3,11 +3,11 @@
 
 # isort configuration .........................................................
 [tool.isort]
-known_first_party = ["utopya"]
+known_first_party = ["utopya", "dantro"]
 known_third_party = [
     "dask", "dill", "h5py", "matplotlib", "networkx", "numpy", "paramspace",
     "pkg_resources", "pytest", "ruamel", "scipy", "setuptools", "sympy",
-    "xarray"
+    "xarray",
 ]
 
 # The following makes the effect of isort compatible to black

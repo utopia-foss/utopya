@@ -1,17 +1,23 @@
 """Implements a class that manages data written out by Utopia models.
 
-It is based on the dantro.DataManager class and the containers specialised for
-Utopia data.
+It is based on dantro's ``DataManager`` class and the containers specialized
+for Utopia data.
 """
 
 import logging
 
-import dantro as dtr
+import dantro
 import dantro.data_loaders
 import dantro.data_mngr
 
-import utopya.datacontainer as udc
-import utopya.datagroup as udg
+from .containers import GridDC, NumpyDC, XarrayDC, XarrayYamlDC
+from .groups import (
+    GraphGroup,
+    HeterogeneousTimeSeriesGroup,
+    MultiverseGroup,
+    TimeSeriesGroup,
+    UniverseGroup,
+)
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +53,7 @@ def _condense_thresh_func(
 
 
 class DataManager(
-    dtr.data_loaders.AllAvailableLoadersMixin, dtr.data_mngr.DataManager
+    dantro.data_loaders.AllAvailableLoadersMixin, dantro.data_mngr.DataManager
 ):
     """This class manages the data that is written out by Utopia simulations.
 
@@ -58,29 +64,30 @@ class DataManager(
     """
 
     _DATA_GROUP_CLASSES = dict(
-        MultiverseGroup=udg.MultiverseGroup, GraphGroup=udg.GraphGroup
+        MultiverseGroup=MultiverseGroup,
+        GraphGroup=GraphGroup,
     )
     """Known group types"""
 
-    _HDF5_DSET_DEFAULT_CLS = udc.XarrayDC
+    _HDF5_DSET_DEFAULT_CLS = XarrayDC
     """Tells the HDF5 loader which container class to use"""
 
     _HDF5_MAP_FROM_ATTR = "content"
     """The name of the attribute to read for the mapping"""
 
     _HDF5_GROUP_MAP = dict(
-        network=udg.GraphGroup,
-        graph=udg.GraphGroup,
-        time_series=udg.TimeSeriesGroup,
-        time_series_heterogeneous=udg.HeterogeneousTimeSeriesGroup,
+        network=GraphGroup,
+        graph=GraphGroup,
+        time_series=TimeSeriesGroup,
+        time_series_heterogeneous=HeterogeneousTimeSeriesGroup,
     )
     """The mapping of different content values to a data group type"""
 
     _HDF5_DSET_MAP = dict(
-        grid=udc.GridDC,
-        unlabelled_data=udc.NumpyDC,
-        labelled_data=udc.XarrayDC,
-        array_of_yaml_strings=udc.XarrayYamlDC,
+        grid=GridDC,
+        unlabelled_data=NumpyDC,
+        labelled_data=XarrayDC,
+        array_of_yaml_strings=XarrayYamlDC,
     )
     """The mapping of different content values to a data container types"""
 

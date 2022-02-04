@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from pkg_resources import resource_filename
 
-from utopya.plot_funcs._mpl import ColorManager
+from utopya.eval.plots._mpl import ColorManager
 from utopya.tools import load_yml
 
 COLOR_MANAGER_CFG = resource_filename("tests", "cfg/color_manager_cfg.yml")

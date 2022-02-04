@@ -8,7 +8,7 @@ import xarray as xr
 from pkg_resources import resource_filename
 
 import utopya
-import utopya.plot_funcs._utils
+import utopya.eval.plots._utils
 
 # Fixtures --------------------------------------------------------------------
 
@@ -19,7 +19,7 @@ import utopya.plot_funcs._utils
 def test_calc_pxmap_rectangles():
     """Test the calc_pxmap_rectangles function"""
 
-    cpr = utopya.plot_funcs._utils.calc_pxmap_rectangles
+    cpr = utopya.eval.plots._utils.calc_pxmap_rectangles
 
     def create_2D_data(
         *shape, dims=None, coords_func=np.linspace, rg_args=(0.0, 1.0)

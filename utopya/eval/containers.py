@@ -5,16 +5,14 @@ the NumpyDataContainer.
 """
 
 import logging
-from functools import reduce
-from operator import mul
-from typing import Dict, List, Sequence, Tuple, Union
+from typing import Sequence, Tuple, Union
 
+import dantro.containers
+import dantro.mixins
 import numpy as np
 import xarray as xr
-from dantro.containers import NumpyDataContainer, XrDataContainer
-from dantro.mixins import Hdf5ProxySupportMixin
 
-from .tools import yaml
+from ..tools import yaml as _yaml
 
 # Configure and get logger
 log = logging.getLogger(__name__)
@@ -24,7 +22,9 @@ log = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 
-class NumpyDC(Hdf5ProxySupportMixin, NumpyDataContainer):
+class NumpyDC(
+    dantro.mixins.Hdf5ProxySupportMixin, dantro.containers.NumpyDataContainer
+):
     """This is the base class for numpy data containers used in Utopia.
 
     It is based on the NumpyDataContainer provided by dantro and extends it
@@ -33,7 +33,9 @@ class NumpyDC(Hdf5ProxySupportMixin, NumpyDataContainer):
     """
 
 
-class XarrayDC(Hdf5ProxySupportMixin, XrDataContainer):
+class XarrayDC(
+    dantro.mixins.Hdf5ProxySupportMixin, dantro.containers.XrDataContainer
+):
     """This is the base class for xarray data containers used in Utopia.
 
     It is based on the XrDataContainer provided by dantro. As of now, it has
@@ -124,8 +126,8 @@ class XarrayYamlDC(XarrayDC):
             """Given an array element, try to convert it to yaml"""
             try:
                 if isinstance(element, bytes):
-                    return yaml.load(element.decode("utf8"))
-                return yaml.load(element)
+                    return _yaml.load(element.decode("utf8"))
+                return _yaml.load(element)
 
             except Exception as exc:
                 raise ValueError(

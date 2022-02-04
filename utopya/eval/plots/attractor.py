@@ -22,8 +22,8 @@ from scipy.signal import find_peaks
 import utopya.eval.plots._attractor as utdp
 
 from ...tools import recursive_update
-from ..datamanager import DataManager, UniverseGroup
-from ..plotting import MultiversePlotCreator, PlotHelper, is_plot_func
+from .. import DataManager, UniverseGroup
+from . import MultiversePlotCreator, PlotHelper, is_plot_func
 from ._mpl_helpers import HandlerEllipse
 from ._utils import calc_pxmap_rectangles
 

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from pkg_resources import resource_filename
 
-from utopya.datacontainer import GridDC
+from utopya.eval.containers import GridDC
 from utopya.testtools import ModelTest
 
 # -----------------------------------------------------------------------------
@@ -114,7 +114,7 @@ def test_griddc_integration():
 
     # Create and run a multiverse and load the data
     _, dm = mtc.create_run_load(
-        from_cfg="cfg/griddc_cfg.yml", parameter_space=dict(num_steps=3)
+        from_cfg="../cfg/griddc_cfg.yml", parameter_space=dict(num_steps=3)
     )
 
     # Get the data
@@ -209,7 +209,7 @@ def test_griddc_integration():
 
     # Test coordinates . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     _, dm = mtc.create_run_load(
-        from_cfg="cfg/griddc_cfg.yml",
+        from_cfg="../cfg/griddc_cfg.yml",
         parameter_space=dict(num_steps=11, write_every=2),
     )
     grid_data = dm["multiverse"][0]["data/ContDisease/kind"]
@@ -244,7 +244,7 @@ def test_griddc_integration_hexagonal():
         }
     }
     _, dm = mtc.create_run_load(
-        from_cfg="cfg/griddc_cfg.yml", **update_meta_cfg
+        from_cfg="../cfg/griddc_cfg.yml", **update_meta_cfg
     )
 
     # # Get the data

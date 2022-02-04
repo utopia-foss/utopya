@@ -11,7 +11,7 @@ from dantro.tools import adjusted_log_levels as _adjusted_log_levels
 from dantro.tools import make_columns as _make_columns
 
 from .cfg import load_from_cfg_dir
-from .datamanager import DataManager
+from .eval import DataManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .multiverse import FrozenMultiverse, Multiverse
 

@@ -17,10 +17,9 @@ from pkg_resources import resource_filename
 
 from ._cluster import parse_node_list
 from .cfg import get_cfg_path as _get_cfg_path
-from .datamanager import DataManager
+from .eval import DataManager, PlotManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .parameter import ValidationError
-from .plotting import PlotManager
 from .reporter import WorkerManagerReporter
 from .tools import parse_num_steps, pformat, recursive_update
 from .workermanager import WorkerManager

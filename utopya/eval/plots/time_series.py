@@ -2,7 +2,7 @@
 
 import xarray as xr
 
-from utopya.plotting import PlotHelper, is_plot_func
+from . import PlotHelper, is_plot_func
 
 # -----------------------------------------------------------------------------
 
