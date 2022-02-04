@@ -17,15 +17,13 @@ import dantro.plot_mngr
 from dantro.plot_creators import is_plot_func
 from dantro.utils import register_operation as _register_operation
 
-from ._path_setup import temporary_sys_modules as _tmp_sys_modules
-from ._path_setup import temporary_sys_path as _tmp_sys_path
-from .cfg import load_from_cfg_dir as _load_from_cfg_dir
-from .model_registry import ModelInfoBundle
+from .._path_setup import temporary_sys_modules as _tmp_sys_modules
+from .._path_setup import temporary_sys_path as _tmp_sys_path
+from ..cfg import load_from_cfg_dir as _load_from_cfg_dir
+from ..model_registry import ModelInfoBundle
 
-# Configure and get logger
 log = logging.getLogger(__name__)
 
-# Local constants
 
 # -----------------------------------------------------------------------------
 

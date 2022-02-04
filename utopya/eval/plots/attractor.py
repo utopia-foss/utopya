@@ -18,13 +18,14 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Circle, Rectangle
 from scipy.signal import find_peaks
 
-import utopya
-import utopya.dataprocessing as utdp
-from utopya import DataManager, UniverseGroup
-from utopya.plot_funcs._mpl_helpers import HandlerEllipse
-from utopya.plot_funcs._utils import calc_pxmap_rectangles
-from utopya.plotting import MultiversePlotCreator, PlotHelper, is_plot_func
-from utopya.tools import recursive_update
+# FIXME use local import
+import utopya.eval.plots._attractor as utdp
+
+from ...tools import recursive_update
+from ..datamanager import DataManager, UniverseGroup
+from ..plotting import MultiversePlotCreator, PlotHelper, is_plot_func
+from ._mpl_helpers import HandlerEllipse
+from ._utils import calc_pxmap_rectangles
 
 log = logging.getLogger(__name__)
 
