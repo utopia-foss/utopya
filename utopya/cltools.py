@@ -543,10 +543,7 @@ def copy_model_files(
             with open(fpath, "w") as f:
                 f.writelines(lines)
 
-            print(
-                "Subdirectory for model '{}' added to\n\t{}"
-                "".format(new_name, fpath)
-            )
+            print(f"Subdirectory for model '{new_name}' added to\n\t{fpath}")
 
         else:
             print(
@@ -584,7 +581,7 @@ def copy_model_files(
             "this name being implemented, remove the entry from "
             "the model registry, e.g. via the `utopia models rm` "
             "CLI command.\n"
-            "Already registered models: {_avail}"
+            f"Already registered models: {_avail}"
         )
 
     print(f"Name of the new model:      {new_name}")

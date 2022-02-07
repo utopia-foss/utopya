@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""This is the command line interface for Utopia"""
+"""This is the legacy command line interface for utopya"""
 
 import argparse
 import sys
@@ -929,34 +928,35 @@ p_batch.add_argument(
 # CLI defined now.
 # -----------------------------------------------------------------------------
 
-# Parse the arguments now. Exit directly, if no mode subcommand was given.
-args = parser.parse_args()
 
-if args.mode is None:
-    parser.print_help()
-    sys.exit()
+def cli():
+    # Parse the arguments now. Exit directly, if no mode subcommand was given.
+    args = parser.parse_args()
 
-# If continuing further, need some imports
-from dantro.logging import getLogger
+    if args.mode is None:
+        parser.print_help()
+        sys.exit()
 
-log = getLogger(__name__)  # TODO Make this controllable!
+    # If continuing further, need some imports
+    from dantro.logging import getLogger
 
-from dantro.tools import make_columns as _make_columns
-from paramspace import ParamDim
+    log = getLogger(__name__)  # TODO Make this controllable!
 
-import utopya
-from utopya.cfg import get_cfg_path, load_from_cfg_dir, write_to_cfg_dir
-from utopya.cltools import (
-    add_from_kv_pairs,
-    copy_model_files,
-    deploy_user_cfg,
-    prompt_for_new_plot_args,
-    register_models,
-)
-from utopya.parameter import ValidationError
-from utopya.tools import add_item, load_yml, open_folder, pformat
+    from dantro.tools import make_columns as _make_columns
+    from paramspace import ParamDim
 
-if __name__ == "__main__":
+    import utopya
+    from utopya.cfg import get_cfg_path, load_from_cfg_dir, write_to_cfg_dir
+    from utopya.cltools import (
+        add_from_kv_pairs,
+        copy_model_files,
+        deploy_user_cfg,
+        prompt_for_new_plot_args,
+        register_models,
+    )
+    from utopya.parameter import ValidationError
+    from utopya.tools import add_item, load_yml, open_folder, pformat
+
     # Batch subcommand ........................................................
     if args.mode == "batch":
         import os
