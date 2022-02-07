@@ -43,9 +43,7 @@ class ModelRegistry:
     registered and information can be added to it.
 
     Additionally, there are some functions that provide an overview over the
-    registered models and with which information they
-
-    # TODO Consider making this class a singleton?
+    registered models and the known information about them.
     """
 
     def __init__(self, utopia_cfg_dir_path: str = UTOPIA_CFG_DIR):
@@ -56,7 +54,6 @@ class ModelRegistry:
             utopia_cfg_dir_path (str, optional): The path to store the model
                 registry folder in.
         """
-        # Store paths
         self._paths = dict()
         self._paths["utopia_cfg"] = utopia_cfg_dir_path
         self._paths["registry"] = os.path.join(
@@ -148,10 +145,10 @@ class ModelRegistry:
             return self._registry[model_name]
 
         except KeyError as err:
-            _avail = ", ".join(self.keys())
+            _avail = ", ".join(self.keys())  # TODO columns?!
             raise ValueError(
                 f"No model with name '{model_name}' found! Did you forget "
-                f"to register it? Available models: {_avail}"
+                f"to register it?\nAvailable models: {_avail}"
             ) from err
 
     def register_model_info(
@@ -189,7 +186,6 @@ class ModelRegistry:
         """
         ACTIONS = ("skip", "raise", "clear", "validate")
 
-        # Check exists_action
         if exists_action and exists_action not in ACTIONS:
             _avail = ", ".join(ACTIONS)
             raise ValueError(
@@ -240,15 +236,22 @@ class ModelRegistry:
         return self[model_name]
 
     def remove_entry(self, model_name: str):
-        """Removes a registry entry and deletes the associated registry file"""
+        """Removes a registry entry and deletes the associated registry file.
+
+        Args:
+            model_name (str): The name of the model entry that is to be removed
+
+        Raises:
+            ValueError: On invalid (non-existing) model
+        """
         try:
             entry = self._registry.pop(model_name)
 
         except KeyError as err:
-            _avail = ", ".join(self.keys())
+            _avail = ", ".join(self.keys())  # TODO columns?!
             raise ValueError(
                 f"Could not remove entry for model '{model_name}', because "
-                f"no such model is registered. Available models: {_avail}"
+                f"no such model is registered.\nAvailable models: {_avail}"
             ) from err
         else:
             log.info(
@@ -271,7 +274,8 @@ class ModelRegistry:
         registry.
 
         Args:
-            model_name (str): Model name for which to add an ModelRegistryEntry
+            model_name (str): Model name for which to add the
+                :py:class:`utopya.model_registry.entry.`ModelRegistryEntry`
                 object.
 
         Raises:
@@ -311,7 +315,7 @@ class ModelRegistry:
             model_name, ext = os.path.splitext(fname)
 
             # Continue only if it is a YAML file
-            if not ext.lower() == ".yml" or model_name in self:
+            if not ext.lower() in (".yml", ".yaml") or model_name in self:
                 continue
 
             self._add_entry(model_name)
