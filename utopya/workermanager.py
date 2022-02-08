@@ -12,7 +12,7 @@ from typing import Callable, Dict, List, Sequence, Set, Union
 
 from .exceptions import *
 from .reporter import WorkerManagerReporter
-from .stopcond import SIG_STOPCOND, StopCondition
+from .stop_conditions import SIG_STOPCOND, StopCondition
 from .task import SIGMAP, TaskList, WorkerTask
 from .tools import format_time
 

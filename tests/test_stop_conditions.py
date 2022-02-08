@@ -7,18 +7,21 @@ import time
 import pytest
 import ruamel.yaml
 
-import utopya.stopcond as sc
-import utopya.stopcond_funcs as sc_funcs
+import utopya.stop_conditions as sc
 from utopya.task import WorkerTask
 from utopya.tools import yaml
 
+SC_FUNCS = sc.STOP_CONDITION_FUNCS
+timeout_wall = SC_FUNCS["timeout_wall"]
+check_monitor_entry = SC_FUNCS["check_monitor_entry"]
 
 # Fixtures --------------------------------------------------------------------
 @pytest.fixture
 def basic_sc():
-    """Returns a basic StopCondition object that checks the mock timeout_wall method."""
+    """Returns a basic StopCondition object that checks the mock timeout_wall
+    method."""
     return sc.StopCondition(
-        to_check=[dict(func=sc_funcs.timeout_wall, seconds=123)],
+        to_check=[dict(func=timeout_wall, seconds=123)],
         name="wall timeout",
     )
 
@@ -49,7 +52,7 @@ def task() -> WorkerTask:
 
 def test_init():
     """Test StopCondition initialization"""
-    sc.StopCondition(to_check=[dict(func=sc_funcs.timeout_wall, seconds=123)])
+    sc0 = sc.StopCondition(to_check=[dict(func=timeout_wall, seconds=123)])
 
     # Empty should also work
     sc.StopCondition(to_check=[])
@@ -60,19 +63,27 @@ def test_init():
         sc.StopCondition()
 
     # invalid function name
-    with pytest.raises(ImportError, match="Could not find a callable named"):
+    with pytest.raises(ValueError, match="No stop condition function"):
         sc.StopCondition(to_check=[dict(func="I am not a function.")])
 
     # non-callable
-    with pytest.raises(TypeError, match="Given `func` needs to be a callable"):
+    with pytest.raises(TypeError, match="Expected callable or name of a reg"):
         sc.StopCondition(to_check=[dict(func=123.456)])
 
     # too many arguments
     with pytest.raises(ValueError, match="Please pass either"):
         sc.StopCondition(
-            to_check=[dict(func=sc_funcs.timeout_wall, seconds=123)],
-            func=sc_funcs.timeout_wall,
+            to_check=[dict(func=timeout_wall, seconds=123)],
+            func=timeout_wall,
         )
+
+    # Basic interface checks:
+    assert not sc0.fulfilled_for
+    assert "timeout_wall" in str(sc0)
+    assert sc0.enabled is True
+    assert not sc0.description
+    assert len(sc0.to_check) == 1
+    assert sc0.to_check[0] == (timeout_wall, "timeout_wall", dict(seconds=123))
 
 
 def test_constructor():
@@ -143,13 +154,38 @@ def test_fulfilled(basic_sc, false_true_sc, task):
     assert not sc.fulfilled_for
 
 
+def test_stop_condition_function_decorator():
+    """Tests the ``stop_condition_function`` decorator that adds an entry to
+    the registry.
+    """
+    num_sc_funcs = len(SC_FUNCS)
+
+    @sc.stop_condition_function
+    def foo(t) -> bool:
+        return False
+
+    assert len(SC_FUNCS) == num_sc_funcs + 1
+
+    # Remove the entry again
+    del SC_FUNCS["foo"]
+    assert len(SC_FUNCS) == num_sc_funcs
+
+    # Check the error message upon an existing entry
+    assert "timeout_wall" in SC_FUNCS
+    with pytest.raises(AttributeError, match="already registered"):
+
+        @sc.stop_condition_function
+        def timeout_wall(t) -> bool:
+            pass
+
+    assert "timeout_wall" in SC_FUNCS
+
+
 # Tests of the stop condition methods -----------------------------------------
 
 
 def test_check_monitor_entry(task):
     """Test the check_monitor_entry stop condition function"""
-    check_monitor_entry = sc_funcs.check_monitor_entry
-
     # Without a parsed object, this is always false, and no other checks are
     # actually performed
     assert not check_monitor_entry(

@@ -1,4 +1,7 @@
-"""Takes care of the YAML setup for Utopya"""
+"""Takes care of the YAML setup for Utopya.
+
+In the module import order, this module needs to be downstream from all modules
+that implement objects that require a custom YAML representation."""
 
 import functools
 import logging
@@ -12,7 +15,7 @@ import ruamel.yaml
 from ._yaml import load_yml, write_yml, yaml
 from .model_registry import ModelInfoBundle, ModelRegistryEntry, load_model_cfg
 from .parameter import Parameter
-from .stopcond import StopCondition
+from .stop_conditions import StopCondition
 from .tools import recursive_update as _recursive_update
 
 log = logging.getLogger(__name__)

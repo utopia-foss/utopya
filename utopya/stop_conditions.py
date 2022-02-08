@@ -1,20 +1,40 @@
-"""This module implements the :py:class:`~utopya.stopcond.StopCondition`
+"""This module implements the :py:class:`~utopya.stop_conditions.StopCondition`
 class, which is used by the :py:class:`~utopya.workermanager.WorkerManager` to
 stop a worker process in certain situations.
+
+In addition, it implements a set of basic stop condition functions and
+provides the :py:func:`~utopya.stop_conditions.stop_condition_function`
+decorator which is required to make them accessible by name.
 """
 
 import copy
 import logging
+import time
 import warnings
-from typing import Callable, List, Set, Union
+from typing import Callable, Dict, List, Set, Tuple, Union
 
-import utopya.stopcond_funcs as sc_funcs
+from dantro.utils.data_ops import BOOLEAN_OPERATORS as _OPERATORS
+from paramspace.tools import recursive_getitem as _recursive_getitem
 
 log = logging.getLogger(__name__)
 
 SIG_STOPCOND = "SIGUSR1"
 """Signal to use for stopping workers with fulfilled stop conditions"""
 
+STOP_CONDITION_FUNCS: Dict[str, Callable] = dict()
+"""Registered stop condition functions are stored in this dictionary. These
+functions evaluate whether a certain stop condition is actually fulfilled.
+
+To that end, a :py:class:`~utopya.task.WorkerTask` object is passed to these
+functions, the information in which can be used to determine whether the
+condition is fulfilled.
+The signature of these functions is: ``(task: WorkerTask, **kws) -> bool``
+"""
+
+_FAILED_MONITOR_ENTRY_CHECKS = []
+"""Keeps track of failed monitor entry checks in the ``check_monitor_entry``
+stop condition function in order to avoid repetitive warnings.
+"""
 
 # -----------------------------------------------------------------------------
 
@@ -22,10 +42,6 @@ SIG_STOPCOND = "SIGUSR1"
 class StopCondition:
     """A StopCondition object holds information on the conditions in which a
     worker process should be stopped.
-
-    It is formulated in a general way, applying to all Workers. The attributes
-    of this class store the information required to deduce whether the
-    condition if fulfilled or not.
     """
 
     def __init__(
@@ -38,7 +54,7 @@ class StopCondition:
         func: Union[Callable, str] = None,
         **func_kwargs,
     ):
-        """Create a new stop condition
+        """Create a new stop condition object.
 
         Args:
             to_check (List[dict], optional): A list of dicts, that holds the
@@ -98,38 +114,58 @@ class StopCondition:
 
     @staticmethod
     def _resolve_sc_funcs(
-        to_check: List[dict], func: Callable, func_kwargs: dict
+        to_check: List[dict], func: Union[str, Callable], func_kwargs: dict
     ) -> List[tuple]:
-        """Resolves the functions and kwargs that are to be checked."""
+        """Resolves the functions and kwargs that are to be checked.
 
-        def retrieve_func(func_name: str) -> Callable:
-            """Given a function name, returns the callable from the utopya
-            module stopcond_funcs.
+        The callable is either retrieved from the module-level stop condition
+        functions registry or, if the given ``func`` is already a callable,
+        that one will be used.
+        """
+
+        def retrieve_func(
+            func_or_func_name: Union[str, Callable]
+        ) -> Tuple[Callable, str]:
+            """If this is already a callable, retrieve the name and return that
+            tuple. Otherwise retrieve that information from the module-level
+            stop condition function registry.
             """
-            log.debug(
-                "Getting function with name '%s' from the "
-                "stopcond_funcs module ...",
-                func_name,
-            )
-            func = sc_funcs.__dict__.get(func_name)
+            if callable(func_or_func_name):
+                func = func_or_func_name
+                return func, func.__name__
 
-            if not func or not callable(func):
-                raise ImportError(
-                    f"Could not find a callable named '{func_name}' "
-                    "in stopcond_funcs module!"
+            elif not isinstance(func_or_func_name, str):
+                raise TypeError(
+                    "Expected callable or name of a registered stop condition "
+                    f"function, but got {type(func_or_func_name).__name__} "
+                    f"with value {repr(func_or_func_name)}!"
                 )
 
-            return func
+            func_name = func_or_func_name
+            log.debug(
+                "Getting function with name '%s' from the registry.", func_name
+            )
+            func = STOP_CONDITION_FUNCS.get(func_name)
 
-        # Check argument combinations
+            if not func or not callable(func):
+                _avail = ", ".join(STOP_CONDITION_FUNCS.keys())
+                raise ValueError(
+                    f"No stop condition function '{func_name}' available! "
+                    f"Registered functions: {_avail}"
+                )
+
+            return func, func_name
+
+        # Check different argument combinations . . . . . . . . . . . . . . . .
+        # Simple case: Without `to_check`
         if func and not to_check:
-            # Not using the `to_check` argument
             log.debug(
                 "Got `func` directly and no `to_check` argument; will "
                 "use only this function for checking."
             )
-            func = retrieve_func(func)
-            return [(func, func.__name__, func_kwargs)]
+            func, func_name = retrieve_func(func)
+
+            return [(func, func_name, func_kwargs)]
 
         elif to_check and (func or func_kwargs):
             raise ValueError(
@@ -145,33 +181,16 @@ class StopCondition:
                 "keyword-arguments `to_check` or `func`!"
             )
 
-        # Everything ok
-        # Resolve the to_check list
+        # Multiple functions: need to resolve the `to_check` list
         funcs_and_kws = []
 
         for func_dict in to_check:
-            # Work on a copy (to be able to pop the func off)
+            # Work on a copy (to be able to pop the `func` entry off and reduce
+            # mutability issues in the remaining dict: the func_kwargs)
             func_dict = copy.deepcopy(func_dict)
-
-            # Pop the function off the dict and get its name
-            func = func_dict.pop("func")
-
-            # This might not actually be a function yet. Resolve it...
-            if isinstance(func, str):
-                # Is a function name, resolve to a function
-                func = retrieve_func(func)
-
-            elif not callable(func):
-                raise TypeError(
-                    "Given `func` needs to be a callable, but was "
-                    f"{type(func)} with value {func}."
-                )
-
-            # else: is callable, has the __name__ attribute
-            func_name = func.__name__
+            func, func_name = retrieve_func(func_dict.pop("func"))
             log.debug("Got function '%s' for stop condition ...", func_name)
 
-            # Valid. Append the information to the list
             funcs_and_kws.append((func, func_name, func_dict))
 
         log.debug(
@@ -254,3 +273,94 @@ class StopCondition:
         that all stored arguments are available to ``__init__``.
         """
         return cls(**constructor.construct_mapping(node, deep=True))
+
+
+def stop_condition_function(f: Callable):
+    """A decorator that registers the decorated callable in the module-level
+    stop condition function registry. The callable's ``__name__`` attribute
+    will be used as the key.
+
+    Args:
+        f (Callable): A callable that is to be added to the function registry.
+
+    Raises:
+        AttributeError: If the name already exists in the registry
+    """
+    func_name = f.__name__
+    if (
+        func_name in STOP_CONDITION_FUNCS
+        and STOP_CONDITION_FUNCS.get(func_name) is not f
+    ):
+        raise AttributeError(
+            f"A stop condition function with name '{func_name}' is already "
+            f"registered, pointing to {STOP_CONDITION_FUNCS[func_name]}! "
+            "Please choose a different name for the to-be-registered function."
+        )
+
+    STOP_CONDITION_FUNCS[func_name] = f
+    return f
+
+
+# -----------------------------------------------------------------------------
+# -- Stop condition functions -------------------------------------------------
+# -----------------------------------------------------------------------------
+
+
+@stop_condition_function
+def timeout_wall(task: "utopya.task.WorkerTask", *, seconds: float) -> bool:
+    """Checks the wall timeout of the given worker
+
+    Args:
+        task (utopya.task.WorkerTask): The WorkerTask object to check
+        seconds (float): After how many seconds to trigger the wall timeout
+
+    Returns:
+        bool: Whether the timeout is fulfilled
+    """
+    return bool((time.time() - task.profiling["create_time"]) > seconds)
+
+
+@stop_condition_function
+def check_monitor_entry(
+    task: "utopya.task.WorkerTask",
+    *,
+    entry_name: str,
+    operator: str,
+    value: float,
+) -> bool:
+    """Checks if a monitor entry compares in a certain way to a given value
+
+    Args:
+        task (utopya.task.WorkerTask): The WorkerTask object to check
+        entry_name (str): The name of the monitor entry, leading to the value
+            to the left-hand side of the operator
+        operator (str): The binary operator to use
+        value (float): The right-hand side value to compare to
+
+    Returns:
+        bool: Result of op(entry, value)
+    """
+    # See if there were and parsed objects
+    if not task.outstream_objs:
+        # Nope. Nothing to check yet.
+        return False
+
+    # Try to recursively retrieve the entry from the latest monitoring output
+    latest_monitor = task.outstream_objs[-1]
+    try:
+        entry = _recursive_getitem(latest_monitor, keys=entry_name.split("."))
+
+    except KeyError:
+        # Only warn once
+        if entry_name not in _FAILED_MONITOR_ENTRY_CHECKS:
+            log.caution(
+                "Failed evaluating stop condition due to missing entry '%s' "
+                "in monitor output!\nAvailable monitor data: %s",
+                entry_name,
+                latest_monitor,
+            )
+            _FAILED_MONITOR_ENTRY_CHECKS.append(entry_name)
+        return False
+
+    # Now perform the comparison
+    return _OPERATORS[operator](entry, value)

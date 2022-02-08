@@ -4,7 +4,12 @@
 
 
 ## v1.0.0 *(WIP)*
-...
+- !1 makes a number of substantial and backwards-incompatible changes that aim to improve package structure and maintainability:
+    - Apply code formatting using [black](https://github.com/psf/black)
+    - Implement the [pre-commit](https://pre-commit.com) framework to maintain consistent code formatting and allow other pre-commit hooks.
+    - Remove old-style plot functions and the legacy transformation framework
+    - Improve module structure, particularly by consolidating evaluation-related modules into a submodule
+- !2 consolidates functionality related to stop conditions into a single module and provides the `stop_condition_function` decorator to simplify adding custom condition functions.
 
 
 ## v0.8.8
