@@ -84,9 +84,8 @@ setup(
     ],
     #
     # Package content and dependencies
-    packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test"]),
+    packages=find_packages(exclude=("demo", "tests")),
     package_data=dict(utopya=["cfg/*.yml"]),
-    include_package_data=True,
     install_requires=INSTALL_DEPS,
     extras_require=dict(
         test=TEST_DEPS,
