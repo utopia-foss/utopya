@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 # Some globally relevant variables --------------------------------------------
 
-UTOPIA_CFG_DIR = os.path.expanduser("~/.config/utopya")
+UTOPIA_CFG_DIR = os.path.expanduser("~/.config/utopya")  # FIXME change back
 """Path to the persistent utopya configuration directory"""
 
 UTOPIA_CFG_FILE_NAMES = dict(

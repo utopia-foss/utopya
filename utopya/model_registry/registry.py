@@ -39,8 +39,9 @@ class ModelRegistry:
     registry it is associated with.
 
     It provides a dict-like interface to access the stored registry entries
-    under their model name. Via ``reigster_model_info``, a model can be
-    registered and information can be added to it.
+    under their model name.
+    Via :py:meth:`utopya.model_registry.registry.register_model_info``, a
+    model can be registered and information can be added to it.
 
     Additionally, there are some functions that provide an overview over the
     registered models and the known information about them.

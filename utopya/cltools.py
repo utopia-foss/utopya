@@ -55,8 +55,10 @@ def add_from_kv_pairs(
 ) -> None:
     """Parses the key=value pairs and adds them to the given dict.
 
-    Note that this happens directly on the object, i.e. making use of the
-    mutability of the given dict. This function has no return value!
+    .. note::
+
+        This happens directly on the ``add_to`` object, i.e. making use of the
+        mutability of the given dict. This function has no return value!
 
     Args:
         *pairs: Sequence of key=value strings
@@ -65,8 +67,8 @@ def add_from_kv_pairs(
             strings to bool, float, int types
         allow_eval (bool, optional): Whether to try calling eval() on the
             value strings during conversion
-        allow_deletion (bool, optional): If set, can pass DELETE string to
-            a key to remove the corresponding entry.
+        allow_deletion (bool, optional): If set, can pass a ``DELETE`` string
+            to a key to remove the corresponding entry.
     """
 
     class _DEL:
@@ -297,7 +299,6 @@ def register_project(args: list, *, arg_prefix: str = "") -> dict:
             "Updated plot module paths for Utopia project '%s'.", project_name
         )
 
-    # Return the project information
     return projects[project_name]
 
 
@@ -330,7 +331,7 @@ def deploy_user_cfg(
             return
 
     # At this point, can assume that it is desired to write the file and there
-    # is no other file there
+    # is no other file there.
     # Make sure that the folder exists
     os.makedirs(os.path.dirname(user_cfg_path), exist_ok=True)
 
@@ -366,7 +367,6 @@ def deploy_user_cfg(
                     # first character (looks cleaner)
                     spaces = " " * (len(line.rstrip()) - len(line.strip()))
                     ucfg.write(spaces + "# " + line[len(spaces) :])
-        # Done
 
     print(
         f"Deployed user config to: {user_cfg_path}\n\n"
