@@ -1,28 +1,24 @@
 """Takes care of the YAML setup for Utopya"""
 
-import re
+import functools
 import logging
-from functools import partial
-from typing import Tuple, Callable
+import re
+from typing import Callable, Tuple
 
-import ruamel.yaml
 import numpy as np
-
 import paramspace.yaml_constructors as pspyc
-import utopya.tools as t
+import ruamel.yaml
 
-from . import MODELS
-from ._yaml import yaml, load_yml, write_yml
-from .model_registry import ModelInfoBundle, ModelRegistryEntry
+from ._yaml import load_yml, write_yml, yaml
+from .model_registry import ModelInfoBundle, ModelRegistryEntry, load_model_cfg
 from .parameter import Parameter
 from .stopcond import StopCondition
-from .tools import recursive_update
-from .model_registry import load_model_cfg
+from .tools import recursive_update as _recursive_update
 
-# Local constants
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
+
 
 def _scalar_node_to_object(loader, node):
     """Attempts to convert the given scalar node to a null (Python None),
@@ -30,6 +26,7 @@ def _scalar_node_to_object(loader, node):
     If those conversions fail, constructs a scalar (which will typically result
     in a string being returned).
     """
+
     def construct_yaml_null(node) -> None:
         """Constructs a None from an appropriate YAML node.
 
@@ -39,10 +36,11 @@ def _scalar_node_to_object(loader, node):
         on errors being raised if construction fails, we need this custom
         constructor for the two explicitly allowed null values.
         """
-        if node.value in ('~', 'null'):
+        if node.value in ("~", "null"):
             return None
-        raise ruamel.yaml.constructor.ConstructorError(f"expected null, but "
-                                                       f"got '{node.value}'")
+        raise ruamel.yaml.constructor.ConstructorError(
+            f"expected null, but " f"got '{node.value}'"
+        )
 
     for constructor in (
         loader.construct_yaml_bool,
@@ -61,6 +59,7 @@ def _scalar_node_to_object(loader, node):
 
 # -----------------------------------------------------------------------------
 
+
 def _expr_constructor(loader, node):
     """Custom pyyaml constructor for evaluating strings with simple
     mathematical expressions.
@@ -74,22 +73,23 @@ def _expr_constructor(loader, node):
     expr_str = expr_str.replace(" ", "")
 
     # Parse some special strings
-    if expr_str in ['nan', 'NaN']:
+    if expr_str in ["nan", "NaN"]:
         return float("nan")
 
     # NOTE these will cause errors if emitted file is not read by python!
-    elif expr_str in ['np.inf', 'inf', 'INF']:
+    elif expr_str in ["np.inf", "inf", "INF"]:
         return np.inf
 
-    elif expr_str in ['-np.inf', '-inf', '-INF']:
+    elif expr_str in ["-np.inf", "-inf", "-INF"]:
         return -np.inf
 
     # remove everything that might cause trouble -- only allow digits, dot, +,
     # -, *, /, and eE to allow for writing exponentials, and parentheses
-    expr_str = re.sub(r'[^0-9eE\-.+\*\/\(\)]', '', expr_str)
+    expr_str = re.sub(r"[^0-9eE\-.+\*\/\(\)]", "", expr_str)
 
     # Try to eval
     return eval(expr_str)
+
 
 def _model_cfg_constructor(loader, node) -> dict:
     """Custom yaml constructor for loading a model configuration file.
@@ -103,17 +103,18 @@ def _model_cfg_constructor(loader, node) -> dict:
     # NOTE using the deep flag here to allow nested calls to this constructor
 
     # Extract the model name and a potentially existing bundle key
-    model_name = d.pop('model_name')
-    bundle_key = d.pop('bundle_key', None)
+    model_name = d.pop("model_name")
+    bundle_key = d.pop("bundle_key", None)
 
     # Load the corresponding model configuration
     mcfg, _, _ = load_model_cfg(model_name=model_name, bundle_key=bundle_key)
 
     # Update the loaded config with the remaining keys
-    mcfg = recursive_update(mcfg, d)
+    mcfg = _recursive_update(mcfg, d)
 
     # Return the updated dictionary
     return mcfg
+
 
 def _func_on_sequence_constructor(loader, node, *, func: Callable):
     """Custom yaml constructor that constructs a sequence, passes it to the
@@ -126,6 +127,7 @@ def _func_on_sequence_constructor(loader, node, *, func: Callable):
     s = loader.construct_sequence(node, deep=True)
     return func(s)
 
+
 def _parameter_shorthand_constructor(loader, node) -> Parameter:
     """Constructs a Parameter object from a scalar YAML node using
     :py:func:`~utopya.yaml._scalar_node_to_object`.
@@ -133,8 +135,10 @@ def _parameter_shorthand_constructor(loader, node) -> Parameter:
     The YAML tag is used as shorthand ``mode`` argument to the
     :py:class:`~utopya.parameter.Parameter.from_shorthand` class method.
     """
-    return Parameter.from_shorthand(_scalar_node_to_object(loader, node),
-                                    mode=node.tag[1:])
+    return Parameter.from_shorthand(
+        _scalar_node_to_object(loader, node), mode=node.tag[1:]
+    )
+
 
 # -----------------------------------------------------------------------------
 # Attaching representers and constructors
@@ -147,40 +151,39 @@ yaml.register_class(Parameter)
 
 # Now, add (additional, potentially overwriting) constructors for certain tags.
 # Evaluate a mathematical expression
-yaml.constructor.add_constructor('!expr', _expr_constructor)
+yaml.constructor.add_constructor("!expr", _expr_constructor)
 
 # Apply the any operator to a sequence
-yaml.constructor.add_constructor('!any',
-                                 partial(_func_on_sequence_constructor,
-                                         func=any))
+yaml.constructor.add_constructor(
+    "!any", functools.partial(_func_on_sequence_constructor, func=any)
+)
 
 # Apply the all operator to a sequence
-yaml.constructor.add_constructor('!all',
-                                 partial(_func_on_sequence_constructor,
-                                         func=all))
+yaml.constructor.add_constructor(
+    "!all", functools.partial(_func_on_sequence_constructor, func=all)
+)
 
 # Load a model configuration
-yaml.constructor.add_constructor('!model', _model_cfg_constructor)
+yaml.constructor.add_constructor("!model", _model_cfg_constructor)
 
 
 # Add aliases for the (coupled) parameter dimensions
-yaml.constructor.add_constructor('!sweep',
-                                 pspyc.pdim)
-yaml.constructor.add_constructor('!sweep-default',
-                                 pspyc.pdim_default)
+yaml.constructor.add_constructor("!sweep", pspyc.pdim)
+yaml.constructor.add_constructor("!sweep-default", pspyc.pdim_default)
 
-yaml.constructor.add_constructor('!coupled-sweep',
-                                 pspyc.coupled_pdim)
-yaml.constructor.add_constructor('!coupled-sweep-default',
-                                 pspyc.coupled_pdim_default)
+yaml.constructor.add_constructor("!coupled-sweep", pspyc.coupled_pdim)
+yaml.constructor.add_constructor(
+    "!coupled-sweep-default", pspyc.coupled_pdim_default
+)
 
 
 # Register the Parameter shorthand constructors
 # NOTE The regular constructors and representers are already registered using
 #      the call to yaml.register_class above
 for mode in Parameter.SHORTHAND_MODES:
-    yaml.constructor.add_constructor('!' + mode,
-                                     _parameter_shorthand_constructor)
+    yaml.constructor.add_constructor(
+        "!" + mode, _parameter_shorthand_constructor
+    )
 
 # Set the flow style
 yaml.default_flow_style = False

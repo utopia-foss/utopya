@@ -6,11 +6,10 @@ import logging
 import operator
 from math import isinf as _isinf
 from numbers import Number
-from typing import Any, Tuple, Union, Sequence
+from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
 import paramspace as psp
-
 
 # Local constants
 log = logging.getLogger(__name__)
@@ -18,8 +17,10 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
+
 class ValidationError(ValueError):
     """Raised upon failure to validate a parameter"""
+
     pass
 
 
@@ -33,41 +34,47 @@ class Parameter:
     parameters, corresponding specializing classes are to be implemeted.
     """
 
-    # Available modes for :py:meth:`~utopya.parameter.Parameter.from_shorthand`
     SHORTHAND_MODES = (
-        'is-probability',
-        'is-positive',
-        'is-int',
-        'is-negative',
-        'is-positive-int',
-        'is-string',
-        'is-negative-int',
-        'is-bool',
-        'is-unsigned',
+        "is-probability",
+        "is-positive",
+        "is-int",
+        "is-negative",
+        "is-positive-int",
+        "is-string",
+        "is-negative-int",
+        "is-bool",
+        "is-unsigned",
     )
+    """Available modes for
+    :py:meth:`~utopya.parameter.Parameter.from_shorthand`"""
 
-    # Comparators for the ``limits`` check, depending on ``limits_mode``
     LIMIT_COMPS = {
-        '[': operator.ge,
-        '(': operator.gt,
-        ']': operator.le,
-        ')': operator.lt,
+        "[": operator.ge,
+        "(": operator.gt,
+        "]": operator.le,
+        ")": operator.lt,
     }
+    """Comparators for the ``limits`` check, depending on ``limits_mode``"""
 
-    # Possible limit modes
-    LIMIT_MODES = ('[]', '()', '[)', '(]')
+    LIMIT_MODES = ("[]", "()", "[)", "(]")
+    """Possible limit modes"""
 
-    # Default YAML tag to use for representing
-    yaml_tag = '!param'
+    yaml_tag = "!param"
+    """Default YAML tag to use for representing"""
 
     # .........................................................................
 
-    def __init__(self, *, default: Any,
-                 name: str=None, description: str=None,
-                 is_any_of: Sequence[Any]=None,
-                 limits: Tuple[Union[None, float], Union[None, float]]=None,
-                 limits_mode: str='[]',
-                 dtype: Union[str, type]=None):
+    def __init__(
+        self,
+        *,
+        default: Any,
+        name: str = None,
+        description: str = None,
+        is_any_of: Sequence[Any] = None,
+        limits: Tuple[Union[None, float], Union[None, float]] = None,
+        limits_mode: str = "[]",
+        dtype: Union[str, type] = None,
+    ):
         """Creates a new Parameter object, which holds a default value as well
         as some constraints on the possible values this parameter can assume.
 
@@ -103,30 +110,40 @@ class Parameter:
                 argument did not have length 2.
         """
         if limits_mode not in self.LIMIT_MODES:
-            raise ValueError(f"Unrecognized `limits_mode` argument "
-                             f"'{limits_mode}'! "
-                             f"Choose from: {', '.join(self.LIMIT_MODES)}")
+            raise ValueError(
+                f"Unrecognized `limits_mode` argument "
+                f"'{limits_mode}'! "
+                f"Choose from: {', '.join(self.LIMIT_MODES)}"
+            )
 
         if limits and is_any_of:
-            raise ValueError("The arguments `limits` and `is_any_of` cannot "
-                             "be specified at the same time!")
+            raise ValueError(
+                "The arguments `limits` and `is_any_of` cannot "
+                "be specified at the same time!"
+            )
 
         if limits is not None:
             # Ensure tuple, correct length, and numerical default value
             if not isinstance(limits, (tuple, list)):
-                raise TypeError("Expected a tuple-like `limits` argument, but "
-                                f"got {type(limits).__name__} with "
-                                f"value {limits}!")
+                raise TypeError(
+                    "Expected a tuple-like `limits` argument, but "
+                    f"got {type(limits).__name__} with "
+                    f"value {limits}!"
+                )
             limits = tuple(limits)
 
             if len(limits) != 2:
-                raise ValueError("`limits` argument should be of length 2! "
-                                 f"Got: {limits}")
+                raise ValueError(
+                    "`limits` argument should be of length 2! "
+                    f"Got: {limits}"
+                )
 
             if default is not None and not isinstance(default, Number):
-                raise TypeError("Unable to use the `limits` argument for non-"
-                                f"numerical default value '{default}'! Use "
-                                "the `is_any_of` argument instead.")
+                raise TypeError(
+                    "Unable to use the `limits` argument for non-"
+                    f"numerical default value '{default}'! Use "
+                    "the `is_any_of` argument instead."
+                )
 
         self._default = default
         self._name = name
@@ -136,7 +153,6 @@ class Parameter:
         self._is_any_of = tuple(is_any_of) if is_any_of else None
         self._dtype = np.dtype(dtype) if dtype is not None else None
 
-
     # .. Magic Methods ........................................................
 
     def __eq__(self, other) -> bool:
@@ -145,12 +161,14 @@ class Parameter:
         return self.__dict__ == other.__dict__
 
     def __str__(self) -> str:
-        info = {attr[1:]: getattr(self, attr)
-                for attr in ('_name', '_is_any_of', '_dtype', '_limits')
-                if getattr(self, attr) is not None}
+        info = {
+            attr[1:]: getattr(self, attr)
+            for attr in ("_name", "_is_any_of", "_dtype", "_limits")
+            if getattr(self, attr) is not None
+        }
         if info:
-            if 'limits' in info:
-                info['limits_mode'] = repr(self._limits_mode)
+            if "limits" in info:
+                info["limits_mode"] = repr(self._limits_mode)
             info_str = ", ".join([f"{k}: {v}" for k, v in info.items()])
             return f"<Parameter, default: {self._default}, {info_str}>"
         return f"<Parameter, default: {self._default}>"
@@ -194,7 +212,7 @@ class Parameter:
 
     # .........................................................................
 
-    def validate(self, value: Any, *, raise_exc: bool=True) -> bool:
+    def validate(self, value: Any, *, raise_exc: bool = True) -> bool:
         """Checks whether the given value would be a valid parameter.
 
         The checks for the corresponding arguments are carried out in the
@@ -233,6 +251,7 @@ class Parameter:
                 instance due to ambiguous validity parameters). This error
                 message contains further information on why validation failed.
         """
+
         def was_invalid(msg: str) -> bool:
             """Handles the case where the given value was not valid.
             This helper function raises a ``ValidationError`` if ``raise_exc``
@@ -245,20 +264,24 @@ class Parameter:
         # Check explicitly given permissible values first
         if self.is_any_of and value not in self.is_any_of:
             _valid_opts = ", ".join([repr(e) for e in self.is_any_of])
-            return was_invalid(f"value {repr(value)} is not permissible. "
-                               f"Valid options are:  {_valid_opts}")
+            return was_invalid(
+                f"value {repr(value)} is not permissible. "
+                f"Valid options are:  {_valid_opts}"
+            )
 
         # Check the type
         if self.dtype:
             _is_subtype = np.issubdtype(type(value), self.dtype)
 
-            _float_compatible = (
-                np.issubdtype(self.dtype, np.floating) and
-                (np.issubdtype(type(value), np.integer) or
-                 np.issubdtype(type(value), np.floating)))
+            _float_compatible = np.issubdtype(self.dtype, np.floating) and (
+                np.issubdtype(type(value), np.integer)
+                or np.issubdtype(type(value), np.floating)
+            )
             _uint_compatible = (
-                np.issubdtype(self.dtype, np.unsignedinteger) and
-                np.issubdtype(type(value), np.integer) and value >= 0)
+                np.issubdtype(self.dtype, np.unsignedinteger)
+                and np.issubdtype(type(value), np.integer)
+                and value >= 0
+            )
 
             if not (_is_subtype or _float_compatible or _uint_compatible):
                 return was_invalid(
@@ -268,12 +291,13 @@ class Parameter:
 
             # For numerical values, check that type coercion would not lead to
             # value changes, e.g. due to values not being representable
-            if (np.issubdtype(self.dtype, np.number) and
-                np.issubdtype(type(value), np.number) and
-                not np.isnan(value)
+            if (
+                np.issubdtype(self.dtype, np.number)
+                and np.issubdtype(type(value), np.number)
+                and not np.isnan(value)
             ):
                 _coerced_value = self.dtype.type(value)
-                _is_equal = (_coerced_value == value)
+                _is_equal = _coerced_value == value
                 _is_close = np.isclose(_coerced_value, value)
                 # NOTE This is done instead of np.can_cast, which would look
                 #      only at the types and thus be too strict. By taking
@@ -287,7 +311,6 @@ class Parameter:
                         f"{repr(_coerced_value)} != {repr(value)}"
                     )
 
-
         # Check value is within the given limits
         if self.limits:
             # Type should be numerical
@@ -300,9 +323,9 @@ class Parameter:
             # Can now assume that it is numerical. Change Nones to ±inf
             lims = list(self.limits)
             if lims[0] is None:
-                lims[0] = -float('inf')
+                lims[0] = -float("inf")
             if lims[1] is None:
-                lims[1] = float('inf')
+                lims[1] = float("inf")
 
             # Get comparison operators according to limits mode
             comp_l = self.LIMIT_COMPS[self.limits_mode[0]]
@@ -325,7 +348,7 @@ class Parameter:
 
     @classmethod
     def from_shorthand(cls, value, *, mode, **kwargs):
-        """Constructs a Parameter object from a given shorthand mode.
+        r"""Constructs a Parameter object from a given shorthand mode.
 
         Args:
             value: A given value, typically the ``default`` argument.
@@ -337,40 +360,59 @@ class Parameter:
         Returns:
             a Parameter object
         """
-        if mode == 'is-probability':
+        if mode == "is-probability":
             d = dict(default=value, limits=[0, 1], dtype=float, **kwargs)
 
-        elif mode == 'is-positive':
-            d = dict(default=value, limits=[0, None], limits_mode='(]',
-                     **kwargs)
+        elif mode == "is-positive":
+            d = dict(
+                default=value, limits=[0, None], limits_mode="(]", **kwargs
+            )
 
-        elif mode == 'is-negative':
-            d = dict(default=value, limits=[None, 0], limits_mode='[)',
-                     **kwargs)
+        elif mode == "is-negative":
+            d = dict(
+                default=value, limits=[None, 0], limits_mode="[)", **kwargs
+            )
 
-        elif mode == 'is-int':
+        elif mode == "is-int":
             d = dict(default=value, dtype=int, **kwargs)
 
-        elif mode == 'is-positive-int':
-            d = dict(default=value, limits=[0, None], limits_mode = '()',
-                     dtype=int, **kwargs)
+        elif mode == "is-positive-int":
+            d = dict(
+                default=value,
+                limits=[0, None],
+                limits_mode="()",
+                dtype=int,
+                **kwargs,
+            )
 
-        elif mode == 'is-negative-int':
-            d = dict(default=value, limits=[None, 0], limits_mode = '()',
-                     dtype=int, **kwargs)
+        elif mode == "is-negative-int":
+            d = dict(
+                default=value,
+                limits=[None, 0],
+                limits_mode="()",
+                dtype=int,
+                **kwargs,
+            )
 
-        elif mode == 'is-bool':
+        elif mode == "is-bool":
             d = dict(default=value, dtype=bool, **kwargs)
 
-        elif mode == 'is-string':
+        elif mode == "is-string":
             d = dict(default=value, dtype=str, **kwargs)
 
-        elif mode == 'is-unsigned':
-            d = dict(default=value, limits=[0, None], limits_mode = '[)',
-                     dtype='uint', **kwargs)
+        elif mode == "is-unsigned":
+            d = dict(
+                default=value,
+                limits=[0, None],
+                limits_mode="[)",
+                dtype="uint",
+                **kwargs,
+            )
         else:
-            raise ValueError(f"Unrecognized shorthand mode '{mode}'! Needs be "
-                             f"one of: {', '.join(cls.SHORTHAND_MODES)}")
+            raise ValueError(
+                f"Unrecognized shorthand mode '{mode}'! Needs be "
+                f"one of: {', '.join(cls.SHORTHAND_MODES)}"
+            )
 
         return cls(**d)
 
@@ -386,29 +428,30 @@ class Parameter:
             a yaml mapping that is able to recreate this object
         """
         d = {}
-        d['default'] = node.default
+        d["default"] = node.default
         if node.limits:
-            d['limits'] = node.limits
-            d['limits_mode'] = node.limits_mode
+            d["limits"] = node.limits
+            d["limits_mode"] = node.limits_mode
         elif node.is_any_of:
-            d['is_any_of'] = node.is_any_of
+            d["is_any_of"] = node.is_any_of
         if node.dtype:
-            d['dtype'] = str(node.dtype)
+            d["dtype"] = str(node.dtype)
         return representer.represent_mapping(cls.yaml_tag, d)
 
     @classmethod
     def from_yaml(cls, constructor, node):
-         """The default constructor for Parameter objects, expecting a YAML
-         node that is mapping-like.
-         """
-         return cls(**constructor.construct_mapping(node, deep=True))
+        """The default constructor for Parameter objects, expecting a YAML
+        node that is mapping-like.
+        """
+        return cls(**constructor.construct_mapping(node, deep=True))
 
 
 # -----------------------------------------------------------------------------
 
 
-def extract_validation_objects(model_cfg: dict, *,
-                               model_name: str) -> Tuple[dict, dict]:
+def extract_validation_objects(
+    model_cfg: dict, *, model_name: str
+) -> Tuple[dict, dict]:
     """Extracts all :py:class:`~utopya.parameter.Parameter` objects from a
     model configuration (a nested dict), replacing them with their default
     values.
@@ -433,20 +476,21 @@ def extract_validation_objects(model_cfg: dict, *,
     """
     # Collect Parameter objects
     is_Parameter_obj = lambda e: isinstance(e, Parameter)
-    to_validate = psp.tools.recursive_collect(model_cfg,
-                                              select_func=is_Parameter_obj,
-                                              prepend_info=("keys",))
+    to_validate = psp.tools.recursive_collect(
+        model_cfg, select_func=is_Parameter_obj, prepend_info=("keys",)
+    )
 
     # Replace by default values
     set_default_val = lambda e: e.default
-    model_cfg = psp.tools.recursive_replace(model_cfg,
-                                            select_func=is_Parameter_obj,
-                                            replace_func=set_default_val)
+    model_cfg = psp.tools.recursive_replace(
+        model_cfg, select_func=is_Parameter_obj, replace_func=set_default_val
+    )
 
     # Prepend the model name to the key sequence such that the key sequences
     # attach *one level above* the model configuration, i.e. at the level of
     # the `parameter_space`.
-    to_validate = {(model_name,) + ks : v
-                   for ks, v in dict(to_validate).items()}
+    to_validate = {
+        (model_name,) + ks: v for ks, v in dict(to_validate).items()
+    }
 
     return model_cfg, to_validate

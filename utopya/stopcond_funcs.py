@@ -1,18 +1,17 @@
-"""Here, functions that are used in the StopCondition class are defined.
+"""Implements :py:class:`~utopya.stopcond.StopCondition` functions which will
+carry out the conditional check.
 
-These all get passed the worker task, information and additional kwargs.
-
-Required signature:  ``(task: WorkerTask, **kws) -> bool``
+These all get passed a :py:class:`~utopya.task.WorkerTask`, the information in which can be used to determine whether the condition is fulfilled.
+The required signature is: ``(task: WorkerTask, **kws) -> bool``
 """
 
 import logging
-import time
 import operator
+import time
 
 from dantro.utils.data_ops import BOOLEAN_OPERATORS as OPERATORS
 from paramspace.tools import recursive_getitem as _recursive_getitem
 
-# Initialise logger
 log = logging.getLogger(__name__)
 
 # To not repeatedly show warnings, keep track of failed checks
@@ -21,7 +20,8 @@ _FAILED_MONITOR_ENTRY_CHECKS = []
 
 # -----------------------------------------------------------------------------
 
-def timeout_wall(task: 'utopya.task.WorkerTask', *, seconds: float) -> bool:
+
+def timeout_wall(task: "utopya.task.WorkerTask", *, seconds: float) -> bool:
     """Checks the wall timeout of the given worker
 
     Args:
@@ -31,11 +31,16 @@ def timeout_wall(task: 'utopya.task.WorkerTask', *, seconds: float) -> bool:
     Returns:
         bool: Whether the timeout is fulfilled
     """
-    return bool((time.time() - task.profiling['create_time']) > seconds)
+    return bool((time.time() - task.profiling["create_time"]) > seconds)
 
 
-def check_monitor_entry(task: 'utopya.task.WorkerTask', *, entry_name: str,
-                        operator: str, value: float) -> bool:
+def check_monitor_entry(
+    task: "utopya.task.WorkerTask",
+    *,
+    entry_name: str,
+    operator: str,
+    value: float,
+) -> bool:
     """Checks if a monitor entry compares in a certain way to a given value
 
     Args:
@@ -64,10 +69,11 @@ def check_monitor_entry(task: 'utopya.task.WorkerTask', *, entry_name: str,
             log.caution(
                 "Failed evaluating stop condition due to missing entry '%s' "
                 "in monitor output!\nAvailable monitor data: %s",
-                entry_name, latest_monitor,
+                entry_name,
+                latest_monitor,
             )
             _FAILED_MONITOR_ENTRY_CHECKS.append(entry_name)
         return False
 
-    # And perform the comparison
+    # Now perform the comparison
     return OPERATORS[operator](entry, value)

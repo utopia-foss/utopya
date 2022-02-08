@@ -1,25 +1,26 @@
 """The WorkerManager class."""
 
-import os
-import sys
-import queue
-import warnings
-import logging
 import copy
+import logging
+import os
+import queue
+import sys
 import time
+import warnings
 from datetime import datetime as dt
-from typing import Union, Callable, Sequence, List, Set, Dict
+from typing import Callable, Dict, List, Sequence, Set, Union
 
-from .task import WorkerTask, TaskList, SIGMAP
-from .stopcond import StopCondition, SIG_STOPCOND
+from .exceptions import *
 from .reporter import WorkerManagerReporter
+from .stopcond import SIG_STOPCOND, StopCondition
+from .task import SIGMAP, TaskList, WorkerTask
 from .tools import format_time
 
-# Initialise logger
 log = logging.getLogger(__name__)
 
 
 # -----------------------------------------------------------------------------
+
 
 class WorkerManager:
     """The WorkerManager class orchestrates :py:class:`~utopya.task.WorkerTask`
@@ -39,19 +40,21 @@ class WorkerManager:
         times (dict): Holds profiling information for the WorkerManager
     """
 
-    def __init__(self,
-                 num_workers: Union[int, str]='auto',
-                 poll_delay: float=0.05,
-                 lines_per_poll: int=20,
-                 periodic_task_callback: int=None,
-                 QueueCls=queue.Queue,
-                 reporter: WorkerManagerReporter=None,
-                 rf_spec: Dict[str, Union[str, List[str]]]=None,
-                 save_streams_on: Sequence[str]=(),
-                 nonzero_exit_handling: str='ignore',
-                 interrupt_params: dict=None,
-                 cluster_mode: bool=False,
-                 resolved_cluster_params: dict=None):
+    def __init__(
+        self,
+        num_workers: Union[int, str] = "auto",
+        poll_delay: float = 0.05,
+        lines_per_poll: int = 20,
+        periodic_task_callback: int = None,
+        QueueCls=queue.Queue,
+        reporter: WorkerManagerReporter = None,
+        rf_spec: Dict[str, Union[str, List[str]]] = None,
+        save_streams_on: Sequence[str] = (),
+        nonzero_exit_handling: str = "ignore",
+        interrupt_params: dict = None,
+        cluster_mode: bool = False,
+        resolved_cluster_params: dict = None,
+    ):
         """Initialize the worker manager.
 
         Args:
@@ -150,9 +153,9 @@ class WorkerManager:
         self.nonzero_exit_handling = nonzero_exit_handling
         self._cluster_mode = cluster_mode
         self._resolved_cluster_params = resolved_cluster_params
-        self.interrupt_params = (interrupt_params if interrupt_params else {})
+        self.interrupt_params = interrupt_params if interrupt_params else {}
 
-        if num_workers == 'auto':
+        if num_workers == "auto":
             self.num_workers = os.cpu_count()
 
         elif num_workers < 0:
@@ -173,12 +176,14 @@ class WorkerManager:
         if reporter:
             self.reporter = reporter
 
-        self.rf_spec = dict(before_working='while_working',
-                            while_working='while_working',
-                            task_spawned='while_working',
-                            task_finished='while_working',
-                            after_work='after_work',
-                            after_abort='after_work')
+        self.rf_spec = dict(
+            before_working="while_working",
+            while_working="while_working",
+            task_spawned="while_working",
+            task_finished="while_working",
+            after_work="after_work",
+            after_abort="after_work",
+        )
         if rf_spec:
             self.rf_spec.update(rf_spec)
 
@@ -188,8 +193,9 @@ class WorkerManager:
         log.note("  Non-zero exit handling:    %s", self.nonzero_exit_handling)
 
         # Store some profiling information
-        self.times = dict(init=dt.now(), start_working=None,
-                          timeout=None, end_working=None)
+        self.times = dict(
+            init=dt.now(), start_working=None, timeout=None, end_working=None
+        )
         # These are also accessed by the reporter
 
         log.progress("Initialized WorkerManager.")
@@ -221,14 +227,17 @@ class WorkerManager:
     def num_workers(self, val):
         """Set the number of workers that can work in parallel."""
         if val <= 0 or not isinstance(val, int):
-            raise ValueError("Need positive integer for number of workers, "
-                             "got {} of value {}.".format(type(val), val))
+            raise ValueError(
+                "Need positive integer for number of workers, "
+                f"got {type(val)} of value {val}."
+            )
 
         elif val > os.cpu_count():
-            warnings.warn("Set WorkerManager to use more parallel workers ({})"
-                          "than there are cpu cores ({}) on this "
-                          "machine.".format(val, os.cpu_count()),
-                          UserWarning)
+            warnings.warn(
+                f"Set WorkerManager to use more parallel workers ({val})"
+                f"than there are CPU cores ({os.cpu_count()}) on this machine",
+                UserWarning,
+            )
 
         self._num_workers = val
         log.debug("Set number of workers to %d", self.num_workers)
@@ -264,12 +273,15 @@ class WorkerManager:
         """Set the poll delay to any positive value. For low values, a warning
         will be emitted.
         """
-        if val <= 0.:
-            raise ValueError("Poll delay needs to be positive, was "+str(val))
+        if val <= 0.0:
+            raise ValueError(f"Poll delay needs to be positive, was {val}!")
         elif val < 0.01:
-            warnings.warn("Setting a poll delay of {} < 0.01s can lead to "
-                          "significant CPU load. Consider choosing a higher "
-                          "value.", UserWarning)
+            warnings.warn(
+                "Setting a poll delay of {} < 0.01s can lead to "
+                "significant CPU load. Consider choosing a higher "
+                "value.",
+                UserWarning,
+            )
         self._poll_delay = val
 
     @property
@@ -284,11 +296,11 @@ class WorkerManager:
     def nonzero_exit_handling(self) -> str:
         """Behavior upon a worker exiting with a non-zero exit code.
 
-            - with ``ignore``, nothing happens
-            - with ``warn``, a warning is printed
-            - with ``raise``, the log is shown and the WorkerManager exits
-              with the same exit code as the corresponding
-              :py:class:`~utopya.task.WorkerTask` exited with.
+        - with ``ignore``, nothing happens
+        - with ``warn``, a warning is printed
+        - with ``raise``, the log is shown and the WorkerManager exits
+          with the same exit code as the corresponding
+          :py:class:`~utopya.task.WorkerTask` exited with.
         """
         return self._nonzero_exit_handling
 
@@ -297,15 +309,18 @@ class WorkerManager:
         """Set the ``nonzero_exit_handling`` attribute.
 
         Args:
-            val (str): The value to set it to. Can be: ignore, warn, raise
+            val (str): The value to set it to. Can be: ``ignore``, ``warn``,
+                ``raise``.
 
         Raises:
             ValueError: For invalid value
         """
-        allowed_vals = ['ignore', 'warn', 'warn_all', 'raise']
+        allowed_vals = ("ignore", "warn", "warn_all", "raise")
         if val not in allowed_vals:
-            raise ValueError("`nonzero_exit_handling` needs to be one of {}, "
-                             "but was '{}'.".format(allowed_vals, val))
+            raise ValueError(
+                f"`nonzero_exit_handling` needs to be one of {allowed_vals}, "
+                f"but was '{val}'."
+            )
 
         self._nonzero_exit_handling = val
 
@@ -324,8 +339,10 @@ class WorkerManager:
         already set.
         """
         if not isinstance(reporter, WorkerManagerReporter):
-            raise TypeError("Need a WorkerManagerReporter for reporting from "
-                            "WorkerManager, got {}.".format(type(reporter)))
+            raise TypeError(
+                "Need a WorkerManagerReporter for reporting from "
+                f"WorkerManager, got {type(reporter)}."
+            )
         elif self.reporter:
             raise RuntimeError("Already set the reporter; cannot change it.")
 
@@ -341,16 +358,16 @@ class WorkerManager:
     @property
     def resolved_cluster_params(self) -> dict:
         """Returns a copy of the cluster configuration with all parameters
-        resolved. This makes some additional keys available on the top level.
+        resolved (thus making some additional keys available on the top level).
+        It is returned as a deep copy to avoid mutability issues.
         """
-        # Return the cached value as a _copy_ to secure it against changes
         return copy.deepcopy(self._resolved_cluster_params)
 
     # Public API ..............................................................
 
-    def add_task(self, *,
-                 TaskCls: type=WorkerTask,
-                 **task_kwargs) -> WorkerTask:
+    def add_task(
+        self, *, TaskCls: type = WorkerTask, **task_kwargs
+    ) -> WorkerTask:
         """Adds a task to the WorkerManager.
 
         Args:
@@ -364,15 +381,14 @@ class WorkerManager:
         # Evaluate save_stream callbacks
         save_streams = lambda t: t.save_streams(final=False)
 
-        if 'monitor_updated' in self.save_streams_on:
+        if "monitor_updated" in self.save_streams_on:
             save_streams_on_monitor_update = True
 
-        if 'periodic_callback' in self.save_streams_on:
+        if "periodic_callback" in self.save_streams_on:
             periodic_callback = save_streams
         else:
             # Do nothing
             periodic_callback = lambda _: None
-
 
         # Define the function needed to calculate the task's progress
         def calc_progress(task) -> float:
@@ -382,11 +398,11 @@ class WorkerManager:
             """
             # Check if parsed objects were available
             if not task.outstream_objs:
-                return 0.
+                return 0.0
 
             # Extract the `progress` key from the latest entry; if it is not
             # available, use the same behaviour as above and return 0
-            return task.outstream_objs[-1].get('progress', 0.)
+            return task.outstream_objs[-1].get("progress", 0.0)
 
         # Prepare the callback functions needed by the reporter . . . . . . . .
         def task_spawned(task):
@@ -401,14 +417,14 @@ class WorkerManager:
             # First, check if that was already taken care of
             if self.reporter and not self.reporter.suppress_cr:
                 # Nope -> need to check if the task will forward streams
-                if task.streams.get('out') and task.streams['out']['forward']:
+                if task.streams.get("out") and task.streams["out"]["forward"]:
                     # Yes -> need to suppress carriage returns by reporter and
                     # reduce report invokations by the WorkerManager main loop
                     self.reporter.suppress_cr = True
-                    self._suppress_rf_specs.append('while_working')
+                    self._suppress_rf_specs.append("while_working")
 
             # Invoke the report
-            self._invoke_report('task_spawned', force=True)
+            self._invoke_report("task_spawned", force=True)
 
         def task_finished(task):
             """Performs actions after a task has finished.
@@ -421,14 +437,14 @@ class WorkerManager:
             if self.reporter is not None:
                 self.reporter.register_task(task)
 
-            self._invoke_report('task_finished', force=True)
+            self._invoke_report("task_finished", force=True)
 
             # If there was a (non-zero) exit and the handling mode is set
             # accordingly, generate an exception and add it to the list of
             # pending exceptions. Handle exit codes that result from a stop
             # condition being fulfilled separately.
-            if self.nonzero_exit_handling != 'ignore' and task.worker_status:
-                if task.worker_status == 128+abs(SIGMAP[SIG_STOPCOND]):
+            if self.nonzero_exit_handling != "ignore" and task.worker_status:
+                if task.worker_status == 128 + abs(SIGMAP[SIG_STOPCOND]):
                     exc = WorkerTaskStopConditionFulfilled(task)
                 else:
                     exc = WorkerTaskNonZeroExit(task)
@@ -440,7 +456,7 @@ class WorkerManager:
             """
             if save_streams_on_monitor_update:
                 save_streams(task)
-            self._invoke_report('monitor_updated')
+            self._invoke_report("monitor_updated")
 
         # Prepare the arguments for the WorkerTask . . . . . . . . . . . . . .
 
@@ -455,9 +471,9 @@ class WorkerManager:
         )
 
         # Generate the WorkerTask-like object from the given parameters
-        task = TaskCls(callbacks=callbacks,
-                       progress_func=calc_progress,
-                       **task_kwargs)
+        task = TaskCls(
+            callbacks=callbacks, progress_func=calc_progress, **task_kwargs
+        )
 
         # Append it to the task list and put it into the task queue
         self.tasks.append(task)
@@ -466,9 +482,14 @@ class WorkerManager:
         log.debug("Task %s (uid: %s) added.", task.name, task.uid)
         return task
 
-    def start_working(self, *, detach: bool=False, timeout: float=None,
-                      stop_conditions: Sequence[StopCondition]=None,
-                      post_poll_func: Callable=None) -> None:
+    def start_working(
+        self,
+        *,
+        detach: bool = False,
+        timeout: float = None,
+        stop_conditions: Sequence[StopCondition] = None,
+        post_poll_func: Callable = None,
+    ) -> None:
         """Upon call, all enqueued tasks will be worked on sequentially.
 
         Args:
@@ -490,42 +511,50 @@ class WorkerManager:
             ValueError: For invalid (i.e., negative) timeout value
             WorkerManagerTotalTimeout: Upon a total timeout
         """
-        self._invoke_report('before_working')
+        self._invoke_report("before_working")
 
         log.progress("Preparing to work ...")
 
         # Determine timeout arguments
         if timeout:
             if timeout <= 0:
-                raise ValueError("Invalid value for argument `timeout`: {} -- "
-                                 "needs to be positive.".format(timeout))
+                raise ValueError(
+                    f"Invalid value for argument `timeout`: {timeout} -- "
+                    "needs to be positive."
+                )
 
             # Already calculate the time after which a timeout would be reached
-            self.times['timeout'] = time.time() + timeout
+            self.times["timeout"] = time.time() + timeout
 
         # Set the variable needed for checking; if above condition was not
         # fulfilled, this will be None
-        timeout_time = self.times['timeout']
+        timeout_time = self.times["timeout"]
 
         # Determine whether to detach the whole working loop
         if detach:
-            # TODO implement the content of this in a separate thread.
-            raise NotImplementedError("It is currently not possible to "
-                                      "detach the WorkerManager from the "
-                                      "main thread.")
+            raise NotImplementedError(
+                "It is currently not possible to detach the WorkerManager "
+                "from the main thread."
+            )
 
         # Set some variables needed during the run
         poll_no = 0
-        self.times['start_working'] = dt.now()
+        self.times["start_working"] = dt.now()
 
         # Inform about timeout and stop conditions
         if timeout:
-            _to_fstr = "%X" if timeout < 60*60*12 else "%X, %d.%m.%y"
+            _to_fstr = "%X" if timeout < 60 * 60 * 12 else "%X, %d.%m.%y"
             _to_at = dt.fromtimestamp(timeout_time).strftime(_to_fstr)
-        log.note("  Timeout:         %s", "None" if not timeout
-                 else f"{_to_at} (in {format_time(timeout)})")
-        log.note("  Stop conditions: %s", "None" if not stop_conditions
-                 else ", ".join([sc.name for sc in stop_conditions]))
+        log.note(
+            "  Timeout:         %s",
+            "None" if not timeout else f"{_to_at} (in {format_time(timeout)})",
+        )
+        log.note(
+            "  Stop conditions: %s",
+            "None"
+            if not stop_conditions
+            else ", ".join([sc.name for sc in stop_conditions]),
+        )
 
         log.hilight("Starting to work ...")
 
@@ -577,7 +606,7 @@ class WorkerManager:
                     task.forward_streams()
 
                 # Invoke a report
-                self._invoke_report('while_working')
+                self._invoke_report("while_working")
 
                 # Check stop conditions
                 if stop_conditions:
@@ -594,21 +623,26 @@ class WorkerManager:
 
                 # Call the post-poll function
                 if post_poll_func is not None:
-                    log.debug("Calling post_poll_func %s ...",
-                              post_poll_func.__name__)
+                    log.debug(
+                        "Calling post_poll_func %s ...",
+                        post_poll_func.__name__,
+                    )
                     post_poll_func()
 
                 # Invoke periodic callback for all tasks
                 if (
-                    self._periodic_callback and
-                    poll_no % self._periodic_callback == 0
+                    self._periodic_callback
+                    and poll_no % self._periodic_callback == 0
                 ):
                     self._invoke_periodic_callbacks()
 
                 # Some information
                 poll_no += 1
-                log.debug("Poll # %6d:  %d active tasks",
-                          poll_no, len(self.active_tasks))
+                log.debug(
+                    "Poll # %6d:  %d active tasks",
+                    poll_no,
+                    len(self.active_tasks),
+                )
 
                 # Delay the next poll
                 time.sleep(self.poll_delay)
@@ -629,22 +663,27 @@ class WorkerManager:
 
             # Extract parameters from config
             # Which signal to send to workers
-            signal = self.interrupt_params.get('send_signal', 'SIGINT')
+            signal = self.interrupt_params.get("send_signal", "SIGINT")
 
             # The grace period within which the tasks have to shut down
-            grace_period = self.interrupt_params.get('grace_period', 5.)
+            grace_period = self.interrupt_params.get("grace_period", 5.0)
 
             # Send the signal
-            log.info("Sending signal %s to %d active task(s) ...",
-                     signal, len(self.active_tasks))
+            log.info(
+                "Sending signal %s to %d active task(s) ...",
+                signal,
+                len(self.active_tasks),
+            )
             self._signal_workers(self.active_tasks, signal=signal)
 
             # Continuously poll them for a certain grace period in order to
             # find out if they have shut down.
-            log.warning("Allowing %s for %d task(s) to shut down ... "
-                        "(Ctrl + C to kill them now.)",
-                        format_time(grace_period, ms_precision=1),
-                        len(self.active_tasks))
+            log.warning(
+                "Allowing %s for %d task(s) to shut down ... "
+                "(Ctrl + C to kill them now.)",
+                format_time(grace_period, ms_precision=1),
+                len(self.active_tasks),
+            )
             grace_period_start = time.time()
 
             try:
@@ -661,9 +700,11 @@ class WorkerManager:
                     time.sleep(self.poll_delay)
 
             except KeyboardInterrupt:
-                log.critical("Killing workers of %d tasks now ...",
-                             len(self.active_tasks))
-                self._signal_workers(self.active_tasks, signal='SIGKILL')
+                log.critical(
+                    "Killing workers of %d tasks now ...",
+                    len(self.active_tasks),
+                )
+                self._signal_workers(self.active_tasks, signal="SIGKILL")
 
                 # Wait briefly (killing shouldn't take long), then poll
                 # one last time to update all task's status.
@@ -671,14 +712,13 @@ class WorkerManager:
                 self._poll_workers()
 
             # Store end time and invoke a report
-            self.times['end_working'] = dt.now()
-            self._invoke_report('after_abort', force=True)
+            self.times["end_working"] = dt.now()
+            self._invoke_report("after_abort", force=True)
 
             log.hilight("Work session ended.")
 
-            if (
-                type(exc) is KeyboardInterrupt
-                and self.interrupt_params.get('exit', True)
+            if type(exc) is KeyboardInterrupt and self.interrupt_params.get(
+                "exit", True
             ):
                 # Exit with appropriate exit code (128 + abs(signum))
                 log.warning("Exiting after KeyboardInterrupt ...")
@@ -699,11 +739,11 @@ class WorkerManager:
 
             # Now terminate the remaining active tasks
             log.hilight("Terminating active tasks ...")
-            self._signal_workers(self.active_tasks, signal='SIGTERM')
+            self._signal_workers(self.active_tasks, signal="SIGTERM")
 
             # Store end time and invoke a report
-            self.times['end_working'] = dt.now()
-            self._invoke_report('after_abort', force=True)
+            self.times["end_working"] = dt.now()
+            self._invoke_report("after_abort", force=True)
 
             # For some specific error types, do not raise but exit with status
             if isinstance(err, WorkerTaskNonZeroExit):
@@ -715,12 +755,13 @@ class WorkerManager:
             raise
 
         # Register end time and invoke final report
-        self.times['end_working'] = dt.now()
-        self._invoke_report('after_work', force=True)
+        self.times["end_working"] = dt.now()
+        self._invoke_report("after_work", force=True)
 
         print("")
-        log.success("Finished working. Total tasks worked on: %d",
-                    self.task_count)
+        log.success(
+            "Finished working. Total tasks worked on: %d", self.task_count
+        )
 
     # Non-public API ..........................................................
 
@@ -759,12 +800,16 @@ class WorkerManager:
             task = self.task_queue.get_nowait()
 
         except queue.Empty as err:
-            raise queue.Empty("No more tasks available in tasks queue."
-                              ) from err
+            raise queue.Empty(
+                "No more tasks available in tasks queue."
+            ) from err
 
         else:
-            log.debug("Got task %s from queue. (Priority: %s)",
-                      task.uid, task.priority)
+            log.debug(
+                "Got task %s from queue. (Priority: %s)",
+                task.uid,
+                task.priority,
+            )
 
         # Let it spawn its own worker
         task.spawn_worker()
@@ -789,19 +834,21 @@ class WorkerManager:
         old_len = len(self.active_tasks)
 
         # have to rebuild the list of active tasks now...
-        self.active_tasks[:] = [t for t in self.active_tasks
-                                if t.worker_status is None]
+        self.active_tasks[:] = [
+            t for t in self.active_tasks if t.worker_status is None
+        ]
         # NOTE this will also poll all other active tasks and potentially not
         #      add them to the active_tasks list again.
 
         # Now, only active tasks are in the list, but the list is shorter
         # Can deduce the number of finished tasks from this
-        self._num_finished_tasks += (old_len - len(self.active_tasks))
+        self._num_finished_tasks += old_len - len(self.active_tasks)
 
         return
 
-    def _check_stop_conds(self, stop_conds: Sequence[StopCondition]
-                          ) -> Set[WorkerTask]:
+    def _check_stop_conds(
+        self, stop_conds: Sequence[StopCondition]
+    ) -> Set[WorkerTask]:
         """Checks the given stop conditions for the active tasks and compiles
         a list of tasks that needs to be terminated.
 
@@ -820,13 +867,19 @@ class WorkerManager:
             log.debug("Checking stop condition '%s' ...", sc.name)
 
             # Compile the list of tasks that fulfil a stop condition
-            fulfilled = [t for t in self.active_tasks
-                         if (t not in self.stopped_tasks and sc.fulfilled(t))]
+            fulfilled = [
+                t
+                for t in self.active_tasks
+                if (t not in self.stopped_tasks and sc.fulfilled(t))
+            ]
 
             if fulfilled:
-                log.debug("Stop condition '%s' fulfilled for %d task(s):  %s",
-                          sc.name, len(fulfilled),
-                          ", ".join([t.name for t in fulfilled]))
+                log.debug(
+                    "Stop condition '%s' fulfilled for %d task(s):  %s",
+                    sc.name,
+                    len(fulfilled),
+                    ", ".join([t.name for t in fulfilled]),
+                )
                 to_terminate += fulfilled
 
         # Return as set to be sure that they are unique
@@ -835,10 +888,11 @@ class WorkerManager:
     def _invoke_periodic_callbacks(self):
         """Invokes the ``periodic`` callback function of each active task."""
         for task in self.active_tasks:
-            task._invoke_callback('periodic')
+            task._invoke_callback("periodic")
 
-    def _signal_workers(self, tasks: Union[str, List[WorkerTask]],
-                        *, signal: Union[str, int]) -> None:
+    def _signal_workers(
+        self, tasks: Union[str, List[WorkerTask]], *, signal: Union[str, int]
+    ) -> None:
         """Send signals to a list of WorkerTasks.
 
         Args:
@@ -847,14 +901,15 @@ class WorkerManager:
             signal (Union[str, int]): The signal to send
         """
         if isinstance(tasks, str):
-            if tasks == 'all':
+            if tasks == "all":
                 tasks = self.tasks
-            elif tasks == 'active':
+            elif tasks == "active":
                 tasks = self.active_tasks
             else:
-                raise ValueError("Tasks cannot be specified by string '{}', "
-                                 "allowed strings are: 'all', 'active'."
-                                 "".format(tasks))
+                raise ValueError(
+                    f"Tasks cannot be specified by string '{tasks}', "
+                    "allowed strings are: 'all', 'active'."
+                )
 
         if not tasks:
             log.debug("No worker tasks to signal.")
@@ -864,8 +919,10 @@ class WorkerManager:
         for task in tasks:
             task.signal_worker(signal)
 
-        log.debug("All tasks signalled. Tasks' worker status:\n  %s",
-                  ", ".join([str(t.worker_status) for t in tasks]))
+        log.debug(
+            "All tasks signalled. Tasks' worker status:\n  %s",
+            ", ".join([str(t.worker_status) for t in tasks]),
+        )
 
     def _handle_pending_exceptions(self) -> None:
         """This method handles the list of pending exceptions during working,
@@ -892,8 +949,9 @@ class WorkerManager:
                 pending exceptions
         """
 
-        def log_task_stream(task: WorkerTask, *, num_entries: int,
-                            stream_name: str='out') -> None:
+        def log_task_stream(
+            task: WorkerTask, *, num_entries: int, stream_name: str = "out"
+        ) -> None:
             """Logs the last `num_entries` from the log of the `stream_name`
             of the given WorkerTask object using log.error
             """
@@ -901,9 +959,12 @@ class WorkerManager:
             stream = task.streams[stream_name]
 
             # Get lines and print stream using logging module
-            lines = stream['log'][-num_entries:]
-            log.error("Last ≤%d lines of combined stdout and stderr:\n"
-                      "\n  %s\n", num_entries, "\n  ".join(lines))
+            lines = stream["log"][-num_entries:]
+            log.error(
+                "Last ≤%d lines of combined stdout and stderr:\n" "\n  %s\n",
+                num_entries,
+                "\n  ".join(lines),
+            )
 
         if self.pending_exceptions.empty():
             log.debug("No exceptions pending.")
@@ -918,8 +979,9 @@ class WorkerManager:
             # Currently, only WorkerTaskNonZeroExit exceptions are handled here
             # If the type does not match, can directly raise it
             if not isinstance(exc, WorkerTaskNonZeroExit):
-                log.error("Encountered a pending exception that requires "
-                          "raising!")
+                log.error(
+                    "Encountered a pending exception that requires " "raising!"
+                )
                 raise exc
 
             log.debug("Handling %s ...", exc.__class__.__name__)
@@ -930,13 +992,14 @@ class WorkerManager:
 
             # Distinguish different ways of handling these exceptions
             # Ignore all
-            if self.nonzero_exit_handling == 'ignore':
+            if self.nonzero_exit_handling == "ignore":
                 # Done here. Continue with the next exception
                 continue
 
             # Ignore terminated tasks for `warn` and `ignore` levels
-            elif (    abs(exc.task.worker_status) == SIGMAP['SIGTERM']
-                  and self.nonzero_exit_handling not in ['warn_all', 'raise']):
+            elif abs(exc.task.worker_status) == SIGMAP[
+                "SIGTERM"
+            ] and self.nonzero_exit_handling not in ["warn_all", "raise"]:
                 continue
 
             # else: will generate some log output, so need to adjust Reporter
@@ -946,7 +1009,7 @@ class WorkerManager:
 
             # Provide some info on the exit status
 
-            if self.nonzero_exit_handling in ['warn', 'warn_all']:
+            if self.nonzero_exit_handling in ["warn", "warn_all"]:
                 # Print the error and the last few lines of the error log
                 log.warning(str(exc))
                 log_task_stream(exc.task, num_entries=8)
@@ -964,48 +1027,3 @@ class WorkerManager:
 
         # The pending_exceptions list is now empty
         log.debug("Handled all pending exceptions.")
-
-
-# Custom exceptions -----------------------------------------------------------
-
-
-class WorkerManagerError(BaseException):
-    """The base exception class for WorkerManager errors"""
-
-
-class WorkerManagerTotalTimeout(WorkerManagerError):
-    """Raised when a total timeout occurred"""
-
-
-class WorkerTaskError(WorkerManagerError):
-    """Raised when there was an error in a WorkerTask"""
-
-
-class WorkerTaskNonZeroExit(WorkerTaskError):
-    """Can be raised when a WorkerTask exited with a non-zero exit code."""
-
-    def __init__(self, task: WorkerTask, *args, **kwargs):
-        # Store the task
-        self.task = task
-
-        # Pass everything else to the parent init
-        super().__init__(*args, **kwargs)
-
-    def __str__(self) -> str:
-        """Returns information on the error"""
-        signals = [signal for signal, signum in SIGMAP.items()
-                   if signum == abs(self.task.worker_status)]
-
-        return (f"Task '{self.task.name}' exited with non-zero exit "
-                f"status: {self.task.worker_status}.\nThis may originate from "
-                f"the following signals:  {', '.join(signals)}.\n"
-                "Googling these might help with identifying the error. "
-                "Also, inspect the log and the log file for further error "
-                "messages. To increase verbosity, run in debug mode, e.g. by "
-                "passing the --debug flag to the CLI.")
-
-
-class WorkerTaskStopConditionFulfilled(WorkerTaskNonZeroExit):
-    """An exception that is raised when a worker-specific stop condition was
-    fulfilled. This allows being handled separately to other non-zero exits.
-    """

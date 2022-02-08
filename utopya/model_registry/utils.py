@@ -1,19 +1,24 @@
 """Utility functions that work on the already initialized model registry."""
 
 import logging
-from typing import Union, Tuple
+from typing import Tuple, Union
 
+from .._yaml import load_yml
+from ..parameter import extract_validation_objects
 from . import MODELS
 from .info_bundle import ModelInfoBundle
-from ..parameter import extract_validation_objects
-from .._yaml import load_yml
 
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
-def get_info_bundle(*, model_name: str=None, info_bundle: ModelInfoBundle=None,
-                    bundle_key: Union[str, int]=None) -> ModelInfoBundle:
+
+def get_info_bundle(
+    *,
+    model_name: str = None,
+    info_bundle: ModelInfoBundle = None,
+    bundle_key: Union[str, int] = None,
+) -> ModelInfoBundle:
     """Determine the model info bundle in cases where both a model name
     and an info bundle are allowed as arguments.
 
@@ -33,8 +38,10 @@ def get_info_bundle(*, model_name: str=None, info_bundle: ModelInfoBundle=None,
         ValueError: If neither or both model_name and info_bundle were None
     """
     if model_name is None == info_bundle is None:  # XOR-check existence
-        raise ValueError("Need either of the arguments model_name or "
-                         "info_bundle, but got both or neither!")
+        raise ValueError(
+            "Need either of the arguments model_name or "
+            "info_bundle, but got both or neither!"
+        )
 
     if info_bundle:
         return info_bundle
@@ -42,6 +49,7 @@ def get_info_bundle(*, model_name: str=None, info_bundle: ModelInfoBundle=None,
     if bundle_key is None:
         return MODELS[model_name].item()
     return MODELS[model_name][bundle_key]
+
 
 def load_model_cfg(**get_info_bundle_kwargs) -> Tuple[dict, str, dict]:
     """Loads the default model configuration file for the given model name,
@@ -65,21 +73,25 @@ def load_model_cfg(**get_info_bundle_kwargs) -> Tuple[dict, str, dict]:
         ValueError: On missing model
     """
     bundle = get_info_bundle(**get_info_bundle_kwargs)
-    path = bundle.paths['default_cfg']
+    path = bundle.paths["default_cfg"]
 
-    log.debug(f"Loading default model configuration for '{bundle.model_name}' "
-              f"model ...\n  {path}")
+    log.debug(
+        f"Loading default model configuration for '{bundle.model_name}' "
+        f"model ...\n  {path}"
+    )
 
     try:
         model_cfg = load_yml(path)
 
     except FileNotFoundError as err:
-        raise FileNotFoundError("Could not locate default configuration for "
-                                "'{}' model! Expected to find it at: {}"
-                                "".format(bundle.model_name, path)) from err
+        raise FileNotFoundError(
+            "Could not locate default configuration for "
+            f"'{bundle.model_name}' model! Expected to find it at: {path}"
+        ) from err
 
     # Collect the validation objects from the model configuration and replace
     # them with their default values
-    model_cfg, to_validate = extract_validation_objects(model_cfg,
-                                                        model_name=bundle.model_name)
+    model_cfg, to_validate = extract_validation_objects(
+        model_cfg, model_name=bundle.model_name
+    )
     return model_cfg, path, to_validate

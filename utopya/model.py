@@ -1,24 +1,25 @@
 """Provides the Model class to work interactively with Utopia models"""
 
-import os
 import glob
 import logging
+import os
 import warnings
 from tempfile import TemporaryDirectory
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
-from dantro.tools import make_columns as _make_columns
 from dantro.tools import adjusted_log_levels as _adjusted_log_levels
+from dantro.tools import make_columns as _make_columns
 
 from .cfg import load_from_cfg_dir
+from .eval import DataManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
-from .multiverse import Multiverse, FrozenMultiverse
-from .datamanager import DataManager
+from .multiverse import FrozenMultiverse, Multiverse
 
 # Get a logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
+
 
 class Model:
     """A class to work with Utopia models interactively.
@@ -27,9 +28,15 @@ class Model:
     create a Multiverse from them, run it, and work with it further...
     """
 
-    def __init__(self, *, name: str=None, info_bundle: ModelInfoBundle=None,
-                 base_dir: str=None, sim_errors: str=None,
-                 use_tmpdir: bool=False):
+    def __init__(
+        self,
+        *,
+        name: str = None,
+        info_bundle: ModelInfoBundle = None,
+        base_dir: str = None,
+        sim_errors: str = None,
+        use_tmpdir: bool = False,
+    ):
         """Initialize the ModelTest for the given model name
 
         Args:
@@ -53,8 +60,9 @@ class Model:
             ValueError: Upon bad base_dir
         """
         # Determine model info bundle to use (via Multiverse class method)
-        self._info_bundle = get_info_bundle(model_name=name,
-                                            info_bundle=info_bundle)
+        self._info_bundle = get_info_bundle(
+            model_name=name, info_bundle=info_bundle
+        )
         log.progress("Initializing '%s' model ...", self.name)
 
         # Store other attributes
@@ -66,13 +74,17 @@ class Model:
             base_dir = os.path.expanduser(base_dir)
 
             if not os.path.isabs(base_dir):
-                raise ValueError("Given base_dir path {} should be absolute, "
-                                 "but was not!".format(base_dir))
+                raise ValueError(
+                    "Given base_dir path {} should be absolute, "
+                    "but was not!".format(base_dir)
+                )
 
             elif not os.path.exists(base_dir) or not os.path.isdir(base_dir):
-                raise ValueError("Given base_dir path {} does not seem to "
-                                 "exist or is not a directory!"
-                                 "".format(base_dir))
+                raise ValueError(
+                    "Given base_dir path {} does not seem to "
+                    "exist or is not a directory!"
+                    "".format(base_dir)
+                )
 
             self._base_dir = base_dir
 
@@ -81,7 +93,7 @@ class Model:
 
     def __str__(self) -> str:
         """Returns an informative string for this Model instance"""
-        return "<Utopia '{}' model>".format(self.name)
+        return f"<Utopia '{self.name}' model>"
 
     # Properties ..............................................................
 
@@ -159,11 +171,15 @@ class Model:
 
     # Simulation control ......................................................
 
-    def create_mv(self, *,
-                  from_cfg: str=None,
-                  from_cfg_set: str=None,
-                  run_cfg_path: str=None,
-                  use_tmpdir: bool=None, **update_meta_cfg) -> Multiverse:
+    def create_mv(
+        self,
+        *,
+        from_cfg: str = None,
+        from_cfg_set: str = None,
+        run_cfg_path: str = None,
+        use_tmpdir: bool = None,
+        **update_meta_cfg,
+    ) -> Multiverse:
         """Creates a :class:`utopya.multiverse.Multiverse` for this model,
         optionally loading a configuration from a file and updating it with
         further keys.
@@ -203,8 +219,10 @@ class Model:
 
         if from_cfg:
             if os.path.isabs(from_cfg) and not self.base_dir:
-                raise ValueError("Missing base_dir to handle relative path in "
-                                 "`from_cfg` argument.")
+                raise ValueError(
+                    "Missing base_dir to handle relative path in "
+                    "`from_cfg` argument."
+                )
 
             run_cfg_path = os.path.join(self.base_dir, from_cfg)
 
@@ -215,29 +233,33 @@ class Model:
         use_tmpdir = use_tmpdir if use_tmpdir is not None else self._use_tmpdir
         if use_tmpdir:
             tmpdir = self._create_tmpdir()
-            objs_to_store['out_dir'] = tmpdir
+            objs_to_store["out_dir"] = tmpdir
 
             # Use update_meta_cfg to communicate it to the Multiverse
-            if 'paths' not in update_meta_cfg:
-                update_meta_cfg['paths'] = dict(out_dir=tmpdir.name)
+            if "paths" not in update_meta_cfg:
+                update_meta_cfg["paths"] = dict(out_dir=tmpdir.name)
             else:
-                update_meta_cfg['paths']['out_dir'] = tmpdir.name
+                update_meta_cfg["paths"]["out_dir"] = tmpdir.name
 
         # Also set the exit handling value, if not already set
         # TODO do this in a more elegant way
         _se = self._sim_errors
-        if _se and 'worker_manager' not in update_meta_cfg:
-            update_meta_cfg['worker_manager'] = dict(nonzero_exit_handling=_se)
+        if _se and "worker_manager" not in update_meta_cfg:
+            update_meta_cfg["worker_manager"] = dict(nonzero_exit_handling=_se)
 
-        elif _se and 'nonzero_exit_handling' not in update_meta_cfg['worker_manager']:
-            update_meta_cfg['worker_manager']['nonzero_exit_handling'] = _se
+        elif (
+            _se
+            and "nonzero_exit_handling"
+            not in update_meta_cfg["worker_manager"]
+        ):
+            update_meta_cfg["worker_manager"]["nonzero_exit_handling"] = _se
 
         # else: entry was already set; don't set it again
 
         # Create the Multiverse and store it, to not let it go out of scope
-        mv = Multiverse(model_name=self.name,
-                        run_cfg_path=run_cfg_path,
-                        **update_meta_cfg)
+        mv = Multiverse(
+            model_name=self.name, run_cfg_path=run_cfg_path, **update_meta_cfg
+        )
         self._store_mv(mv, **objs_to_store)
 
         return mv
@@ -256,12 +278,16 @@ class Model:
 
         return mv
 
-    def create_run_load(self, *,
-                        from_cfg: str=None,
-                        run_cfg_path: str=None,
-                        from_cfg_set: str=None,
-                        use_tmpdir: bool=None, print_tree: bool=True,
-                        **update_meta_cfg) -> Tuple[Multiverse, DataManager]:
+    def create_run_load(
+        self,
+        *,
+        from_cfg: str = None,
+        run_cfg_path: str = None,
+        from_cfg_set: str = None,
+        use_tmpdir: bool = None,
+        print_tree: bool = True,
+        **update_meta_cfg,
+    ) -> Tuple[Multiverse, DataManager]:
         """Chains the create_mv, mv.run, and mv.dm.load_from_cfg
         methods together and returns a (Multiverse, DataManager) tuple.
 
@@ -283,19 +309,20 @@ class Model:
         Returns:
             Tuple[Multiverse, DataManager]:
         """
-        mv = self.create_mv(from_cfg=from_cfg,
-                            from_cfg_set=from_cfg_set,
-                            run_cfg_path=run_cfg_path,
-                            use_tmpdir=use_tmpdir,
-                            **update_meta_cfg)
+        mv = self.create_mv(
+            from_cfg=from_cfg,
+            from_cfg_set=from_cfg_set,
+            run_cfg_path=run_cfg_path,
+            use_tmpdir=use_tmpdir,
+            **update_meta_cfg,
+        )
         mv.run()
         mv.dm.load_from_cfg(print_tree=print_tree)
         return mv, mv.dm
 
-
     # Config set retrieval ....................................................
 
-    def get_config_set(self, name: str=None) -> Dict[str, str]:
+    def get_config_set(self, name: str = None) -> Dict[str, str]:
         """Returns a configuration set: a dict containing paths to run and/or
         eval configuration files. These are accessible via the keys ``run``
         and ``eval``.
@@ -369,9 +396,9 @@ class Model:
         # *always* searched, such that the user does not have to check manually
         # whether the directory exists but simply sees in this error message
         # whether there was a typo in `name`.
-        search_dirs = (
-            [os.path.dirname(_path)] + self.default_config_set_search_dirs
-        )
+        search_dirs = [
+            os.path.dirname(_path)
+        ] + self.default_config_set_search_dirs
         _search_dirs = "\n".join(f"  - {s}" for s in search_dirs)
 
         with _adjusted_log_levels(("utopya.model", logging.WARNING)):
@@ -433,7 +460,6 @@ class Model:
             )
         return cfg_sets
 
-
     # Helpers .................................................................
 
     def _store_mv(self, mv: Multiverse, **kwargs) -> None:
@@ -442,9 +468,9 @@ class Model:
 
     def _create_tmpdir(self) -> TemporaryDirectory:
         """Create a TemporaryDirectory"""
-        return TemporaryDirectory(prefix=self.name,
-                                  suffix="_mv{}".format(len(self._mvs)))
-
+        return TemporaryDirectory(
+            prefix=self.name, suffix=f"_mv{len(self._mvs)}"
+        )
 
     def _find_config_sets(
         self, search_dir: str, *, cfg_sets: dict, warn: bool = True
@@ -492,14 +518,16 @@ class Model:
             if found_cfgs:
                 dn += 1
                 if (
-                    warn and
-                    cs_name in cfg_sets and
-                    search_subdir != cfg_sets[cs_name]["dir"]
+                    warn
+                    and cs_name in cfg_sets
+                    and search_subdir != cfg_sets[cs_name]["dir"]
                 ):
                     log.caution(
                         "A config set named '%s' was already found at:\n  %s\n"
                         "It will be overwritten with the one found at:\n  %s",
-                        cs_name, cfg_sets[cs_name]["dir"], search_subdir
+                        cs_name,
+                        cfg_sets[cs_name]["dir"],
+                        search_subdir,
                     )
 
                 cfg_sets[cs_name] = dict(dir=search_subdir, **found_cfgs)

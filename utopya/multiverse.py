@@ -1,32 +1,30 @@
-"""Implementation of the Multiverse class.
-
-The Multiverse supplies the main user interface of the frontend.
+"""Implementation of the :py:class:`~utopya.multiverse.Multiverse` class which
+sits at the heart of utopya and supplies the main user interface for the
+frontend. It allows to run a simulation and then evaluate it.
 """
-import os
-import time
 import copy
-import re
-import logging
 import itertools
-from tempfile import TemporaryDirectory
-from shutil import copy2
-from pkg_resources import resource_filename
+import logging
+import os
+import re
+import time
 from collections import defaultdict
+from shutil import copy2
+from tempfile import TemporaryDirectory
 
 import paramspace as psp
+from pkg_resources import resource_filename
 
-from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
-from .cfg import get_cfg_path as _get_cfg_path
-from .datamanager import DataManager
-from .workermanager import WorkerManager
-from .parameter import ValidationError
-from .plotting import PlotManager
-from .reporter import WorkerManagerReporter
-from .yaml import load_yml, write_yml
-from .tools import recursive_update, pformat, parse_num_steps
 from ._cluster import parse_node_list
+from .cfg import get_cfg_path as _get_cfg_path
+from .eval import DataManager, PlotManager
+from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
+from .parameter import ValidationError
+from .reporter import WorkerManagerReporter
+from .tools import parse_num_steps, pformat, recursive_update
+from .workermanager import WorkerManager
+from .yaml import load_yml, write_yml
 
-# Configure and get logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
@@ -39,30 +37,37 @@ class Multiverse:
     of the selected model with the parameters specified by the meta
     configuration.
 
-    The WorkerManager takes care to perform these simulations in parallel, the
-    DataManager allows loading the created data, and the PlotManager handles
-    plotting of that data.
+    The :py:class:`~utopya.workermanager.WorkerManager` takes care to perform
+    these simulations in parallel, the
+    :py:class:`~utopya.datamanager.DataManager` allows loading the created
+    data, and the :py:class:`~utopya.plotting.PlotManager` handles plotting of
+    that data.
     """
 
-    # Where the default meta configuration can be found
-    BASE_META_CFG_PATH = resource_filename('utopya', 'cfg/base_cfg.yml')
+    BASE_META_CFG_PATH = resource_filename("utopya", "cfg/base_cfg.yml")
+    """Where the default meta configuration can be found"""
 
-    # Where to look for the user configuration
-    USER_CFG_SEARCH_PATH = _get_cfg_path('user')
+    USER_CFG_SEARCH_PATH = _get_cfg_path("user")
+    """Where to look for the user configuration"""
 
-    # The time format string for the run directory
     RUN_DIR_TIME_FSTR = "%y%m%d-%H%M%S"
+    """The time format string for the run directory"""
 
-    # Where the utopya base plots configuration can be found; this is passed to
-    # the PlotManager
-    UTOPYA_BASE_PLOTS_PATH = resource_filename('utopya',
-                                               'plot_funcs/base_plots.yml')
+    UTOPYA_BASE_PLOTS_PATH = resource_filename("utopya", "cfg/base_plots.yml")
+    """Where the utopya base plots configuration can be found; this is passed
+    to the :py:class:`~utopya.plotting.PlotManager`.
+    """
 
-    def __init__(self, *,
-                 model_name: str=None, info_bundle: ModelInfoBundle=None,
-                 run_cfg_path: str=None, user_cfg_path: str=None,
-                 _shared_worker_manager: WorkerManager=None,
-                 **update_meta_cfg):
+    def __init__(
+        self,
+        *,
+        model_name: str = None,
+        info_bundle: ModelInfoBundle = None,
+        run_cfg_path: str = None,
+        user_cfg_path: str = None,
+        _shared_worker_manager: WorkerManager = None,
+        **update_meta_cfg,
+    ):
         """Initialize the Multiverse.
 
         Args:
@@ -88,10 +93,12 @@ class Multiverse:
                 generated from the previous configuration levels
         """
         # First things first: get the info bundle
-        self._info_bundle = get_info_bundle(model_name=model_name,
-                                            info_bundle=info_bundle)
-        log.progress("Initializing Multiverse for '%s' model ...",
-                     self.model_name)
+        self._info_bundle = get_info_bundle(
+            model_name=model_name, info_bundle=info_bundle
+        )
+        log.progress(
+            "Initializing Multiverse for '%s' model ...", self.model_name
+        )
 
         # Setup property-managed attributes
         self._dirs = dict()
@@ -103,7 +110,7 @@ class Multiverse:
         mcfg, cfg_parts = self._create_meta_cfg(
             run_cfg_path=run_cfg_path,
             user_cfg_path=user_cfg_path,
-            update_meta_cfg=update_meta_cfg
+            update_meta_cfg=update_meta_cfg,
         )
         self._meta_cfg = mcfg
         log.info("Loaded meta configuration.")
@@ -116,16 +123,19 @@ class Multiverse:
             self._resolved_cluster_params = self._resolve_cluster_params()
             rcps = self.resolved_cluster_params  # creates a deep copy
 
-            log.note("This is node %d of %d.",
-                     rcps['node_index'] + 1, rcps['num_nodes'])
+            log.note(
+                "This is node %d of %d.",
+                rcps["node_index"] + 1,
+                rcps["num_nodes"],
+            )
 
             # Changes to the meta configuration
             # To avoid config file collisions in the PlotManager:
-            self._meta_cfg['plot_manager']['cfg_exists_action'] = 'skip'
+            self._meta_cfg["plot_manager"]["cfg_exists_action"] = "skip"
 
             # _Additional_ arguments to pass to *Manager initializations below
             # ... for DataManager
-            timestamp = rcps['timestamp']
+            timestamp = rcps["timestamp"]
             dm_cluster_kwargs = dict(
                 out_dir_kwargs=dict(timestamp=timestamp, exist_ok=True)
             )
@@ -136,21 +146,26 @@ class Multiverse:
             )
 
         # Create the run directory and write the meta configuration into it.
-        self._create_run_dir(**self.meta_cfg['paths'])
-        log.note("Run directory:\n  %s", self.dirs['run'])
+        self._create_run_dir(**self.meta_cfg["paths"])
+        log.note("Run directory:\n  %s", self.dirs["run"])
 
         # Backup involved files, if not in cluster mode or on the relevant node
-        if (   not self.cluster_mode
-            or self.resolved_cluster_params['node_index'] == 0):
+        if (
+            not self.cluster_mode
+            or self.resolved_cluster_params["node_index"] == 0
+        ):
             # If not in cluster mode, should backup in any case.
             # In cluster mode, the first node is responsible for backing up
             # the configuration; all others can relax.
-            self._perform_backup(**self.meta_cfg['backups'],
-                                 cfg_parts=cfg_parts)
+            self._perform_backup(
+                **self.meta_cfg["backups"], cfg_parts=cfg_parts
+            )
 
         else:
-            log.debug("Not backing up config files, because it was already "
-                      "taken care of by the first node.")
+            log.debug(
+                "Not backing up config files, because it was already "
+                "taken care of by the first node."
+            )
             # NOTE Not taking a try-except approach here because it might get
             #      messy when multiple nodes try to backup the configuration
             #      at the same time ...
@@ -159,23 +174,29 @@ class Multiverse:
         self._validate_meta_cfg()
 
         # Prepare the executable
-        self._prepare_executable(**self.meta_cfg['executable_control'])
+        self._prepare_executable(**self.meta_cfg["executable_control"])
 
         # Create a DataManager instance
-        self._dm = DataManager(self.dirs['run'],
-                               name=self.model_name + "_data",
-                               **self.meta_cfg['data_manager'],
-                               **dm_cluster_kwargs)
+        self._dm = DataManager(
+            self.dirs["run"],
+            name=f"{self.model_name}_data",
+            **self.meta_cfg["data_manager"],
+            **dm_cluster_kwargs,
+        )
         log.progress("Initialized DataManager.")
 
         # Either create a WorkerManager instance and its associated reporter
         # or use an already existing WorkerManager that is also used elsewhere
         if not _shared_worker_manager:
-            self._wm = WorkerManager(**self.meta_cfg['worker_manager'],
-                                     **wm_cluster_kwargs)
-            self._reporter = WorkerManagerReporter(self.wm, mv=self,
-                                                   report_dir=self.dirs['run'],
-                                                   **self.meta_cfg['reporter'])
+            self._wm = WorkerManager(
+                **self.meta_cfg["worker_manager"], **wm_cluster_kwargs
+            )
+            self._reporter = WorkerManagerReporter(
+                self.wm,
+                mv=self,
+                report_dir=self.dirs["run"],
+                **self.meta_cfg["reporter"],
+            )
         else:
             self._wm = _shared_worker_manager
             self._reporter = self.wm.reporter
@@ -203,7 +224,7 @@ class Multiverse:
         """The path to this model's binary"""
         if self._model_binpath is not None:
             return self._model_binpath
-        return self.info_bundle.paths['binary']
+        return self.info_bundle.paths["binary"]
 
     @property
     def meta_cfg(self) -> dict:
@@ -218,12 +239,12 @@ class Multiverse:
     @property
     def cluster_mode(self) -> bool:
         """Whether the Multiverse should run in cluster mode"""
-        return self.meta_cfg['cluster_mode']
+        return self.meta_cfg["cluster_mode"]
 
     @property
     def cluster_params(self) -> dict:
         """Returns a copy of the cluster mode configuration parameters"""
-        return copy.deepcopy(self.meta_cfg['cluster_params'])
+        return copy.deepcopy(self.meta_cfg["cluster_params"])
 
     @property
     def resolved_cluster_params(self) -> dict:
@@ -250,7 +271,7 @@ class Multiverse:
 
     # Public methods ..........................................................
 
-    def run(self, *, sweep: bool=None):
+    def run(self, *, sweep: bool = None):
         """Starts a Utopia simulation run.
 
         Specifically, this method adds simulation tasks to the associated
@@ -281,7 +302,7 @@ class Multiverse:
         self.wm.tasks.lock()
 
         # Tell the WorkerManager to start working (is a blocking call)
-        self.wm.start_working(**self.meta_cfg['run_kwargs'])
+        self.wm.start_working(**self.meta_cfg["run_kwargs"])
 
         # Done! :)
         log.success("Finished run. Wohoo. :)")
@@ -311,16 +332,18 @@ class Multiverse:
             pm = self._setup_pm(**update_kwargs)
 
         except Exception as exc:
-            raise ValueError("Failed setting up a new PlotManager! The old "
-                             "PlotManager remains."
-                             "") from exc
+            raise ValueError(
+                "Failed setting up a new PlotManager! "
+                "The old PlotManager remains."
+            ) from exc
 
         self._pm = pm
 
     # Helpers .................................................................
 
-    def _create_meta_cfg(self, *, run_cfg_path: str, user_cfg_path: str,
-                         update_meta_cfg: dict) -> dict:
+    def _create_meta_cfg(
+        self, *, run_cfg_path: str, user_cfg_path: str, update_meta_cfg: dict
+    ) -> dict:
         """Create the meta configuration from several parts and store it.
 
         The final configuration dict is built from up to four components,
@@ -362,8 +385,11 @@ class Multiverse:
         # Decide whether to read in the user configuration from the default
         # search location or use a user-passed one
         if user_cfg_path is None:
-            log.debug("Looking for user configuration file in default "
-                      "location, %s", self.USER_CFG_SEARCH_PATH)
+            log.debug(
+                "Looking for user configuration file in default "
+                "location, %s",
+                self.USER_CFG_SEARCH_PATH,
+            )
 
             if os.path.isfile(self.USER_CFG_SEARCH_PATH):
                 user_cfg_path = self.USER_CFG_SEARCH_PATH
@@ -372,17 +398,20 @@ class Multiverse:
                 log.debug("No file found at the default search location.")
 
         elif user_cfg_path is False:
-            log.debug("Not loading the user configuration from the default "
-                      "search path: %s", self.USER_CFG_SEARCH_PATH)
+            log.debug(
+                "Not loading the user configuration from the default "
+                "search path: %s",
+                self.USER_CFG_SEARCH_PATH,
+            )
 
         user_cfg = None
         if user_cfg_path:
             user_cfg = load_yml(user_cfg_path)
 
         # Read in the configuration corresponding to the chosen model
-        (model_cfg,
-         model_cfg_path,
-         params_to_validate) = load_model_cfg(info_bundle=self.info_bundle)
+        (model_cfg, model_cfg_path, params_to_validate) = load_model_cfg(
+            info_bundle=self.info_bundle
+        )
         # NOTE Unlike the other configuration files, this does not attach at
         # root level of the meta configuration but parameter_space.<model_name>
         # in order to allow it to be used as the default configuration for an
@@ -399,16 +428,19 @@ class Multiverse:
                 ) from err
             log.note("Run configuration:\n  %s", run_cfg_path)
         else:
-            log.note("Using default run configuration:\n  %s\n",
-                     model_cfg_path)
+            log.note(
+                "Using default run configuration:\n  %s\n", model_cfg_path
+            )
         # After this point it is assumed that all values are valid.
         # Those keys or values will throw errors once they are used ...
 
         # Now perform the recursive update steps
         # Start with the base configuration
         meta_tmp = base_cfg
-        log.debug("Performing recursive updates to arrive at meta "
-                  "configuration ...")
+        log.debug(
+            "Performing recursive updates to arrive at meta "
+            "configuration ..."
+        )
 
         # Update with user configuration, if given
         if user_cfg:
@@ -418,11 +450,14 @@ class Multiverse:
         # In order to incorporate the model config, the parameter space is
         # needed. We can already be sure that the parameter_space key exists,
         # because it is added as part of the base_cfg.
-        pspace = meta_tmp['parameter_space']
+        pspace = meta_tmp["parameter_space"]
 
         # Adjust parameter space to include model configuration
-        log.debug("Updating parameter space with model configuration for "
-                  "model '%s' ...", self.model_name)
+        log.debug(
+            "Updating parameter space with model configuration for "
+            "model '%s' ...",
+            self.model_name,
+        )
         pspace[self.model_name] = recursive_update(
             pspace.get(self.model_name, {}), model_cfg
         )
@@ -436,31 +471,36 @@ class Multiverse:
         # ... and the update_meta_cfg dictionary
         if update_meta_cfg:
             log.debug("Updating with given `update_meta_cfg` dictionary ...")
-            meta_tmp = recursive_update(meta_tmp,
-                                        copy.deepcopy(update_meta_cfg))
+            meta_tmp = recursive_update(
+                meta_tmp, copy.deepcopy(update_meta_cfg)
+            )
             # NOTE using deep copy to make sure that usage of the dict will not
             #      interfere with the Multiverse's meta config
 
         # Make `parameter_space` a ParamSpace object
-        pspace = meta_tmp['parameter_space']
-        meta_tmp['parameter_space'] = psp.ParamSpace(pspace)
+        pspace = meta_tmp["parameter_space"]
+        meta_tmp["parameter_space"] = psp.ParamSpace(pspace)
         log.debug("Converted parameter_space to ParamSpace object.")
 
         # Add the parameters that require validation
-        meta_tmp['parameters_to_validate'] = params_to_validate
-        log.debug("Added %d parameters requiring validation.",
-                  len(params_to_validate))
+        meta_tmp["parameters_to_validate"] = params_to_validate
+        log.debug(
+            "Added %d parameters requiring validation.",
+            len(params_to_validate),
+        )
 
         # Prepare dict to store paths for config files in (for later backup)
         log.debug("Preparing dict of config parts ...")
-        cfg_parts = dict(base=self.BASE_META_CFG_PATH,
-                         user=user_cfg_path,
-                         model=model_cfg_path,
-                         run=run_cfg_path,
-                         update=update_meta_cfg)
+        cfg_parts = dict(
+            base=self.BASE_META_CFG_PATH,
+            user=user_cfg_path,
+            model=model_cfg_path,
+            run=run_cfg_path,
+            update=update_meta_cfg,
+        )
         return meta_tmp, cfg_parts
 
-    def _create_run_dir(self, *, out_dir: str, model_note: str=None) -> None:
+    def _create_run_dir(self, *, out_dir: str, model_note: str = None) -> None:
         """Create the folder structure for the run output.
 
         For the chosen model name and current timestamp, the run directory
@@ -508,13 +548,15 @@ class Multiverse:
                 something is seriously wrong. Strange time zone perhaps?
         """
         # Define a list of format string parts, starting with timestamp
-        fstr_parts = ['{timestamp:}']
+        fstr_parts = ["{timestamp:}"]
 
         # Add respective information, depending on mode
         if not self.cluster_mode:
             # Available information is only the timestamp and the model note
-            fstr_kwargs = dict(timestamp=time.strftime(self.RUN_DIR_TIME_FSTR),
-                               model_note=model_note)
+            fstr_kwargs = dict(
+                timestamp=time.strftime(self.RUN_DIR_TIME_FSTR),
+                model_note=model_note,
+            )
 
         else:
             # In cluster mode, need to resolve cluster parameters first
@@ -523,27 +565,29 @@ class Multiverse:
             # Now, gather all information for the format string that will
             # determine the name of the output directory. Make all the info
             # available that was supplied from environment variables
-            fstr_kwargs = {k: v for k, v in rcps.items()
-                           if k not in ('custom_out_dir',)}
+            fstr_kwargs = {
+                k: v for k, v in rcps.items() if k not in ("custom_out_dir",)
+            }
 
             # Parse timestamp and model note separately
-            timestr = time.strftime(self.RUN_DIR_TIME_FSTR,
-                                    time.gmtime(rcps['timestamp']))
-            fstr_kwargs['timestamp'] = timestr       # overwrites existing
-            fstr_kwargs['model_note'] = model_note   # may be None
+            timestr = time.strftime(
+                self.RUN_DIR_TIME_FSTR, time.gmtime(rcps["timestamp"])
+            )
+            fstr_kwargs["timestamp"] = timestr  # overwrites existing
+            fstr_kwargs["model_note"] = model_note  # may be None
 
             # Add the additional run dir format string parts; its the user's
             # responsibility to supply something reasonable here.
-            if self.cluster_params.get('additional_run_dir_fstrs'):
-                fstr_parts += self.cluster_params['additional_run_dir_fstrs']
+            if self.cluster_params.get("additional_run_dir_fstrs"):
+                fstr_parts += self.cluster_params["additional_run_dir_fstrs"]
 
             # Now, also allow a custom output directory
-            if rcps.get('custom_out_dir'):
-                out_dir = rcps['custom_out_dir']
+            if rcps.get("custom_out_dir"):
+                out_dir = rcps["custom_out_dir"]
 
         # Have the model note as suffix
         if model_note:
-            fstr_parts += ['{model_note:}']
+            fstr_parts += ["{model_note:}"]
 
         # fstr_parts and fstr_kwargs ready now. Carry out the format operation.
         fstr = "_".join(fstr_parts)
@@ -556,24 +600,25 @@ class Multiverse:
 
         run_dir = os.path.join(out_dir, self.model_name, run_dir_name)
         log.debug("Built run directory path:  %s", run_dir)
-        self.dirs['run'] = run_dir
+        self.dirs["run"] = run_dir
 
         # ... and create it. In cluster mode, it may already exist.
         try:
             os.makedirs(run_dir, exist_ok=self.cluster_mode)
 
         except OSError as err:
-            raise RuntimeError("Simulation directory already exists. This "
-                               "should not have happened and is probably due "
-                               "to two simulations having been started at "
-                               "almost the same time. Try to start the "
-                               "simulation again or add a unique model note."
-                               ) from err
+            raise RuntimeError(
+                "Simulation directory already exists. This "
+                "should not have happened and is probably due "
+                "to two simulations having been started at "
+                "almost the same time. Try to start the "
+                "simulation again or add a unique model note."
+            ) from err
 
         log.debug("Created run directory.")
 
         # Create the subfolders that are always assumed to be present
-        for subdir in ('config', 'data', 'eval'):
+        for subdir in ("config", "data", "eval"):
             subdir_path = os.path.join(run_dir, subdir)
             os.makedirs(subdir_path, exist_ok=self.cluster_mode)
             self.dirs[subdir] = subdir_path
@@ -583,7 +628,7 @@ class Multiverse:
     def _setup_pm(self, **update_kwargs) -> PlotManager:
         """Helper function to setup a PlotManager instance"""
         paths = self.info_bundle.paths
-        pm_kwargs = copy.deepcopy(self.meta_cfg['plot_manager'])
+        pm_kwargs = copy.deepcopy(self.meta_cfg["plot_manager"])
 
         if update_kwargs:
             pm_kwargs = recursive_update(pm_kwargs, update_kwargs)
@@ -594,23 +639,31 @@ class Multiverse:
             _model_info_bundle=self.info_bundle,
             base_cfg_pools=[
                 ("utopya", self.UTOPYA_BASE_PLOTS_PATH),
-                (f"{self.model_name}_base", paths.get('base_plots', {})),
+                (f"{self.model_name}_base", paths.get("base_plots", {})),
             ],
-            default_plots_cfg=paths.get('default_plots'),
+            default_plots_cfg=paths.get("default_plots"),
             **pm_kwargs,
         )
 
         log.progress("Initialized PlotManager.")
-        log.note("Available base configuration pools:  %s",
-                 ", ".join(pm.base_cfg_pools.keys()))
-        log.note("Output directory:  %s",
-                 pm._out_dir if pm._out_dir else "\n  " + self.dm.dirs['out'])
+        log.note(
+            "Available base configuration pools:  %s",
+            ", ".join(pm.base_cfg_pools.keys()),
+        )
+        log.note(
+            "Output directory:  %s",
+            pm._out_dir if pm._out_dir else "\n  " + self.dm.dirs["out"],
+        )
 
         return pm
 
-    def _perform_backup(self, *, cfg_parts: dict,
-                        backup_cfg_files: bool=True,
-                        backup_executable: bool=False) -> None:
+    def _perform_backup(
+        self,
+        *,
+        cfg_parts: dict,
+        backup_cfg_files: bool = True,
+        backup_executable: bool = False,
+    ) -> None:
         """Performs a backup of that information that can be used to recreate a
         simulation.
 
@@ -642,26 +695,28 @@ class Multiverse:
                 executable. Note that these files can sometimes be quite large.
         """
         log.info("Performing backups ...")
-        cfg_dir = self.dirs['config']
+        cfg_dir = self.dirs["config"]
 
         # Write the meta config to the config directory.
-        write_yml(self.meta_cfg,
-                  path=os.path.join(cfg_dir, "meta_cfg.yml"))
+        write_yml(self.meta_cfg, path=os.path.join(cfg_dir, "meta_cfg.yml"))
         log.note("  Backed up meta configuration.")
 
         # Store the *full* parameter space and its metadata
         # NOTE This data may not be equivalent to the parameter space that is
         #      used for a simulation run; another backup is performed when
         #      adding the corresponding simulation tasks.
-        _pspace_info = dict(perform_sweep=self.meta_cfg.get('perform_sweep'))
-        self._perform_pspace_backup(self.meta_cfg['parameter_space'],
-                                    filename="full_parameter_space",
-                                    **_pspace_info)
+        _pspace_info = dict(perform_sweep=self.meta_cfg.get("perform_sweep"))
+        self._perform_pspace_backup(
+            self.meta_cfg["parameter_space"],
+            filename="full_parameter_space",
+            **_pspace_info,
+        )
 
         # If configured, backup the other cfg files one by one.
         if backup_cfg_files:
-            log.debug("Backing up %d involved configuration parts...",
-                      len(cfg_parts))
+            log.debug(
+                "Backing up %d involved configuration parts...", len(cfg_parts)
+            )
 
             for part_name, val in cfg_parts.items():
                 _path = os.path.join(cfg_dir, part_name + "_cfg.yml")
@@ -680,16 +735,21 @@ class Multiverse:
 
         # If enabled, back up the executable as well
         if backup_executable:
-            backup_dir = os.path.join(self.dirs['run'], 'backup')
+            backup_dir = os.path.join(self.dirs["run"], "backup")
             os.makedirs(backup_dir, exist_ok=True)
 
-            copy2(self.model_binpath,
-                  os.path.join(backup_dir, self.model_name))
+            copy2(
+                self.model_binpath, os.path.join(backup_dir, self.model_name)
+            )
             log.note("  Backed up executable.")
 
-    def _perform_pspace_backup(self, pspace: psp.ParamSpace, *,
-                               filename: str = "parameter_space",
-                               **info_kwargs):
+    def _perform_pspace_backup(
+        self,
+        pspace: psp.ParamSpace,
+        *,
+        filename: str = "parameter_space",
+        **info_kwargs,
+    ):
         """Stores the given parameter space and its metadata into the
         ``config`` directory.
         Two files will be produced:
@@ -722,11 +782,13 @@ class Multiverse:
         """
         cfg_dir = self.dirs["config"]
         write_yml(pspace, path=os.path.join(cfg_dir, f"{filename}.yml"))
-        write_yml(dict(**pspace.get_info_dict(), **info_kwargs),
-                  path=os.path.join(cfg_dir, f"{filename}_info.yml"))
+        write_yml(
+            dict(**pspace.get_info_dict(), **info_kwargs),
+            path=os.path.join(cfg_dir, f"{filename}_info.yml"),
+        )
         log.note("  Backed up %s and metadata.", filename.replace("_", " "))
 
-    def _prepare_executable(self, *, run_from_tmpdir: bool=False) -> None:
+    def _prepare_executable(self, *, run_from_tmpdir: bool = False) -> None:
         """Prepares the model executable, potentially copying it to a temporary
         location.
 
@@ -742,25 +804,30 @@ class Multiverse:
             FileNotFoundError: On missing file at model binary path
             PermissionError: On wrong access rights of file at the binary path
         """
-        binpath = self.info_bundle.paths['binary']
+        binpath = self.info_bundle.paths["binary"]
 
         # Make sure it exists and is executable
         if not os.path.isfile(binpath):
-            raise FileNotFoundError("No file found at the specified binary "
-                                    "path for model '{}'! Did you build it?\n"
-                                    "Expected file at:  {}"
-                                    "".format(self.model_name, binpath))
+            raise FileNotFoundError(
+                "No file found at the specified binary "
+                "path for model '{}'! Did you build it?\n"
+                "Expected file at:  {}"
+                "".format(self.model_name, binpath)
+            )
 
         elif not os.access(binpath, os.X_OK):
-            raise PermissionError("The specified binary for model '{}' is not "
-                                  "executable. Did you set the correct access "
-                                  "rights?\nBinary path:  {}"
-                                  "".format(self.model_name, binpath))
+            raise PermissionError(
+                "The specified binary for model '{}' is not "
+                "executable. Did you set the correct access "
+                "rights?\nBinary path:  {}"
+                "".format(self.model_name, binpath)
+            )
 
         if run_from_tmpdir:
             self._tmpdir = TemporaryDirectory(prefix=self.model_name)
-            tmp_binpath = os.path.join(self._tmpdir.name,
-                                       os.path.basename(binpath))
+            tmp_binpath = os.path.join(
+                self._tmpdir.name, os.path.basename(binpath)
+            )
 
             log.info("Copying executable to temporary directory ...")
             log.debug("  Original:   %s", binpath)
@@ -788,20 +855,22 @@ class Multiverse:
         cps = self.cluster_params
 
         # Determine the environment to use; defaults to os.environ
-        env = cps.get('env') if cps.get('env') else dict(os.environ)
+        env = cps.get("env") if cps.get("env") else dict(os.environ)
 
         # Get the mapping of environment variables to target variables
-        mngr = cps['manager']
-        var_map = cps['env_var_names'][mngr]
+        mngr = cps["manager"]
+        var_map = cps["env_var_names"][mngr]
 
         # Resolve the variables from the environment, requiring them to not
         # be empty
-        resolved = {target_key: env.get(var_name)
-                    for target_key, var_name in var_map.items()
-                    if env.get(var_name)}
+        resolved = {
+            target_key: env.get(var_name)
+            for target_key, var_name in var_map.items()
+            if env.get(var_name)
+        }
 
         # Check that all required keys are available
-        required = ('job_id', 'num_nodes', 'node_list', 'node_name')
+        required = ("job_id", "num_nodes", "node_list", "node_name")
         if any([var not in resolved for var in required]):
             _missing = ", ".join([k for k in required if k not in resolved])
             raise ValueError(
@@ -814,20 +883,20 @@ class Multiverse:
 
         # Now do some postprocessing on some of the values
         # Ensure integers
-        resolved['job_id'] = int(resolved['job_id'])
-        resolved['num_nodes'] = int(resolved['num_nodes'])
+        resolved["job_id"] = int(resolved["job_id"])
+        resolved["num_nodes"] = int(resolved["num_nodes"])
 
-        if 'num_procs' in resolved:
-            resolved['num_procs'] = int(resolved['num_procs'])
+        if "num_procs" in resolved:
+            resolved["num_procs"] = int(resolved["num_procs"])
 
-        if 'timestamp' in resolved:
-            resolved['timestamp'] = int(resolved['timestamp'])
+        if "timestamp" in resolved:
+            resolved["timestamp"] = int(resolved["timestamp"])
 
         # Ensure reproducible node list format: ordered list
-        parse_mode = self.cluster_params['node_list_parser_params'][mngr]
+        parse_mode = self.cluster_params["node_list_parser_params"][mngr]
         try:
             node_list = parse_node_list(
-                resolved['node_list'], mode=parse_mode, rcps=resolved
+                resolved["node_list"], mode=parse_mode, rcps=resolved
             )
         except Exception as exc:
             raise ValueError(
@@ -840,18 +909,19 @@ class Multiverse:
                 f"Parameters resolved so far:\n{pformat(resolved)}"
             ) from exc
 
-        resolved['node_list'] = node_list
+        resolved["node_list"] = node_list
 
         # Calculated values, needed in Multiverse.run
         # node_index: the offset in the modulo operation
-        resolved['node_index'] = node_list.index(resolved['node_name'])
+        resolved["node_index"] = node_list.index(resolved["node_name"])
 
         # Return the resolved values
         log.debug("Resolved cluster parameters:\n%s", pformat(resolved))
         return resolved
 
-    def _add_sim_task(self, *, uni_id_str: str, uni_cfg: dict,
-                      is_sweep: bool) -> None:
+    def _add_sim_task(
+        self, *, uni_id_str: str, uni_cfg: dict, is_sweep: bool
+    ) -> None:
         """Helper function that handles task assignment to the WorkerManager.
 
         This function creates a WorkerTask that will perform the following
@@ -875,9 +945,15 @@ class Multiverse:
         Raises:
             RuntimeError: If adding the simulation task failed
         """
-        def setup_universe(*, worker_kwargs: dict, model_name: str,
-                           model_binpath: str, uni_cfg: dict,
-                           uni_basename: str) -> dict:
+
+        def setup_universe(
+            *,
+            worker_kwargs: dict,
+            model_name: str,
+            model_binpath: str,
+            uni_cfg: dict,
+            uni_basename: str,
+        ) -> dict:
             """The callable that will setup everything needed for a universe.
 
             This is called before the worker process starts working on the
@@ -898,24 +974,24 @@ class Multiverse:
                     Worker.
             """
             # Create universe directory path using the basename
-            uni_dir = os.path.join(self.dirs['data'], uni_basename)
+            uni_dir = os.path.join(self.dirs["data"], uni_basename)
 
             # Now create the folder
             os.mkdir(uni_dir)
             log.debug("Created universe directory:\n  %s", uni_dir)
 
             # Store it in the configuration
-            uni_cfg['output_dir'] = uni_dir
+            uni_cfg["output_dir"] = uni_dir
 
             # Generate a path to the output hdf5 file and add it to the dict
             output_path = os.path.join(uni_dir, "data.h5")
-            uni_cfg['output_path'] = output_path
+            uni_cfg["output_path"] = output_path
 
             # Parse the potentially string-valued number of steps values, and
             # other step-like arguments. Raises an error if they are negative.
-            uni_cfg['num_steps'] = parse_num_steps(uni_cfg['num_steps'])
-            uni_cfg['write_every'] = parse_num_steps(uni_cfg['write_every'])
-            uni_cfg['write_start'] = parse_num_steps(uni_cfg['write_start'])
+            uni_cfg["num_steps"] = parse_num_steps(uni_cfg["num_steps"])
+            uni_cfg["write_every"] = parse_num_steps(uni_cfg["write_every"])
+            uni_cfg["write_start"] = parse_num_steps(uni_cfg["write_start"])
 
             # write essential part of config to file:
             uni_cfg_path = os.path.join(uni_dir, "config.yml")
@@ -926,55 +1002,60 @@ class Multiverse:
             args = (model_binpath, uni_cfg_path)
 
             # Generate a new worker_kwargs dict, carrying over the given ones
-            wk = dict(args=args,
-                      read_stdout=True,
-                      stdout_parser="yaml_dict",
-                      **(worker_kwargs if worker_kwargs else {}))
+            wk = dict(
+                args=args,
+                read_stdout=True,
+                stdout_parser="yaml_dict",
+                **(worker_kwargs if worker_kwargs else {}),
+            )
 
             # Determine whether to save the streams (True by default)
-            if wk.get('save_streams', True):
+            if wk.get("save_streams", True):
                 # Generate a path and store in the worker kwargs
-                wk['save_streams_to'] = os.path.join(uni_dir, "{name:}.log")
+                wk["save_streams_to"] = os.path.join(uni_dir, "{name:}.log")
 
             return wk
 
         # Generate the universe basename, which will be used for the folder
         # and the task name
-        uni_basename = "uni" + uni_id_str
+        uni_basename = f"uni{uni_id_str}"
 
         # Create the dict that will be passed as arguments to setup_universe
-        setup_kwargs = dict(model_name=self.model_name,
-                            model_binpath=self.model_binpath,
-                            uni_cfg=uni_cfg,
-                            uni_basename=uni_basename)
+        setup_kwargs = dict(
+            model_name=self.model_name,
+            model_binpath=self.model_binpath,
+            uni_cfg=uni_cfg,
+            uni_basename=uni_basename,
+        )
 
         # Process worker_kwargs
-        wk = self.meta_cfg.get('worker_kwargs')
+        wk = self.meta_cfg.get("worker_kwargs")
 
-        if wk and wk.get('forward_streams') == 'in_single_run':
+        if wk and wk.get("forward_streams") == "in_single_run":
             # Reverse the flag to determine whether to forward streams
-            wk['forward_streams'] = (not is_sweep)
-            wk['forward_kwargs'] = dict(forward_raw=True)
+            wk["forward_streams"] = not is_sweep
+            wk["forward_kwargs"] = dict(forward_raw=True)
 
         # Try to add a task to the worker manager
         try:
-            self.wm.add_task(name=uni_basename,
-                             priority=None,
-                             setup_func=setup_universe,
-                             setup_kwargs=setup_kwargs,
-                             worker_kwargs=wk)
+            self.wm.add_task(
+                name=uni_basename,
+                priority=None,
+                setup_func=setup_universe,
+                setup_kwargs=setup_kwargs,
+                worker_kwargs=wk,
+            )
 
         except RuntimeError as err:
-            # Task list was locked, probably due to a run already having taken
-            # place...
-            raise RuntimeError("Could not add simulation task for universe "
-                               "'{}'! Did you already perform a run with this "
-                               "Multiverse?"
-                               "".format(uni_basename)) from err
+            # Task list was locked, probably because there already was a run
+            raise RuntimeError(
+                "Could not add simulation task for universe '{uni_basename}'! "
+                "Did you already perform a run with this Multiverse?"
+            ) from err
 
         log.debug("Added simulation task: %s.", uni_basename)
 
-    def _add_sim_tasks(self, *, sweep: bool=None) -> int:
+    def _add_sim_tasks(self, *, sweep: bool = None) -> int:
         """Adds the simulation tasks needed for a single run or for a sweep.
 
         Args:
@@ -989,18 +1070,20 @@ class Multiverse:
             ValueError: On ``sweep == True`` and zero-volume parameter space.
         """
         if sweep is None:
-            sweep = self.meta_cfg.get('perform_sweep', False)
+            sweep = self.meta_cfg.get("perform_sweep", False)
 
-        pspace = self.meta_cfg['parameter_space']
+        pspace = self.meta_cfg["parameter_space"]
 
         if not sweep:
             # Only need the default state of the parameter space
             uni_cfg = pspace.default
 
             # Make a backup of the parameter space that is *actually* used
-            self._perform_pspace_backup(psp.ParamSpace(uni_cfg),
-                                        filename="parameter_space",
-                                        perform_sweep=False)
+            self._perform_pspace_backup(
+                psp.ParamSpace(uni_cfg),
+                filename="parameter_space",
+                perform_sweep=False,
+            )
 
             # Add the task to the worker manager.
             log.progress("Adding task for simulation of a single universe ...")
@@ -1010,30 +1093,35 @@ class Multiverse:
         # -- else: tasks for parameter sweep needed
 
         if pspace.volume < 1:
-            raise ValueError("The parameter space has no sweeps configured! "
-                             "Refusing to run a sweep. You can either call "
-                             "the run_single method or add sweeps to your "
-                             "run configuration using the !sweep YAML tags.")
+            raise ValueError(
+                "The parameter space has no sweeps configured! "
+                "Refusing to run a sweep. You can either call "
+                "the run_single method or add sweeps to your "
+                "run configuration using the !sweep YAML tags."
+            )
 
         # Get the parameter space iterator and the number of already-existing
         # tasks (to later compute the number of _added_ tasks)
-        psp_iter = pspace.iterator(with_info='state_no_str')
+        psp_iter = pspace.iterator(with_info="state_no_str")
         _num_tasks = len(self.wm.tasks)
 
         # Distinguish whether to do a regular sweep or we are in cluster mode
         if not self.cluster_mode:
             # Make a backup of the parameter space that is *actually* used
-            self._perform_pspace_backup(pspace,
-                                        filename="parameter_space",
-                                        perform_sweep=True)
+            self._perform_pspace_backup(
+                pspace, filename="parameter_space", perform_sweep=True
+            )
 
             # Do a sweep over the whole activated parameter space
-            log.progress("Adding tasks for simulation of %d universes ...",
-                         pspace.volume)
+            log.progress(
+                "Adding tasks for simulation of %d universes ...",
+                pspace.volume,
+            )
 
             for uni_cfg, uni_id_str in psp_iter:
-                self._add_sim_task(uni_id_str=uni_id_str, uni_cfg=uni_cfg,
-                                   is_sweep=True)
+                self._add_sim_task(
+                    uni_id_str=uni_id_str, uni_cfg=uni_cfg, is_sweep=True
+                )
 
         else:
             # Prepare a cluster mode sweep
@@ -1047,22 +1135,27 @@ class Multiverse:
             #                 on the position of this Multiverse's node in the
             #                 sequence of all nodes.
             rcps = self.resolved_cluster_params
-            num_nodes = rcps['num_nodes']
-            node_index = rcps['node_index']
+            num_nodes = rcps["num_nodes"]
+            node_index = rcps["node_index"]
 
             # Back up the actually-used parameter space. Do this only on the
             # first node to avoid file-writing conflicts between nodes
             if node_index == 0:
-                self._perform_pspace_backup(pspace,
-                                            filename="parameter_space",
-                                            perform_sweep=True)
+                self._perform_pspace_backup(
+                    pspace, filename="parameter_space", perform_sweep=True
+                )
 
             # Inform about the number of universes to be simulated
-            log.progress("Adding tasks for cluster-mode simulation of "
-                         "%d universes on this node (%d of %d) ...",
-                         (   pspace.volume//num_nodes
-                          + (pspace.volume%num_nodes > node_index)),
-                         node_index + 1, num_nodes)
+            log.progress(
+                "Adding tasks for cluster-mode simulation of "
+                "%d universes on this node (%d of %d) ...",
+                (
+                    pspace.volume // num_nodes
+                    + (pspace.volume % num_nodes > node_index)
+                ),
+                node_index + 1,
+                num_nodes,
+            )
 
             for i, (uni_cfg, uni_id_str) in enumerate(psp_iter):
                 # Skip if this node is not responsible
@@ -1071,8 +1164,9 @@ class Multiverse:
                     continue
 
                 # Is valid for this node, add the simulation task
-                self._add_sim_task(uni_id_str=uni_id_str, uni_cfg=uni_cfg,
-                                   is_sweep=True)
+                self._add_sim_task(
+                    uni_id_str=uni_id_str, uni_cfg=uni_cfg, is_sweep=True
+                )
 
         num_new_tasks = len(self.wm.tasks) - _num_tasks
         log.info("Added %d tasks.", num_new_tasks)
@@ -1090,19 +1184,21 @@ class Multiverse:
         Raises:
             ValidationError: If validation failed.
         """
-        to_validate = self.meta_cfg.get('parameters_to_validate', {})
+        to_validate = self.meta_cfg.get("parameters_to_validate", {})
 
-        if not (to_validate or self.meta_cfg.get('perform_validation', True)):
+        if not (to_validate or self.meta_cfg.get("perform_validation", True)):
             log.info("Not performing parameter validation.")
             return None
-        log.info("Validating %d parameters ...", len(to_validate))
 
-        pspace = self.meta_cfg['parameter_space']
+        log.info("Validating %d parameters ...", len(to_validate))
+        pspace = self.meta_cfg["parameter_space"]
         log.remark("Parameter space volume:      %d", pspace.volume)
 
         if pspace.volume >= 1000:
-            log.note("This may take a few seconds. To skip validation, set "
-                     "the `perform_validation` flag to False.")
+            log.note(
+                "This may take a few seconds. To skip validation, set "
+                "the `perform_validation` flag to False."
+            )
 
         # The dict to collect details on invalid parameters in.
         #   - Keys are key sequences (tuple of str)
@@ -1129,11 +1225,13 @@ class Multiverse:
             return True
 
         # else: Validation failed. Create an informative error message
-        msg = (f"Validation failed for {len(invalid_params)} "
-               f"parameter{'s' if len(invalid_params) > 1 else ''}:\n\n")
+        msg = (
+            f"Validation failed for {len(invalid_params)} "
+            f"parameter{'s' if len(invalid_params) > 1 else ''}:\n\n"
+        )
 
         # Get the length of longest key sequence (used for alignment)
-        _nd = max([len(".".join(ks)) for ks in invalid_params.keys()])
+        _nd = max(len(".".join(ks)) for ks in invalid_params.keys())
 
         for key_seq, errs in invalid_params.items():
             path = ".".join(key_seq)
@@ -1142,11 +1240,15 @@ class Multiverse:
                 msg += f"  - {path:<{_nd}s}  :  {list(errs)[0]}\n"
             else:
                 _details = "\n".join([f"     - {e}" for e in errs])
-                msg += (f"  - {path:<{_nd}s}  :  validation failed for "
-                        f"{len(errs)} sweep values:\n{_details}\n")
+                msg += (
+                    f"  - {path:<{_nd}s}  :  validation failed for "
+                    f"{len(errs)} sweep values:\n{_details}\n"
+                )
 
-        msg += ("\nInspect the details above and adjust the run configuration "
-                "accordingly.\n")
+        msg += (
+            "\nInspect the details above and adjust the run configuration "
+            "accordingly.\n"
+        )
         raise ValidationError(msg)
 
 
@@ -1157,18 +1259,26 @@ class Multiverse:
 class FrozenMultiverse(Multiverse):
     """A frozen Multiverse is like a Multiverse, but frozen.
 
-    It is initialized from a finished Multiverse run and re-creates all the
-    attributes from that data, e.g.: the meta configuration, a DataManager,
-    and a PlotManager.
+    It is initialized from a finished :py:class:`~utopya.multiverse.Multiverse`
+    run and re-creates all the attributes from that data, e.g.: the meta
+    configuration, a DataManager, and a PlotManager.
 
-    Note that it is no longer able to perform any simulations.
+    .. note::
+
+        A frozen multiverse is no longer able to perform any simulations.
     """
 
-    def __init__(self, *,
-                 model_name: str=None, info_bundle: ModelInfoBundle=None,
-                 run_dir: str=None, run_cfg_path: str=None,
-                 user_cfg_path: str=None,
-                 use_meta_cfg_from_run_dir: bool=False, **update_meta_cfg):
+    def __init__(
+        self,
+        *,
+        model_name: str = None,
+        info_bundle: ModelInfoBundle = None,
+        run_dir: str = None,
+        run_cfg_path: str = None,
+        user_cfg_path: str = None,
+        use_meta_cfg_from_run_dir: bool = False,
+        **update_meta_cfg,
+    ):
         """Initializes the FrozenMultiverse from a model name and the name
         of a run directory.
 
@@ -1197,10 +1307,12 @@ class FrozenMultiverse(Multiverse):
                 generated from the previous configuration levels
         """
         # First things first: get the info bundle
-        self._info_bundle = get_info_bundle(model_name=model_name,
-                                            info_bundle=info_bundle)
-        log.progress("Initializing FrozenMultiverse for '%s' model ...",
-                     self.model_name)
+        self._info_bundle = get_info_bundle(
+            model_name=model_name, info_bundle=info_bundle
+        )
+        log.progress(
+            "Initializing FrozenMultiverse for '%s' model ...", self.model_name
+        )
 
         # Initialize property-managed attributes
         self._meta_cfg = None
@@ -1209,10 +1321,11 @@ class FrozenMultiverse(Multiverse):
 
         # Decide whether to load the meta configuration from the given run
         # directory or the currently available one.
-        if (    use_meta_cfg_from_run_dir
+        if (
+            use_meta_cfg_from_run_dir
             and isinstance(run_dir, str)
-            and os.path.isabs(run_dir)):
-
+            and os.path.isabs(run_dir)
+        ):
             raise NotImplementedError("use_meta_cfg_from_run_dir")
 
             # Find the meta config backup file and load it
@@ -1224,16 +1337,27 @@ class FrozenMultiverse(Multiverse):
         else:
             # Need to create a meta configuration from the currently available
             # values.
-            mcfg, _ = self._create_meta_cfg(run_cfg_path=run_cfg_path,
-                                            user_cfg_path=user_cfg_path,
-                                            update_meta_cfg=update_meta_cfg)
+            mcfg, _ = self._create_meta_cfg(
+                run_cfg_path=run_cfg_path,
+                user_cfg_path=user_cfg_path,
+                update_meta_cfg=update_meta_cfg,
+            )
 
         # Only keep selected entries from the meta configuration. The rest is
         # not needed and is deleted in order to not confuse the user with
         # potentially varying versions of the meta config.
-        self._meta_cfg = {k: v for k, v in mcfg.items()
-                          if k in ('paths', 'data_manager', 'plot_manager',
-                                   'cluster_mode', 'cluster_params')}
+        self._meta_cfg = {
+            k: v
+            for k, v in mcfg.items()
+            if k
+            in (
+                "paths",
+                "data_manager",
+                "plot_manager",
+                "cluster_mode",
+                "cluster_params",
+            )
+        }
 
         # Need to make some DataManager adjustments; do so via update dicts
         dm_cluster_kwargs = dict()
@@ -1242,27 +1366,33 @@ class FrozenMultiverse(Multiverse):
             self._resolved_cluster_params = self._resolve_cluster_params()
             rcps = self.resolved_cluster_params  # creates a deep copy
 
-            log.note("This is node %d of %d.",
-                     rcps['node_index'] + 1, rcps['num_nodes'])
+            log.note(
+                "This is node %d of %d.",
+                rcps["node_index"] + 1,
+                rcps["num_nodes"],
+            )
 
             # Changes to the meta configuration
             # To avoid config file collisions in the PlotManager:
-            self._meta_cfg['plot_manager']['cfg_exists_action'] = 'skip'
+            self._meta_cfg["plot_manager"]["cfg_exists_action"] = "skip"
 
             # _Additional_ arguments to pass to DataManager.__init__ below
-            timestamp = rcps['timestamp']
-            dm_cluster_kwargs = dict(out_dir_kwargs=dict(timestamp=timestamp,
-                                                         exist_ok=True))
+            timestamp = rcps["timestamp"]
+            dm_cluster_kwargs = dict(
+                out_dir_kwargs=dict(timestamp=timestamp, exist_ok=True)
+            )
 
         # Generate the path to the run directory that is to be loaded
-        self._create_run_dir(**self.meta_cfg['paths'], run_dir=run_dir)
-        log.note("Run directory:\n  %s", self.dirs['run'])
+        self._create_run_dir(**self.meta_cfg["paths"], run_dir=run_dir)
+        log.note("Run directory:\n  %s", self.dirs["run"])
 
         # Create a data manager
-        self._dm = DataManager(self.dirs['run'],
-                               name=self.model_name + "_data",
-                               **self.meta_cfg['data_manager'],
-                               **dm_cluster_kwargs)
+        self._dm = DataManager(
+            self.dirs["run"],
+            name=f"{self.model_name}_data",
+            **self.meta_cfg["data_manager"],
+            **dm_cluster_kwargs,
+        )
         log.progress("Initialized DataManager.")
 
         # Instantiate the PlotManager via the helper method
@@ -1297,9 +1427,12 @@ class FrozenMultiverse(Multiverse):
             log.info("Trying to identify most recent run directory ...")
 
             # Create list of _directories_ matching timestamp pattern
-            dirs = [d for d in sorted(os.listdir(model_dir))
-                    if  os.path.isdir(os.path.join(model_dir, d))
-                    and re.match(r'\d{6}-\d{6}_?.*', os.path.basename(d))]
+            dirs = [
+                d
+                for d in sorted(os.listdir(model_dir))
+                if os.path.isdir(os.path.join(model_dir, d))
+                and re.match(r"\d{6}-\d{6}_?.*", os.path.basename(d))
+            ]
 
             # Use the latest to choose the run directory
             run_dir = os.path.join(model_dir, dirs[-1])
@@ -1313,10 +1446,13 @@ class FrozenMultiverse(Multiverse):
             if os.path.isabs(run_dir):
                 log.debug("Received absolute run_dir, using that one.")
 
-            elif re.match(r'\d{6}-\d{6}_?.*', run_dir):
+            elif re.match(r"\d{6}-\d{6}_?.*", run_dir):
                 # Is a timestamp, look relative to the model directory
-                log.info("Received timestamp '%s' for run_dir; trying to find "
-                         "one within the model output directory ...", run_dir)
+                log.info(
+                    "Received timestamp '%s' for run_dir; trying to find "
+                    "one within the model output directory ...",
+                    run_dir,
+                )
                 run_dir = os.path.join(model_dir, run_dir)
 
             else:
@@ -1325,18 +1461,20 @@ class FrozenMultiverse(Multiverse):
                 run_dir = os.path.join(os.getcwd(), run_dir)
 
         else:
-            raise TypeError("Argument run_dir needs to be None, an absolute "
-                            "path, or a path relative to the model output "
-                            f"directory, but it was: {run_dir}")
+            raise TypeError(
+                "Argument run_dir needs to be None, an absolute "
+                "path, or a path relative to the model output "
+                f"directory, but it was: {run_dir}"
+            )
 
         # Check if the directory exists
         if not os.path.isdir(run_dir):
-            raise IOError(f"No run directory found at '{run_dir}'!")
+            raise OSError(f"No run directory found at '{run_dir}'!")
 
         # Store the path and associate the subdirectories
-        self.dirs['run'] = run_dir
+        self.dirs["run"] = run_dir
 
-        for subdir in ('config', 'eval', 'data'):
+        for subdir in ("config", "eval", "data"):
             subdir_path = os.path.join(run_dir, subdir)
             self.dirs[subdir] = subdir_path
             # TODO Consider checking if it exists?

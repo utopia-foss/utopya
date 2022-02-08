@@ -1,11 +1,10 @@
-"""This module holds functions used in the Multiverse cluster mode"""
+"""This module holds functions used in the Multiverse's cluster mode"""
 
 import re
 from typing import List
 
-
-
 # -----------------------------------------------------------------------------
+
 
 def parse_node_list(node_list_str: str, *, mode: str, rcps: dict) -> List[str]:
     """Parses the node list to a list of node names and checks against the
@@ -27,9 +26,9 @@ def parse_node_list(node_list_str: str, *, mode: str, rcps: dict) -> List[str]:
     pattern = ""
     node_list = []
 
-    if mode == 'condensed':
+    if mode == "condensed":
         # See  https://regex101.com/r/yGdl2j/1  for deduction of regex pattern
-        pattern = r'((?P<prefix>[\w\d]+)\[(?P<nodes>[\d\-\,\s]+)\]|(?P<node>[\w\d]+)),?'
+        pattern = r"((?P<prefix>[\w\d]+)\[(?P<nodes>[\d\-\,\s]+)\]|(?P<node>[\w\d]+)),?"
         matches = re.finditer(pattern, node_list_str)
 
         for match in matches:
@@ -52,8 +51,9 @@ def parse_node_list(node_list_str: str, *, mode: str, rcps: dict) -> List[str]:
             # others are node numbers of a single node.
             # Expand intervals
             segments = [
-                [int(seg[0])] if len(seg) == 1
-                 else list(range(int(seg[0]), int(seg[1])+1))
+                [int(seg[0])]
+                if len(seg) == 1
+                else list(range(int(seg[0]), int(seg[1]) + 1))
                 for seg in segments
             ]
 
@@ -69,15 +69,13 @@ def parse_node_list(node_list_str: str, *, mode: str, rcps: dict) -> List[str]:
             ]
 
             # Now, finally, parse the list
-            node_list += [prefix+no for no in node_nos]
+            node_list += [prefix + no for no in node_nos]
 
     else:
-        raise ValueError(
-            f"Invalid parser mode '{mode}'! Available: condensed"
-        )
+        raise ValueError(f"Invalid parser mode '{mode}'! Available: condensed")
 
     # Have node_list now. Make some consistency checks
-    if rcps['num_nodes'] != len(node_list):
+    if rcps["num_nodes"] != len(node_list):
         raise ValueError(
             f"The parsed node list ({node_list}) has a different length "
             f"({len(node_list)}) than specified by the `num_nodes` parameter "
@@ -87,7 +85,7 @@ def parse_node_list(node_list_str: str, *, mode: str, rcps: dict) -> List[str]:
             f"with the following regex pattern: {repr(pattern)}"
         )
 
-    if rcps['node_name'] not in node_list:
+    if rcps["node_name"] not in node_list:
         raise ValueError(
             f"The current node's `node_name` '{rcps['node_name']}' is not "
             f"part of the parsed node list: {', '.join(node_list)}"
