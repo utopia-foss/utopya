@@ -208,6 +208,7 @@ def test_register_project(tmp_cfg_dir, tmpdir):
     assert plot_module_paths == load_from_cfg_dir("plot_module_paths")
 
 
+@pytest.mark.skip("Needs to be abstracted to not rely on CMake infrastructure")
 def test_copy_model_files(capsys, monkeypatch):
     """This tests the copy_model_files CLI helper function. It only tests
     the dry_run because mocking the write functions would be too difficult

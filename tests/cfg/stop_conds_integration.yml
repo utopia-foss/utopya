@@ -31,5 +31,8 @@ parameter_space:
     default: 42
     range: [13]
 
+  MinimalModel:
+    state_size: 10000
+
 worker_manager:
   nonzero_exit_handling: raise

@@ -4,18 +4,16 @@ import queue
 import time
 
 import numpy as np
-import pkg_resources
 import pytest
 
-from utopya.stopcond import SIG_STOPCOND
+from utopya.stop_conditions import SIG_STOPCOND
 from utopya.task import SIGMAP
 from utopya.workermanager import WorkerManager, WorkerManagerTotalTimeout
 from utopya.yaml import load_yml
 
-# Some constants
-STOP_CONDS_PATH = pkg_resources.resource_filename(
-    "tests", "cfg/stop_conds.yml"
-)
+from . import get_cfg_fpath
+
+STOP_CONDS_PATH = get_cfg_fpath("stop_conds.yml")
 
 # Fixtures --------------------------------------------------------------------
 @pytest.fixture

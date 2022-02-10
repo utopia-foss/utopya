@@ -14,7 +14,7 @@ uni_ts:
   <<: *uni_defaults
   select:
     y:
-      path: data/dummy/state
+      path: data/MinimalModel/state
       with_previous_result: true
       transform:
         - .mean: {dim: dim_1}
@@ -28,13 +28,13 @@ mv_ts:
         with_previous_result: true
         transform:
           - .mean: {dim: dim_1}
-    base_path: data/dummy
+    base_path: data/MinimalModel
 
 uni_custom_operation:
   <<: *uni_defaults
   select:
     y:
-      path: data/dummy/state
+      path: data/MinimalModel/state
       transform:
         - my_custom_dummy_operation: [!dag_prev ]
         - getattr: [!dag_prev , data]

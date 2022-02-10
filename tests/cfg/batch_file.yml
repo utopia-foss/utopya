@@ -23,7 +23,7 @@ tasks:
   run: {}
     # NOTE Not implemented! But this could be the possible syntax.
     # my_run_task:  # task name is used for paths.model_note
-    #   model_name: dummy
+    #   model_name: MinimalModel
 
     #   # A few special keys
     #   run_only: true
@@ -33,8 +33,8 @@ tasks:
     #   # ... all further kwargs: passed to `Model.create_mv` and thus directly
     #   # adjust the meta configuration
     #   parameter_space:
-    #     dummy:
-    #       num_steps: 123M
+    #     num_steps: 123M
+    #     MinimalModel: {}
 
 
   # Evaluating simulations
@@ -44,7 +44,7 @@ tasks:
       # Values below update those from task_defaults.eval
 
       # Model name and run directory to load data from
-      model_name: dummy
+      model_name: MinimalModel
       # run_dir: ~
 
       # Arguments to PlotManager.plot_from_cfg
@@ -56,6 +56,6 @@ tasks:
       # ...
 
     no_plots:
-      model_name: dummy
+      model_name: MinimalModel
       print_tree: True
       plot_only: []

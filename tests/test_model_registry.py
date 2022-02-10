@@ -47,7 +47,9 @@ def tmp_model_registry(tmp_cfg_dir) -> umr._ModelRegistry:
 def test_load_model_cfg():
     """Tests the loading of model configurations by name"""
     # Load the dummy configuration, for testing
-    mcfg, path, params_to_validate = umr.load_model_cfg(model_name="dummy")
+    mcfg, path, params_to_validate = umr.load_model_cfg(
+        model_name="MinimalModel"
+    )
 
     # Assert correct types
     assert isinstance(mcfg, dict)
@@ -55,8 +57,8 @@ def test_load_model_cfg():
     assert isinstance(params_to_validate, dict)
 
     # Assert expected content
-    assert mcfg["foo"] == "bar"
-    assert mcfg["spam"] == 1.23
+    assert mcfg["state_size"] == 100
+    assert "distribution_params" in mcfg
     assert os.path.isfile(path)
     assert not params_to_validate  # none specified for this model
 
@@ -350,7 +352,7 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
 
     # Error messages
     # Invalid key
-    with pytest.raises(ValueError, match="No model with name .* model1, .*"):
+    with pytest.raises(ValueError, match="No model with name"):
         mr["i_do_not_exist12312312312"]
 
     # Adding one that already exists does not work
@@ -362,5 +364,5 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
     mr.remove_entry("model2")
     assert not os.path.isfile(entry2.registry_file_path)
 
-    with pytest.raises(ValueError, match="Could not remove .* model1"):
+    with pytest.raises(ValueError, match="Could not remove"):
         mr.remove_entry("i_do_not_exist12312312312")
