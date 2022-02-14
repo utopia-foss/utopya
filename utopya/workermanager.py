@@ -154,23 +154,7 @@ class WorkerManager:
         self._cluster_mode = cluster_mode
         self._resolved_cluster_params = resolved_cluster_params
         self.interrupt_params = interrupt_params if interrupt_params else {}
-
-        if num_workers == "auto":
-            self.num_workers = os.cpu_count()
-
-        elif num_workers < 0:
-            try:
-                self.num_workers = os.cpu_count() + num_workers
-            except ValueError as err:
-                raise ValueError(
-                    "Received invalid argument `num_workers` of value "
-                    f"{num_workers}. If giving a negative value, note that it "
-                    f"needs to sum up with the CPU count ({os.cpu_count()}) "
-                    "to a positive integer."
-                ) from err
-
-        else:
-            self.num_workers = num_workers
+        self.num_workers = num_workers
 
         # Reporter-related, setting default rf_spec
         if reporter:
@@ -224,23 +208,40 @@ class WorkerManager:
         return self._num_workers
 
     @num_workers.setter
-    def num_workers(self, val):
-        """Set the number of workers that can work in parallel."""
-        if val <= 0 or not isinstance(val, int):
-            raise ValueError(
-                "Need positive integer for number of workers, "
-                f"got {type(val)} of value {val}."
+    def num_workers(self, val: Union[int, str]):
+        """Set the number of workers that can work in parallel.
+
+        Can use the string ``auto`` to use the CPU count for setting the number
+        of workers. Additionally, negative integers will be summed with the
+        number of available CPU cores.
+
+        .. note::
+
+            Will not allow to set values that are smaller than 1; any argument
+            that would lead to such a value will be silently clipped to 1.
+        """
+        if val == "auto":
+            self._num_workers = os.cpu_count()
+
+        elif not isinstance(val, int):
+            raise TypeError(
+                "Expected integer or string 'auto' for setting `num_workers`, "
+                f"but got {type(val).__name__} {repr(val)}!"
             )
 
-        elif val > os.cpu_count():
+        elif val < 0:
+            self._num_workers = max(1, os.cpu_count() + val)
+
+        else:
+            self._num_workers = max(1, val)
+
+        log.debug("Set number of workers to %d", self.num_workers)
+        if self.num_workers > os.cpu_count():
             warnings.warn(
-                f"Set WorkerManager to use more parallel workers ({val})"
+                f"Set WorkerManager to use more workers ({self.num_workers}) "
                 f"than there are CPU cores ({os.cpu_count()}) on this machine",
                 UserWarning,
             )
-
-        self._num_workers = val
-        log.debug("Set number of workers to %d", self.num_workers)
 
     @property
     def active_tasks(self) -> List[WorkerTask]:
