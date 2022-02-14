@@ -7,8 +7,9 @@ INSTALL_DEPS = [
     "numpy>=1.21",
     "scipy>=1.7.3",
     "matplotlib>=3.3",
-    "coloredlogs>=15.0",
     "ruamel.yaml>=0.16.5",
+    "coloredlogs>=15.0",
+    "colorama>=0.4.4",
     "click>=8.0",
     #
     # related to utopya:

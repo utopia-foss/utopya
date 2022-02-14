@@ -23,7 +23,7 @@ class ModelInfoBundle:
     # Which entries to expect inside the paths property
     PATH_KEYS = (
         ("binary", str, True),
-        ("source_dir", str),  # TODO consider _requiring_ this one
+        ("source_dir", str),
         ("default_cfg", str, True),
         ("default_plots", str),
         ("base_plots", str),
