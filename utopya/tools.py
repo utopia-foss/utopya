@@ -16,6 +16,7 @@ from dantro.tools import (
     center_in_line,
     fill_line,
     format_time,
+    make_columns,
     print_line,
     recursive_getitem,
     recursive_update,

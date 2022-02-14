@@ -154,27 +154,27 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
     """Test adding bundles to a model registry entry"""
     e = umr.ModelRegistryEntry("foo", registry_dir=tmpdir)
 
-    # Add an unlabelled bundle
-    b_0 = e.add_bundle(**mib_kwargs, some_val=123)
+    b_0 = e.add_bundle(**mib_kwargs, label="first", some_val=123)
 
     # should have item access now
     assert e.item() is b_0
-    assert e[None] is b_0
-    assert e[0] is b_0
+    assert e["first"] is b_0
     assert b_0 in e
     assert b_0 in e.values()
-    assert 0 in e.keys()
-    assert (0, b_0) in e.items()
+    assert "first" in e
+    assert "first" in e.keys()
+    assert ("first", b_0) in e.items()
     assert len(e) == 1
 
     # Add a labelled bundle
-    b_l = e.add_bundle(label="some_label", **mib_kwargs, some_val=234)
-    assert "some_label" in e.keys()
+    b_l = e.add_bundle(label="second", **mib_kwargs, some_val=234)
+    assert "second" in e.keys()
     assert len(e) == 2
     assert b_l in e
+    assert "second" in e
     assert b_l in e.values()
-    assert ("some_label", b_l) in e.items()
-    assert e["some_label"] is b_l
+    assert ("second", b_l) in e.items()
+    assert e["second"] is b_l
 
     # Create a new entry object to check whether it loads things correctly
     e2 = umr.ModelRegistryEntry("foo", registry_dir=tmpdir)
@@ -182,11 +182,11 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
     assert list(e.items()) == list(e2.items())
 
     # After changing one of them, no longer have equality
-    e2.pop(0)
+    e2.pop("first")
     assert e != e2
 
     # Item access should no longer work as there are now two bundles
-    with pytest.raises(ModelRegistryError, match="Could not select single bu"):
+    with pytest.raises(ModelRegistryError, match="Could not unambiguously"):
         e.item()
 
     # Adding one that already exists does not work
@@ -196,30 +196,28 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
         )  # already exist
     assert len(e) == 2
 
-    # Bad label
-    with pytest.raises(TypeError, match="may not be an int"):
+    # Bad label type
+    with pytest.raises(TypeError, match="needs to be a string"):
         e.add_bundle(label=42, **mib_kwargs, some_val=345)
     assert len(e) == 2
 
     # Already existing bundles are only overwritten if explicitly allowed
     with pytest.raises(ModelRegistryError, match="already exists"):
-        e.add_bundle(label="some_label", **mib_kwargs, some_val=345)
+        e.add_bundle(label="second", **mib_kwargs, some_val=345)
     assert len(e) == 2
 
-    e.add_bundle(
-        label="some_label", **mib_kwargs, some_val=345, overwrite_label=True
-    )
+    e.add_bundle(label="second", **mib_kwargs, some_val=345, overwrite=True)
     assert len(e) == 2
 
     # Popping elements
-    e.pop(0)
+    e.pop("first")
     assert len(e) == 1
-    e.pop("some_label")
+    e.pop("second")
     assert len(e) == 0
 
     # Clearing
-    e.add_bundle(**mib_kwargs, some_val=123)
-    e.add_bundle(label="some_label", **mib_kwargs, some_val=234)
+    e.add_bundle(label="first", **mib_kwargs, some_val=123)
+    e.add_bundle(label="second", **mib_kwargs, some_val=234)
     assert len(e) == 2
     e.clear()
     assert len(e) == 0
@@ -241,16 +239,18 @@ def test_ModelRegistryEntry_file_handling(tmpdir, mib_kwargs):
     assert fsize_empty > 0
 
     # Add a bundle without writing
-    e.add_bundle(**mib_kwargs, some_val=123, update_registry_file=False)
+    e.add_bundle(
+        **mib_kwargs, label="first", some_val=123, update_registry_file=False
+    )
     assert registry_file_path.size() == fsize_empty
 
-    # Add an unlabelled bundle, this time with updating
-    e.add_bundle(**mib_kwargs, some_val=234)
+    # Add another, this time with updating
+    e.add_bundle(**mib_kwargs, label="second", some_val=234)
 
     # Data should be written now
     assert registry_file_path.size() > fsize_empty
 
-    # Add a labelled bundle
+    # Add another bundle
     e.add_bundle(label="some_label", **mib_kwargs, some_val=345)
 
     # Error is raised when overwriting is disabled
@@ -301,39 +301,49 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
     assert len(mr) == 1
 
     # Add another entry, this time with a bundle
-    entry2 = mr.register_model_info("model2", **mib_kwargs)
+    entry2 = mr.register_model_info("model2", label="some_label", **mib_kwargs)
     assert len(entry2) == 1
     assert len(mr) == 2
 
     # Try to add it again; should be skipped
-    assert entry2 is mr.register_model_info("model2", exists_action="skip")
+    assert entry2 is mr.register_model_info(
+        "model2", exists_action="skip", label="some_label"
+    )
     assert len(entry2) == 1
     assert len(mr) == 2
 
-    # Same with clearing the bundles
-    assert entry2 is mr.register_model_info("model2", exists_action="clear")
+    # Clear bundles and start over
+    mr["model2"].clear()
     assert len(entry2) == 0
 
     # Same with extending the bundles
     assert entry2 is mr.register_model_info(
-        "model2", **mib_kwargs, some_val=123123
+        "model2", label="some_label", **mib_kwargs, some_val=123123
     )
     assert len(entry2) == 1
 
     # Adding it again, though, will fail, as it already exists
     with pytest.raises(BundleExistsError):
-        mr.register_model_info("model2", **mib_kwargs, some_val=123123)
+        mr.register_model_info(
+            "model2", label="some_label", **mib_kwargs, some_val=123123
+        )
     assert len(entry2) == 1
 
     # ...unless selected to validate it
     mr.register_model_info(
-        "model2", **mib_kwargs, some_val=123123, exists_action="validate"
+        "model2",
+        label="some_label",
+        **mib_kwargs,
+        some_val=123123,
+        exists_action="validate",
     )
     assert len(entry2) == 1
 
     # Could also desire raising
     with pytest.raises(ModelRegistryError, match="already exists"):
-        mr.register_model_info("model2", **mib_kwargs, some_val=123123)
+        mr.register_model_info(
+            "model2", label="some_label", **mib_kwargs, some_val=123123
+        )
 
     # Bad exists action
     with pytest.raises(ValueError, match="Invalid value for argument exists_"):

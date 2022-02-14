@@ -144,7 +144,7 @@ def test_register_models(tmp_model_registry, tmp_cfg_dir, tmpdir):
     args.base_src_dir = tmpdir.join("base_src")
     args.base_bin_dir = tmpdir.join("base_bin")
     args.exists_action = None
-    args.label = None
+    args.label = "test_label"
     args.overwrite_label = False
     args.project_name = "ProjectName"
     args.update_project_info = False

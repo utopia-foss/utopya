@@ -17,7 +17,7 @@ def get_info_bundle(
     *,
     model_name: str = None,
     info_bundle: ModelInfoBundle = None,
-    bundle_key: Union[str, int] = None,
+    bundle_label: Union[str, int] = None,
 ) -> ModelInfoBundle:
     """Determine the model info bundle in cases where both a model name
     and an info bundle are allowed as arguments.
@@ -26,10 +26,10 @@ def get_info_bundle(
         model_name (str, optional): The model name.
         info_bundle (ModelInfoBundle, optional): The info bundle object.
             If given, will directly return this object again.
-        bundle_key (Union[str, int], optional): In cases where only the model
-            name is given, the bundle_key can be used for item access, e.g. in
-            cases where more than one bundle is available and access would be
-            ambiguous.
+        bundle_label (Union[str, int], optional): In cases where only the model
+            name is given, the bundle_label can be used for item access,
+            e.g. in cases where more than one bundle is available and access
+            would be ambiguous.
 
     Returns:
         ModelInfoBundle: The selected info bundle item
@@ -46,9 +46,9 @@ def get_info_bundle(
     if info_bundle:
         return info_bundle
 
-    if bundle_key is None:
+    if bundle_label is None:
         return MODELS[model_name].item()
-    return MODELS[model_name][bundle_key]
+    return MODELS[model_name][bundle_label]
 
 
 def load_model_cfg(**get_info_bundle_kwargs) -> Tuple[dict, str, dict]:
