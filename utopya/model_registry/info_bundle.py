@@ -186,8 +186,8 @@ class ModelInfoBundle:
         missing_path_action: str,
         executable: str,
         base_executable_dir: str = None,
-        src_dir: str = None,
-        base_src_dir: str = None,
+        source_dir: str = None,
+        base_source_dir: str = None,
         **more_paths,
     ) -> dict:
         """Given path arguments, parse them into actual paths, e.g. by joining
@@ -200,7 +200,9 @@ class ModelInfoBundle:
         base_executable_dir = (
             base_executable_dir if base_executable_dir is not None else ""
         )
-        base_src_dir = base_src_dir if base_src_dir is not None else ""
+        base_source_dir = (
+            base_source_dir if base_source_dir is not None else ""
+        )
 
         # Create paths dict, basing it on those paths that will not be parsed
         paths = dict(**more_paths)
@@ -208,19 +210,19 @@ class ModelInfoBundle:
         # Now, populate that dict
         paths["executable"] = os.path.join(base_executable_dir, executable)
 
-        # Prepare an absolute version of the source path
-        abs_src_path = None
-        if src_dir:
-            abs_src_path = os.path.join(base_src_dir, src_dir)
+        # Prepare an absolute version of the source directory path
+        abs_source_dir_path = None
+        if source_dir:
+            abs_source_dir_path = os.path.join(base_source_dir, source_dir)
 
         # If a source directory is given, store it, then auto-detect some files
-        if abs_src_path:
-            paths["source_dir"] = abs_src_path
+        if abs_source_dir_path:
+            paths["source_dir"] = abs_source_dir_path
 
             for key, fname_fstr in self.SRC_DIR_SEARCH_PATHS:
                 # Build the full file path and see if a file exists there
                 fname = fname_fstr.format(self.model_name)
-                fpath = os.path.join(abs_src_path, fname)
+                fpath = os.path.join(abs_source_dir_path, fname)
 
                 if os.path.exists(fpath):
                     paths[key] = fpath
@@ -228,15 +230,18 @@ class ModelInfoBundle:
         # Carry over configuration files, potentially overwriting existing and
         # resolving their potentially relative paths
         for key, path in more_paths.items():
+            if path is None:
+                continue
+
             if key in self.PATH_KEYS_REL_TO_SRC and not os.path.isabs(path):
                 # Is relative. Need a source directory to join it to ...
-                if not abs_src_path:
+                if not abs_source_dir_path:
                     raise ValueError(
                         f"Given '{key}' path ({path}) was relative, but "
                         "no source directory was specified!"
                     )
 
-                path = os.path.join(abs_src_path, path)
+                path = os.path.join(abs_source_dir_path, path)
 
             # All good, can now store it. If it was a path that is not to be
             # seen as relative to the source directory, that will lead to an
@@ -249,8 +254,8 @@ class ModelInfoBundle:
             if not os.path.isabs(path):
                 raise ValueError(
                     f"The given '{key}' path ({path}) for config bundle "
-                    f"of model '{self.model_name}' was not absolute! Please "
-                    "provide only absolute paths (may include ~)."
+                    f"of model '{self.model_name}' was not absolute! "
+                    "Please provide only absolute paths (may include ~)."
                 )
 
             if not os.path.exists(path):

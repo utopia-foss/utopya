@@ -149,7 +149,7 @@ class ModelRegistry:
         except KeyError as err:
             raise ValueError(
                 f"No model with name '{model_name}' found! Did you forget "
-                f"to register it? Available models:\n"
+                f"to register it?\nAvailable models:\n"
                 f"{make_columns(self.keys())}"
             ) from err
 
@@ -246,7 +246,7 @@ class ModelRegistry:
         except KeyError as err:
             raise ValueError(
                 f"Could not remove entry for model '{model_name}', because "
-                "no such model is registered. Available models:\n"
+                "no such model is registered.\nAvailable models:\n"
                 f"{make_columns(self.keys())}"
             ) from err
         else:

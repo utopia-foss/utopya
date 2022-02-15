@@ -45,8 +45,53 @@ def remove_model_or_bundle():
     raise NotImplementedError("removing models or bundles")
 
 
+# .. utopya models edit .......................................................
+
+
+@models.command(help="Edit the model registry entry")
+@click.argument("model_name")
+def edit(*, model_name: str):
+    """Edits the model registry entry of the given model"""
+    Echo.info(f"Opening '{model_name}' model's registry file for editing ...")
+    Echo.warning("Take care not to corrupt the file!")
+    if not click.confirm("Continue?"):
+        Echo.info("Not continuing.")
+        sys.exit(0)
+
+    import utopya
+
+    try:
+        click.edit(filename=utopya.MODELS[model_name].registry_file_path)
+
+    except Exception as exc:
+        Echo.failure("Editing model registry file failed!", error=exc)
+        sys.exit(1)
+
+    Echo.success(f"Successully edited registry file of '{model_name}' model.")
+
+
+# .. utopya models set-default ................................................
+
+
+@models.command(help="Sets the default info bundle to use for a model")
+@click.argument("model_name")
+@click.argument("label")
+def set_default(*, model_name: str, label: str):
+    """Sets the default info bundle to use for a certain model"""
+    Echo.info(
+        f"Setting the info bundle labelled '{label}' as the default "
+        f"for '{model_name}' ..."
+    )
+
+    import utopya
+
+    utopya.MODELS[model_name].default_label = label
+    Echo.success(f"Successully set default label for model '{model_name}'.")
+
+
 # .. utopya models register ...................................................
 # TODO Add an option to register a model from some kind of "manifest file"
+# TODO Add batch registration, allowing to register many models per call
 
 
 @models.command(
@@ -60,7 +105,20 @@ def remove_model_or_bundle():
     help="Path to the model executable",
 )
 @click.option(
+    "--source-dir",
+    default=None,
+    type=click.Path(
+        exists=True, file_okay=False, dir_okay=True, resolve_path=True
+    ),
+    help=(
+        "Path to the directory that contains the model's source files; "
+        "this can be used to automatically extract model-related information "
+        "like the default model configuration or plot-related configurations."
+    ),
+)
+@click.option(
     "--default-cfg",
+    default=None,
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
     help="Path to the model's default configuration file",
 )
@@ -73,12 +131,6 @@ def remove_model_or_bundle():
         "default value. This allows registering multiple versions of a model "
         "under the same name."
     ),
-)
-@click.option(
-    "--set-default",
-    is_flag=True,
-    default=False,
-    help="If set, will mark this info bundle as the default.",
 )
 @click.option(
     "--overwrite",
@@ -101,6 +153,7 @@ def register(
     *,
     model_name: str,
     executable: str,
+    source_dir: str,
     default_cfg: str,
     label: str,
     set_default: bool,
@@ -108,16 +161,19 @@ def register(
     validate: bool,
 ):
     """Registers a new model"""
-    Echo.progress(f"Registering model '{model_name}' (label: {label})...")
-    Echo.info(f"  executable:      {executable}")
-    Echo.info(f"  default config:  {default_cfg}")
+    Echo.info(f"Registering model '{model_name}' (label: {label})...")
+    Echo.remark(f"  executable:        {executable}")
+    Echo.remark(f"  source directory:  {source_dir}")
+    Echo.remark(f"  default config:    {default_cfg}")
 
     bundle_kwargs = dict(
         label=label,
         overwrite=overwrite,
-        set_as_default=set_default,
-        paths=dict(executable=executable, default_cfg=default_cfg)
-        # TODO allow passing additional paths and metadata
+        paths=dict(
+            executable=executable,
+            default_cfg=default_cfg,
+            source_dir=source_dir,
+        ),
     )
 
     import utopya
@@ -130,7 +186,7 @@ def register(
         )
 
     except Exception as exc:
-        Echo.failure("Failed registering model!", error=exc)
+        Echo.error("Failed registering model!", error=exc)
         sys.exit(1)
 
     else:

@@ -189,28 +189,28 @@ def register_models(args, *, registry):
 
         model_names = args.model_name.split(args.separator)
         executables = args.executable.split(args.separator)
-        src_dirs = args.src_dir.split(args.separator)
+        source_dirs = args.source_dir.split(args.separator)
 
-        if not (len(model_names) == len(executables) == len(src_dirs)):
+        if not (len(model_names) == len(executables) == len(source_dirs)):
             raise ValueError(
                 "Mismatch of sequence lengths during batch model "
-                "registration! The model_name, executable, and src_dir lists "
-                "should all be of equal length after having been split by "
-                f"separator '{args.separator}', but were: "
-                f"{model_names}, {executables}, and {src_dirs}, respectively."
+                "registration! The model_name, executable, and source_dir "
+                "lists should all be of equal length after having been split "
+                f"by separator '{args.separator}', but were: {model_names}, "
+                f"{executables}, and {source_dirs}, respectively."
             )
         # TODO Will ignore other path-related arguments! Warn if given.
 
         # Go over them, create the paths dict, and populate specs dict.
         # If there is project info given, use it to extend path information
         # with the python-related directories. Only do so if they exist.
-        for model_name, executable, src_dir in zip(
-            model_names, executables, src_dirs
+        for model_name, executable, source_dir in zip(
+            model_names, executables, source_dirs
         ):
             paths = dict(
-                src_dir=src_dir,
+                source_dir=source_dir,
                 executable=executable,
-                base_src_dir=args.base_src_dir,
+                base_source_dir=args.base_source_dir,
                 base_executable_dir=args.base_executable_dir,
             )
 

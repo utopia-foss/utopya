@@ -229,13 +229,13 @@ class ModelRegistryEntry:
                 "A bundle that compared equal to the to-be-added bundle "
                 f"already exists in {self}! Not adding it again.\n\n{bundle}"
             )
-            # TODO should this warn instead of raising?! Remove completely?
 
         # Add the bundle
         if not overwrite and label in self.keys():
             raise ModelRegistryError(
-                f"A bundle with label '{label}' already exists in {self}! "
-                "Set the `overwrite` flag to overwrite it."
+                f"A different info bundle with label '{label}' already "
+                f"exists in {self}! "
+                "Set the `overwrite` flag to overwrite the existing one."
             )
 
         log.debug(

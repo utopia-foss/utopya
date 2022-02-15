@@ -13,14 +13,14 @@ ModelInfoBundle_path_parsing:
       <<: *minimal_paths
       default_cfg: /some/abs/path.yml
 
-  with_src_dir:
+  with_source_dir:
     <<: *minimal
     paths:
       <<: *minimal_paths
-      src_dir: /some/src/dir
+      source_dir: /some/src/dir
       default_cfg: some/rel/path
 
-  without_src_dir_but_with_paths_rel_to_src_dir:
+  without_source_dir_but_with_paths_rel_to_source_dir:
     <<: *minimal
     _raises: ValueError
     _match: no source directory was specified
@@ -34,7 +34,7 @@ ModelInfoBundle_path_parsing:
     _match: "unexpected keys: one_more_path"
     paths:
       <<: *minimal_paths
-      src_dir: /some/src/dir
+      source_dir: /some/src/dir
       one_more_path: ~/foo
 
   with_more_paths_not_abs:
@@ -43,7 +43,7 @@ ModelInfoBundle_path_parsing:
     _match: was not absolute
     paths:
       <<: *minimal_paths
-      src_dir: /some/src/dir
+      source_dir: /some/src/dir
       one_more_path: not/an/abs/path
 
   missing_path_action_ignore:
