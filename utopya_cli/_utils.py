@@ -4,7 +4,7 @@ import click
 
 
 class Echo:
-    """Adds some reusable configurations for styled click.echo calls"""
+    """Adds some standardized styled ``click.echo`` calls"""
 
     @staticmethod
     def success(message: str, *, fg="green", bold=True, **style):
@@ -21,7 +21,7 @@ class Echo:
         **style,
     ):
         """An echo that can be used to communicate a failure, optionally
-        parsing the exception as well.
+        parsing the exception's error message as well.
         """
         click.secho(message, fg=fg, bold=bold, **style)
         if not error:

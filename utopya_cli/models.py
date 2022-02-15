@@ -46,7 +46,7 @@ def remove_model_or_bundle():
 
 
 # .. utopya models register ...................................................
-# TODO Add an option to register a model from a manifest file
+# TODO Add an option to register a model from some kind of "manifest file"
 
 
 @models.command(
@@ -61,7 +61,6 @@ def remove_model_or_bundle():
 )
 @click.option(
     "--default-cfg",
-    required=True,
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
     help="Path to the model's default configuration file",
 )

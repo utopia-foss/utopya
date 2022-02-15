@@ -24,7 +24,7 @@ class ModelInfoBundle:
     PATH_KEYS = (
         ("binary", str, True),
         ("source_dir", str),
-        ("default_cfg", str, True),
+        ("default_cfg", str),
         ("default_plots", str),
         ("base_plots", str),
         ("python_model_tests_dir", str),
@@ -85,7 +85,7 @@ class ModelInfoBundle:
 
         # Parse paths before loading them, already expanding the user '~' ...
         paths = self._parse_paths(
-            **{k: os.path.expanduser(p) for k, p in paths.items()},
+            **{k: os.path.expanduser(p) for k, p in paths.items() if p},
             missing_path_action=missing_path_action,
         )
 

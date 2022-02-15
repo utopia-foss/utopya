@@ -92,6 +92,7 @@ class ModelRegistryEntry:
             )
 
         self._default_label = val
+        log.debug("Set default label to '%s'", self.default_label)
 
     @property
     def default_bundle(self) -> ModelInfoBundle:
@@ -200,6 +201,8 @@ class ModelRegistryEntry:
 
         Args:
             label (str): The label under which to add it.
+            set_as_default (bool, optional): If set, will mark this bundle
+                as the default value
             overwrite (bool, optional): If True, overwrites an existing bundle
                 that may be registered under the same label.
             update_registry_file (bool, optional): Whether to write changes
@@ -239,6 +242,9 @@ class ModelRegistryEntry:
             "Adding bundle '%s' for model '%s' ...", label, self.model_name
         )
         self._bundles[label] = bundle
+
+        if set_as_default:
+            self.default_label = label
 
         if update_registry_file:
             self._update_registry_file()
@@ -299,6 +305,7 @@ class ModelRegistryEntry:
             )
 
         # Populate self. Need not update because content is freshly loaded.
+        self._default_label = obj.get("default_label")
         bundles = obj.get("info_bundles", {})
         for label, kwargs in bundles.items():
             self.add_bundle(label=label, **kwargs, update_registry_file=False)

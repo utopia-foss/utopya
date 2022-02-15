@@ -61,23 +61,33 @@ def load_model_cfg(**get_info_bundle_kwargs) -> Tuple[dict, str, dict]:
     into a separate dict.
 
     Args:
-        **get_info_bundle_kwargs: Passed on to get_info_bundle
+        **get_info_bundle_kwargs: Used to retrieve the info bundle via
+            :py:func:`~utopya.model_registry.utils.get_info_bundle`
 
     Returns:
         Tuple[dict, str, dict]: The corresponding model configuration, the path
             to the model configuration file, and the Parameter class objects
             requiring validation.
+            Will be ``{}, None, {}`` if there is no default configuration
+            available in the selected info bundle.
 
     Raises:
         FileNotFoundError: On missing file
-        ValueError: On missing model
     """
     bundle = get_info_bundle(**get_info_bundle_kwargs)
+    if "default_cfg" not in bundle.paths:
+        log.debug(
+            "No default model configuration available for '%s'.",
+            bundle.model_name,
+        )
+        return {}, None, {}
+
     path = bundle.paths["default_cfg"]
 
     log.debug(
-        f"Loading default model configuration for '{bundle.model_name}' "
-        f"model ...\n  {path}"
+        "Loading default model configuration for '%s' model ...\n  %s",
+        bundle.model_name,
+        path,
     )
 
     try:
