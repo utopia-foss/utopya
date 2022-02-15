@@ -243,28 +243,28 @@ def test_prepare_executable(mv_kwargs):
 
     # The dummy model should be available at this point, so _prepare_executable
     # should have correctly set a binary path, but not in a temporary directory
-    assert mv._model_binpath is not None
+    assert mv._model_executable is not None
     assert mv._tmpdir is None
-    original_binpath = mv._model_binpath
+    original_executable = mv._model_executable
 
     # Now, let the executable be copied to a temporary location
     mv._prepare_executable(run_from_tmpdir=True)
-    assert mv._model_binpath != original_binpath
+    assert mv._model_executable != original_executable
     assert mv._tmpdir is not None
 
     # Adjust the info bundle for this Multiverse to use the temporary location
-    tmp_binpath = mv._model_binpath
+    tmp_executable = mv._model_executable
     mv._info_bundle = copy.deepcopy(mv.info_bundle)
-    mv._info_bundle.paths["binary"] = tmp_binpath
+    mv._info_bundle.paths["binary"] = tmp_executable
 
     # With the executable in a temporary location, we can change its access
     # rights to test the PermissionError
-    os.chmod(tmp_binpath, 0o600)
+    os.chmod(tmp_executable, 0o600)
     with pytest.raises(PermissionError, match="is not executable"):
         mv._prepare_executable()
 
     # Finally, remove that (temporary) file, to test the FileNotFound error
-    os.remove(tmp_binpath)
+    os.remove(tmp_executable)
     with pytest.raises(FileNotFoundError, match="Did you build it?"):
         mv._prepare_executable()
 

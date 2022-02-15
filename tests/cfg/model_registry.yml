@@ -5,8 +5,13 @@ ModelInfoBundle_path_parsing:
   minimal: &minimal
     model_name: some_model_name
     paths: &minimal_paths
-      binary: /some/abs/path
-      default_cfg: /some/abs/path
+      executable: /some/abs/path
+
+  with_default_cfg:
+    <<: *minimal
+    paths:
+      <<: *minimal_paths
+      default_cfg: /some/abs/path.yml
 
   with_src_dir:
     <<: *minimal
@@ -56,7 +61,7 @@ ModelInfoBundle_path_parsing:
   missing_path_action_raise:
     <<: *minimal
     _raises: ValueError
-    _match: Given 'default_cfg' path for model 'some_model_name' does not exist
+    _match: Given 'executable' path for model 'some_model_name' does not exist
     missing_path_action: raise
 
   bad_missing_path_action:

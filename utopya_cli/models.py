@@ -116,9 +116,8 @@ def register(
         label=label,
         overwrite=overwrite,
         set_as_default=set_default,
-        paths=dict(binary=executable, default_cfg=default_cfg)
-        # TODO rename `binary` to `executable`
-        # TODO pass additional paths and metadata
+        paths=dict(executable=executable, default_cfg=default_cfg)
+        # TODO allow passing additional paths and metadata
     )
 
     import utopya

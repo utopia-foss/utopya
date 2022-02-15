@@ -139,19 +139,18 @@ def test_register_models(tmp_model_registry, tmp_cfg_dir, tmpdir):
     args = MockArgs()
     args.separator = ";"
     args.model_name = "foo;bar"
-    args.bin_path = "bin/foo;bin/bar"
+    args.executable = "bin/foo;bin/bar"
     args.src_dir = "src/foo;src/bar"
     args.base_src_dir = tmpdir.join("base_src")
-    args.base_bin_dir = tmpdir.join("base_bin")
+    args.base_executable_dir = tmpdir.join("base_exec")
     args.exists_action = None
     args.label = "test_label"
     args.overwrite_label = False
     args.project_name = "ProjectName"
     args.update_project_info = False
 
-    # Try registration ... will fail, because files are missing in this test
-    with pytest.raises(ValueError, match="Missing required key: default_cfg"):
-        clt.register_models(args, registry=tmp_model_registry)
+    # Try a simple registration ...
+    clt.register_models(args, registry=tmp_model_registry)
     # NOTE It's not crucial to test a full registration here, because that's
     #      done in the test there. We just want to ascertain that the cltools
     #      function does what is expected of it

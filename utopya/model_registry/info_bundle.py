@@ -20,9 +20,8 @@ TIME_FSTR = "%y%m%d-%H%M%S"
 class ModelInfoBundle:
     """A bundle of model information; behaves like a read-only dict"""
 
-    # Which entries to expect inside the paths property
     PATH_KEYS = (
-        ("binary", str, True),
+        ("executable", str, True),
         ("source_dir", str),
         ("default_cfg", str),
         ("default_plots", str),
@@ -30,18 +29,22 @@ class ModelInfoBundle:
         ("python_model_tests_dir", str),
         ("python_model_plots_dir", str),
     )
+    """Which entries to expect inside the paths property"""
 
-    # Path keys that are assumed to be relative to the source directory
-    PATH_KEYS_REL_TO_SRC = ("default_cfg", "default_plots", "base_plots")
+    PATH_KEYS_REL_TO_SRC = (
+        "default_cfg",
+        "default_plots",
+        "base_plots",
+    )
+    """Path keys that are assumed to be relative to the source directory"""
 
-    # Paths to inspect in the source directory
     SRC_DIR_SEARCH_PATHS = (
         ("default_cfg", "{}_cfg.yml"),
         ("default_plots", "{}_plots.yml"),
         ("base_plots", "{}_base_plots.yml"),
     )
+    """Paths to inspect in the source directory"""
 
-    # Which entries to expect inside the metadata property
     METADATA_KEYS = (
         ("version", str),
         ("long_name", str),
@@ -53,6 +56,7 @@ class ModelInfoBundle:
         ("utopya_compatibility", str),
         ("misc", dict),
     )
+    """Which entries to expect inside the metadata property"""
 
     # .........................................................................
 
@@ -150,6 +154,11 @@ class ModelInfoBundle:
         return self._d[key]
 
     @property
+    def executable(self) -> str:
+        """The path to the model executable"""
+        return self._d["paths"]["executable"]
+
+    @property
     def paths(self) -> dict:
         """Access to the paths information of the bundle"""
         return self._d["paths"]
@@ -175,8 +184,8 @@ class ModelInfoBundle:
         self,
         *,
         missing_path_action: str,
-        binary: str,
-        base_bin_dir: str = None,
+        executable: str,
+        base_executable_dir: str = None,
         src_dir: str = None,
         base_src_dir: str = None,
         **more_paths,
@@ -188,15 +197,16 @@ class ModelInfoBundle:
              treament.
         """
         # Make sure the base directories are not none (os.path.join easier)
-        base_bin_dir = base_bin_dir if base_bin_dir is not None else ""
+        base_executable_dir = (
+            base_executable_dir if base_executable_dir is not None else ""
+        )
         base_src_dir = base_src_dir if base_src_dir is not None else ""
 
         # Create paths dict, basing it on those paths that will not be parsed
         paths = dict(**more_paths)
 
-        # Now, populate that dict.
-        # Easiest: binary path
-        paths["binary"] = os.path.join(base_bin_dir, binary)
+        # Now, populate that dict
+        paths["executable"] = os.path.join(base_executable_dir, executable)
 
         # Prepare an absolute version of the source path
         abs_src_path = None

@@ -4,12 +4,12 @@ import copy
 import os
 
 import pytest
-from pkg_resources import resource_filename
 
 import utopya.model_registry as umr
 from utopya.model_registry import BundleExistsError, ModelRegistryError
 from utopya.yaml import write_yml, yaml
 
+from . import get_cfg_fpath
 from .test_cfg import tmp_cfg_dir
 
 # Fixtures --------------------------------------------------------------------
@@ -18,7 +18,7 @@ from .test_cfg import tmp_cfg_dir
 @pytest.fixture
 def test_cfg() -> dict:
     """Loads the test configuration file for this test module"""
-    with open(resource_filename("tests", "cfg/model_registry.yml")) as f:
+    with open(get_cfg_fpath("model_registry.yml")) as f:
         return yaml.load(f)
 
 
@@ -27,7 +27,8 @@ def mib_kwargs() -> dict:
     """Some default kwargs for a ModelInfoBundle"""
     return dict(
         paths=dict(
-            binary="/abs/foo/binary/path", default_cfg="/abs/foo/config/path"
+            executable="/abs/foo/executable/path",
+            default_cfg="/abs/foo/config/path",
         ),
         metadata=dict(description="bar"),
         additional_stuff=123,
@@ -114,6 +115,7 @@ def test_ModelInfoBundle_path_parsing(test_cfg):
     cfg = test_cfg["ModelInfoBundle_path_parsing"]
 
     for spec_name, spec in cfg.items():
+        print(f"--- Test case: {spec_name}")
         spec = copy.deepcopy(spec)
         raises = spec.pop("_raises", False)
         match = spec.pop("_match", None)
