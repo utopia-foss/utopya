@@ -40,7 +40,7 @@ ModelInfoBundle_path_parsing:
   with_more_paths_not_abs:
     <<: *minimal
     _raises: ValueError
-    _match: was not absolute
+    _match: was relative
     paths:
       <<: *minimal_paths
       source_dir: /some/src/dir

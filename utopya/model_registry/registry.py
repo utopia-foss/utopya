@@ -179,7 +179,7 @@ class ModelRegistry:
                     * ``validate``: Makes sure the bundle that will be created
                         from the given kwargs is part of the registry entry.
 
-            **bundle_kwargs: Passed on to ModelRegistryEntry.add_bundle
+            **bundle_kwargs: Passed on to ``ModelRegistryEntry.add_bundle``
 
         Returns:
             ModelRegistryEntry: The registry entry for this model.
@@ -226,6 +226,7 @@ class ModelRegistry:
                 if exists_action != "validate":
                     # ... but it was not to be validated. Raise.
                     raise
+                    # TODO Custom error message?
 
         # To be consistent with cases where no bundle is added, return the
         # entry, not the newly added bundle

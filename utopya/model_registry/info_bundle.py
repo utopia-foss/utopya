@@ -22,6 +22,7 @@ class ModelInfoBundle:
 
     PATH_KEYS = (
         ("executable", str, True),
+        ("model_info", str),
         ("source_dir", str),
         ("default_cfg", str),
         ("default_plots", str),
@@ -43,17 +44,20 @@ class ModelInfoBundle:
         ("default_plots", "{}_plots.yml"),
         ("base_plots", "{}_base_plots.yml"),
     )
-    """Paths to inspect in the source directory"""
+    """Paths to inspect relative to the source directory"""
 
     METADATA_KEYS = (
         ("version", str),
         ("long_name", str),
         ("description", str),
+        ("long_description", str),
+        ("license", str),
         ("author", str),
         ("email", str),
         ("website", str),
-        ("dependencies", list),
         ("utopya_compatibility", str),
+        ("language", str),
+        ("requirements", list),
         ("misc", dict),
     )
     """Which entries to expect inside the metadata property"""
@@ -188,6 +192,7 @@ class ModelInfoBundle:
         base_executable_dir: str = None,
         source_dir: str = None,
         base_source_dir: str = None,
+        model_info: str = None,
         **more_paths,
     ) -> dict:
         """Given path arguments, parse them into actual paths, e.g. by joining
@@ -204,16 +209,38 @@ class ModelInfoBundle:
             base_source_dir if base_source_dir is not None else ""
         )
 
-        # Create paths dict, basing it on those paths that will not be parsed
+        # Create paths dict, basing it on those paths that need no additional
+        # parsing (only checking, see below)
         paths = dict(**more_paths)
 
-        # Now, populate that dict
+        # If a model info file is given, can use its directory as a base
+        # directory to determine
+        model_info_dir = ""
+        if model_info:
+            if not os.path.isabs(model_info):
+                raise ValueError(
+                    "The path to the model info file needs to be absolute, "
+                    f"but was:  {model_info}"
+                )
+            model_info_dir = os.path.dirname(model_info)
+
+            if not base_source_dir:
+                base_source_dir = model_info_dir
+
+            if not base_executable_dir:
+                base_executable_dir = model_info_dir
+
+            paths["model_info"] = model_info
+
+        # Parse the executable file path
         paths["executable"] = os.path.join(base_executable_dir, executable)
 
         # Prepare an absolute version of the source directory path
         abs_source_dir_path = None
         if source_dir:
-            abs_source_dir_path = os.path.join(base_source_dir, source_dir)
+            abs_source_dir_path = os.path.realpath(
+                os.path.join(base_source_dir, source_dir)
+            )
 
         # If a source directory is given, store it, then auto-detect some files
         if abs_source_dir_path:
@@ -233,15 +260,23 @@ class ModelInfoBundle:
             if path is None:
                 continue
 
-            if key in self.PATH_KEYS_REL_TO_SRC and not os.path.isabs(path):
-                # Is relative. Need a source directory to join it to ...
-                if not abs_source_dir_path:
-                    raise ValueError(
-                        f"Given '{key}' path ({path}) was relative, but "
-                        "no source directory was specified!"
-                    )
+            if not os.path.isabs(path):
+                # Is relative. Try to resolve it, starting with a path relative
+                # to the source directory. As a fallback, can still attempt to
+                # interpret it relative to the model info file.
+                if key in self.PATH_KEYS_REL_TO_SRC and abs_source_dir_path:
+                    path = os.path.join(abs_source_dir_path, path)
 
-                path = os.path.join(abs_source_dir_path, path)
+                elif model_info_dir:
+                    path = os.path.join(model_info_dir, path)
+
+                else:
+                    raise ValueError(
+                        f"Given `{key}` path ({path}) was relative, but "
+                        "no source directory was specified relative to which "
+                        "this path could be interpreted and no model "
+                        "information file was available either!"
+                    )
 
             # All good, can now store it. If it was a path that is not to be
             # seen as relative to the source directory, that will lead to an
@@ -253,7 +288,7 @@ class ModelInfoBundle:
         for key, path in paths.items():
             if not os.path.isabs(path):
                 raise ValueError(
-                    f"The given '{key}' path ({path}) for config bundle "
+                    f"The given `{key}` path ({path}) for info bundle "
                     f"of model '{self.model_name}' was not absolute! "
                     "Please provide only absolute paths (may include ~)."
                 )

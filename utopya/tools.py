@@ -118,12 +118,12 @@ def add_item(
             result of the call is stored.
         add_to (dict): The dict to add the entry to
         key_path (Sequence[str]): The path at which to add it
-        value_func (Callable, optional): If given, calls it with `value` as
+        value_func (Callable, optional): If given, calls it with ``value`` as
             argument and uses the return value to add to the dict
-        is_valid (Callable, optional): Used to determine whether `value` is
+        is_valid (Callable, optional): Used to determine whether ``value`` is
             valid or not; should take single positional argument, return bool
         ErrorMsg (Callable, optional): A raisable object that prints an error
-            message; gets passed `value` as positional argument.
+            message; gets passed ``value`` as positional argument.
 
     Raises:
         Exception: type depends on specified ``ErrorMsg`` callable

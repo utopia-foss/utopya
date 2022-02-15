@@ -61,8 +61,10 @@ test:py38:
   needs: []
   before_script:
     - pip3 install .[dev]
-    - cd demo/models/MinimalModel
-    - utopya models register MinimalModel --executable MinimalModel.py --source-dir .
+    #
+    # Register all demo models
+    - cd demo/models
+    - utopya models register from-manifest **/*_info.yml
     - cd ${CI_PROJECT_DIR}
   script:
     - python tests/run.py -v --cov=utopya --cov-report=term-missing --cov-report=xml --durations=10 --junitxml=report.xml tests/.
