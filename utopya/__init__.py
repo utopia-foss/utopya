@@ -1,7 +1,7 @@
 """The utopya package implements the frontend of Utopia"""
 
 # Specify the version
-__version__ = "1.0.0a1"
+__version__ = "1.0.0a2"
 
 # Use the dantro-provided logging module (with additional log levels)
 from dantro.logging import REMARK as DEFAULT_LOG_LEVEL
