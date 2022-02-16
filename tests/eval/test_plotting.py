@@ -21,34 +21,34 @@ from utopya.eval.plots._graph import GraphPlot
 from utopya.testtools import ModelTest
 from utopya.yaml import load_yml
 
+from .. import ADVANCED_MODEL, DUMMY_MODEL, get_cfg_fpath
+
 # Get the test resources ......................................................
 # Mute the matplotlib logger
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 # Basic universe plots
-BASIC_UNI_PLOTS = resource_filename("tests", "cfg/plots/basic_uni.yml")
+BASIC_UNI_PLOTS = get_cfg_fpath("plots/basic_uni.yml")
 
 # DAG-based plots
-DAG_PLOTS = resource_filename("tests", "cfg/plots/dag.yml")
+DAG_PLOTS = get_cfg_fpath("plots/dag.yml")
 
 # Bifurcation diagram, 1D and 2D
-BIFURCATION_DIAGRAM_RUN = resource_filename(
-    "tests", "cfg/plots/bifurcation_diagram/run.yml"
+BIFURCATION_DIAGRAM_RUN = get_cfg_fpath("plots/bifurcation_diagram/run.yml")
+BIFURCATION_DIAGRAM_PLOTS = get_cfg_fpath(
+    "plots/bifurcation_diagram/plots.yml"
 )
-BIFURCATION_DIAGRAM_PLOTS = resource_filename(
-    "tests", "cfg/plots/bifurcation_diagram/plots.yml"
+BIFURCATION_DIAGRAM_2D_RUN = get_cfg_fpath(
+    "plots/bifurcation_diagram_2d/run.yml"
 )
-BIFURCATION_DIAGRAM_2D_RUN = resource_filename(
-    "tests", "cfg/plots/bifurcation_diagram_2d/run.yml"
+BIFURCATION_DIAGRAM_2D_PLOTS = get_cfg_fpath(
+    "plots/bifurcation_diagram_2d/plots.yml"
 )
-BIFURCATION_DIAGRAM_2D_PLOTS = resource_filename(
-    "tests", "cfg/plots/bifurcation_diagram_2d/plots.yml"
-)
-GRAPH_RUN = resource_filename("tests", "cfg/graphgroup_cfg.yml")
+GRAPH_RUN = get_cfg_fpath("graphgroup_cfg.yml")
 
-GRAPH_PLOTS = resource_filename("tests", "cfg/plots/graph_plot_cfg.yml")
+GRAPH_PLOTS = get_cfg_fpath("plots/graph_plot_cfg.yml")
 
-GRAPH_PLOT_CLS = resource_filename("tests", "cfg/graphplot_class_cfg.yml")
+GRAPH_PLOT_CLS = get_cfg_fpath("graphplot_class_cfg.yml")
 
 # Fixtures --------------------------------------------------------------------
 
@@ -56,6 +56,7 @@ GRAPH_PLOT_CLS = resource_filename("tests", "cfg/graphplot_class_cfg.yml")
 # Tests -----------------------------------------------------------------------
 
 
+@pytest.mark.skip("dummy model has no labelled dimensions")
 def test_dag_custom_operations():
     """Tests if custom dantro data operations can be registered via the
     extensions made to PlotManager.
@@ -67,7 +68,7 @@ def test_dag_custom_operations():
     assert "my_custom_dummy_operation" not in available_operations()
 
     # Now, set up the model and its PlotManager
-    model = ModelTest("dummy")
+    model = ModelTest(DUMMY_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True
     plot_cfgs = load_yml(DAG_PLOTS)
@@ -84,6 +85,7 @@ def test_dag_custom_operations():
     assert "my_custom_dummy_operation" in available_operations()
 
 
+@pytest.mark.skip("Needs advanced demo model with custom plot functions")
 def test_preloading():
     """Tests the preloading feature of the utopya.PlotManager"""
     assert "model_plots.ForestFire" not in sys.modules
@@ -132,10 +134,11 @@ def test_preloading():
     assert "model_plots.ForestFire" not in sys.modules
 
 
+@pytest.mark.skip("dummy model data is not labelled")
 def test_dag_plotting():
     """Makes sure that DAG plotting works as expected"""
     # Now, set up the model
-    model = ModelTest("dummy")
+    model = ModelTest(DUMMY_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True
     print(dm.tree)
@@ -155,13 +158,13 @@ def test_dag_plotting():
         print(f"Successfully plotted '{cfg_name}'!\n\n")
 
 
-@pytest.mark.skip(reason="Plot function no longer included")
+@pytest.mark.skip("Plot function no longer included")
 def test_pcr_ext_extensions():
     """Test the changes and extensions to the ExternalPlotCreator
 
     ... indirectly, using some other plot creator.
     """
-    model = ModelTest("dummy")
+    model = ModelTest(DUMMY_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True
     print(dm.tree)
@@ -179,7 +182,7 @@ def test_pcr_ext_extensions():
             universes="all",
             module=".basic_uni",
             plot_func="lineplot",
-            model_name="dummy",
+            model_name=DUMMY_MODEL,
             path_to_data="state",
         )
 
@@ -225,16 +228,11 @@ def test_pcr_ext_extensions():
 
 def test_dummy_plotting():
     """Test plotting of the dummy model works"""
-    mv, _ = ModelTest("dummy").create_run_load()
+    mv, _ = ModelTest(DUMMY_MODEL).create_run_load()
     mv.pm.plot_from_cfg()
 
 
-def test_CopyMeGrid_plotting():
-    """Test plotting of the CopyMeGrid model works"""
-    mv, _ = ModelTest("CopyMeGrid").create_run_load()
-    mv.pm.plot_from_cfg()
-
-
+@pytest.mark.skip("No grid model available")
 def test_ca_plotting():
     """Tests the plot_funcs.ca module"""
     mv, _ = ModelTest("CopyMeGrid").create_run_load()
@@ -253,6 +251,7 @@ def test_ca_plotting():
     mv.pm.plot_from_cfg(plot_only=["strategy_and_payoff_frames"])
 
 
+@pytest.mark.skip("No grid model available")
 def test_ca_plotting_hexagonal():
     """Tests the plot_funcs.ca module with hexagonal lattice"""
     update_meta_cfg = {
@@ -281,7 +280,7 @@ def test_ca_plotting_hexagonal():
     mv.pm.plot_from_cfg(plot_only=["strategy_and_payoff_frames"])
 
 
-@pytest.mark.skip(reason="Plot function no longer included")
+@pytest.mark.skip("Plot function no longer included")
 def test_time_series_plots():
     """Tests the plot_funcs.time_series module"""
     mv, _ = ModelTest("SandPile").create_run_load()
@@ -298,7 +297,7 @@ def test_time_series_plots():
     mv.pm.plot_from_cfg(plot_only=["species_densities", "phase_space"])
 
 
-@pytest.mark.skip(reason="Plot function no longer included")
+@pytest.mark.skip("Plot function no longer included")
 def test_distribution_plots():
     """Tests the plot_funcs.distribution module"""
     mv, _ = ModelTest("SandPile").create_run_load()
@@ -310,7 +309,7 @@ def test_distribution_plots():
     )
 
 
-@pytest.mark.skip(reason="Need alternative way of testing this")
+@pytest.mark.skip("Need alternative way of testing this")
 def test_bifurcation_diagram(tmpdir):
     """Test plotting of the bifurcation diagram"""
     # Create and run simulation
@@ -365,7 +364,7 @@ def test_bifurcation_diagram(tmpdir):
     )
 
 
-@pytest.mark.skip(reason="Need alternative way of testing this")
+@pytest.mark.skip("Need alternative way of testing this")
 def test_bifurcation_diagram_2d(tmpdir):
     """Test plotting of the bifurcation diagram"""
     # Create and run simulation
@@ -393,6 +392,7 @@ def test_bifurcation_diagram_2d(tmpdir):
     )
 
 
+@pytest.mark.skip("No model with DAG based plots available")
 def test_generic_dag_plots(tmpdir):
     """Tests the plot_funcs.dag.generic module"""
     mv, _ = ModelTest("SEIRD").create_run_load()
@@ -405,6 +405,7 @@ def test_generic_dag_plots(tmpdir):
     )
 
 
+@pytest.mark.skip("No graph model available")
 def test_graph_plots(tmpdir):
     """Tests the plot_funcs.dag.graph module"""
     # Create and run simulation

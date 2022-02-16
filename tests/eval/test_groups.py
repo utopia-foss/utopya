@@ -8,16 +8,19 @@ import utopya
 from utopya.eval.groups import GraphGroup, UniverseGroup
 from utopya.testtools import ModelTest
 
-# Local constants
-GG_CFG_PATH = resource_filename("tests", "cfg/graphgroup_cfg.yml")
+from .. import get_cfg_fpath
+
+GRAPH_MODEL = "MinimalModel"  # FIXME Not a graph model
+GG_CFG_PATH = get_cfg_fpath("graphgroup_cfg.yml")
 
 # -----------------------------------------------------------------------------
 
 
+@pytest.mark.skip("No graph model available")
 def test_graphgroup():
     """Test the dantro.GraphGroup integration into utopya. The full
     functionality is tested on dantro side."""
-    mt = ModelTest("CopyMeGraph", test_file=__file__)
+    mt = ModelTest(GRAPH_MODEL, test_file=__file__)
     mv, dm = mt.create_run_load(from_cfg=GG_CFG_PATH)
 
     for uni in dm["multiverse"].values():
@@ -57,7 +60,7 @@ def test_graphgroup():
             # Check that the number of vertices matches
             assert (
                 g.number_of_nodes()
-                == cfg["CopyMeGraph"]["create_graph"]["num_vertices"]
+                == cfg[GRAPH_MODEL]["create_graph"]["num_vertices"]
             )
 
             # Get the properties from the graph

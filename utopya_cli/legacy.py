@@ -304,10 +304,10 @@ pm_reg.add_argument(
     help="Name of the model to register. Supports --separator argument.",
 )
 pm_reg.add_argument(
-    "--bin-path",
+    "--executable",
     required=True,
-    help="Path to the binary that is to be associated with this model. If "
-    "--base-bin-dir is given, this may be a relative path. "
+    help="Path to the executable that is to be associated with this model. If "
+    "--base-executable-dir is given, this may be a relative path. "
     "Supports --separator argument.",
 )
 
@@ -327,7 +327,7 @@ pm_reg_dir.add_argument(
     "relative.",
 )
 pm_reg_dir.add_argument(
-    "--base-bin-dir",
+    "--base-executable-dir",
     help="Shared base path to binary directory; if given, --bin-path may be "
     "a relative path",
 )

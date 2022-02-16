@@ -7,8 +7,9 @@ INSTALL_DEPS = [
     "numpy>=1.21",
     "scipy>=1.7.3",
     "matplotlib>=3.3",
-    "coloredlogs>=15.0",
     "ruamel.yaml>=0.16.5",
+    "coloredlogs>=15.0",
+    "colorama>=0.4.4",
     "click>=8.0",
     #
     # related to utopya:
@@ -84,9 +85,8 @@ setup(
     ],
     #
     # Package content and dependencies
-    packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test"]),
+    packages=find_packages(exclude=("demo", "tests")),
     package_data=dict(utopya=["cfg/*.yml"]),
-    include_package_data=True,
     install_requires=INSTALL_DEPS,
     extras_require=dict(
         test=TEST_DEPS,
@@ -97,7 +97,7 @@ setup(
     # Command line scripts
     entry_points={
         "console_scripts": [
-            "utopya = utopya_cli.cli:utopya",
+            "utopya = utopya_cli.cli:cli",
             "utopia = utopya_cli.legacy:cli",  # FIXME Remove once migrated
         ],
     },

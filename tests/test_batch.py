@@ -5,14 +5,15 @@ import contextlib
 import copy
 
 import pytest
-from pkg_resources import resource_filename
 
 from utopya.batch import BatchTaskManager
 from utopya.model import Model
 from utopya.tools import load_yml, recursive_update
 
-BATCH_FILE_PATH = resource_filename("tests", "cfg/batch_file.yml")
-BATCH_CFG = load_yml(resource_filename("tests", "cfg/batch.yml"))
+from . import ADVANCED_MODEL, DUMMY_MODEL, get_cfg_fpath
+
+BATCH_FILE_PATH = get_cfg_fpath("batch_file.yml")
+BATCH_CFG = load_yml(get_cfg_fpath("batch.yml"))
 
 # -----------------------------------------------------------------------------
 
@@ -20,7 +21,7 @@ BATCH_CFG = load_yml(resource_filename("tests", "cfg/batch.yml"))
 def test_BatchTaskManager_basics():
     """Tests BatchTaskManager"""
     # Make sure the required models have some output generated
-    for model_name in ("dummy",):
+    for model_name in (DUMMY_MODEL,):
         Model(name=model_name).create_mv(
             paths=dict(model_note="btm-basics")
         ).run()
@@ -33,11 +34,11 @@ def test_BatchTaskManager_basics():
     # ...
 
 
-@pytest.mark.skip(reason="Missing plot functions")
+@pytest.mark.skip("Missing plot functions; missing advanced model")
 def test_BatchTaskManager(tmpdir):
     """Tests BatchTaskManager"""
     # Make sure the required models have some output generated
-    for model_name in ("dummy", "SEIRD"):
+    for model_name in (DUMMY_MODEL, ADVANCED_MODEL):
         Model(name=model_name).create_mv(paths=dict(model_note="btm")).run()
 
     # Test multiple scenarios
@@ -69,10 +70,11 @@ def test_BatchTaskManager(tmpdir):
             btm.perform_tasks()
 
 
+@pytest.mark.skip("Missing plots for dummy model")
 def test_batch_file():
     """Tests the BatchTaskManager via a batch file"""
     # Make sure the required models have some output generated
-    for model_name in ("dummy",):
+    for model_name in (DUMMY_MODEL,):
         Model(name=model_name).create_mv(
             paths=dict(model_note="batch-file")
         ).run()

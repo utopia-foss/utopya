@@ -20,39 +20,47 @@ TIME_FSTR = "%y%m%d-%H%M%S"
 class ModelInfoBundle:
     """A bundle of model information; behaves like a read-only dict"""
 
-    # Which entries to expect inside the paths property
     PATH_KEYS = (
-        ("binary", str, True),
-        ("source_dir", str),  # TODO consider _requiring_ this one
-        ("default_cfg", str, True),
+        ("executable", str, True),
+        ("model_info", str),
+        ("source_dir", str),
+        ("default_cfg", str),
         ("default_plots", str),
         ("base_plots", str),
         ("python_model_tests_dir", str),
         ("python_model_plots_dir", str),
     )
+    """Which entries to expect inside the paths property"""
 
-    # Path keys that are assumed to be relative to the source directory
-    PATH_KEYS_REL_TO_SRC = ("default_cfg", "default_plots", "base_plots")
+    PATH_KEYS_REL_TO_SRC = (
+        "default_cfg",
+        "default_plots",
+        "base_plots",
+    )
+    """Path keys that are assumed to be relative to the source directory"""
 
-    # Paths to inspect in the source directory
     SRC_DIR_SEARCH_PATHS = (
         ("default_cfg", "{}_cfg.yml"),
         ("default_plots", "{}_plots.yml"),
         ("base_plots", "{}_base_plots.yml"),
     )
+    """Paths to inspect relative to the source directory"""
 
-    # Which entries to expect inside the metadata property
     METADATA_KEYS = (
         ("version", str),
         ("long_name", str),
         ("description", str),
+        ("long_description", str),
+        ("license", str),
         ("author", str),
         ("email", str),
         ("website", str),
-        ("dependencies", list),
         ("utopya_compatibility", str),
+        ("language", str),
+        ("requirements", list),
         ("misc", dict),
     )
+    """Which entries to expect inside the metadata property"""
 
     # .........................................................................
 
@@ -85,7 +93,7 @@ class ModelInfoBundle:
 
         # Parse paths before loading them, already expanding the user '~' ...
         paths = self._parse_paths(
-            **{k: os.path.expanduser(p) for k, p in paths.items()},
+            **{k: os.path.expanduser(p) for k, p in paths.items() if p},
             missing_path_action=missing_path_action,
         )
 
@@ -150,6 +158,11 @@ class ModelInfoBundle:
         return self._d[key]
 
     @property
+    def executable(self) -> str:
+        """The path to the model executable"""
+        return self._d["paths"]["executable"]
+
+    @property
     def paths(self) -> dict:
         """Access to the paths information of the bundle"""
         return self._d["paths"]
@@ -175,10 +188,11 @@ class ModelInfoBundle:
         self,
         *,
         missing_path_action: str,
-        binary: str,
-        base_bin_dir: str = None,
-        src_dir: str = None,
-        base_src_dir: str = None,
+        executable: str,
+        base_executable_dir: str = None,
+        source_dir: str = None,
+        base_source_dir: str = None,
+        model_info: str = None,
         **more_paths,
     ) -> dict:
         """Given path arguments, parse them into actual paths, e.g. by joining
@@ -188,29 +202,54 @@ class ModelInfoBundle:
              treament.
         """
         # Make sure the base directories are not none (os.path.join easier)
-        base_bin_dir = base_bin_dir if base_bin_dir is not None else ""
-        base_src_dir = base_src_dir if base_src_dir is not None else ""
+        base_executable_dir = (
+            base_executable_dir if base_executable_dir is not None else ""
+        )
+        base_source_dir = (
+            base_source_dir if base_source_dir is not None else ""
+        )
 
-        # Create paths dict, basing it on those paths that will not be parsed
+        # Create paths dict, basing it on those paths that need no additional
+        # parsing (only checking, see below)
         paths = dict(**more_paths)
 
-        # Now, populate that dict.
-        # Easiest: binary path
-        paths["binary"] = os.path.join(base_bin_dir, binary)
+        # If a model info file is given, can use its directory as a base
+        # directory to determine
+        model_info_dir = ""
+        if model_info:
+            if not os.path.isabs(model_info):
+                raise ValueError(
+                    "The path to the model info file needs to be absolute, "
+                    f"but was:  {model_info}"
+                )
+            model_info_dir = os.path.dirname(model_info)
 
-        # Prepare an absolute version of the source path
-        abs_src_path = None
-        if src_dir:
-            abs_src_path = os.path.join(base_src_dir, src_dir)
+            if not base_source_dir:
+                base_source_dir = model_info_dir
+
+            if not base_executable_dir:
+                base_executable_dir = model_info_dir
+
+            paths["model_info"] = model_info
+
+        # Parse the executable file path
+        paths["executable"] = os.path.join(base_executable_dir, executable)
+
+        # Prepare an absolute version of the source directory path
+        abs_source_dir_path = None
+        if source_dir:
+            abs_source_dir_path = os.path.realpath(
+                os.path.join(base_source_dir, source_dir)
+            )
 
         # If a source directory is given, store it, then auto-detect some files
-        if abs_src_path:
-            paths["source_dir"] = abs_src_path
+        if abs_source_dir_path:
+            paths["source_dir"] = abs_source_dir_path
 
             for key, fname_fstr in self.SRC_DIR_SEARCH_PATHS:
                 # Build the full file path and see if a file exists there
                 fname = fname_fstr.format(self.model_name)
-                fpath = os.path.join(abs_src_path, fname)
+                fpath = os.path.join(abs_source_dir_path, fname)
 
                 if os.path.exists(fpath):
                     paths[key] = fpath
@@ -218,15 +257,26 @@ class ModelInfoBundle:
         # Carry over configuration files, potentially overwriting existing and
         # resolving their potentially relative paths
         for key, path in more_paths.items():
-            if key in self.PATH_KEYS_REL_TO_SRC and not os.path.isabs(path):
-                # Is relative. Need a source directory to join it to ...
-                if not abs_src_path:
-                    raise ValueError(
-                        f"Given '{key}' path ({path}) was relative, but "
-                        "no source directory was specified!"
-                    )
+            if path is None:
+                continue
 
-                path = os.path.join(abs_src_path, path)
+            if not os.path.isabs(path):
+                # Is relative. Try to resolve it, starting with a path relative
+                # to the source directory. As a fallback, can still attempt to
+                # interpret it relative to the model info file.
+                if key in self.PATH_KEYS_REL_TO_SRC and abs_source_dir_path:
+                    path = os.path.join(abs_source_dir_path, path)
+
+                elif model_info_dir:
+                    path = os.path.join(model_info_dir, path)
+
+                else:
+                    raise ValueError(
+                        f"Given `{key}` path ({path}) was relative, but "
+                        "no source directory was specified relative to which "
+                        "this path could be interpreted and no model "
+                        "information file was available either!"
+                    )
 
             # All good, can now store it. If it was a path that is not to be
             # seen as relative to the source directory, that will lead to an
@@ -238,9 +288,9 @@ class ModelInfoBundle:
         for key, path in paths.items():
             if not os.path.isabs(path):
                 raise ValueError(
-                    f"The given '{key}' path ({path}) for config bundle "
-                    f"of model '{self.model_name}' was not absolute! Please "
-                    "provide only absolute paths (may include ~)."
+                    f"The given `{key}` path ({path}) for info bundle "
+                    f"of model '{self.model_name}' was not absolute! "
+                    "Please provide only absolute paths (may include ~)."
                 )
 
             if not os.path.exists(path):

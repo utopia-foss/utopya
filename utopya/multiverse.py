@@ -73,7 +73,7 @@ class Multiverse:
         Args:
             model_name (str, optional): The name of the model to run
             info_bundle (ModelInfoBundle, optional): The model information
-                bundle that includes information about the binary path etc.
+                bundle that includes information about the executable path etc.
                 If not given, will attempt to read it from the model registry.
             run_cfg_path (str, optional): The path to the run configuration.
             user_cfg_path (str, optional): If given, this is used to update the
@@ -102,7 +102,7 @@ class Multiverse:
 
         # Setup property-managed attributes
         self._dirs = dict()
-        self._model_binpath = None
+        self._model_executable = None
         self._tmpdir = None
         self._resolved_cluster_params = None
 
@@ -220,11 +220,11 @@ class Multiverse:
         return self.info_bundle.model_name
 
     @property
-    def model_binpath(self) -> str:
-        """The path to this model's binary"""
-        if self._model_binpath is not None:
-            return self._model_binpath
-        return self.info_bundle.paths["binary"]
+    def model_executable(self) -> str:
+        """The path to the model executable"""
+        if self._model_executable is not None:
+            return self._model_executable
+        return self.info_bundle.executable
 
     @property
     def meta_cfg(self) -> dict:
@@ -739,7 +739,8 @@ class Multiverse:
             os.makedirs(backup_dir, exist_ok=True)
 
             copy2(
-                self.model_binpath, os.path.join(backup_dir, self.model_name)
+                self.model_executable,
+                os.path.join(backup_dir, self.model_name),
             )
             log.note("  Backed up executable.")
 
@@ -804,38 +805,38 @@ class Multiverse:
             FileNotFoundError: On missing file at model binary path
             PermissionError: On wrong access rights of file at the binary path
         """
-        binpath = self.info_bundle.paths["binary"]
+        execpath = self.model_executable
 
         # Make sure it exists and is executable
-        if not os.path.isfile(binpath):
+        if not os.path.isfile(execpath):
             raise FileNotFoundError(
                 "No file found at the specified binary "
                 "path for model '{}'! Did you build it?\n"
                 "Expected file at:  {}"
-                "".format(self.model_name, binpath)
+                "".format(self.model_name, execpath)
             )
 
-        elif not os.access(binpath, os.X_OK):
+        elif not os.access(execpath, os.X_OK):
             raise PermissionError(
                 "The specified binary for model '{}' is not "
                 "executable. Did you set the correct access "
                 "rights?\nBinary path:  {}"
-                "".format(self.model_name, binpath)
+                "".format(self.model_name, execpath)
             )
 
         if run_from_tmpdir:
             self._tmpdir = TemporaryDirectory(prefix=self.model_name)
-            tmp_binpath = os.path.join(
-                self._tmpdir.name, os.path.basename(binpath)
+            tmp_execpath = os.path.join(
+                self._tmpdir.name, os.path.basename(execpath)
             )
 
             log.info("Copying executable to temporary directory ...")
-            log.debug("  Original:   %s", binpath)
-            log.debug("  Temporary:  %s", tmp_binpath)
-            copy2(binpath, tmp_binpath)
-            binpath = tmp_binpath
+            log.debug("  Original:   %s", execpath)
+            log.debug("  Temporary:  %s", tmp_execpath)
+            copy2(execpath, tmp_execpath)
+            execpath = tmp_execpath
 
-        self._model_binpath = binpath
+        self._model_executable = execpath
 
     def _resolve_cluster_params(self) -> dict:  # TODO Outsource!
         """This resolves the cluster parameters, e.g. by setting parameters
@@ -950,7 +951,7 @@ class Multiverse:
             *,
             worker_kwargs: dict,
             model_name: str,
-            model_binpath: str,
+            model_executable: str,
             uni_cfg: dict,
             uni_basename: str,
         ) -> dict:
@@ -963,7 +964,7 @@ class Multiverse:
                 worker_kwargs (dict): the current status of the worker_kwargs
                     dictionary; is always passed to a task setup function
                 model_name (str): The name of the model
-                model_binpath (str): path to the binary to execute
+                model_executable (str): path to the binary to execute
                 uni_cfg (dict): the configuration to create a yml file from
                     which is then needed by the model
                 uni_basename (str): Basename of the universe to use for folder
@@ -999,7 +1000,7 @@ class Multiverse:
 
             # Build args tuple for task assignment; only need to pass the path
             # to the configuration file ...
-            args = (model_binpath, uni_cfg_path)
+            args = (model_executable, uni_cfg_path)
 
             # Generate a new worker_kwargs dict, carrying over the given ones
             wk = dict(
@@ -1023,7 +1024,7 @@ class Multiverse:
         # Create the dict that will be passed as arguments to setup_universe
         setup_kwargs = dict(
             model_name=self.model_name,
-            model_binpath=self.model_binpath,
+            model_executable=self.model_executable,
             uni_cfg=uni_cfg,
             uni_basename=uni_basename,
         )

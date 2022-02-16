@@ -12,7 +12,11 @@ from typing import Generator, Iterator, Tuple, Union
 
 from .._yaml import load_yml, write_yml
 from ..cfg import UTOPIA_CFG_DIR
-from ..exceptions import BundleExistsError, ModelRegistryError
+from ..exceptions import (
+    BundleExistsError,
+    BundleValidationError,
+    ModelRegistryError,
+)
 from ..tools import pformat
 from .info_bundle import TIME_FSTR, ModelInfoBundle
 
@@ -38,8 +42,8 @@ class ModelRegistryEntry:
         self._model_name = model_name
         self._registry_dir = registry_dir
 
-        self._labelled = dict()
-        self._unlabelled = list()
+        self._bundles = dict()
+        self._default_label = None
 
         # If no file exists for this entry, create empty one. Otherwise: load.
         if not os.path.exists(self.registry_file_path):
@@ -62,36 +66,68 @@ class ModelRegistryEntry:
 
     @property
     def model_name(self) -> str:
+        """Name of this model"""
         return self._model_name
 
     @property
     def registry_dir(self) -> str:
+        """The associated registry directory"""
         return self._registry_dir
 
     @property
     def registry_file_path(self) -> str:
-        return os.path.join(self.registry_dir, self.model_name + ".yml")
+        """The absolute path to the registry file"""
+        return os.path.join(self.registry_dir, f"{self.model_name}.yml")
+
+    @property
+    def default_label(self) -> str:
+        """The default label"""
+        return self._default_label
+
+    @default_label.setter
+    def default_label(self, val: Union[str, None]):
+        """Sets the default label value. If None, there will be no default."""
+        if val is not None and val not in self.keys():
+            _avail = ", ".join(self.keys())
+            raise ValueError(
+                f"Given info bundle label '{val}' for the '{self.model_name}' "
+                "model does not exist and thus cannot be set as default!\n"
+                f"Available labels:  {_avail}"
+            )
+
+        self._default_label = val
+        log.debug("Set default label to '%s'", self.default_label)
+
+    @property
+    def default_bundle(self) -> ModelInfoBundle:
+        """Returns the default bundle, if set; raises if not"""
+        if self.default_label is not None:
+            return self._bundles[self.default_label]
+
+        raise ModelRegistryError(
+            f"No `default_label` set for {self}; "
+            "cannot return a default bundle!"
+        )
 
     # Magic methods ...........................................................
 
     def __len__(self) -> int:
-        """Returns total number of bundles, labelled and unlabelled."""
-        return len(self._labelled) + len(self._unlabelled)
+        """Returns number of registered bundles"""
+        return len(self._bundles)
 
-    def __contains__(self, obj) -> bool:
-        """Checks if the given _object_ is part of this registry entry.
-
-        Note that this does not check for keys!
-        """
-        return obj in self.values()
+    def __contains__(self, other: Union[ModelInfoBundle, str]) -> bool:
+        """Checks if the given object *or* key is part of this registry entry."""
+        if isinstance(other, str):
+            return other in self._bundles
+        return other in self.values()
 
     def __str__(self) -> str:
-        return "<{} for '{}' model; {} bundle{} ({} labelled)>" "".format(
+        return "<{} '{}'; {} bundle{}, default: {}>".format(
             type(self).__name__,
             self.model_name,
             len(self),
             "s" if len(self) != 1 else "",
-            len(self._labelled),
+            self.default_label,
         )
 
     def __eq__(self, other) -> bool:
@@ -102,39 +138,42 @@ class ModelRegistryEntry:
 
     # Access ..................................................................
 
-    def __getitem__(self, key: Union[str, int]) -> ModelInfoBundle:
-        """Return a bundle for the given label or index. If None, returns the
-        tries to return the item.
+    def __getitem__(self, key: str) -> ModelInfoBundle:
+        """Return a bundle for the given label. If None, tries to return the
+        single registered item.
         """
-        if isinstance(key, int):
-            return self._unlabelled[key]
-
-        elif key is None:
-            return self.item()
-
-        else:
-            return self._labelled[key]
+        return self._bundles[key]
 
     def item(self) -> ModelInfoBundle:
-        """Retrieve the single bundle for this model, if not ambiguous."""
-        if len(self) != 1:
+        """Retrieve a single bundle for this model, if not ambiguous.
+
+        This will work only in two cases:
+            - If a default label is set, returns the corresponding bundle
+            - If there is only a single bundle availble, returns that one
+
+        Returns:
+            ModelInfoBundle: The unambiguously selectable model info bundle
+
+        Raises:
+            ModelRegistryError: In case the selection was ambiguous
+        """
+        if self.default_label is not None:
+            return self.default_bundle
+
+        elif len(self) != 1:
             raise ModelRegistryError(
-                f"Could not select single bundle from {self}, "
-                "because there are zero or more than one "
-                "bundles stored in it. Use __getitem__ "
-                "and the .available property instead."
+                f"Could not unambiguously select single bundle from {self}, "
+                "because no default was set or because the number of bundles "
+                "is not exactly one. "
+                "Define a `default_label` or use `__getitem__` to access a "
+                "bundle with a specific label."
             )
 
         return self[list(self.keys())[0]]
 
-    def keys(self) -> Iterator[Union[str, int]]:
-        """Returns legitimate keys for item access, i.e.: all registered keys.
-        Starts with labelled bundle names, continues with indices of unlabelled
-        bundles.
-        """
-        return chain(
-            sorted(self._labelled.keys()), range(len(self._unlabelled))
-        )
+    def keys(self) -> Iterator[str]:
+        """Returns keys for item access, i.e.: all registered keys"""
+        return self._bundles.keys()
 
     def values(self) -> Generator[ModelInfoBundle, None, None]:
         """Returns stored model config bundles, starting with labelled ones"""
@@ -153,8 +192,9 @@ class ModelRegistryEntry:
     def add_bundle(
         self,
         *,
-        label: str = None,
-        overwrite_label: bool = False,
+        label: str,
+        set_as_default: bool = None,
+        exists_action: str = "raise",
         update_registry_file: bool = True,
         **bundle_kwargs,
     ) -> ModelInfoBundle:
@@ -164,57 +204,81 @@ class ModelRegistryEntry:
         already existing bundle.
 
         Args:
-            label (str, optional): The label under which to add it. If None,
-                will be added as unlabelled.
-            overwrite_label (bool, optional): If True, overwrites an existing
-                bundle under the same label. This option does not affect
-                unlabelled bundles or registry file updates.
+            label (str): The label under which to add it.
+            set_as_default (bool, optional): If set, will mark this bundle
+                as the default value
+            exists_action (str, optional): What to do if the given ``label``
+                already exists:
+
+                * ``raise``: Do not add a new bundle and raise (default)
+                * ``skip``: Do not add a new bundle, instead return the exist
+                * ``overwrite``: Overwrite the existing bundle
+                * ``validate``: Make sure that the new bundle compares equal
+                    to the one that already exists.
+
             update_registry_file (bool, optional): Whether to write changes
                 directly to the registry file.
-            **bundle_kwargs: Passed on to construct the ModelInfoBundle that
-                is to be stored.
+            **bundle_kwargs: Passed on to construct the ``ModelInfoBundle``
+                that is to be stored.
 
         Raises:
-            ModelRegistryError: If exist_ok is False and such a bundle already
-                exists in this registry entry.
+            BundleExistsError: If ``label`` already exists and
+                ``exists_action`` was set to ``raise``.
+            BundleValidationError: If ``validate`` was given but the bundle
+                already stored under the given ``label`` does not compare
+                equal to the to-be-added bundle.
         """
+        EXISTS_ACTIONS = ("raise", "skip", "overwrite", "validate")
+
+        if not isinstance(label, str):
+            raise TypeError(
+                "The label for a model info bundle needs to be a string, "
+                f"but was {type(label)} {label}!"
+            )
+
+        if exists_action not in EXISTS_ACTIONS:
+            raise ValueError(
+                f"Invalid `exists_action` '{exists_action}'! "
+                f"Possible values: {', '.join(EXISTS_ACTIONS)}"
+            )
+
         bundle = ModelInfoBundle(model_name=self.model_name, **bundle_kwargs)
 
-        if bundle in self:
-            raise BundleExistsError(
-                "A bundle that compared equal to the to-be-added bundle "
-                f"already exists in {self}! Not adding it again.\n{bundle}"
-            )
-            # TODO should this warn instead of raising?!
+        if label in self:
+            if exists_action == "skip":
+                log.caution(
+                    "A bundle labelled '%s' already exists; not adding.", label
+                )
+                return self[label]
 
-        # Depending on whether a label was specified, decide on the container
-        # to add the new bundle to.
-        if label is None:
-            log.debug(
-                "Adding unlabelled config bundle for model '%s' ...",
-                self.model_name,
-            )
-            self._unlabelled.append(bundle)
+            elif exists_action == "validate":
+                if self[label] != bundle:
+                    raise BundleValidationError(
+                        f"Bundle validation failed for label '{label}'! "
+                        "The to-be-added bundle did not compare equal to the "
+                        "bundle that already exists under that label."
+                    )
 
-        else:
-            if isinstance(label, int):
-                raise TypeError(
-                    "Argument label for model registry entry "
-                    f"'{self.model_name}' may not be an int!"
+                log.debug("Validation successful for label '%s'.", label)
+                return self[label]
+
+            elif exists_action == "overwrite":
+                pass
+
+            else:  # "raise"
+                raise BundleExistsError(
+                    f"An info bundle with label '{label}' already exists in "
+                    f"{self}! Set `exists_action` to 'overwrite', 'skip', or "
+                    "'validate' to no longer trigger this error."
                 )
 
-            if not overwrite_label and label in self._labelled:
-                raise ModelRegistryError(
-                    f"A bundle with label '{label}' already "
-                    f"exists in {self}! Remove it first."
-                )
+        log.debug(
+            "Adding bundle '%s' for model '%s' ...", label, self.model_name
+        )
+        self._bundles[label] = bundle
 
-            log.debug(
-                "Adding labelled config bundle '%s' for model '%s' ...",
-                label,
-                self.model_name,
-            )
-            self._labelled[label] = bundle
+        if set_as_default:
+            self.default_label = label
 
         if update_registry_file:
             self._update_registry_file()
@@ -222,26 +286,18 @@ class ModelRegistryEntry:
         return bundle
 
     def pop(
-        self, key: Union[str, int], *, update_registry_file: bool = True
+        self, key: str, *, update_registry_file: bool = True
     ) -> ModelInfoBundle:
         """Pop a configuration bundle from this entry."""
-        if isinstance(key, int):
-            log.debug(
-                "Popping unlabelled config bundle from index %d of "
-                "registry entry for model '%s' ...",
-                key,
-                self.model_name,
-            )
-            bundle = self._unlabelled.pop(key)
+        log.debug(
+            "Removing bundle '%s' from registry entry for model '%s' ...",
+            key,
+            self.model_name,
+        )
+        bundle = self._bundles.pop(key)
 
-        else:
-            log.debug(
-                "Removing labelled config bundle '%s' from registry "
-                "entry for model '%s' ...",
-                key,
-                self.model_name,
-            )
-            bundle = self._labelled.pop(key)
+        if key == self.default_label:
+            self.default_label = None
 
         if update_registry_file:
             self._update_registry_file()
@@ -250,8 +306,8 @@ class ModelRegistryEntry:
 
     def clear(self, *, update_registry_file: bool = True):
         """Removes all configuration bundles from this entry."""
-        self._labelled = dict()
-        self._unlabelled = list()
+        self._bundles = dict()
+        self.default_label = None
 
         if update_registry_file:
             self._update_registry_file()
@@ -267,8 +323,8 @@ class ModelRegistryEntry:
 
         except Exception as exc:
             raise type(exc)(
-                "Failed loading model registry file from {}!"
-                "".format(self.registry_file_path)
+                "Failed loading model registry file "
+                f"from {self.registry_file_path}!"
             ) from exc
 
         # Loaded successfully
@@ -283,11 +339,9 @@ class ModelRegistryEntry:
             )
 
         # Populate self. Need not update because content is freshly loaded.
-        bundles = obj.get("cfg_bundles", {})
-        for kwargs in bundles.get("unlabelled", []):
-            self.add_bundle(**kwargs, update_registry_file=False)
-
-        for label, kwargs in bundles.get("labelled", {}).items():
+        self._default_label = obj.get("default_label")
+        bundles = obj.get("info_bundles", {})
+        for label, kwargs in bundles.items():
             self.add_bundle(label=label, **kwargs, update_registry_file=False)
 
     def _update_registry_file(self, *, overwrite_existing: bool = True) -> str:
@@ -322,8 +376,8 @@ class ModelRegistryEntry:
             )
 
         # Write to separate location; move only after write was successful.
-        write_yml(self, path=fpath + ".tmp")
-        os.replace(fpath + ".tmp", fpath)
+        write_yml(self, path=f"{fpath}.tmp")
+        os.replace(f"{fpath}.tmp", fpath)
         # NOTE fpath need not exist for os.replace to work
 
         log.debug("Successfully stored %s at %s.", self, fpath)
@@ -335,9 +389,8 @@ class ModelRegistryEntry:
         """Return a copy of the dict representation of this object"""
         d = dict(
             model_name=obj.model_name,
-            cfg_bundles=dict(
-                labelled=obj._labelled, unlabelled=obj._unlabelled
-            ),
+            info_bundles=obj._bundles,
+            default_label=obj.default_label,
         )
         return copy.deepcopy(d)
 

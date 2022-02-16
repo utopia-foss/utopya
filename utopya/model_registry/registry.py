@@ -13,7 +13,7 @@ import dantro.utils
 from .._yaml import load_yml, write_yml, yaml
 from ..cfg import UTOPIA_CFG_DIR
 from ..exceptions import BundleExistsError
-from ..tools import pformat, recursive_update
+from ..tools import make_columns, pformat, recursive_update
 from .entry import ModelRegistryEntry
 
 log = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class ModelRegistry:
     # Information .............................................................
 
     def __str__(self) -> str:
-        return "<Utopia Model Registry; {} model{} registered>" "".format(
+        return "<Utopia Model Registry; {} model{} registered>".format(
             len(self), "s" if len(self) != 1 else ""
         )
 
@@ -115,7 +115,8 @@ class ModelRegistry:
         )
 
         for model_name, entry in self.items():
-            lines.append(f"  - {model_name:19s} {entry}")
+            info = f"{len(entry)} bundle(s), default: {entry.default_label}"
+            lines.append(f"  - {model_name:19s} {info}")
 
         return "\n".join(lines)
 
@@ -146,14 +147,14 @@ class ModelRegistry:
             return self._registry[model_name]
 
         except KeyError as err:
-            _avail = ", ".join(self.keys())  # TODO columns?!
             raise ValueError(
                 f"No model with name '{model_name}' found! Did you forget "
-                f"to register it?\nAvailable models: {_avail}"
+                f"to register it?\nAvailable models:\n"
+                f"{make_columns(self.keys())}"
             ) from err
 
     def register_model_info(
-        self, model_name: str, *, exists_action: str = None, **bundle_kwargs
+        self, model_name: str, **bundle_kwargs
     ) -> ModelRegistryEntry:
         """Register information for a single model. This method also allows to
         create a new entry if a model does not exist.
@@ -163,74 +164,16 @@ class ModelRegistry:
 
         Args:
             model_name (str): The name of the model to register
-            exists_action (str, optional): The action to take when a model of
-                the given name already exists. Possible values:
-
-                    * ``None``: Continue with registering the info bundle; note
-                        that this might still lead to errors if the exact same
-                        bundle already exists.
-                    * ``skip``: Skip bundle registration
-                    * ``raise``: Raise an error
-                    * ``clear``: Clear all existing bundles
-                        from the corresponding model registry entry.
-                    * ``validate``: Makes sure the bundle that will be created
-                        from the given kwargs is part of the registry entry.
-
-            **bundle_kwargs: Passed on to ModelRegistryEntry.add_bundle
+            **bundle_kwargs: Passed on to ``ModelRegistryEntry.add_bundle``
 
         Returns:
             ModelRegistryEntry: The registry entry for this model.
-
-        Raises:
-            ValueError: On ``exists_action == 'raise'`` and model already
-                existing.
         """
-        ACTIONS = ("skip", "raise", "clear", "validate")
-
-        if exists_action and exists_action not in ACTIONS:
-            _avail = ", ".join(ACTIONS)
-            raise ValueError(
-                f"Invalid value for argument exists_action: '{exists_action}'!"
-                f" Possible actions: None, {_avail}."
-            )
-
-        # Register the model, if not already done
         if model_name not in self:
             self._add_entry(model_name)
 
-        # Handle the exists_action argument
-        if exists_action == "skip":
-            log.debug(
-                "Model '%s' already registered. Skipping ...", model_name
-            )
-            return self[model_name]
-
-        elif exists_action == "clear":
-            log.debug(
-                "Removing existing configuration bundles for model "
-                "'%s' ...",
-                model_name,
-            )
-            self[model_name].clear()
-
-        elif exists_action == "raise":
-            raise ValueError(
-                f"A registry entry for model '{model_name}' already exists! "
-                "To add a configuration bundle to it, use its "
-                "add_bundle method or set the exists_action "
-                "argument to control the behaviour."
-            )
-
-        # If this point is reached, a bundle is also to be added.
         if bundle_kwargs:
-            try:
-                self[model_name].add_bundle(**bundle_kwargs)
-
-            except BundleExistsError:
-                # The exact same bundle already exists; this is the validation.
-                if exists_action != "validate":
-                    # ... but it was not to be validated. Raise.
-                    raise
+            self[model_name].add_bundle(**bundle_kwargs)
 
         # To be consistent with cases where no bundle is added, return the
         # entry, not the newly added bundle
@@ -249,10 +192,10 @@ class ModelRegistry:
             entry = self._registry.pop(model_name)
 
         except KeyError as err:
-            _avail = ", ".join(self.keys())  # TODO columns?!
             raise ValueError(
                 f"Could not remove entry for model '{model_name}', because "
-                f"no such model is registered.\nAvailable models: {_avail}"
+                "no such model is registered.\nAvailable models:\n"
+                f"{make_columns(self.keys())}"
             ) from err
         else:
             log.info(

@@ -1,21 +1,20 @@
 """Tests the WorkerManager class"""
 
+import os
 import queue
 import time
 
 import numpy as np
-import pkg_resources
 import pytest
 
-from utopya.stopcond import SIG_STOPCOND
+from utopya.stop_conditions import SIG_STOPCOND
 from utopya.task import SIGMAP
 from utopya.workermanager import WorkerManager, WorkerManagerTotalTimeout
 from utopya.yaml import load_yml
 
-# Some constants
-STOP_CONDS_PATH = pkg_resources.resource_filename(
-    "tests", "cfg/stop_conds.yml"
-)
+from . import get_cfg_fpath
+
+STOP_CONDS_PATH = get_cfg_fpath("stop_conds.yml")
 
 # Fixtures --------------------------------------------------------------------
 @pytest.fixture
@@ -112,57 +111,60 @@ def sc_run_kws():
 
 
 def test_init():
-    """Tests whether initialisation succeeds"""
-    # Test different `num_workers` arguments
+    """Tests whether initialization succeeds"""
     WorkerManager()
-    WorkerManager(num_workers="auto")
-    WorkerManager(num_workers=-1)
-    WorkerManager(num_workers=1)
 
-    with pytest.warns(UserWarning, match="Set WorkerManager to use more"):
-        # too many workers
-        WorkerManager(num_workers=1000)
-
-    with pytest.raises(ValueError, match="Need positive integer"):
-        # Not positive
-        WorkerManager(num_workers=0)
-
-    with pytest.raises(
-        ValueError, match="Received invalid argument `num_workers`"
-    ):
-        # Too negative
-        WorkerManager(num_workers=-1000)
-
-    with pytest.raises(ValueError, match="Need positive integer"):
-        # not int
-        WorkerManager(num_workers=1.23)
-
-    # Test different `poll_delay` arguments
+    # Test different `poll_delay` arguments: negative and small value
     with pytest.raises(ValueError):
-        # negative
         WorkerManager(num_workers=1, poll_delay=-1000)
 
     with pytest.warns(UserWarning):
-        # small value
         WorkerManager(num_workers=1, poll_delay=0.001)
 
-    # Test initialisation with different nonzero_exit_handling values
+    # Test initialization with different `nonzero_exit_handling` values
     WorkerManager(nonzero_exit_handling="ignore")
     WorkerManager(nonzero_exit_handling="warn")
     WorkerManager(nonzero_exit_handling="raise")
     with pytest.raises(ValueError, match="`nonzero_exit_handling` needs to"):
         WorkerManager(nonzero_exit_handling="invalid")
 
-    # Test initialisation with an (invalid) Reporter type
+    # Test initialization with an (invalid) Reporter type
     with pytest.raises(TypeError, match="Need a WorkerManagerReporter"):
         WorkerManager(reporter="not_a_reporter")
     # NOTE the tests with the actual WorkerManagerReporter can be found in
-    # test_reporter.py, as they require adequate initialisation arguments
+    # test_reporter.py, as they require adequate initialization arguments
     # for which it would make no sense to make them available here
 
     # Test passing report specifications
     wm = WorkerManager(rf_spec=dict(foo="bar"))
     assert wm.rf_spec["foo"] == "bar"
+
+
+def test_num_workers():
+    """Tests the num_workers property"""
+    # Defaults to CPU count
+    wm = WorkerManager()
+    assert wm.num_workers == os.cpu_count()
+    assert wm.num_workers == WorkerManager(num_workers="auto").num_workers
+
+    wm = WorkerManager(num_workers=1)
+    assert wm.num_workers == 1
+
+    # Can pass negative values, which are added to the CPU count
+    wm = WorkerManager(num_workers=-1)
+    assert wm.num_workers == max(1, os.cpu_count() - 1)
+
+    # High number of workers will emit a warning
+    with pytest.warns(UserWarning, match="Set WorkerManager to use more"):
+        WorkerManager(num_workers=1000)
+
+    # Too negative values are clipped to 1
+    wm = WorkerManager(num_workers=-1000)
+    assert wm.num_workers == 1
+
+    # Other exceptions
+    with pytest.raises(TypeError, match="Expected integer or string"):
+        WorkerManager(num_workers=1.23)
 
 
 def test_add_tasks(wm, sleep_task):

@@ -61,8 +61,18 @@ test:py38:
   needs: []
   before_script:
     - pip3 install .[dev]
+    #
+    # Register all demo models
+    - cd demo/models
+    - utopya models register from-manifest **/*_info.yml
+    - cd ${CI_PROJECT_DIR}
   script:
-    - python tests/run.py -v --cov=utopya --cov-report=term-missing --cov-report=xml --durations=10 --junitxml=report.xml tests/.
+    - python tests/run.py -v
+        --durations=10
+        --cov=utopya --cov=utopya_cli
+        --cov-report=term-missing --cov-report=xml
+        --junitxml=report.xml
+        tests/.
 
 test:py39:
   extends: test:py38

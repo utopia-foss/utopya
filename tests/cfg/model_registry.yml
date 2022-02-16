@@ -5,17 +5,22 @@ ModelInfoBundle_path_parsing:
   minimal: &minimal
     model_name: some_model_name
     paths: &minimal_paths
-      binary: /some/abs/path
-      default_cfg: /some/abs/path
+      executable: /some/abs/path
 
-  with_src_dir:
+  with_default_cfg:
     <<: *minimal
     paths:
       <<: *minimal_paths
-      src_dir: /some/src/dir
+      default_cfg: /some/abs/path.yml
+
+  with_source_dir:
+    <<: *minimal
+    paths:
+      <<: *minimal_paths
+      source_dir: /some/src/dir
       default_cfg: some/rel/path
 
-  without_src_dir_but_with_paths_rel_to_src_dir:
+  without_source_dir_but_with_paths_rel_to_source_dir:
     <<: *minimal
     _raises: ValueError
     _match: no source directory was specified
@@ -29,16 +34,16 @@ ModelInfoBundle_path_parsing:
     _match: "unexpected keys: one_more_path"
     paths:
       <<: *minimal_paths
-      src_dir: /some/src/dir
+      source_dir: /some/src/dir
       one_more_path: ~/foo
 
   with_more_paths_not_abs:
     <<: *minimal
     _raises: ValueError
-    _match: was not absolute
+    _match: was relative
     paths:
       <<: *minimal_paths
-      src_dir: /some/src/dir
+      source_dir: /some/src/dir
       one_more_path: not/an/abs/path
 
   missing_path_action_ignore:
@@ -56,7 +61,7 @@ ModelInfoBundle_path_parsing:
   missing_path_action_raise:
     <<: *minimal
     _raises: ValueError
-    _match: Given 'default_cfg' path for model 'some_model_name' does not exist
+    _match: Given 'executable' path for model 'some_model_name' does not exist
     missing_path_action: raise
 
   bad_missing_path_action:
