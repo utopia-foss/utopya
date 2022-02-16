@@ -63,4 +63,8 @@ class ModelRegistryError(UtopyaException, ValueError):
 
 
 class BundleExistsError(ModelRegistryError):
-    """Raised when a bundle that compared equal already exists."""
+    """Raised when a bundle that compared equal already exists"""
+
+
+class BundleValidationError(ModelRegistryError):
+    """Raised when the result of validating the existence of a bundle fails"""

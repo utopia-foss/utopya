@@ -7,16 +7,16 @@ import click
 from .models import *
 
 
-@click.group()
-def utopya():
+@click.group(help="The utopya CLI")
+def cli():
     pass
 
 
-utopya.add_command(models)
+cli.add_command(models)
 
 # -- TODO: migrate to their own module ----------------------------------------
 
 
-@utopya.group(help="Manage projects")
+@cli.group(help="Manage projects")
 def projects():
     pass

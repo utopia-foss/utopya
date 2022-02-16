@@ -12,7 +12,7 @@ from typing import Generator, Iterator, Tuple, Union
 
 from .._yaml import load_yml, write_yml
 from ..cfg import UTOPIA_CFG_DIR
-from ..exceptions import BundleExistsError, ModelRegistryError
+from ..exceptions import BundleValidationError, ModelRegistryError
 from ..tools import pformat
 from .info_bundle import TIME_FSTR, ModelInfoBundle
 
@@ -111,11 +111,11 @@ class ModelRegistryEntry:
         """Returns number of registered bundles"""
         return len(self._bundles)
 
-    def __contains__(self, obj: Union[ModelInfoBundle, str]) -> bool:
+    def __contains__(self, other: Union[ModelInfoBundle, str]) -> bool:
         """Checks if the given object *or* key is part of this registry entry."""
-        if isinstance(obj, str):
-            return obj in self.keys()
-        return obj in self.values()
+        if isinstance(other, str):
+            return other in self._bundles
+        return other in self.values()
 
     def __str__(self) -> str:
         return "<{} '{}'; {} bundle{}, default: {}>".format(
@@ -191,6 +191,7 @@ class ModelRegistryEntry:
         label: str,
         set_as_default: bool = None,
         overwrite: bool = False,
+        validate: bool = False,
         update_registry_file: bool = True,
         **bundle_kwargs,
     ) -> ModelInfoBundle:
@@ -205,6 +206,10 @@ class ModelRegistryEntry:
                 as the default value
             overwrite (bool, optional): If True, overwrites an existing bundle
                 that may be registered under the same label.
+            validate (bool, optional): If True, will check if an identical
+                bundle with the same label already exists and, if so, will
+                return the already existing one. The ``overwrite`` argument
+                will be ignored in such a case.
             update_registry_file (bool, optional): Whether to write changes
                 directly to the registry file.
             **bundle_kwargs: Passed on to construct the ``ModelInfoBundle``
@@ -213,8 +218,9 @@ class ModelRegistryEntry:
         Raises:
             ModelRegistryError: If ``overwrite`` is False and a bundle with
                 the given ``label`` already exists.
-            BundleExistsError: If the to-be-added bundle is already registered,
-                potentially under a different label.
+            BundleValidationError: If ``validate`` was given but the bundle
+                already stored under the given ``label`` does not compare
+                equal to the to-be-added bundle.
         """
         if not isinstance(label, str):
             raise TypeError(
@@ -224,19 +230,24 @@ class ModelRegistryEntry:
 
         bundle = ModelInfoBundle(model_name=self.model_name, **bundle_kwargs)
 
-        if bundle in self:
-            raise BundleExistsError(
-                "A bundle that compared equal to the to-be-added bundle "
-                f"already exists in {self}! Not adding it again.\n\n{bundle}"
-            )
+        if label in self:
+            if validate:
+                if self[label] != bundle:
+                    raise BundleValidationError(
+                        f"Bundle validation failed for label '{label}'! "
+                        "The to-be-added bundle did not compare equal to the "
+                        "bundle that already exists under that label."
+                    )
 
-        # Add the bundle
-        if not overwrite and label in self.keys():
-            raise ModelRegistryError(
-                f"A different info bundle with label '{label}' already "
-                f"exists in {self}! "
-                "Set the `overwrite` flag to overwrite the existing one."
-            )
+                log.debug("Validation successful for label '%s'.", label)
+                return self[label]
+
+            elif not overwrite:
+                raise ModelRegistryError(
+                    f"A different info bundle with label '{label}' already "
+                    f"exists in {self}! "
+                    "Set the `overwrite` flag to overwrite the existing one."
+                )
 
         log.debug(
             "Adding bundle '%s' for model '%s' ...", label, self.model_name

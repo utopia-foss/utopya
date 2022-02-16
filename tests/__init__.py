@@ -1,7 +1,8 @@
-"""utopya tests"""
+"""utopya test suite"""
 
 # Set default log level to DEBUG
 import logging
+import os
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -18,6 +19,9 @@ DUMMY_MODEL = "MinimalModel"
 
 ADVANCED_MODEL = "MinimalModel"  # FIXME
 """Model to use for testing advanced functionality"""
+
+DEMO_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), "../demo"))
+"""Directory the demo models are located in"""
 
 # Simplify importing config files used in tests
 from pkg_resources import resource_filename

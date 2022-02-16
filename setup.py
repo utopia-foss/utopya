@@ -97,7 +97,7 @@ setup(
     # Command line scripts
     entry_points={
         "console_scripts": [
-            "utopya = utopya_cli.cli:utopya",
+            "utopya = utopya_cli.cli:cli",
             "utopia = utopya_cli.legacy:cli",  # FIXME Remove once migrated
         ],
     },

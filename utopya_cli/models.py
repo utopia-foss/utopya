@@ -22,12 +22,16 @@ models = click.Group(
     help="Lists registered models",
 )
 @click.option(
-    "-l/--long", is_flag=True, help="Show more detailed information."
+    "-l",
+    "--long",
+    "long_mode",
+    is_flag=True,
+    help="Show more detailed information.",
 )
-def list_models(l: bool):
+def list_models(long_mode: bool):
     import utopya
 
-    if l:
+    if long_mode:
         click.echo(utopya.MODELS.info_str_detailed)
     else:
         click.echo(utopya.MODELS.info_str)
@@ -38,13 +42,48 @@ def list_models(l: bool):
 
 @models.command(
     name="rm",
-    help="Removes individual info bundles or whole model registry entries",
+    help="Removes info bundles from individual models",
 )
 @click.argument("model_name")
-@click.option("--all")
-def remove_model_or_bundle():
-    Echo.progress("Removing ...")
-    raise NotImplementedError("removing models or bundles")
+@click.option(
+    "--label",
+    type=str,
+    default=None,
+    help="The label of the info bundle to remove from the registry entry",
+)
+@click.option(
+    "-a",
+    "--all",
+    "remove_all",
+    is_flag=True,
+    help="If set, removes all info bundles and deletes the registry entry",
+)
+def remove_model_or_bundle(*, model_name: str, label: str, remove_all: bool):
+    import utopya
+
+    if not remove_all:
+        if not label:
+            _avail = ", ".join(utopya.MODELS[model_name].keys())
+            Echo.info(f"Available bundles for model '{model_name}':  {_avail}")
+            label = click.prompt("Which bundle would you like to remove?")
+
+        Echo.info(
+            f"Removing info bundle '{label}' for model '{model_name}'..."
+        )
+        utopya.MODELS[model_name].pop(label)
+        Echo.success(
+            f"Info bundle labelled '{label}' removed "
+            f"from registry entry of model '{model_name}'."
+        )
+
+    else:
+        Echo.info(f"Removing registry entry for model '{model_name}'...")
+        if not click.confirm("Are you sure?"):
+            Echo.info("Not removing anything.")
+            sys.exit(0)
+
+        utopya.MODELS.remove_entry(model_name)
+        Echo.success(f"Registry entry for model '{model_name}' removed.")
 
 
 # .. utopya models edit .......................................................
@@ -58,15 +97,15 @@ def edit(*, model_name: str):
     import utopya
 
     Echo.warning("Take care not to corrupt the file!")
-    if not click.confirm("Continue?"):
-        Echo.info("Not continuing.")
+    if not click.confirm("Open file for editing?"):
+        Echo.info("Not opening.")
         sys.exit(0)
 
     try:
         click.edit(filename=utopya.MODELS[model_name].registry_file_path)
 
     except Exception as exc:
-        Echo.failure("Editing model registry file failed!", error=exc)
+        Echo.error("Editing model registry file failed!", error=exc)
         sys.exit(1)
 
     Echo.success(f"Successully edited registry file of '{model_name}' model.")
@@ -111,6 +150,7 @@ models.add_command(register)
 )
 @click.argument("model_name")
 @click.option(
+    "-e",
     "--executable",
     required=True,
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
@@ -221,12 +261,25 @@ def register_single(
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
 )
 @click.option(
-    "--label",
+    "--model-name",
+    "custom_model_name",
     type=click.STRING,
-    default="from_manifest_file",
+    default=None,
     help=(
-        "A fallback label to use if a manifest file does not specify the "
-        "label. Will be ignored if there is a `label` entry in the manifest."
+        "If only a single manifest file is given, this option can be used to "
+        "specify the model name, ignoring the one given in the manifest file."
+    ),
+)
+@click.option(
+    "--label",
+    "custom_label",
+    type=click.STRING,
+    default=None,
+    help=(
+        "If given, this label will be used instead of the one given in the "
+        "manifest file(s). "
+        "If no custom label is given and the manifest file does not define "
+        "one either, the default will be 'from_manifest_file'."
     ),
 )
 @click.option(
@@ -249,11 +302,24 @@ def register_single(
 def register_from_manifest(
     *,
     manifest_files: Tuple[str],
+    custom_model_name: str,
+    custom_label: str,
     validate: bool,
     overwrite: bool,
-    label: str,
 ):
     """Registers one or many models using manifest files"""
+    if custom_model_name and len(manifest_files) != 1:
+        Echo.error(
+            "A model name can only be specified if only a single "
+            f"manifest file is given (got {len(manifest_files)}). "
+        )
+        Echo.info(
+            "Either remove the `--model-name` argument or make sure to pass "
+            "only a single manifest file."
+        )
+        sys.exit(1)
+
+    # All checks done, let's go
     Echo.info(
         f"Parsing information from {len(manifest_files)} manifest file(s) ..."
     )
@@ -262,15 +328,24 @@ def register_from_manifest(
     for manifest_file in manifest_files:
         bundle_kwargs = utopya.tools.load_yml(manifest_file)
 
+        # Handle custom model name or label
+        # TODO Communicate
         model_name = bundle_kwargs.pop("model_name")
-        label = bundle_kwargs.pop("label", label)
+        if custom_model_name:
+            model_name = custom_model_name
 
+        label = bundle_kwargs.pop("label", "from_manifest_file")
+        if custom_label:
+            label = custom_label
+
+        # Store manifest file in paths dict
         utopya.tools.add_item(
             manifest_file,
             add_to=bundle_kwargs,
             key_path=("paths", "model_info"),
         )
 
+        # Can now register
         utopya.MODELS.register_model_info(
             model_name,
             label=label,
