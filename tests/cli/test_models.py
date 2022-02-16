@@ -75,8 +75,29 @@ def test_list():
 
 
 def test_register_single(registry):
-    """Tests utopya models register single"""
-    pass
+    """Tests utopya models register single
+
+    NOTE The fixture already performs some of the tests
+    """
+    DUMMY_EXECUTABLE = os.path.join(
+        DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}.py"
+    )
+    reg_args = (
+        "models",
+        "register",
+        "single",
+        TEST_MODEL,
+        "-e",
+        DUMMY_EXECUTABLE,
+    )
+    reg_args += ("--label", "some_label")  # already exists
+    reg_args += ("--source-dir", "./")
+
+    res = invoke_cli(reg_args)
+    print(res.output)
+    assert res.exit_code != 0
+    assert "Failed registering" in res.output
+    assert "Bundle validation failed" in res.output
 
 
 def test_register_from_manifest(registry):
@@ -93,12 +114,28 @@ def test_register_from_manifest(registry):
     assert res.exit_code == 0
     assert "from_manifest_file" in res.output
 
-    reg_args += ("--label", "custom_label")
-    res = invoke_cli(reg_args)
+    # With custom label
+    extd_reg_args = reg_args + ("--label", "custom_label")
+    res = invoke_cli(extd_reg_args)
     print(res.output)
     assert res.exit_code == 0
     assert "from_manifest_file" not in res.output
     assert "custom_label" in res.output
+    assert "custom_label" in registry[TEST_MODEL]
+
+    # With custom model name
+    extd_reg_args += ("--model-name", "MyCustomModelName")
+    res = invoke_cli(extd_reg_args)
+    print(res.output)
+    assert len(registry["MyCustomModelName"]) == 1
+    assert "custom_label" in registry["MyCustomModelName"]
+    registry.remove_entry("MyCustomModelName")
+
+    # Custom model name fails with more than one manifest file
+    res = invoke_cli(extd_reg_args + (DUMMY_INFO,))
+    print(res.output)
+    assert res.exit_code != 0
+    assert "can only be specified if only a single manifest file" in res.output
 
 
 def test_remove(registry):
@@ -131,6 +168,17 @@ def test_remove(registry):
     print(res.output)
     assert res.exit_code == 0
     assert TEST_MODEL not in registry
+
+
+def test_set_default(registry):
+    """Tests utopya models set-default"""
+    assert registry[TEST_MODEL].default_label is None
+
+    res = invoke_cli(("models", "set-default", TEST_MODEL, "some_label"))
+    print(res.output)
+    assert res.exit_code == 0
+    assert "some_label" in res.output
+    assert registry[TEST_MODEL].default_label == "some_label"
 
 
 def test_edit():

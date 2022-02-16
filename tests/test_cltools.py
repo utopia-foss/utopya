@@ -143,7 +143,7 @@ def test_register_models(tmp_model_registry, tmp_cfg_dir, tmpdir):
     args.source_dir = "src/foo;src/bar"
     args.base_source_dir = tmpdir.join("base_src")
     args.base_executable_dir = tmpdir.join("base_exec")
-    args.exists_action = None
+    args.exists_action = "validate"
     args.label = "test_label"
     args.overwrite_label = False
     args.project_name = "ProjectName"

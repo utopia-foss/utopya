@@ -191,12 +191,13 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
     with pytest.raises(ModelRegistryError, match="Could not unambiguously"):
         e.item()
 
-    # Adding one that already exists does not work
-    with pytest.raises(ModelRegistryError, match="compared equal"):
-        e.add_bundle(
-            label="a_new_label", **mib_kwargs, some_val=123
-        )  # already exist
-    assert len(e) == 2
+    # Can also add a bundle that already exists (compares equal) if using
+    # a different label
+    e.add_bundle(label="a_new_label", **mib_kwargs, some_val=123)
+    assert len(e) == 3
+    assert e["a_new_label"] == e["first"]
+    e.pop("a_new_label")
+    assert "a_new_label" not in e
 
     # Bad label type
     with pytest.raises(TypeError, match="needs to be a string"):
@@ -204,11 +205,13 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
     assert len(e) == 2
 
     # Already existing bundles are only overwritten if explicitly allowed
-    with pytest.raises(ModelRegistryError, match="already exists"):
-        e.add_bundle(label="second", **mib_kwargs, some_val=345)
+    with pytest.raises(BundleExistsError, match="already exists"):
+        e.add_bundle(label="first", **mib_kwargs, some_val=345)
     assert len(e) == 2
 
-    e.add_bundle(label="second", **mib_kwargs, some_val=345, overwrite=True)
+    e.add_bundle(
+        label="second", **mib_kwargs, some_val=345, exists_action="overwrite"
+    )
     assert len(e) == 2
 
     # Popping elements
@@ -309,7 +312,7 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
 
     # Try to add it again; should be skipped
     assert entry2 is mr.register_model_info(
-        "model2", exists_action="skip", label="some_label"
+        "model2", exists_action="skip", label="some_label", **mib_kwargs
     )
     assert len(entry2) == 1
     assert len(mr) == 2
@@ -324,11 +327,12 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
     )
     assert len(entry2) == 1
 
-    # Adding it again, though, will fail, as it already exists
-    with pytest.raises(BundleExistsError):
-        mr.register_model_info(
-            "model2", label="some_label", **mib_kwargs, some_val=123123
-        )
+    # Adding it again but with a different label
+    mr.register_model_info(
+        "model2", label="another_label", **mib_kwargs, some_val=123123
+    )
+    assert len(entry2) == 2
+    entry2.pop("another_label")
     assert len(entry2) == 1
 
     # ...unless selected to validate it
@@ -348,8 +352,10 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
         )
 
     # Bad exists action
-    with pytest.raises(ValueError, match="Invalid value for argument exists_"):
-        mr.register_model_info("foo", exists_action="bad_value")
+    with pytest.raises(ValueError, match="Possible values: raise, skip"):
+        mr.register_model_info(
+            "foo", label="some_label", exists_action="bad_value"
+        )
 
     # String representation
     assert "bundle" not in mr.info_str

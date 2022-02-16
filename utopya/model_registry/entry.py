@@ -12,7 +12,11 @@ from typing import Generator, Iterator, Tuple, Union
 
 from .._yaml import load_yml, write_yml
 from ..cfg import UTOPIA_CFG_DIR
-from ..exceptions import BundleValidationError, ModelRegistryError
+from ..exceptions import (
+    BundleExistsError,
+    BundleValidationError,
+    ModelRegistryError,
+)
 from ..tools import pformat
 from .info_bundle import TIME_FSTR, ModelInfoBundle
 
@@ -190,8 +194,7 @@ class ModelRegistryEntry:
         *,
         label: str,
         set_as_default: bool = None,
-        overwrite: bool = False,
-        validate: bool = False,
+        exists_action: str = "raise",
         update_registry_file: bool = True,
         **bundle_kwargs,
     ) -> ModelInfoBundle:
@@ -204,34 +207,51 @@ class ModelRegistryEntry:
             label (str): The label under which to add it.
             set_as_default (bool, optional): If set, will mark this bundle
                 as the default value
-            overwrite (bool, optional): If True, overwrites an existing bundle
-                that may be registered under the same label.
-            validate (bool, optional): If True, will check if an identical
-                bundle with the same label already exists and, if so, will
-                return the already existing one. The ``overwrite`` argument
-                will be ignored in such a case.
+            exists_action (str, optional): What to do if the given ``label``
+                already exists:
+
+                * ``raise``: Do not add a new bundle and raise (default)
+                * ``skip``: Do not add a new bundle, instead return the exist
+                * ``overwrite``: Overwrite the existing bundle
+                * ``validate``: Make sure that the new bundle compares equal
+                    to the one that already exists.
+
             update_registry_file (bool, optional): Whether to write changes
                 directly to the registry file.
             **bundle_kwargs: Passed on to construct the ``ModelInfoBundle``
                 that is to be stored.
 
         Raises:
-            ModelRegistryError: If ``overwrite`` is False and a bundle with
-                the given ``label`` already exists.
+            BundleExistsError: If ``label`` already exists and
+                ``exists_action`` was set to ``raise``.
             BundleValidationError: If ``validate`` was given but the bundle
                 already stored under the given ``label`` does not compare
                 equal to the to-be-added bundle.
         """
+        EXISTS_ACTIONS = ("raise", "skip", "overwrite", "validate")
+
         if not isinstance(label, str):
             raise TypeError(
                 "The label for a model info bundle needs to be a string, "
                 f"but was {type(label)} {label}!"
             )
 
+        if exists_action not in EXISTS_ACTIONS:
+            raise ValueError(
+                f"Invalid `exists_action` '{exists_action}'! "
+                f"Possible values: {', '.join(EXISTS_ACTIONS)}"
+            )
+
         bundle = ModelInfoBundle(model_name=self.model_name, **bundle_kwargs)
 
         if label in self:
-            if validate:
+            if exists_action == "skip":
+                log.caution(
+                    "A bundle labelled '%s' already exists; not adding.", label
+                )
+                return self[label]
+
+            elif exists_action == "validate":
                 if self[label] != bundle:
                     raise BundleValidationError(
                         f"Bundle validation failed for label '{label}'! "
@@ -242,11 +262,14 @@ class ModelRegistryEntry:
                 log.debug("Validation successful for label '%s'.", label)
                 return self[label]
 
-            elif not overwrite:
-                raise ModelRegistryError(
-                    f"A different info bundle with label '{label}' already "
-                    f"exists in {self}! "
-                    "Set the `overwrite` flag to overwrite the existing one."
+            elif exists_action == "overwrite":
+                pass
+
+            else:  # "raise"
+                raise BundleExistsError(
+                    f"An info bundle with label '{label}' already exists in "
+                    f"{self}! Set `exists_action` to 'overwrite', 'skip', or "
+                    "'validate' to no longer trigger this error."
                 )
 
         log.debug(

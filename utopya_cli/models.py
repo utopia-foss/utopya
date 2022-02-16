@@ -185,20 +185,13 @@ models.add_command(register)
     ),
 )
 @click.option(
-    "--overwrite",
-    is_flag=True,
-    default=False,
-    help="If set, will allow overwriting an info bundle with the same label.",
-)
-@click.option(
-    "--validate/--no-validate",
-    is_flag=True,
-    default=True,
+    "--exists-action",
+    default="validate",
+    type=click.Choice(("skip", "raise", "validate", "overwrite")),
     help=(
-        "Whether to validate the given information against a potentially "
-        "existing info bundle with the same label. By default, validation is "
-        "enabled, making it simpler to ensure that an info bundle is part "
-        "of the selected model's registry entry."
+        "Which action to take upon an existing bundle with the same label. "
+        "By default, validates the to-be-added information against a "
+        "potentially existing bundle."
     ),
 )
 def register_single(
@@ -208,8 +201,7 @@ def register_single(
     source_dir: str,
     default_cfg: str,
     label: str,
-    overwrite: bool,
-    validate: bool,
+    exists_action: str,
 ):
     """Registers a new model"""
     Echo.info(f"Registering model '{model_name}' (label: {label})...")
@@ -219,7 +211,6 @@ def register_single(
 
     bundle_kwargs = dict(
         label=label,
-        overwrite=overwrite,
         paths=dict(
             executable=executable,
             default_cfg=default_cfg,
@@ -232,7 +223,7 @@ def register_single(
     try:
         utopya.MODELS.register_model_info(
             model_name,
-            exists_action=None if not validate else "validate",
+            exists_action=exists_action,
             **bundle_kwargs,
         )
 
@@ -283,20 +274,13 @@ def register_single(
     ),
 )
 @click.option(
-    "--overwrite",
-    is_flag=True,
-    default=False,
-    help="If set, will allow overwriting an info bundle with the same label.",
-)
-@click.option(
-    "--validate/--no-validate",
-    is_flag=True,
-    default=True,
+    "--exists-action",
+    default="validate",
+    type=click.Choice(("skip", "raise", "validate", "overwrite")),
     help=(
-        "Whether to validate the given information against a potentially "
-        "existing info bundle with the same label. By default, validation is "
-        "enabled, making it simpler to ensure that an info bundle is part "
-        "of the selected model's registry entry."
+        "Which action to take upon an existing bundle with the same label. "
+        "By default, validates the to-be-added information with a potentially "
+        "existing "
     ),
 )
 def register_from_manifest(
@@ -304,8 +288,7 @@ def register_from_manifest(
     manifest_files: Tuple[str],
     custom_model_name: str,
     custom_label: str,
-    validate: bool,
-    overwrite: bool,
+    exists_action: str,
 ):
     """Registers one or many models using manifest files"""
     if custom_model_name and len(manifest_files) != 1:
@@ -349,8 +332,7 @@ def register_from_manifest(
         utopya.MODELS.register_model_info(
             model_name,
             label=label,
-            exists_action=None if not validate else "validate",
-            overwrite=overwrite,
+            exists_action=exists_action,
             **bundle_kwargs,
         )
 
@@ -364,3 +346,4 @@ def register_from_manifest(
 
 
 # .. utopya models register batch .............................................
+# TODO
