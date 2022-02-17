@@ -253,12 +253,22 @@ class ModelRegistryEntry:
 
             elif exists_action == "validate":
                 if self[label] != bundle:
+                    import difflib
+
+                    diff = "\n".join(
+                        difflib.Differ().compare(
+                            pformat(self[label].as_dict).split("\n"),
+                            pformat(bundle.as_dict).split("\n"),
+                        )
+                    )
+
                     raise BundleValidationError(
                         f"Bundle validation failed for label '{label}'! "
                         "The to-be-added bundle did not compare equal to the "
-                        "bundle that already exists under that label.\nEither "
-                        "change the `exists_action` argument to 'overwrite' "
-                        "or make sure that the two bundles compare equal."
+                        "bundle that already exists under that label.\n"
+                        "Either change the `exists_action` argument to "
+                        "'overwrite' or make sure the bundles are equal; "
+                        f"their diff is as follows:\n\n{diff}"
                     )
 
                 log.debug("Validation successful for label '%s'.", label)

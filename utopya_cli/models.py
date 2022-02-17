@@ -354,6 +354,6 @@ def register_from_manifest(
             f"Successfully registered model information for '{model_name}', "
             f"labelled '{label}':"
         )
-        Echo.remark(utopya.tools.pformat(bundle_kwargs))
+        Echo.remark(utopya.tools.pformat(utopya.MODELS[model_name][label]))
 
     Echo.success(f"Model information registered successully.")

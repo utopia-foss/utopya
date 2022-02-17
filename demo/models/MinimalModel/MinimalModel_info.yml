@@ -34,7 +34,7 @@ metadata:
   license: LGPLv3+
   language: python3
   requirements:
+    - ruamel.yaml
     - numpy
     - h5py
-    - ruamel.yaml
   utopya_compatibility: ">=1.0.0a1"
