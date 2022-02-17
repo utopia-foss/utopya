@@ -36,4 +36,5 @@ metadata:
   requirements:
     - numpy
     - h5py
+    - ruamel.yaml
   utopya_compatibility: ">=1.0.0a1"

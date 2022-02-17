@@ -80,7 +80,7 @@ class ModelRegistryEntry:
         return os.path.join(self.registry_dir, f"{self.model_name}.yml")
 
     @property
-    def default_label(self) -> str:
+    def default_label(self) -> Union[str, None]:
         """The default label"""
         return self._default_label
 
@@ -122,7 +122,7 @@ class ModelRegistryEntry:
         return other in self.values()
 
     def __str__(self) -> str:
-        return "<{} '{}'; {} bundle{}, default: {}>".format(
+        return "<{} '{}'; {} bundle{}, default: '{}'>".format(
             type(self).__name__,
             self.model_name,
             len(self),
@@ -256,7 +256,9 @@ class ModelRegistryEntry:
                     raise BundleValidationError(
                         f"Bundle validation failed for label '{label}'! "
                         "The to-be-added bundle did not compare equal to the "
-                        "bundle that already exists under that label."
+                        "bundle that already exists under that label.\nEither "
+                        "change the `exists_action` argument to 'overwrite' "
+                        "or make sure that the two bundles compare equal."
                     )
 
                 log.debug("Validation successful for label '%s'.", label)
@@ -268,8 +270,9 @@ class ModelRegistryEntry:
             else:  # "raise"
                 raise BundleExistsError(
                     f"An info bundle with label '{label}' already exists in "
-                    f"{self}! Set `exists_action` to 'overwrite', 'skip', or "
-                    "'validate' to no longer trigger this error."
+                    f"{self}!\n"
+                    "Set `exists_action` to 'overwrite', 'skip', or "
+                    "'validate' to handle this error."
                 )
 
         log.debug(

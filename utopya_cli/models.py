@@ -235,6 +235,10 @@ def register_single(
         Echo.success(f"Successully registered model {model_name}.")
 
 
+# .. utopya models register batch .............................................
+# TODO This should implement the separator logic ...
+
+
 # .. utopya models register from-manifest .....................................
 
 
@@ -291,10 +295,12 @@ def register_from_manifest(
     exists_action: str,
 ):
     """Registers one or many models using manifest files"""
-    if custom_model_name and len(manifest_files) != 1:
+    num_files = len(manifest_files)
+
+    if custom_model_name and num_files != 1:
         Echo.error(
             "A model name can only be specified if only a single "
-            f"manifest file is given (got {len(manifest_files)}). "
+            f"manifest file is given (got {num_files}). "
         )
         Echo.info(
             "Either remove the `--model-name` argument or make sure to pass "
@@ -303,47 +309,51 @@ def register_from_manifest(
         sys.exit(1)
 
     # All checks done, let's go
-    Echo.info(
-        f"Parsing information from {len(manifest_files)} manifest file(s) ..."
-    )
+    Echo.info(f"Parsing information from {num_files} manifest file(s) ...")
     import utopya
 
-    for manifest_file in manifest_files:
+    for i, manifest_file in enumerate(manifest_files):
+        Echo.progress(
+            f"\nRegistering model from manifest file {i + 1} / {num_files} ..."
+        )
+        Echo.remark(f"File:  {manifest_file}")
+
         bundle_kwargs = utopya.tools.load_yml(manifest_file)
 
         # Handle custom model name or label
-        # TODO Communicate
         model_name = bundle_kwargs.pop("model_name")
         if custom_model_name:
+            Echo.note(f"Using custom model name '{custom_model_name}' ...")
             model_name = custom_model_name
 
         label = bundle_kwargs.pop("label", "from_manifest_file")
         if custom_label:
+            Echo.note(f"Using custom label '{custom_label}' ...")
             label = custom_label
 
-        # Store manifest file in paths dict
+        # Also add path to manifest file in the paths dict, such that the
+        # info bundle knows about it. Then register.
         utopya.tools.add_item(
             manifest_file,
             add_to=bundle_kwargs,
             key_path=("paths", "model_info"),
         )
+        try:
+            utopya.MODELS.register_model_info(
+                model_name,
+                label=label,
+                exists_action=exists_action,
+                **bundle_kwargs,
+            )
 
-        # Can now register
-        utopya.MODELS.register_model_info(
-            model_name,
-            label=label,
-            exists_action=exists_action,
-            **bundle_kwargs,
-        )
+        except Exception as exc:
+            Echo.error("Registration failed!", error=exc)
+            sys.exit(1)
 
-        Echo.progress(
-            f"Registered model information for '{model_name}', "
+        Echo.info(
+            f"Successfully registered model information for '{model_name}', "
             f"labelled '{label}':"
         )
-        Echo.remark(utopya.tools.pformat(bundle_kwargs) + "\n")
+        Echo.remark(utopya.tools.pformat(bundle_kwargs))
 
     Echo.success(f"Model information registered successully.")
-
-
-# .. utopya models register batch .............................................
-# TODO

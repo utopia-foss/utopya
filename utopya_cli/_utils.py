@@ -12,6 +12,11 @@ class Echo:
         click.secho(message, fg=fg, **style)
 
     @staticmethod
+    def note(message: str, *, fg="cyan", **style):
+        """An echo that communicates some low-level information"""
+        click.secho(message, fg=fg, **style)
+
+    @staticmethod
     def info(message: str, **style):
         """An echo that communicates some information"""
         click.secho(message, **style)
