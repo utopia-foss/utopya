@@ -5,6 +5,7 @@ from typing import Tuple
 
 import click
 
+from ._registration import evaluate_fstr_for_list, register_models_from_list
 from ._utils import Echo
 
 models = click.Group(
@@ -19,7 +20,7 @@ models = click.Group(
 
 @models.command(
     name="ls",
-    help="Lists registered models",
+    help="Lists all registered models",
 )
 @click.option(
     "-l",
@@ -185,6 +186,12 @@ models.add_command(register)
     ),
 )
 @click.option(
+    "--project-name",
+    type=click.STRING,
+    default=None,
+    help="Name of the project this model is part of.",
+)
+@click.option(
     "--exists-action",
     default="validate",
     type=click.Choice(("skip", "raise", "validate", "overwrite")),
@@ -202,9 +209,10 @@ def register_single(
     default_cfg: str,
     label: str,
     exists_action: str,
+    project_name: str,
 ):
     """Registers a new model"""
-    Echo.info(f"Registering model '{model_name}' (label: {label})...")
+    Echo.progress(f"Registering model '{model_name}' (label: '{label}')...")
     Echo.remark(f"  executable:        {executable}")
     Echo.remark(f"  source directory:  {source_dir}")
     Echo.remark(f"  default config:    {default_cfg}")
@@ -216,6 +224,7 @@ def register_single(
             default_cfg=default_cfg,
             source_dir=source_dir,
         ),
+        project_name=project_name,
     )
 
     import utopya
@@ -228,15 +237,187 @@ def register_single(
         )
 
     except Exception as exc:
-        Echo.error("Failed registering model!", error=exc)
+        Echo.error("Registration failed!", error=exc)
         sys.exit(1)
 
     else:
-        Echo.success(f"Successully registered model {model_name}.")
+        Echo.success(f"Successully registered model '{model_name}'.")
 
 
 # .. utopya models register batch .............................................
-# TODO This should implement the separator logic ...
+
+
+@register.command(
+    name="from-list",
+    help=(
+        "Register multiple models by providing aligned lists of their names, "
+        "the paths to their executables and their source directories. "
+        "Any additional information is attempted to be extracted from the "
+        "corresponding model source directory or a potentially existing model "
+        "information file.\n"
+        "Note that the arguments need to be separable lists, where the "
+        "`--separator` argument determines the separation string. "
+        "Also, arguments probably need to be put into quotes and spaces need "
+        "to be escaped."
+    ),
+)
+@click.argument("model_names", type=click.STRING)
+@click.option(
+    "--executables",
+    type=click.STRING,
+    help=(
+        "A list of paths pointing to the model executables. "
+        "Paths may be given as relative to the --base-executable-dir. "
+        "If all paths match a pattern, consider using the "
+        "--executable-fstr argument instead. "
+        "One of these arguments *needs* to be given."
+    ),
+)
+@click.option(
+    "--source-dirs",
+    type=click.STRING,
+    help=(
+        "A list of paths pointing to the model source directories. "
+        "Paths may be given as relative to the --base-source-dir. "
+        "If all paths match a pattern, consider using the "
+        "--source-dir-fstr argument instead."
+    ),
+)
+@click.option(
+    "--base-executable-dir",
+    type=click.Path(file_okay=False, exists=True, resolve_path=True),
+    help="If given, relative executable paths are interpreted against this.",
+)
+@click.option(
+    "--base-source-dir",
+    type=click.Path(file_okay=False, exists=True, resolve_path=True),
+    help=(
+        "If given, relative source directory paths are interpreted against "
+        "this."
+    ),
+)
+@click.option(
+    "--executable-fstr",
+    type=click.STRING,
+    help=(
+        "A format string that can be used instead of the --executables "
+        "argument and is evaluated for each entry in MODEL_NAMES."
+    ),
+)
+@click.option(
+    "--source-dir-fstr",
+    type=click.STRING,
+    help=(
+        "A format string that can be used instead of the --source-dirs "
+        "argument and is evaluated for each entry in MODEL_NAMES."
+    ),
+)
+@click.option(
+    "--py-tests-dir-fstr",
+    type=click.STRING,
+    help=(
+        "A format string that can be used to set the models python tests "
+        "directory."
+    ),
+)
+@click.option(
+    "--py-plots-dir-fstr",
+    type=click.STRING,
+    help=(
+        "A format string that can be used to set the models python tests "
+        "directory."
+    ),
+)
+@click.option(
+    "--separator",
+    default=";",
+    help=(
+        "By which separator to split the --model-names, --executables, and "
+        "--source-dirs arguments. Default: ';'"
+    ),
+)
+@click.option(
+    "--label",
+    type=click.STRING,
+    default="set_via_cli",
+    help=(
+        "Label to identify the info bundles with; if not given, will use a "
+        "default value. This allows registering multiple versions of a model "
+        "under the same name."
+    ),
+)
+@click.option(
+    "--project-name",
+    type=click.STRING,
+    default=None,
+    help="Name of the project these models are part of.",
+)
+@click.option(
+    "--exists-action",
+    default="validate",
+    type=click.Choice(("skip", "raise", "validate", "overwrite")),
+    help=(
+        "Which action to take upon an existing bundle with the same label. "
+        "By default, validates the to-be-added information with a potentially "
+        "existing bundle; this will fail if the to-be-added bundle does not "
+        "compare equal to an existing bundle with the same label."
+    ),
+)
+def register_from_list(
+    *,
+    model_names: str,
+    executables: str,
+    source_dirs: str,
+    executable_fstr: str,
+    source_dir_fstr: str,
+    separator: str,
+    **kwargs,
+):
+    if executable_fstr:
+        if executables:
+            Echo.error(
+                "Arguments --executable-fstr and --executables are mutually "
+                "exclusive! Make sure to only pass one of them."
+            )
+            sys.exit(1)
+
+        executables = evaluate_fstr_for_list(
+            model_names=model_names, fstr=executable_fstr, sep=separator
+        )
+
+    elif not executables:
+        Echo.error("Missing argument --executables or --executable-fstr!")
+        sys.exit(1)
+
+    if source_dir_fstr:
+        if source_dirs:
+            Echo.error(
+                "Arguments --source-dir-fstr and --source-dirs are mutually "
+                "exclusive! Make sure to only pass one of them."
+            )
+            sys.exit(1)
+
+        source_dirs = evaluate_fstr_for_list(
+            model_names=model_names, fstr=source_dir_fstr, sep=separator
+        )
+
+    # Everything ok, can start registering
+    import utopya
+
+    try:
+        register_models_from_list(
+            registry=utopya.MODELS,
+            model_names=model_names,
+            executables=executables,
+            source_dirs=source_dirs,
+            separator=separator,
+            **kwargs,
+            _log=Echo,
+        )
+
+    except Exception as exc:
+        Echo.error("Registration failed!", error=exc)
+        sys.exit(1)
 
 
 # .. utopya models register from-manifest .....................................
@@ -284,7 +465,8 @@ def register_single(
     help=(
         "Which action to take upon an existing bundle with the same label. "
         "By default, validates the to-be-added information with a potentially "
-        "existing "
+        "existing bundle; this will fail if the to-be-added bundle does not "
+        "compare equal to an existing bundle with the same label."
     ),
 )
 def register_from_manifest(
@@ -343,6 +525,7 @@ def register_from_manifest(
                 model_name,
                 label=label,
                 exists_action=exists_action,
+                extract_model_info=False,  # already done here
                 **bundle_kwargs,
             )
 

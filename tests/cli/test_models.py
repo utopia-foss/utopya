@@ -96,8 +96,83 @@ def test_register_single(registry):
     res = invoke_cli(reg_args)
     print(res.output)
     assert res.exit_code != 0
-    assert "Failed registering" in res.output
+    assert "Registration failed!" in res.output
     assert "Bundle validation failed" in res.output
+
+
+def test_register_from_list(registry):
+    """Tests utopya models register single
+
+    NOTE The fixture already performs some of the tests
+    """
+    DUMMY_EXECUTABLE = os.path.join(
+        DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}.py"
+    )
+
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        TEST_MODEL,
+        "--executables",
+        DUMMY_EXECUTABLE,
+    )
+    res = invoke_cli(reg_args + ("--label", "some_new_label"))
+    print(res.output)
+    assert res.exit_code == 0
+    assert "Model registration succeeded" in res.output
+
+    # Can also use format strings
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        TEST_MODEL,
+        "--executable-fstr",
+        "{model_name:}/{model_name:}.py",
+        "--source-dir-fstr",
+        "{model_name:}/",
+        "--base-executable-dir",
+        os.path.join(DEMO_DIR, "models"),
+        "--base-source-dir",
+        os.path.join(DEMO_DIR, "models"),
+    )
+    res = invoke_cli(reg_args + ("--label", "yet_another_label"))
+    print(res.output)
+    assert res.exit_code == 0
+    assert "Model registration succeeded" in res.output
+
+    # Superfluous arguments
+    res = invoke_cli(reg_args + ("--executables", "'foo;bar'"))
+    print(res.output)
+    assert res.exit_code != 0
+    assert "mutually exclusive" in res.output
+
+    # Missing arguments
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        TEST_MODEL,
+    )
+    res = invoke_cli(reg_args)
+    print(res.output)
+    assert res.exit_code != 0
+    assert "Missing argument --executables or" in res.output
+
+    # Length mismatch
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        f"'{TEST_MODEL};{TEST_MODEL}'",
+        "--executables",
+        DUMMY_EXECUTABLE,
+    )
+    res = invoke_cli(reg_args)
+    print(res.output)
+    assert res.exit_code != 0
+    assert "Mismatch of sequence lengths" in res.output
 
 
 def test_register_from_manifest(registry):

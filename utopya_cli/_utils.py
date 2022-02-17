@@ -3,62 +3,78 @@
 import click
 
 
+def _parse_msg(msg: str, args) -> str:
+    if args:
+        return msg % args
+    return msg
+
+
 class Echo:
     """Adds some standardized styled ``click.echo`` calls"""
 
     @staticmethod
-    def remark(message: str, *, fg=246, **style):
-        """An echo that communicates some low-level information"""
-        click.secho(message, fg=fg, **style)
+    def trace(msg: str, *args, dim=True, **style):
+        """An echo that communicates some debug-level information"""
+        click.secho(_parse_msg(msg, args), dim=dim, **style)
 
     @staticmethod
-    def note(message: str, *, fg="cyan", **style):
-        """An echo that communicates some low-level information"""
-        click.secho(message, fg=fg, **style)
+    def debug(msg: str, *args, dim=True, **style):
+        """An echo that communicates some debug-level information"""
+        click.secho(_parse_msg(msg, args), dim=dim, **style)
 
     @staticmethod
-    def info(message: str, **style):
+    def remark(msg: str, *args, fg=246, **style):
+        """An echo that communicates some low-level information"""
+        click.secho(_parse_msg(msg, args), fg=fg, **style)
+
+    @staticmethod
+    def note(msg: str, *args, fg="cyan", **style):
+        """An echo that communicates some low-level information"""
+        click.secho(_parse_msg(msg, args), fg=fg, **style)
+
+    @staticmethod
+    def info(msg: str, *args, **style):
         """An echo that communicates some information"""
-        click.secho(message, **style)
+        click.secho(_parse_msg(msg, args), **style)
 
     @staticmethod
-    def progress(message: str, *, fg="green", **style):
+    def progress(msg: str, *args, fg="green", **style):
         """An echo that communicates some progress"""
-        click.secho(message, fg=fg, **style)
+        click.secho(_parse_msg(msg, args), fg=fg, **style)
 
     @staticmethod
-    def caution(message: str, *, fg=202, **style):
+    def caution(msg: str, *args, fg=202, **style):
         """An echo that communicates a cautioning message"""
-        click.secho(message, fg=fg, **style)
+        click.secho(_parse_msg(msg, args), fg=fg, **style)
 
     @staticmethod
-    def hilight(message: str, *, fg="yellow", bold=True, **style):
+    def hilight(msg: str, *args, fg="yellow", bold=True, **style):
         """An echo that highlights a certain"""
-        click.secho(message, fg=fg, bold=bold, **style)
+        click.secho(_parse_msg(msg, args), fg=fg, bold=bold, **style)
 
     @staticmethod
-    def success(message: str, *, fg="green", bold=True, **style):
+    def success(msg: str, *args, fg="green", bold=True, **style):
         """An echo that communicates a success"""
-        click.secho(message, fg=fg, bold=bold, **style)
+        click.secho(_parse_msg(msg, args), fg=fg, bold=bold, **style)
 
     @staticmethod
-    def warning(message: str, *, fg=202, bold=True, **style):
+    def warning(msg: str, *args, fg=202, bold=True, **style):
         """An echo that communicates a warning"""
-        click.secho(message, fg=fg, bold=bold, **style)
+        click.secho(_parse_msg(msg, args), fg=fg, bold=bold, **style)
 
     @staticmethod
     def error(
-        message: str,
-        *,
+        msg: str,
+        *args,
         error: Exception = None,
         fg="red",
         bold=True,
         **style,
     ):
         """An echo that can be used to communicate an error, optionally
-        parsing the exception's error message as well.
+        parsing the exception's error msg as well.
         """
-        click.secho(message, fg=fg, bold=bold, **style)
+        click.secho(_parse_msg(msg, args), fg=fg, bold=bold, **style)
         if not error:
             return
 

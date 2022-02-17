@@ -253,6 +253,7 @@ class ModelRegistryEntry:
 
             elif exists_action == "validate":
                 if self[label] != bundle:
+                    # Generate a diff such that its clearer where they differ
                     import difflib
 
                     diff = "\n".join(
