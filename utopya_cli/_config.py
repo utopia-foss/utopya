@@ -50,20 +50,13 @@ def convert_value(
     if val.lower() == "null":
         return None
 
-    # Floating point number (requiring '.' being present)
-    import re
-
-    if re.match(r"^[-+]?[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?$", val):
+    # Numbers
+    try:
+        return int(val)
+    except:
         try:
             return float(val)
         except:
-            pass
-
-    # Integer
-    if re.match(r"^[-+]?[0-9]+$", val):
-        try:
-            return int(val)
-        except:  # very unlike to be reached; regex is quite restrictive
             pass
 
     # Deletion placeholder
@@ -133,8 +126,6 @@ def set_entries_from_kv_pairs(
 
         d = add_to
         for _key in traverse_keys:
-            # FIXME Fails if d is not a dict
-
             if _key not in d:
                 d[_key] = dict()
 
@@ -144,7 +135,7 @@ def set_entries_from_kv_pairs(
         if attempt_conversion:
             val = convert_value(val, **conversion_kwargs)
 
-        _log.remark("  %s   ->   %s: %s", kv, ".".join(key_sequence), val)
+        _log.remark("  %s  \t->   %s: %s", kv, ".".join(key_sequence), val)
 
         # Write or delete the entry
         if val is not DEL:
@@ -163,76 +154,3 @@ def set_entries_from_kv_pairs(
             if last_key not in d:
                 continue
             del d[last_key]
-
-
-def deploy_user_cfg(
-    user_cfg_path: str = "~/.config/utopya/user_cfg.yml",  # TODO load
-) -> None:
-    """Deploys a copy of the full config to the specified location
-
-    Instead of just copying the full config, it is written line by line,
-    commenting out lines that are not already commented out, and changing the
-    header.
-
-    Args:
-        user_cfg_path (str, optional): The path the user config file is
-            expected at
-
-    Returns:
-        None
-    """
-    # Check if a user config already exists and ask if it should be overwritten
-    if os.path.isfile(user_cfg_path):
-        print("A config file already exists at " + str(user_cfg_path))
-        if input("Replace? [y, N]  ").lower() in ["yes", "y"]:
-            os.remove(user_cfg_path)
-            print("")
-
-        else:
-            print("Not deploying user config.")
-            return
-
-    # At this point, can assume that it is desired to write the file and there
-    # is no other file there.
-    # Make sure that the folder exists
-    os.makedirs(os.path.dirname(user_cfg_path), exist_ok=True)
-
-    # Create a file at the given location
-    with open(user_cfg_path, "x") as ucfg:
-        # Write header section, from user config header file
-        with open(USER_CFG_HEADER_PATH) as ucfg_header:
-            ucfg.write(ucfg_header.read())
-
-        # Now go over the full config and write the content, commenting out
-        # the lines that are not already commented out
-        with open(BASE_CFG_PATH) as bcfg:
-            past_prefix = False
-
-            for line in bcfg:
-                # Look for "---" to find out when the header section ended
-                if line == "---\n":
-                    past_prefix = True
-                    continue
-
-                # Write only if past the prefix
-                if not past_prefix:
-                    continue
-
-                # Check if the line in the target (user) config needs to be
-                # commented out or not
-                if line.strip().startswith("#") or line.strip() == "":
-                    # Is a comment or empty line -> just write it
-                    ucfg.write(line)
-
-                else:
-                    # There is an entry on this line -> comment out before the
-                    # first character (looks cleaner)
-                    spaces = " " * (len(line.rstrip()) - len(line.strip()))
-                    ucfg.write(spaces + "# " + line[len(spaces) :])
-
-    print(
-        f"Deployed user config to: {user_cfg_path}\n\n"
-        "All entries are commented out; open the file to edit your "
-        "configuration. Note that it is wise to only uncomment those entries "
-        "that you absolutely *need* to set."
-    )

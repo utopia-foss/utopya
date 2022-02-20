@@ -142,6 +142,25 @@ def test_register_from_list(registry):
     assert res.exit_code == 0
     assert "Model registration succeeded" in res.output
 
+    # Mutually exclusive
+    res = invoke_cli(
+        (
+            "models",
+            "register",
+            "from-list",
+            TEST_MODEL,
+            "--executable-fstr",
+            "{model_name:}/{model_name:}.py",
+            "--source-dir-fstr",
+            "{model_name:}/",
+            "--source-dirs",
+            "/foo/bar",
+        )
+    )
+    print(res.output)
+    assert res.exit_code != 0
+    assert "mutually exclusive" in res.output
+
     # Superfluous arguments
     res = invoke_cli(reg_args + ("--executables", "'foo;bar'"))
     print(res.output)
@@ -256,14 +275,16 @@ def test_set_default(registry):
     assert registry[TEST_MODEL].default_label == "some_label"
 
 
-def test_edit():
-    """Tests utopya models edit
-
-    This will not succeed in the test context, because no editor can be opened.
-    """
+def test_edit(monkeypatch):
+    """Tests utopya models edit"""
     res = invoke_cli(("models", "edit", DUMMY_MODEL), input="y\n")
     assert res.exit_code == 1
     assert "Editing model registry file failed!" in res.output
+
+    monkeypatch.setenv("EDITOR", "echo")  # this will always work
+    res = invoke_cli(("models", "edit", DUMMY_MODEL), input="y\n")
+    assert res.exit_code == 0
+    assert "Successfully edited registry file" in res.output
 
     # Not continuing
     res = invoke_cli(("models", "edit", DUMMY_MODEL), input="N\n")

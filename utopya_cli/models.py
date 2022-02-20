@@ -103,13 +103,16 @@ def edit(*, model_name: str):
         sys.exit(0)
 
     try:
-        click.edit(filename=utopya.MODELS[model_name].registry_file_path)
+        click.edit(
+            filename=utopya.MODELS[model_name].registry_file_path,
+            extension=".yml",
+        )
 
     except Exception as exc:
         Echo.error("Editing model registry file failed!", error=exc)
         sys.exit(1)
 
-    Echo.success(f"Successully edited registry file of '{model_name}' model.")
+    Echo.success(f"Successfully edited registry file of '{model_name}' model.")
 
 
 # .. utopya models set-default ................................................

@@ -1,4 +1,5 @@
 """Various utilities used within the CLI definition and for handling click"""
+import sys
 
 import click
 
@@ -12,7 +13,17 @@ def _parse_msg(msg: str, args) -> str:
 
 
 class Echo:
-    """Adds some standardized styled ``click.echo`` calls"""
+    """Adds some standardized styled ``click.echo`` calls.
+
+    The styles are aligned with those set in the utopya.logging module.
+    """
+
+    @staticmethod
+    def help(*, exit: int = None):
+        """Shows the help message of the current context"""
+        click.echo(click.get_current_context().get_help())
+        if exit is not None:
+            sys.exit(exit)
 
     @staticmethod
     def trace(msg: str, *args, dim=True, **style):
