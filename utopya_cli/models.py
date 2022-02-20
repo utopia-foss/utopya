@@ -10,7 +10,7 @@ from ._utils import Echo
 
 models = click.Group(
     name="models",
-    help="Show available models and register new ones",
+    help="Show available models and register new ones.",
 )
 
 
