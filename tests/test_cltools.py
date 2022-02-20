@@ -26,45 +26,7 @@ class MockArgs(dict):
 # -----------------------------------------------------------------------------
 
 
-def test_register_models(tmp_model_registry, tmp_cfg_dir, tmpdir):
-    """Test the register_models command line helper function"""
-    # Create some testing arguments
-    args = MockArgs()
-    args.separator = ";"
-    args.model_name = "foo;bar"
-    args.executable = "bin/foo;bin/bar"
-    args.source_dir = "src/foo;src/bar"
-    args.base_source_dir = tmpdir.join("base_src")
-    args.base_executable_dir = tmpdir.join("base_exec")
-    args.exists_action = "validate"
-    args.label = "test_label"
-    args.overwrite_label = False
-    args.project_name = "ProjectName"
-    args.update_project_info = False
-
-    # Try a simple registration ...
-    clt.register_models(args, registry=tmp_model_registry)
-    # NOTE It's not crucial to test a full registration here, because that's
-    #      done in the test there. We just want to ascertain that the cltools
-    #      function does what is expected of it
-
-    # List mismatch
-    args.source_dir += ";src/spam"
-    with pytest.raises(ValueError, match="Mismatch of sequence lengths"):
-        clt.register_models(args, registry=tmp_model_registry)
-
-    # Test again with invocation of the register_project function
-    # Changes are made only to tmp_cfg_dir and the fixture returns them to the
-    # old state after the test.
-    # But this test is only meant to test the *invocation* of register_project,
-    # the actual test happens in test_register_project
-    args.update_project_info = True
-    with pytest.raises(
-        AttributeError, match="has no attribute 'project_base_dir'"
-    ):
-        clt.register_models(args, registry=tmp_model_registry)
-
-
+@pytest.mark.skip("Needs migration")
 def test_register_project(tmp_cfg_dir, tmpdir):
     """Test the register_project command line helper function"""
     args = MockArgs()
