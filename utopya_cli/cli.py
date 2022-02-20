@@ -4,7 +4,8 @@ import sys
 
 import click
 
-from .models import *
+from .config import config
+from .models import models
 
 
 @click.group(help="The utopya CLI")
@@ -13,6 +14,7 @@ def cli():
 
 
 cli.add_command(models)
+cli.add_command(config)
 
 # -- TODO: migrate to their own module ----------------------------------------
 
