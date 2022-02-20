@@ -9,13 +9,9 @@ from .config import config
 from .models import models
 from .projects import projects
 
-
-@click.group(
+cli = click.Group(
     help=("The utopya CLI"),
 )
-def cli():
-    pass
-
 
 cli.add_command(batch)
 cli.add_command(config)
