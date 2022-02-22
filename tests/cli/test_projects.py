@@ -5,29 +5,14 @@ import os
 import pytest
 
 import utopya
+from utopya._projects import load_projects
 
-from .. import DEMO_DIR, get_cfg_fpath
-from ..test_cfg import tmp_cfg_dir
+from .. import DEMO_DIR, DEMO_PROJECT_NAME, get_cfg_fpath
+from ..test_model_registry import tmp_cfg_dir, tmp_projects
 from . import invoke_cli
 
-DEMO_PROJECT_NAME = "utopyaDemoProject"
-"""Name of the demo project.
-
-Should be equal to the one given in the info file!
-"""
-
-load_projects = lambda: utopya.cfg.load_from_cfg_dir("projects")
-
-# -- Fixtures -----------------------------------------------------------------
-
-
-@pytest.fixture
-def tmp_projects(tmp_cfg_dir):
-    from utopya._projects import register_project
-
-    register_project(base_dir=DEMO_DIR, exists_action="raise")
-    assert DEMO_PROJECT_NAME in load_projects()
-
+VALID_INFO_FILE = get_cfg_fpath("project_info.yml")
+INVALID_INFO_FILE = get_cfg_fpath("project_info_invalid.yml")
 
 # -----------------------------------------------------------------------------
 
@@ -156,9 +141,6 @@ def test_register(tmp_projects):
     assert res.exit_code != 0
 
     # --- Use different files to test overwriting, updating, validating
-    VALID_INFO_FILE = get_cfg_fpath("project_info.yml")
-    INVALID_INFO_FILE = get_cfg_fpath("project_info_invalid.yml")
-
     # Validation failure
     res = invoke_cli(
         reg_args

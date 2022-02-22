@@ -23,6 +23,9 @@ ADVANCED_MODEL = "MinimalModel"  # FIXME
 DEMO_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), "../demo"))
 """Directory the demo models are located in"""
 
+DEMO_PROJECT_NAME = "utopyaDemoProject"
+"""Name of the demo project"""
+
 # Simplify importing config files used in tests
 from pkg_resources import resource_filename
 

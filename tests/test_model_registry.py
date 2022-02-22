@@ -9,7 +9,7 @@ import utopya.model_registry as umr
 from utopya.model_registry import BundleExistsError, ModelRegistryError
 from utopya.yaml import load_yml, write_yml, yaml
 
-from . import get_cfg_fpath
+from . import DEMO_DIR, DEMO_PROJECT_NAME, get_cfg_fpath
 from .test_cfg import tmp_cfg_dir
 
 TEST_CFG = load_yml(get_cfg_fpath("model_registry.yml"))
@@ -30,7 +30,7 @@ def mib_kwargs(**misc_metadata) -> dict:
             default_cfg="/abs/foo/config/path",
         ),
         metadata=dict(description="bar", misc=misc_metadata),
-        project_name="ProjectName",
+        project_name=DEMO_PROJECT_NAME,
     )
 
 
@@ -38,6 +38,14 @@ def mib_kwargs(**misc_metadata) -> dict:
 def tmp_model_registry(tmp_cfg_dir) -> umr._ModelRegistry:
     """A temporary model registry"""
     return umr._ModelRegistry(tmp_cfg_dir)
+
+
+@pytest.fixture
+def tmp_projects(tmp_cfg_dir):
+    from utopya._projects import load_projects, register_project
+
+    register_project(base_dir=DEMO_DIR, exists_action="raise")
+    assert DEMO_PROJECT_NAME in load_projects()
 
 
 # Utilities module ------------------------------------------------------------
@@ -65,7 +73,7 @@ def test_load_model_cfg():
 # Info Bundle module ----------------------------------------------------------
 
 
-def test_ModelInfoBundle(tmpdir):
+def test_ModelInfoBundle(tmpdir, tmp_projects):
     """Tests the ModelInfoBundle"""
     # Most basic
     mib = umr.ModelInfoBundle(model_name="foo", **mib_kwargs())

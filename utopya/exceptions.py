@@ -68,3 +68,11 @@ class BundleExistsError(ModelRegistryError):
 
 class BundleValidationError(ModelRegistryError):
     """Raised when the result of validating the existence of a bundle fails"""
+
+
+class ProjectRegistryError(UtopyaException, ValueError):
+    """Raised on errors with project registry"""
+
+
+class MissingProjectError(ProjectRegistryError):
+    """Raised on a missing project"""

@@ -2,8 +2,10 @@
 
 import logging
 import os
+from typing import Dict
 
 from .cfg import load_from_cfg_dir, write_to_cfg_dir
+from .exceptions import MissingProjectError
 from .tools import load_selected_keys, load_yml, pformat, recursive_update
 
 log = logging.getLogger(__name__)
@@ -47,6 +49,24 @@ METADATA_SCHEMA = (
 """Schema to use for project metadata"""
 
 # -----------------------------------------------------------------------------
+
+
+def load_projects() -> Dict[str, dict]:
+    """Loads the project registry file"""
+    return load_from_cfg_dir("projects")
+
+
+def load_project(project_name: str) -> dict:
+    """Load a specific project"""
+    projects = load_projects()
+    try:
+        return projects[project_name]
+
+    except KeyError as err:
+        raise MissingProjectError(
+            f"No project named '{project_name}' registered! "
+            f"Available projects:  {', '.join(projects)}"
+        ) from err
 
 
 def register_project(
@@ -178,7 +198,7 @@ def register_project(
 
     # Load existing project dict and compare
     project_name = project["project_name"]
-    projects = load_from_cfg_dir("projects")
+    projects = load_projects()
 
     if project_name in projects:
         _log.remark("A project named '%s' already exists.", project_name)

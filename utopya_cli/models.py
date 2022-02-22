@@ -5,13 +5,27 @@ from typing import Tuple
 
 import click
 
-from ._registration import evaluate_fstr_for_list, register_models_from_list
 from ._utils import Echo
 
 models = click.Group(
     name="models",
     help="Show available models and register new ones.",
 )
+
+
+# -- Locally relevant utility functions ---------------------------------------
+
+
+def _evaluate_fstr_for_list(*, fstr: str, model_names: str, sep: str) -> str:
+    """Evaluates a format string using the information from a list of model
+    names.
+
+    Args:
+        fstr (str): The format string to evaluate for each model name
+        model_names (str): A splittable string of model names
+        sep (str): The separator used to split the ``model_names`` string
+    """
+    return sep.join(fstr.format(model_name=m) for m in model_names.split(sep))
 
 
 # -- Utility commands ---------------------------------------------------------
@@ -384,7 +398,7 @@ def register_from_list(
             )
             sys.exit(1)
 
-        executables = evaluate_fstr_for_list(
+        executables = _evaluate_fstr_for_list(
             model_names=model_names, fstr=executable_fstr, sep=separator
         )
 
@@ -400,12 +414,13 @@ def register_from_list(
             )
             sys.exit(1)
 
-        source_dirs = evaluate_fstr_for_list(
+        source_dirs = _evaluate_fstr_for_list(
             model_names=model_names, fstr=source_dir_fstr, sep=separator
         )
 
     # Everything ok, can start registering
     import utopya
+    from utopya.model_registry._registration import register_models_from_list
 
     try:
         register_models_from_list(
@@ -420,6 +435,7 @@ def register_from_list(
 
     except Exception as exc:
         Echo.error("Registration failed!", error=exc)
+        raise
         sys.exit(1)
 
 

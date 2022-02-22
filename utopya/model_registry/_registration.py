@@ -1,4 +1,4 @@
-"""Tools for model and project registration"""
+"""Tools for model registration"""
 
 import logging
 
@@ -8,34 +8,36 @@ log = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 
-def evaluate_fstr_for_list(*, fstr: str, model_names: str, sep: str) -> str:
-    """Evaluates a format string using the information from a list of model
-    names.
-
-    Args:
-        fstr (str): The format string to evaluate for each model name
-        model_names (str): A splittable string of model names
-        sep (str): The separator used to split the ``model_names`` string
-    """
-    return sep.join(fstr.format(model_name=m) for m in model_names.split(sep))
-
-
-# TODO Move to utopya
 def register_models_from_list(
     *,
-    registry: "ModelRegistry",
+    registry: "utopya.model_registry.registry.ModelRegistry",
     separator: str,
     model_names: str,
     executables: str,
-    source_dirs: str,
-    exists_action: str,
     label: str,
+    source_dirs: str = None,
+    exists_action: str = "raise",
     project_name: str = None,
     _log=log,
     **more_paths,
 ):
     """Handles registration of multiple models where the model names,
     executables, and source directories are splittable lists of equal lengths.
+
+    Args:
+        registry (utopya.model_registry.registry.ModelRegistry): The model
+            registry to store the models in
+        separator (str): Separation string to split ``model_names``,
+            ``executables``, and ``source_dirs``.
+        model_names (str): Splittable string of model names
+        executables (str): Splittable string of executables
+        label (str): Label under which to add the entries
+        source_dirs (str, optional): Splittable string of model source
+            directories
+        exists_action (str, optional): Action to take upon existing label
+        project_name (str, optional): The associated project name
+        _log (TYPE, optional): A logger-like object
+        **more_paths: Additional paths that are to be parsed
 
     """
 
@@ -91,5 +93,5 @@ def register_models_from_list(
             exists_action=exists_action,
         )
 
-    _log.success("Model registration succeeded.")
+    _log.success("\nModel registration succeeded.")
     _log.remark(registry.info_str)

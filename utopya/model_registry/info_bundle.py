@@ -7,6 +7,8 @@ import os
 import time
 from typing import Sequence, Tuple, Union
 
+from .._projects import load_project
+from ..exceptions import MissingProjectError
 from ..tools import load_selected_keys, load_yml, pformat, recursive_update
 
 log = logging.getLogger(__name__)
@@ -127,11 +129,24 @@ class ModelInfoBundle:
                 self._load_and_parse_model_info(paths["model_info"]),
             )
 
+        # If it was given, check that the project name is one of a registered
+        # project -- otherwise, do not associate the model with it.
+        if project_name:
+            try:
+                load_project(project_name)
+
+            except MissingProjectError as err:
+                log.error(err)
+                log.remark(
+                    "Will NOT associate a project with the "
+                    f"'{self.model_name}' model's info bundle!"
+                )
+
+            else:
+                self._d["project_name"] = project_name
+
         # Now populate the data dict with the explicitly passed arguments,
         # which should take precedence over the information from the model info
-        if project_name:
-            self._d["project_name"] = project_name
-
         err_msg_fstr = "Failed loading {} info for '{}' model info bundle!"
 
         load_selected_keys(

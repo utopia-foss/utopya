@@ -3,7 +3,7 @@
 project_name: InvalidTestProject
 
 paths:
-  base_dir: "."  # will lead to a logger warning
+  base_dir: some/bad/base/dir  # will be ignored and lead to a logger warning
   models_dir: models
 
 metadata:
