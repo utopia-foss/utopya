@@ -20,6 +20,7 @@ def evaluate_fstr_for_list(*, fstr: str, model_names: str, sep: str) -> str:
     return sep.join(fstr.format(model_name=m) for m in model_names.split(sep))
 
 
+# TODO Move to utopya
 def register_models_from_list(
     *,
     registry: "ModelRegistry",
@@ -35,6 +36,7 @@ def register_models_from_list(
 ):
     """Handles registration of multiple models where the model names,
     executables, and source directories are splittable lists of equal lengths.
+
     """
 
     _log.debug(
@@ -91,62 +93,3 @@ def register_models_from_list(
 
     _log.success("Model registration succeeded.")
     _log.remark(registry.info_str)
-
-
-def register_project(args: list, *, arg_prefix: str = "") -> dict:
-    """Register or update information of an Utopia project, i.e. a repository
-    that implements models.
-
-    Args:
-        args (list): The CLI arguments object
-        arg_prefix (str, optional): The prefix to use when using attribute
-            access to these arguments. Useful if the names as defined in the
-            CLI are different depending on the invocation
-
-    Returns:
-        dict: Information on the newly added or updated project
-    """
-    project_name = getattr(args, arg_prefix + "name")
-    log.debug(
-        "Adding or updating information for Utopia project '%s' ...",
-        project_name,
-    )
-
-    project_paths = dict()
-    for arg_name in (
-        "base_dir",
-        "models_dir",
-        "python_model_tests_dir",
-        "python_model_plots_dir",
-    ):
-        project_paths[arg_name] = getattr(args, arg_prefix + arg_name)
-
-        if project_paths[arg_name]:
-            project_paths[arg_name] = str(project_paths[arg_name])
-
-    # Load existing project information, update it, store back to file
-    projects = load_from_cfg_dir("projects")  # empty dict if file is missing
-    projects[project_name] = project_paths
-
-    write_to_cfg_dir("projects", projects)
-    log.info("Updated information for Utopia project '%s'.", project_name)
-
-    # If python_model_plots_dir is given, update plot modules cfg file
-    if project_paths["python_model_plots_dir"]:
-        log.debug("Additionally updating the python model plots path ...")
-
-        plot_module_paths = load_from_cfg_dir("plot_module_paths")
-        model_plots_dir = project_paths["python_model_plots_dir"]
-
-        # Remove duplicate paths and instead store it under the project name
-        plot_module_paths = {
-            k: v for k, v in plot_module_paths.items() if v != model_plots_dir
-        }
-        plot_module_paths[project_name] = model_plots_dir
-
-        write_to_cfg_dir("plot_module_paths", plot_module_paths)
-        log.info(
-            "Updated plot module paths for Utopia project '%s'.", project_name
-        )
-
-    return projects[project_name]

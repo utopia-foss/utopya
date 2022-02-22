@@ -20,7 +20,7 @@ TIME_FSTR = "%y%m%d-%H%M%S"
 class ModelInfoBundle:
     """A bundle of model information; behaves like a read-only dict"""
 
-    PATH_KEYS = (
+    PATHS_SCHEMA = (
         ("executable", str, True),
         ("model_info", str),
         ("source_dir", str),
@@ -54,7 +54,7 @@ class ModelInfoBundle:
     the suffix.
     """
 
-    METADATA_KEYS = (
+    METADATA_SCHEMA = (
         ("version", str),
         ("long_name", str),
         ("description", str),
@@ -137,14 +137,14 @@ class ModelInfoBundle:
         load_selected_keys(
             paths,
             add_to=self.paths,
-            keys=self.PATH_KEYS,
+            keys=self.PATHS_SCHEMA,
             err_msg_prefix=err_msg_fstr.format("paths", model_name),
         )
 
         load_selected_keys(
             (metadata if metadata is not None else {}),
             add_to=self.metadata,
-            keys=self.METADATA_KEYS,
+            keys=self.METADATA_SCHEMA,
             err_msg_prefix=err_msg_fstr.format("metadata", model_name),
         )
 

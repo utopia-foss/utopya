@@ -267,11 +267,9 @@ def test_workertask_streams_stderr(tmpdir):
     print(out_log)
 
     # Check that the content is as expected
-    assert len(out_log) == 4
-    assert "err1" in out_log
-    assert "err2" in out_log
-    assert "start" in out_log
-    assert "end" in out_log
+    # NOTE Only checking last four entries because any package warnings will
+    #      also be part of the log and make this test less robust
+    assert out_log[-4:] == ["err1", "err2", "start", "end"]
 
     # All streams should be closed
     for stream_name in t.streams:

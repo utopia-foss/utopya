@@ -1,0 +1,19 @@
+# Project information file for the utopya demo project
+#
+# NOTE Any changes to this file need to be registered using the
+#      utopya CLI:
+#
+#         utopya projects register BASE_DIR --info-file path/to/file
+#
+---
+project_name: utopyaDemoProject
+
+paths:
+  models_dir: models
+
+metadata:
+  description: A demo project to demonstrate utopya project registration
+  authors:
+    - utopya developers
+  license: LGPLv3+
+  language: python3

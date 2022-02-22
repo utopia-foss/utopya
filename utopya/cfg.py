@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 # Some globally relevant variables --------------------------------------------
 
-UTOPIA_CFG_DIR = os.path.expanduser("~/.config/utopya")  # FIXME change back
+UTOPIA_CFG_DIR = os.path.expanduser("~/.config/utopya")
 """Path to the persistent utopya configuration directory"""
 
 UTOPIA_CFG_FILE_NAMES = dict(
@@ -17,8 +17,8 @@ UTOPIA_CFG_FILE_NAMES = dict(
     utopya="utopya_cfg.yml",
     batch="batch_cfg.yml",
     projects="projects.yml",
-    external_module_paths="external_module_paths.yml",
-    plot_module_paths="plot_module_paths.yml",
+    external_module_paths="external_module_paths.yml",  # TODO remove?
+    plot_module_paths="plot_module_paths.yml",  # TODO remove?
 )
 """Names and paths of valid configuration entries"""
 

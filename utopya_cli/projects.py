@@ -1,5 +1,6 @@
 """Implements the `utopya projects` subcommand"""
 
+import os
 import sys
 
 import click
@@ -17,7 +18,7 @@ projects = click.Group(
 
 @projects.command(
     name="ls",
-    help="Lists all registered projects",
+    help="Lists all registered projects.",
 )
 @click.option(
     "-l",
@@ -34,14 +35,14 @@ def list_projects(long_mode: bool):
     from utopya.tools import pformat
 
     projects = load_from_cfg_dir("projects")
-
+    Echo.info("\n--- Utopya Projects ---")
     for project_name, project_info in projects.items():
         Echo.info(f"- {project_name}")
         if not long_mode:
             continue
 
         for k, v in project_info.items():
-            Echo.remark(f"  {k:23s}: {v}")  # TODO adjust
+            Echo.remark(f"  {k:15s}: {v}")  # TODO make dict-compatible
         Echo.info("")
 
 
@@ -117,35 +118,49 @@ def remove(
 
 @projects.command(
     name="register",
-    help="Register a project or validate an existing one.",
+    help=(
+        "Register a project or validate an existing one.\n"
+        "\n"
+        "Required arguments are the base directory of the project."
+    ),
 )
-@click.argument("project_name")
-@click.option(
-    "--base-dir",
-    type=click.File(exists=True, dir_okay=False, resolve_path=True),
-    help="This project's base directory.",
+@click.argument(
+    "base_dir",
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
 )
 @click.option(
     "--info-file",
     default=None,
-    type=click.File(exists=True, dir_okay=False, resolve_path=True),
-    help="A file that contains additional project information.",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    help=(
+        "A file that contains all additional project information like "
+        "the project name, relevant paths, or other metadata. "
+        "If not given, will search for some candidate files relative to "
+        "BASE_DIR, e.g. `project_info.yml`."
+    ),
 )
 @click.option(
-    "--validate",
-    is_flag=True,
-    default=False,
+    "--custom-name",
+    "custom_project_name",
+    type=str,
+    help=(
+        "A custom project name that may differ from the one given in the "
+        "project info file. "
+    ),
 )
-def register_project(
-    *,
-    project_name: str,
-    base_dir: str,
-    info_file: str,
-    validate: bool,
-):
-    """Registers a project"""
-    from utopya.cfg import load_from_cfg_dir, write_to_cfg_dir
+@click.option(
+    "--exists-action",
+    default="validate",
+    type=click.Choice(("raise", "validate", "overwrite", "update")),
+    help="What to do if a project of the same name is already registered.",
+)
+def register(**kwargs):
+    """Registers a project or validates an existing one"""
+    from utopya._projects import register_project
 
-    Echo.info(f"Registering project '{project_name}' ...")
+    try:
+        register_project(**kwargs, _log=Echo)
 
-    # TODO
+    except Exception as exc:
+        Echo.error("Project registration failed!", error=exc)
+        sys.exit(1)

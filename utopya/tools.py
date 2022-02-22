@@ -45,8 +45,8 @@ def load_selected_keys(
         src (dict): The dict to load values from
         add_to (dict): The dict to load values into
         keys (Sequence[Tuple[str, type, bool]]): Which keys to load, given
-            as sequence of (key, allowed types, [required=False]) tuples.
-        description (str): A description string, used in error message
+            as sequence of ``(key, allowed types, [required=False])`` tuples.
+        err_msg_prefix (str): A description string, used in error message
         prohibit_unexpected (bool, optional): Whether to raise on keys
             that were unexpected, i.e. not given in ``keys`` argument.
 
@@ -55,13 +55,19 @@ def load_selected_keys(
         TypeError: On bad type of value in ``src``
         ValueError: On unexpected keys in ``src``
     """
-    for spec in keys:
+
+    def unpack(spec) -> Tuple[str, Union[type, Sequence[type]], bool]:
+        """Unpacks a schema entry into a 3-tuple"""
         if len(spec) == 3:
             k, allowed_types, required = spec
         else:
             k, allowed_types = spec
             required = False
 
+        return k, allowed_types, required
+
+    for spec in keys:
+        k, allowed_types, required = unpack(spec)
         if k not in src:
             if not required:
                 continue
@@ -72,14 +78,14 @@ def load_selected_keys(
 
         if not isinstance(src[k], allowed_types):
             raise TypeError(
-                "{}Bad type for value of '{}': {}! Expected "
-                "{} but got {}."
+                "{}Bad type for value of '{}'! Expected "
+                "{} but got {}: {}"
                 "".format(
                     err_msg_prefix + " " if err_msg_prefix else "",
                     k,
-                    src[k],
                     allowed_types,
                     type(src[k]),
+                    src[k],
                 )
             )
 
@@ -88,15 +94,16 @@ def load_selected_keys(
     if not prohibit_unexpected:
         return
 
-    unexpected_keys = [k for k in src if k not in add_to]
+    allowed_keys = tuple(unpack(spec)[0] for spec in keys)
+    unexpected_keys = tuple(k for k in src if k not in allowed_keys)
     if unexpected_keys:
         raise ValueError(
-            "{}Received unexpected keys: {}! "
+            "{}Received unexpected keys: {}\n"
             "Expected only: {}"
             "".format(
                 err_msg_prefix + " " if err_msg_prefix else "",
                 ", ".join(unexpected_keys),
-                ", ".join([s[0] for s in keys]),
+                ", ".join(allowed_keys),
             )
         )
 
