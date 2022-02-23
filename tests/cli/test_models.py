@@ -22,7 +22,7 @@ def registry():
     """
     mr = utopya.MODELS
 
-    # Register the dummy model under a new name and with multiple labels
+    # Register the test model under a new name and with multiple labels
     assert TEST_MODEL not in mr
 
     DUMMY_EXECUTABLE = os.path.join(
@@ -50,6 +50,9 @@ def registry():
     assert "set_via_cli" in mr[TEST_MODEL]
     assert "some_label" in mr[TEST_MODEL]
     assert "another_label" in mr[TEST_MODEL]
+
+    res = invoke_cli(("models", "set-default", TEST_MODEL, "set_via_cli"))
+    assert res.exit_code == 0
 
     yield mr
 
@@ -266,7 +269,7 @@ def test_remove(registry):
 
 def test_set_default(registry):
     """Tests utopya models set-default"""
-    assert registry[TEST_MODEL].default_label is None
+    assert registry[TEST_MODEL].default_label == "set_via_cli"  # see fixture
 
     res = invoke_cli(("models", "set-default", TEST_MODEL, "some_label"))
     print(res.output)

@@ -15,6 +15,7 @@ from ..cfg import UTOPIA_CFG_DIR
 from ..exceptions import (
     BundleExistsError,
     BundleValidationError,
+    MissingBundleError,
     ModelRegistryError,
 )
 from ..tools import pformat
@@ -142,7 +143,15 @@ class ModelRegistryEntry:
         """Return a bundle for the given label. If None, tries to return the
         single registered item.
         """
-        return self._bundles[key]
+        try:
+            return self._bundles[key]
+
+        except KeyError as err:
+            _avail = ", ".join(self.keys())
+            raise MissingBundleError(
+                f"No bundle labelled '{key}' registered in {self}!\n"
+                f"Available labels:  {_avail}"
+            ) from err
 
     def item(self) -> ModelInfoBundle:
         """Retrieve a single bundle for this model, if not ambiguous.
@@ -161,12 +170,13 @@ class ModelRegistryEntry:
             return self.default_bundle
 
         elif len(self) != 1:
-            raise ModelRegistryError(
+            _avail = ", ".join(self.keys())
+            raise MissingBundleError(
                 f"Could not unambiguously select single bundle from {self}, "
                 "because no default was set or because the number of bundles "
-                "is not exactly one. "
+                "is not exactly one.\n"
                 "Define a `default_label` or use `__getitem__` to access a "
-                "bundle with a specific label."
+                f"bundle with a specific label (available: {_avail})."
             )
 
         return self[list(self.keys())[0]]

@@ -6,7 +6,7 @@ from typing import Tuple
 
 import click
 
-from ._utils import Echo
+from ._utils import Echo, set_entries_from_kv_pairs
 
 
 @click.command(
@@ -132,8 +132,6 @@ def config(
         Echo.help(exit=1)
 
     from utopya.cfg import get_cfg_path, load_from_cfg_dir, write_to_cfg_dir
-
-    from ._config import set_entries_from_kv_pairs
 
     # -- Reveal
     # NOTE The launch command is only invoked if not in a test context

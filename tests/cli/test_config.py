@@ -5,7 +5,7 @@ import os
 import pytest
 
 from utopya.cfg import get_cfg_path, load_from_cfg_dir
-from utopya_cli._config import set_entries_from_kv_pairs
+from utopya_cli._utils import set_entries_from_kv_pairs
 
 from ..test_cfg import tmp_cfg_dir
 from . import invoke_cli
@@ -74,6 +74,7 @@ def test_set_entries_from_kv_pairs():
     assert d["list"] == [1, 2, 3]
     assert d["some_dict"] == {1: 2, "foo": "bar"}
     assert d["nested"] == dict(entry=["bar", "baz"])
+    assert d["invalid_yaml"] == "{{{not a dict}]>"
 
     # With eval allowed
     set_entries_from_kv_pairs(
@@ -88,6 +89,7 @@ def test_set_entries_from_kv_pairs():
     assert d["squared"] == 16
     assert d["list"] == [1, 2, 3]
     assert d["bad_syntax"] == "foo"
+    assert d["nested"]["entry"] == "bar"
 
     # Deletion
     set_entries_from_kv_pairs("squared=DELETE", add_to=d)

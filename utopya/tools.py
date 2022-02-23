@@ -177,51 +177,19 @@ def pprint(obj: Any, **kwargs):
     print(pformat(obj), **kwargs)
 
 
-def pformat(obj) -> str:
+def pformat(obj: Any) -> str:
     """Creates a "pretty" string representation of the given object.
 
     This is achieved by creating a yaml representation.
+
+    .. todo::
+
+        Improve parsing of leaf-level mappings
     """
     sstream = io.StringIO("")
     yaml.dump(obj, stream=sstream)
     sstream.seek(0)
     return sstream.read()
-
-
-# filesystem tools ------------------------------------------------------------
-
-
-def open_folder(path: str):
-    """Opens the folder at the specified path.
-
-    .. note::
-
-        This refuses to open a *file*.
-
-    Args:
-        path (str): The absolute path to the folder that is to be opened. The
-            home directory ``~`` is expanded.
-    """
-    path = os.path.expanduser(path)
-
-    if not os.path.isabs(path):
-        raise ValueError(f"Need an absolute path, but got '{path}'!")
-
-    if not os.path.isdir(path):
-        raise ValueError(f"No folder found at '{path}'!")
-
-    # Depending on platform, define the opening function
-    if sys.platform == "windows":
-        open_now = lambda p: os.startfile(p)
-
-    elif sys.platform == "darwin":
-        open_now = lambda p: subprocess.Popen(["open", p])
-
-    else:
-        open_now = lambda p: subprocess.Popen(["xdg-open", p])
-
-    # ... and call it
-    open_now(path)
 
 
 # misc ------------------------------------------------------------------------

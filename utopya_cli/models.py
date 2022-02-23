@@ -148,6 +148,28 @@ def set_default(*, model_name: str, label: str):
     Echo.success(f"Successully set default label for model '{model_name}'.")
 
 
+# .. utopya models info .......................................................
+# TODO
+
+
+@models.command(help="Shows model information.")
+@click.argument("model_name")
+@click.option("--label", required=False)
+def info(*, model_name: str, label: str):
+    raise NotImplementedError("info")
+
+
+# .. utopya models copy .......................................................
+# TODO
+
+
+@models.command(help="Copies a model implementation.")
+@click.argument("model_name")
+@click.option("--label", required=False)
+def copy(*, model_name: str, label: str):
+    raise NotImplementedError("copy")
+
+
 # -- Registration -------------------------------------------------------------
 # .. utopya models register ...................................................
 # TODO Add an option to register a model from some kind of "manifest file"

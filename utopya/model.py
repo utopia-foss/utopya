@@ -33,6 +33,7 @@ class Model:
         *,
         name: str = None,
         info_bundle: ModelInfoBundle = None,
+        bundle_label: str = None,
         base_dir: str = None,
         sim_errors: str = None,
         use_tmpdir: bool = False,
@@ -44,7 +45,9 @@ class Model:
                 given, need to pass info_bundle.
             info_bundle (ModelInfoBundle, optional): The required information
                 to work with this model. If not given, will attempt to find the
-                model in the model registry via ``name``.
+                model in the model registry via ``name`` or ``bundle_label``.
+            bundle_label (str, optional): A label to use for identifying the
+                info bundle.
             base_dir (str, optional): For convenience, can specify this path
                 which will be seen as the base path for config files; if set,
                 arguments that allow specifying configuration files can specify
@@ -57,11 +60,11 @@ class Model:
                 directory is used.
 
         Raises:
-            ValueError: Upon bad base_dir
+            ValueError: Upon bad ``base_dir``
         """
-        # Determine model info bundle to use (via Multiverse class method)
+        # Determine model info bundle to use
         self._info_bundle = get_info_bundle(
-            model_name=name, info_bundle=info_bundle
+            model_name=name, info_bundle=info_bundle, bundle_label=bundle_label
         )
         log.progress("Initializing '%s' model ...", self.name)
 

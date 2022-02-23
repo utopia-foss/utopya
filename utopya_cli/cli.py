@@ -8,11 +8,13 @@ from .batch import batch
 from .config import config
 from .models import models
 from .projects import projects
+from .run import run
 
 cli = click.Group(
     help=("The utopya CLI"),
 )
 
+cli.add_command(run)
 cli.add_command(batch)
 cli.add_command(config)
 cli.add_command(models)
