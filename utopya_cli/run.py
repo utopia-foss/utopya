@@ -1,7 +1,5 @@
 """Implements the utopya run CLI subtree"""
 
-import sys
-
 import click
 
 from ._shared import OPTIONS, add_options
@@ -22,37 +20,12 @@ from ._utils import Echo
 @click.argument(
     "run_cfg",
     required=False,
-    default=None,
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
 )
-@click.option(
-    "--cfg-set",
-    "--cs",
-    default=None,
-    help=(
-        "If the chosen model provides configuration sets, use the config "
-        "files from the chosen set for the `run_cfg` and `--plots-cfg` "
-        "arguments. Note that the specific arguments still take precedence "
-        "over the values from the config sets; to use default paths, "
-        "specify empty strings (`''`) for those arguments."
-    ),
-)
-@click.option(
-    "--label",
-    default=None,
-    help=(
-        "For model names that have multiple info bundles registered, a "
-        "label is needed to unambiguously select the desired one. "
-        "Alternatively, use the `utopya models set-default` CLI command "
-        "to set a default label for a model."
-    ),
-)
+@add_options(OPTIONS["model_selection"])  # --label, --cfg-set
 #
 # -- Update the meta configuration
 #
-@click.option(
-    "-d", "--debug", count=True, help=("The debug level.")  # TODO Expand
-)
 @click.option(
     "--validate/--no-validate",
     "validate",
@@ -171,10 +144,12 @@ from ._utils import Echo
 )
 @add_options(OPTIONS["load"])
 @add_options(OPTIONS["eval"])
+@add_options(OPTIONS["debug_flag"])  # --debug
 #
 #
 #
-def run(**kwargs):
+@click.pass_context
+def run(ctx, **kwargs):
     """Invokes a model simulation run and subsequent evaluation"""
     for k, v in kwargs.items():
         print(f"  {k:>21s} :  {v}")
@@ -184,6 +159,7 @@ def run(**kwargs):
     from utopya.tools import pformat
 
     from ._utils import parse_run_and_plots_cfg, parse_update_args
+    from .eval import _load_and_eval
 
     _log = utopya._getLogger("utopya_cli")  # TODO How best to do this?!
 
@@ -206,6 +182,8 @@ def run(**kwargs):
         cfg_set=kwargs["cfg_set"],
         _log=_log,  # TODO Check if working
     )
+    kwargs["plots_cfg"] = plots_cfg
+    kwargs["update_plots_cfg"] = update_plots_cfg
 
     try:
         mv = model.create_mv(run_cfg_path=run_cfg, **update_dict)
@@ -213,7 +191,7 @@ def run(**kwargs):
     except ValidationError as err:
         _log.error("%s", err)
         _log.critical("Exiting now ...")
-        sys.exit(1)
+        ctx.exit(1)
 
     # Running the simulation . . . . . . . . . . . . . . . . . . . . . . . . .
     mv.run()
@@ -223,38 +201,10 @@ def run(**kwargs):
         _log.progress("Received --no-eval. Exiting now.")
         return
 
-    # Loading data into the data tree and (optionally) showing it . . . . . . .
-    if not kwargs["use_data_tree_cache"]:
-        mv.dm.load_from_cfg()
-
-    else:
-        if not mv.dm.tree_cache_exists:
-            mv.dm.load_from_cfg()
-            mv.dm.dump()
-
-        else:
-            _log.hilight("Restoring tree from cache file ...")
-            mv.dm.restore()
-
-    if kwargs["show_data_tree"] == "full":
-        _log.info(mv.dm.tree)
-
-    elif kwargs["show_data_tree"] == "condensed":
-        _log.info(mv.dm.tree_condensed)
-
-    # Plotting . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-    if not kwargs["interactive"]:
-        mv.pm.plot_from_cfg(
-            plots_cfg=plots_cfg,
-            plot_only=kwargs["plot_only"] if kwargs["plot_only"] else None,
-            **update_plots_cfg,
-        )
-
-        if kwargs["reveal_output"] and mv.pm.common_out_dir:
-            click.launch(mv.pm.common_out_dir)
-
-        _log.success("All done.\n")
-        return
-
-    # TODO
-    raise NotImplementedError("interactive plotting")
+    # Loading and evaluating . . . . . . . . . . . . . . . . . . . . . . . . .
+    _load_and_eval(
+        _log=_log,
+        ctx=ctx,
+        mv=mv,
+        **kwargs,
+    )

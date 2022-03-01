@@ -16,6 +16,45 @@ def add_options(options):
 
 OPTIONS = dict()
 
+# -- Model selection
+OPTIONS["model_selection"] = (
+    click.option(
+        "--cfg-set",
+        "--cs",
+        default=None,
+        help=(
+            "If the chosen model provides configuration sets, use the config "
+            "files from the chosen set for the run and plots config. "
+            "Note that the specific arguments still take precedence over the "
+            "values from the config sets; to use default paths, "
+            "specify empty strings (`''`) for those arguments."
+        ),
+    ),
+    click.option(
+        "--label",
+        default=None,
+        help=(
+            "For model names that have multiple info bundles registered, a "
+            "label is needed to unambiguously select the desired one. "
+            "Alternatively, use the `utopya models set-default` CLI command "
+            "to set a default label for a model."
+        ),
+    ),
+)
+
+# -- Universal flags
+OPTIONS["debug_flag"] = (
+    click.option(
+        "-d",
+        "--debug",
+        count=True,
+        help=(
+            "The debug level."
+            # TODO Expand
+        ),
+    ),
+)
+
 # -- Data loading options
 OPTIONS["load"] = (
     click.option(

@@ -1,6 +1,5 @@
 """Implements generally useful functions, partly by importing from dantro"""
 
-import collections
 import io
 import logging
 import os
