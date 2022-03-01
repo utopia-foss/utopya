@@ -19,6 +19,9 @@ TEST_MODEL = DUMMY_MODEL + "Test"
 def registry():
     """A fixture that prepares the model registry by adding a dummy model
     and ensuring to remove it again in the teardown of a test.
+
+    This uses the actual model registry in order to test the CLI in a realistic
+    scenario and without the caveats of a mock registry.
     """
     mr = utopya.MODELS
 
@@ -28,6 +31,9 @@ def registry():
     DUMMY_EXECUTABLE = os.path.join(
         DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}.py"
     )
+    DUMMY_CFG = os.path.join(
+        DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}_cfg.yml"
+    )
     reg_args = (
         "models",
         "register",
@@ -35,6 +41,12 @@ def registry():
         TEST_MODEL,
         "-e",
         DUMMY_EXECUTABLE,
+        "--source-dir",
+        os.path.dirname(DUMMY_EXECUTABLE),
+        "--default-cfg",
+        DUMMY_CFG,
+        "--exists-action",
+        "raise",  # safeguard against corrupting existing entry
     )
 
     res = invoke_cli(reg_args)

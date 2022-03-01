@@ -104,13 +104,15 @@ class MinimalModel:
 # -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    model_name = "MinimalModel"
     cfg_file_path = sys.argv[1]
 
     print("Preparing model run ...")
     print(f"  Loading config file:\n    {cfg_file_path}")
     with open(cfg_file_path, "r") as cfg_file:
         cfg = yaml.load(cfg_file, Loader=yaml.Loader)
+
+    model_name = cfg.get("root_model_name", "MinimalModel")
+    print(f"Model name:  {model_name}")
 
     print("  Creating global RNG ...")
     rng = np.random.default_rng(cfg["seed"])
@@ -121,7 +123,7 @@ if __name__ == "__main__":
 
     print("\nInitializing model ...")
     model = MinimalModel(
-        model_name, rng=rng, h5group=h5group, **cfg["MinimalModel"]
+        model_name, rng=rng, h5group=h5group, **cfg[model_name]
     )
     model.write_data()
     print(f"Initialized MinimalModel named '{model_name}'.")
