@@ -227,6 +227,13 @@ class Multiverse:
         return self.info_bundle.executable
 
     @property
+    def model(self) -> "utopya.model.Model":  # TODO Ok?
+        """A model instance, created ad-hoc using the associated info bundle"""
+        from .model import Model
+
+        return Model(info_bundle=self.info_bundle)
+
+    @property
     def meta_cfg(self) -> dict:
         """The meta configuration."""
         return self._meta_cfg

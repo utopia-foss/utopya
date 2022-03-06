@@ -32,6 +32,8 @@ class ANSIesc:
     CYAN = "\033[36m"
     WHITE = "\033[37m"
 
+    ORANGE = "\033[38;5;202m"
+
 
 def _parse_msg(msg: str, args) -> str:
     if args:
@@ -324,8 +326,8 @@ def parse_run_and_plots_cfg(
     return run_cfg, plots_cfg
 
 
-def parse_update_args(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
-    """Parses the given namespace, extracting update dictionaries for the
+def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
+    """Parses the given arguments, extracting update dictionaries for the
     Multiverse and the plots configuration
 
     Args:

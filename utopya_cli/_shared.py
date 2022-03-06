@@ -1,5 +1,7 @@
 """Defines arguments that are shared across various parts of the CLI"""
 
+from typing import Union
+
 import click
 
 
@@ -10,6 +12,32 @@ def add_options(options):
         return func
 
     return _add_options
+
+
+def default_none(ctx, _, value) -> Union[None, tuple]:
+    """For use in ``multiple=True`` with ``nargs=-1`` where None is desired
+    for a default value instead of an empty tuple.
+    Pass this to the ``callback`` argument of an argument or an option.
+    """
+    if len(value) == 0:
+        return None
+    return value
+
+
+# -----------------------------------------------------------------------------
+
+
+INTERACTIVE_MODE_PROHIBITED_ARGS = (
+    "run_cfg",
+    "run_dir",
+    "label",
+    "set_params",
+    "cluster_mode",
+    "show_data_tree",
+    "use_data_tree_cache",
+    "load_parallel",
+)
+"""Argument names that may NOT be given in the interactive plotting prompt"""
 
 
 # -----------------------------------------------------------------------------
@@ -54,6 +82,14 @@ OPTIONS["debug_flag"] = (
         ),
     ),
 )
+OPTIONS["cluster_mode"] = (
+    click.option(
+        "--cluster-mode",
+        flag_value=True,
+        default=None,
+        help="Enables cluster mode.",
+    ),
+)
 
 # -- Data loading options
 OPTIONS["load"] = (
@@ -82,12 +118,6 @@ OPTIONS["load"] = (
         default="condensed",
         show_default=True,
         help="Controls which kind of data tree should be shown after loading.",
-    ),
-    click.option(
-        "--cluster-mode",
-        flag_value=True,
-        default=None,
-        help="Enables cluster mode.",
     ),
 )
 
@@ -119,6 +149,7 @@ OPTIONS["eval"] = (
         "--po",
         "plot_only",
         multiple=True,
+        callback=default_none,
         help=(
             "If given, will plot only those entries of the plot configuration "
             "that match the names given here. This can also be used to "

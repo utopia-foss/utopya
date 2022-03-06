@@ -2,7 +2,7 @@
 
 import click
 
-from ._shared import OPTIONS, add_options
+from ._shared import OPTIONS, add_options, default_none
 from ._utils import Echo
 
 
@@ -102,10 +102,12 @@ from ._utils import Echo
     "--set-model-params",
     "--mp",
     multiple=True,
+    callback=default_none,
     help=(
         "Sets entries in the model configuration, i.e. inside of the "
         "`parameter_space.<model_name>` entry of the meta configuration. "
         "Example: --mp some.param=42 sets the 'param' entry in 'some' to 42. "
+        "Specify DELETE as value to remove an entry. "
         "Repeat the --mp option to set multiple values."
     ),
 )
@@ -113,9 +115,10 @@ from ._utils import Echo
     "--set-pspace-params",
     "--pp",
     multiple=True,
+    callback=default_none,
     help=(
-        "Like --set-model-params but attaching to the root level of the meta "
-        "configuration. "
+        "Like --set-model-params but attaching to the `parameter_space` entry "
+        "of the meta configuration. "
         "Repeat the --pp option to set multiple values."
         "These arguments are parsed after --set-pspace-params and "
         "--set-model-params such that they can overwrite any of the "
@@ -126,6 +129,7 @@ from ._utils import Echo
     "--set-params",
     "-p",
     multiple=True,
+    callback=default_none,
     help=(
         "Like --set-model-params but attaching to the root level of the meta "
         "configuration. "
@@ -145,6 +149,7 @@ from ._utils import Echo
 @add_options(OPTIONS["load"])
 @add_options(OPTIONS["eval"])
 @add_options(OPTIONS["debug_flag"])  # --debug
+@add_options(OPTIONS["cluster_mode"])  # --cluster-mode
 #
 #
 #
@@ -158,14 +163,14 @@ def run(ctx, **kwargs):
     from utopya.exceptions import ValidationError
     from utopya.tools import pformat
 
-    from ._utils import parse_run_and_plots_cfg, parse_update_args
+    from ._utils import parse_run_and_plots_cfg, parse_update_dicts
     from .eval import _load_and_eval
 
     _log = utopya._getLogger("utopya_cli")  # TODO How best to do this?!
 
     # Preparations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     _log.info("Parsing additional command line arguments ...")
-    update_dict, update_plots_cfg = parse_update_args(_mode="run", **kwargs)
+    update_dict, update_plots_cfg = parse_update_dicts(_mode="run", **kwargs)
 
     if update_dict:
         _log.note("Updates to meta configuration:\n\n%s", pformat(update_dict))
