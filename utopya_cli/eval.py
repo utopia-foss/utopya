@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 @click.command(
     name="eval",
     help=(
-        "Evaluate a simulation run.\n"
+        "Evaluate a previously finished simulation run.\n"
         "\n"
         "Loads a simulation of the given MODEL_NAME model and evaluates it "
         "either using the configured defaults or with custom plots configs. "
