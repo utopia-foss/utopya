@@ -19,7 +19,7 @@ def delay():
 # -----------------------------------------------------------------------------
 
 
-def test_minimal(registry):
+def test_run_minimal(registry):
     """Tests a simple invocation of the utopya run command"""
     res = invoke_cli(("run", TEST_MODEL))
     print(res.output)
@@ -33,3 +33,6 @@ def test_eval_minimal(registry, delay):
     print(res.output)
     print(res.exception)
     assert res.exit_code == 0
+
+
+# -----------------------------------------------------------------------------

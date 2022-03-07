@@ -1,47 +1,28 @@
-"""Methods needed to implement the utopia command line interface"""
+"""Implements functionality to copy relevant model files"""
 
-import argparse
 import glob
-import logging
 import os
-import re
-import readline
 from typing import Callable, Dict, List, Sequence, Tuple
 
-from pkg_resources import resource_filename
+FILE_EXTENSIONS = {
+    "c": (
+        ".c",
+        ".h",
+    ),
+    "c++": (".c", ".h", ".cc", ".hh", ".cpp"),
+    "python": (".py", ".pyx"),
+    "yaml": (".yml", ".yaml"),
+}
+"""A map of language-specific file extensions"""
 
-from . import MODELS as _MODELS
-from .cfg import load_from_cfg_dir, write_to_cfg_dir
-from .model_registry import get_info_bundle as _get_info_bundle
-from .multiverse import Multiverse
-from .tools import add_item, recursive_update
-
-log = logging.getLogger(__name__)
-
-USER_CFG_HEADER_PATH = resource_filename("utopya", "cfg/user_cfg_header.yml")
-"""Where the user config header prefix is stored"""
-
-BASE_CFG_PATH = resource_filename("utopya", "cfg/base_cfg.yml")
-"""Where to find the utopya base configuration"""
-
-
-class ANSIesc:
-    """Some selected ANSI escape codes; usable in format strings"""
-
-    RESET = "\033[0m"
-    BOLD = "\033[1m"
-    DIM = "\033[2m"
-    UNDERLINE = "\033[4m"
-
-    BLACK = "\033[30m"
-    RED = "\033[31m"
-    GREEN = "\033[32m"
-    YELLOW = "\033[33m"
-    BLUE = "\033[34m"
-    MAGENTA = "\033[35m"
-    CYAN = "\033[36m"
-    WHITE = "\033[37m"
-
+LANGUAGE_ALIASES = {
+    "cpp": "c++",
+    "py": "python",
+    "py2": "python",
+    "py3": "python",
+}
+"""A map of language specifier aliases that can be used to find a normalized
+language specifier"""
 
 # -----------------------------------------------------------------------------
 
@@ -79,6 +60,12 @@ def copy_model_files(
     Returns:
         None
     """
+    # FIXME Only import needed ones!
+    from utopya import MODELS as _MODELS
+    from utopya.cfg import load_from_cfg_dir, write_to_cfg_dir
+    from utopya.model_registry import get_info_bundle as _get_info_bundle
+    from utopya.multiverse import Multiverse
+    from utopya.tools import add_item, recursive_update
 
     def apply_replacements(s, *replacements: Sequence[Tuple[str, str]]) -> str:
         """Applies multiple replacements onto the given string"""

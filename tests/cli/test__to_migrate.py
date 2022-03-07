@@ -4,13 +4,13 @@ import argparse
 
 import pytest
 
-import utopya.cltools as clt
+# import utopya.cltools as clt  # FIXME
 import utopya.model_registry as mr
 from utopya.cfg import load_from_cfg_dir
 from utopya.yaml import write_yml
 
-from .test_cfg import tmp_cfg_dir
-from .test_model_registry import tmp_model_registry
+from ..test_cfg import tmp_cfg_dir
+from ..test_model_registry import tmp_model_registry
 
 # Fixtures --------------------------------------------------------------------
 
