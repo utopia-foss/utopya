@@ -45,6 +45,19 @@ INTERACTIVE_MODE_PROHIBITED_ARGS = (
 OPTIONS = dict()
 
 # -- Model selection
+OPTIONS["label"] = (
+    click.option(
+        "--label",
+        default=None,
+        help=(
+            "For model names that have multiple info bundles registered, a "
+            "label is needed to unambiguously select the desired one. "
+            "Alternatively, use the `utopya models set-default` CLI command "
+            "to set a default label for a model."
+        ),
+    ),
+)
+
 OPTIONS["model_selection"] = (
     click.option(
         "--cfg-set",
@@ -58,17 +71,7 @@ OPTIONS["model_selection"] = (
             "specify empty strings (`''`) for those arguments."
         ),
     ),
-    click.option(
-        "--label",
-        default=None,
-        help=(
-            "For model names that have multiple info bundles registered, a "
-            "label is needed to unambiguously select the desired one. "
-            "Alternatively, use the `utopya models set-default` CLI command "
-            "to set a default label for a model."
-        ),
-    ),
-)
+) + OPTIONS["label"]
 
 # -- Universal flags
 OPTIONS["debug_flag"] = (

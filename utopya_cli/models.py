@@ -5,6 +5,7 @@ from typing import Tuple
 
 import click
 
+from ._shared import OPTIONS, add_options
 from ._utils import Echo
 
 models = click.Group(
@@ -60,12 +61,7 @@ def list_models(long_mode: bool):
     help="Removes info bundles from individual models",
 )
 @click.argument("model_name")
-@click.option(
-    "--label",
-    type=str,
-    default=None,
-    help="The label of the info bundle to remove from the registry entry",
-)
+@add_options(OPTIONS["label"])
 @click.option(
     "-a",
     "--all",
@@ -149,31 +145,109 @@ def set_default(*, model_name: str, label: str):
 
 
 # .. utopya models info .......................................................
-# TODO
+# TODO Expand to show more information
 
 
-@models.command(help="Shows model information.")
+@models.command(
+    help=(
+        "Shows model information.\n"
+        "\n"
+        "Currently, this only shows the available configuration set names."
+    )
+)
 @click.argument("model_name")
-@click.option("--label", required=False)
+@add_options(OPTIONS["label"])
 def info(*, model_name: str, label: str):
-    raise NotImplementedError("info")
+    import utopya
+    from utopya.tools import make_columns
+
+    _log = utopya._getLogger("utopya_cli")
+
+    model = utopya.Model(name=model_name, bundle_label=label)
+
+    _log.info("Fetching available config sets ...")
+    cfg_sets = model.default_config_sets
+    if cfg_sets:
+        _log.note(
+            "Have %d config sets available for model '%s':\n%s",
+            len(cfg_sets),
+            model.name,
+            make_columns(cfg_sets),
+        )
+
+    else:
+        _log.note(
+            "There are no config sets available for model '%s'.", model.name
+        )
+
+    _log.remark(
+        "To add config sets, create subdirectories containing run.yml and/or "
+        "eval.yml files in one of the search directories listed above.",
+    )
 
 
 # .. utopya models copy .......................................................
-# TODO
+# TODO Implement
 
 
-@models.command(help="Copies a model implementation.")
+@models.command(
+    help=("Copies a model implementation.\n\nThis is not implemented yet!")
+)
 @click.argument("model_name")
-@click.option("--label", required=False)
-def copy(*, model_name: str, label: str):
-    raise NotImplementedError("copy")
+@add_options(OPTIONS["label"])
+@click.option(
+    "--new-name",
+    prompt=True,
+    help="Name of the new model. If not given, will prompt for it.",
+)
+@click.option(
+    "--target-project",
+    prompt=True,
+    help=(
+        "Name of the utopya project to copy the new model to. If not given, "
+        "will prompt for it. "
+        "Note that this project needs to be known by utopya; "
+        "use `utopya projects register` to register it first."
+    ),
+)
+@click.option(
+    "--dry-run",
+    flag_value=True,
+    help=(
+        "Perform a dry run: No copy or write operations will be carried out."
+    ),
+)
+@click.option(
+    "--skip-exts",
+    show_default=True,
+    default="pyc",
+    callback=lambda c, _, val: val.split(),
+    help=(
+        "File extensions to skip. "
+        "To pass multiple values, use quotes and separate individual "
+        "extensions using spaces. There should not be any leading dots!"
+    ),
+)
+@click.option(
+    "--register",
+    flag_value=True,
+    help=("If given, will also register the newly created model."),
+)
+def copy(
+    *,
+    model_name: str,
+    label: str,
+    new_name: str,
+    target_project: str,
+    dry_run: bool,
+    skip_exts: str,
+    register: bool,
+):
+    raise NotImplementedError("copy")  # TODO
 
 
 # -- Registration -------------------------------------------------------------
 # .. utopya models register ...................................................
-# TODO Add an option to register a model from some kind of "manifest file"
-# TODO Add batch registration, allowing to register many models per call
 
 register = click.Group(
     name="register",

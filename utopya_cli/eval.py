@@ -4,7 +4,6 @@ import copy
 import logging
 import readline
 import sys
-import time
 import traceback
 from typing import List, Tuple, Union
 
