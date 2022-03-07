@@ -1,21 +1,21 @@
-"""The utopya package implements the frontend of Utopia"""
+"""The utopya package implements a versatile simulation runner and manager"""
 
-# Specify the version
-__version__ = "1.0.0a2"
+__version__ = "1.0.0a3"
+"""The utopya package version"""
 
-# Use the dantro-provided logging module (with additional log levels)
-from dantro.logging import REMARK as DEFAULT_LOG_LEVEL
+# .. Logging ..................................................................
+from dantro.logging import REMARK as _DEFAULT_LOG_LEVEL
 from dantro.logging import getLogger as _getLogger
 
-log = _getLogger(__name__)
+_log = _getLogger(__name__)
 
 # Add colour logging to the root logger
 # See API reference:  https://coloredlogs.readthedocs.io/en/latest/api.html
 import coloredlogs as _coloredlogs
 
 _coloredlogs.install(
-    logger=log,
-    level=DEFAULT_LOG_LEVEL,
+    logger=_log,
+    level=_DEFAULT_LOG_LEVEL,
     fmt="%(levelname)-8s %(module)-15s %(message)s",
     level_styles=dict(
         trace=dict(faint=True),
@@ -35,11 +35,12 @@ _coloredlogs.install(
         levelname=dict(bold=True, faint=True), module=dict(faint=True)
     ),
 )
-log.debug("Logging configured.")
+_log.debug("Logging configured.")
 
-# -- The most frequently used objects -----------------------------------------
+# .. The most important part of the utopya interface ..........................
 
 from .eval import DataManager, MultiverseGroup, UniverseGroup
 from .model import Model
 from .model_registry import MODELS
 from .multiverse import FrozenMultiverse, Multiverse
+from .testtools import ModelTest
