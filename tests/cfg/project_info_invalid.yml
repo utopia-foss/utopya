@@ -17,8 +17,5 @@ metadata:
 
 run_cfg_format: yaml
 
-py_modules:
-  some_module: some_path
-
 output_files:
   foo: bar

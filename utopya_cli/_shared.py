@@ -140,6 +140,7 @@ OPTIONS["eval"] = (
         "-u",
         "--update-plots-cfg",
         multiple=True,
+        callback=default_none,
         help=(
             "Sets entries in the selected plots config. "
             "Example: -u my_plot.some_param=42 sets the 'some_param' entry "

@@ -22,19 +22,6 @@ TIME_FSTR = "%y%m%d-%H%M%S"
 class ModelInfoBundle:
     """A bundle of model information; behaves like a read-only dict"""
 
-    PATHS_SCHEMA = (
-        ("executable", str, True),
-        ("model_info", str),
-        ("source_dir", str),
-        ("default_cfg", str),
-        ("default_plots", str),
-        ("base_plots", str),
-        ("py_tests_dir", str),
-        ("py_plots_dir", str),
-    )
-    """Which entries to accept inside the paths property; other keys will be
-    ignored during loading."""
-
     SRC_DIR_SEARCH_PATHS = {
         "model_info": "{model_name:}_info.yml",
         "default_cfg": "{model_name:}_cfg.yml",
@@ -56,6 +43,18 @@ class ModelInfoBundle:
     the suffix.
     """
 
+    PATHS_SCHEMA = (
+        ("executable", str, True),
+        ("model_info", str),
+        ("source_dir", str),
+        ("default_cfg", str),
+        ("default_plots", str),
+        ("base_plots", str),
+        ("py_tests_dir", str),
+        ("py_plots_dir", str),
+    )
+    """Schema to use for a bundle's ``paths`` entry"""
+
     METADATA_SCHEMA = (
         ("version", str),
         ("long_name", str),
@@ -70,8 +69,7 @@ class ModelInfoBundle:
         ("requirements", list),
         ("misc", dict),
     )
-    """Which entries to accept inside the metadata property; other keys
-    will be ignored during loading."""
+    """Schema to use for a bundle's ``metadata`` entry"""
 
     # .........................................................................
 
@@ -136,7 +134,7 @@ class ModelInfoBundle:
                 load_project(project_name)
 
             except MissingProjectError as err:
-                log.error(err)
+                log.caution(err)
                 log.remark(
                     "Will NOT associate a project with the "
                     f"'{self.model_name}' model's info bundle!"
@@ -225,6 +223,16 @@ class ModelInfoBundle:
     def project_name(self) -> str:
         """Access to the Utopia project name information of the bundle"""
         return self._d["project_name"]
+
+    @property
+    def project(self) -> Union[None, dict]:
+        """Load the project information corresponding to this project. Will be
+        None if no project is associated.
+        """
+        if not self.project_name:
+            return None
+
+        return load_project(self.project_name)
 
     @property
     def missing_paths(self) -> dict:

@@ -1,4 +1,10 @@
-"""A module supplying tools for registration and manipulation of projects"""
+"""A module supplying tools for registration and manipulation of projects
+
+.. todo::
+
+    Improve schema handling and consider using a similar approach as with the
+    info bundles. There should also be a better way to define defaults values.
+"""
 
 import logging
 import os
@@ -17,11 +23,14 @@ PROJECT_SCHEMA = (
     ("project_name", str, True),
     ("paths", dict),
     ("metadata", dict),
-    ("py_modules", dict),
-    ("output_files", dict),
+    ("custom_py_modules", dict),
+    ("output_files", dict),  # TODO needs sub-schema
     ("run_cfg_format", str),
 )
-"""Schema to use for project paths"""
+"""Schema to use for an entry in the projects file, i.e.: a single project.
+
+Note that some of the dict-like entries have additional schemas defined.
+"""
 
 PATHS_SCHEMA = (
     ("base_dir", str, True),
@@ -30,7 +39,7 @@ PATHS_SCHEMA = (
     ("py_tests_dir", str),
     ("py_plots_dir", str),
 )
-"""Schema to use for project paths"""
+"""Schema to use for a project's ``paths`` entry"""
 
 METADATA_SCHEMA = (
     ("version", str),
@@ -46,7 +55,8 @@ METADATA_SCHEMA = (
     ("requirements", list),
     ("misc", dict),
 )
-"""Schema to use for project metadata"""
+"""Schema to use for a project's ``metadata`` entry"""
+
 
 # -----------------------------------------------------------------------------
 
@@ -97,12 +107,12 @@ def register_project(
     """
     _log.info("Commencing project registration ...")
 
-    # The project dict to populate
+    # The project dict to populate, providing default values
     project = dict(
         project_name=None,
         paths=dict(),
         metadata=dict(),
-        py_modules=dict(),
+        custom_py_modules=dict(),
         output_files=dict(),
         run_cfg_format="yaml",
     )
