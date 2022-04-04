@@ -289,6 +289,12 @@ models.add_command(register)
     help="Path to the model's default configuration file.",
 )
 @click.option(
+    "--plots-cfg",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    help="Path to the model's default plots configuration file.",
+)
+@click.option(
     "--label",
     type=click.STRING,
     default="set_via_cli",
@@ -320,6 +326,7 @@ def register_single(
     executable: str,
     source_dir: str,
     default_cfg: str,
+    plots_cfg: str,
     label: str,
     exists_action: str,
     project_name: str,
@@ -329,6 +336,7 @@ def register_single(
     Echo.remark(f"  executable:        {executable}")
     Echo.remark(f"  source directory:  {source_dir}")
     Echo.remark(f"  default config:    {default_cfg}")
+    Echo.remark(f"  plots config:      {plots_cfg}")
 
     bundle_kwargs = dict(
         label=label,
@@ -336,6 +344,7 @@ def register_single(
             executable=executable,
             default_cfg=default_cfg,
             source_dir=source_dir,
+            plots_cfg=plots_cfg,
         ),
         project_name=project_name,
     )

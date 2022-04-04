@@ -10,7 +10,7 @@ debug: false
 # Paths configuration
 paths:
   # Where to store batch run configurations and metadata
-  out_dir: ~/utopia_output/_batch
+  out_dir: ~/utopya_output/_batch
 
   # A note to append to the batch output directory
   note: ~

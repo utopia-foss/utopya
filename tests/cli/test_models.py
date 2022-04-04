@@ -1,6 +1,7 @@
 """Tests the utopya models <...> subcommands of the CLI"""
 
 import os
+import shutil
 
 import pytest
 
@@ -70,6 +71,36 @@ def registry():
 
     if TEST_MODEL in mr:
         mr.remove_entry(TEST_MODEL)
+
+
+@pytest.fixture(scope="module")
+def tmp_output_dir():
+    """Replaces the user configuration such that the same temporary output
+    directory is used throughout the whole module this fixture is used in.
+    """
+    import tempfile
+
+    user_cfg_path = os.path.expanduser("~/.config/utopya/user_cfg.yml")
+    have_user_cfg = os.path.exists(user_cfg_path)
+
+    if have_user_cfg:
+        # Need to move that file away temporarily
+        tmp_user_cfg_path = user_cfg_path + ".tmp"
+        shutil.move(user_cfg_path, tmp_user_cfg_path)
+
+    # Create a temporary output directory
+    with tempfile.TemporaryDirectory() as tmpdir:
+        utopya.tools.write_yml(
+            dict(paths=dict(out_dir=str(tmpdir))), path=user_cfg_path
+        )
+        yield
+
+    # Restore previous state
+    if have_user_cfg:
+        shutil.move(tmp_user_cfg_path, user_cfg_path)
+
+    else:
+        os.remove(user_cfg_path)
 
 
 # -----------------------------------------------------------------------------
@@ -305,3 +336,11 @@ def test_edit(monkeypatch):
     res = invoke_cli(("models", "edit", DUMMY_MODEL), input="N\n")
     assert res.exit_code == 0
     assert "Not opening" in res.output
+
+
+@pytest.mark.skip("NotImplemented")
+def test_copy():
+    """Tests utopya models copy"""
+    new_model_args = ("--new-name", "foo", "--target-project", "bar")
+    res = invoke_cli(("models", "copy", DUMMY_MODEL) + new_model_args)
+    assert res.exit_code == 0

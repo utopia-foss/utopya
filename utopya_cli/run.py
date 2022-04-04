@@ -185,18 +185,12 @@ def run(ctx, **kwargs):
         run_cfg=kwargs["run_cfg"],
         plots_cfg=kwargs["plots_cfg"],
         cfg_set=kwargs["cfg_set"],
-        _log=_log,  # TODO Check if working
+        _log=_log,
     )
     kwargs["plots_cfg"] = plots_cfg
     kwargs["update_plots_cfg"] = update_plots_cfg
 
-    try:
-        mv = model.create_mv(run_cfg_path=run_cfg, **update_dict)
-
-    except ValidationError as err:
-        _log.error("%s", err)
-        _log.critical("Exiting now ...")
-        ctx.exit(1)
+    mv = model.create_mv(run_cfg_path=run_cfg, **update_dict)
 
     # Running the simulation . . . . . . . . . . . . . . . . . . . . . . . . .
     mv.run()

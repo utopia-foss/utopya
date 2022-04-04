@@ -177,8 +177,10 @@ def test_register(tmp_projects):
     assert "A TEST project" in project["metadata"]["description"]
 
     # Update ...
+    # TODO
 
     # ... have updated info there now
+    # TODO
 
     # Loading a file with bad syntax will fail
     res = invoke_cli(reg_args + ("--info-file", INVALID_INFO_FILE))

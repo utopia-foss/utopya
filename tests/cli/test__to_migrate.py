@@ -26,42 +26,6 @@ class MockArgs(dict):
 # -----------------------------------------------------------------------------
 
 
-@pytest.mark.skip("Needs migration")
-def test_register_project(tmp_cfg_dir, tmpdir):
-    """Test the register_project command line helper function"""
-    args = MockArgs()
-    args.name = "ProjectName"
-    args.base_dir = tmpdir.join("base")
-    args.models_dir = tmpdir.join("base/src/models")
-    args.python_model_tests_dir = tmpdir.join("base/python/model_tests")
-    args.python_model_plots_dir = tmpdir.join("base/python/model_plots")
-
-    # Before invocation, the (temporary) cfg dir has no projects defined and
-    # the plot module paths are not adjusted
-    assert not load_from_cfg_dir("projects")
-    assert not load_from_cfg_dir("plot_module_paths")
-
-    # Invoke it and test that it is written
-    project = clt.register_project(args)
-    print(project)
-    assert project == load_from_cfg_dir("projects")["ProjectName"]
-
-    # The python model plots should also have changed
-    plot_module_paths = load_from_cfg_dir("plot_module_paths")
-    assert "ProjectName" in plot_module_paths
-    assert plot_module_paths["ProjectName"] == args.python_model_plots_dir
-
-    # If invoking it without model plots, there should not be another one
-    args.name = "AnotherProject"
-    args.python_model_plots_dir = None
-
-    project = clt.register_project(args)
-    print(project)
-    assert load_from_cfg_dir("projects")["AnotherProject"]
-
-    assert plot_module_paths == load_from_cfg_dir("plot_module_paths")
-
-
 @pytest.mark.skip("Needs to be abstracted to not rely on CMake infrastructure")
 def test_copy_model_files(capsys, monkeypatch):
     """This tests the copy_model_files CLI helper function. It only tests
