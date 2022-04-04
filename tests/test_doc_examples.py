@@ -58,7 +58,7 @@ def test_faq_frontend_yaml_tags():
     g = cfg["yaml_tags_general"]
     assert g["fourtytwo"] == 42.0
     assert g["seconds_per_day"] == 60 * 60 * 24
-    assert g["powers"] == 2 ** 10
+    assert g["powers"] == 2**10
     assert g["parentheses"] == (2 + 3) * 4 / (5 - 6)
     assert g["exp_notation"] == (2.34 / 3.45) * 1e-10
 

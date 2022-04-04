@@ -259,7 +259,7 @@ def test_griddc_integration_hexagonal():
 
     height = 0.96 / 4 / 0.75
     size = height / 2.0
-    width = 3 ** 0.5 * size
+    width = 3**0.5 * size
 
     xs = np.linspace(0, width * 8, 8, False) + 0.5 * width
     ys = np.linspace(0, height * 0.75 * 4, 4, False) + 0.5 * height

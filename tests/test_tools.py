@@ -47,9 +47,9 @@ def test_expr_constructor():
     # Assert correctness
     assert d["one"] == 1 * 2 * 3
     assert d["two"] == 9 / 2
-    assert d["three"] == 2 ** 4
+    assert d["three"] == 2**4
     assert d["four"] == eval("1e-10") == 10.0 ** (-10)
-    assert d["five"] == eval("1E10") == 10.0 ** 10
+    assert d["five"] == eval("1E10") == 10.0**10
     assert d["six"] == np.inf
     assert np.isnan(d["seven"])
     assert d["eight"] == (2 + 3) * 4
@@ -129,9 +129,9 @@ def test_add_item():
     # With function call
     d = dict()
     t.add_item(
-        123, add_to=d, key_path=["foo", "bar"], value_func=lambda v: v ** 2
+        123, add_to=d, key_path=["foo", "bar"], value_func=lambda v: v**2
     )
-    assert d["foo"]["bar"] == 123 ** 2
+    assert d["foo"]["bar"] == 123**2
 
     # Invalid value
     with pytest.raises(ValueError, match="My custom error message with -123"):

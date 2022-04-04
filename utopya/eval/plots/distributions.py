@@ -109,7 +109,7 @@ def histogram(
             1,
             (
                 f"$N_{{bins}} = {dist.coords[x].size}$, "
-                fr"$\Sigma_{{{x}}} = {total_sum:.4g}$"
+                rf"$\Sigma_{{{x}}} = {total_sum:.4g}$"
             ),
             transform=hlpr.ax.transAxes,
             verticalalignment="bottom",

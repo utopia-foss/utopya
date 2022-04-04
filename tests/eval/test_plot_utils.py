@@ -177,14 +177,14 @@ def test_calc_pxmap_rectangles():
         extend=True,
     )
 
-    assert np.isclose(lims["x"], [10 ** 1.5, 10 ** 6.5], rtol=1.0e-6).all()
-    assert np.isclose(lims["y"], [10 ** 1.75, 10 ** 6.25], rtol=1.0e-6).all()
+    assert np.isclose(lims["x"], [10**1.5, 10**6.5], rtol=1.0e-6).all()
+    assert np.isclose(lims["y"], [10**1.75, 10**6.25], rtol=1.0e-6).all()
 
     pt = ds.sel(x=1.0e2, y=1.0e2)
-    assert np.isclose(pt["pos_x"], 10 ** 1.5)
-    assert np.isclose(pt["pos_y"], 10 ** 1.75)
-    assert np.isclose(pt["len_x"], 10 ** 2.5 - 10 ** 1.5)
-    assert np.isclose(pt["len_y"], 10 ** 2.25 - 10 ** 1.75)
+    assert np.isclose(pt["pos_x"], 10**1.5)
+    assert np.isclose(pt["pos_y"], 10**1.75)
+    assert np.isclose(pt["len_x"], 10**2.5 - 10**1.5)
+    assert np.isclose(pt["len_y"], 10**2.25 - 10**1.75)
 
     # Errors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     with pytest.raises(ValueError, match="Invalid scale argument"):
