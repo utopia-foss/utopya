@@ -224,7 +224,7 @@ def _load_and_eval(
             _log.remark(
                 "Currently selected data directory:\n  %s", mv.dm.dirs["data"]
             )
-            _log.note("Use Ctrl+C to exit.")
+            _log.note("Use Ctrl+C to exit. Use ↑/↓ for history.")
 
             # Prompt for new arguments . . . . . . . . . . . . . . . . . . . .
             try:
@@ -491,18 +491,19 @@ def _prompt_new_params(
 
     # Check that bad arguments were not used
     defaults = {p.name: p.get_default(new_ctx) for p in new_ctx.command.params}
-    bad_args = [
-        arg
+    bad_args = {
+        arg: new_params[arg]
         for arg in INTERACTIVE_MODE_PROHIBITED_ARGS
         if new_params.get(arg) != defaults[arg]
-    ]
+    }
     if bad_args:
         raise click.exceptions.UsageError(
             "During interactive plotting, arguments that update the "
             "Multiverse meta-configuration cannot be used!\n"
-            "Remove the offending argument{}:  {}".format(
+            "Remove the offending argument{} (value shown in parentheses):\n{}"
+            "".format(
                 "s" if len(bad_args) != 1 else "",
-                ", ".join(bad_args),
+                "\n".join({f"  {k}  ({v})" for k, v in bad_args.items()}),
             )
         )
 
