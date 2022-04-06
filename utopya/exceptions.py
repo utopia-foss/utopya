@@ -5,6 +5,13 @@ class UtopyaException(BaseException):
     """Base class for utopya-specific exceptions"""
 
 
+# -- Parameter validation -----------------------------------------------------
+
+
+class ValidationError(UtopyaException, ValueError):
+    """Raised upon failure to validate a parameter"""
+
+
 # -- WorkerManager ------------------------------------------------------------
 
 
@@ -66,5 +73,17 @@ class BundleExistsError(ModelRegistryError):
     """Raised when a bundle that compared equal already exists"""
 
 
+class MissingBundleError(ModelRegistryError):
+    """Raised when a bundle is missing"""
+
+
 class BundleValidationError(ModelRegistryError):
     """Raised when the result of validating the existence of a bundle fails"""
+
+
+class ProjectRegistryError(UtopyaException, ValueError):
+    """Raised on errors with project registry"""
+
+
+class MissingProjectError(ProjectRegistryError):
+    """Raised on a missing project"""

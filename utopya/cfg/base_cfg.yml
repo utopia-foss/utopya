@@ -20,7 +20,7 @@
 # These are passed to Multiverse._create_run_dir
 paths:
   # base output directory
-  out_dir: ~/utopia_output
+  out_dir: ~/utopya_output
 
   # model note is added to the output directory path
   model_note: ~

@@ -162,15 +162,12 @@ def test_parameter_extraction():
         default=42.2, limits=[0, None], limits_mode="(]"
     )
 
-    assert (
-        params_to_validate[
-            (
-                "model",
-                "param2",
-            )
-        ]
-        == Parameter.from_shorthand(0.5, mode="is-probability")
-    )
+    assert params_to_validate[
+        (
+            "model",
+            "param2",
+        )
+    ] == Parameter.from_shorthand(0.5, mode="is-probability")
 
     assert params_to_validate[
         ("model", "param3", "subparam2y")

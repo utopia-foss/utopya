@@ -7,7 +7,9 @@ import os
 import time
 from typing import Sequence, Tuple, Union
 
-from ..tools import load_selected_keys, pformat
+from .._projects import load_project
+from ..exceptions import MissingProjectError
+from ..tools import load_selected_keys, load_yml, pformat, recursive_update
 
 log = logging.getLogger(__name__)
 
@@ -20,33 +22,40 @@ TIME_FSTR = "%y%m%d-%H%M%S"
 class ModelInfoBundle:
     """A bundle of model information; behaves like a read-only dict"""
 
-    PATH_KEYS = (
+    SRC_DIR_SEARCH_PATHS = {
+        "model_info": "{model_name:}_info.yml",
+        "default_cfg": "{model_name:}_cfg.yml",
+        "default_plots": "{model_name:}_plots.yml",
+        "base_plots": "{model_name:}_base_plots.yml",
+    }
+    """Path keys that can be searched within the source directory.
+    Values are format strings that are evaluated with additional information
+    being available (``model_name``).
+    The resulting paths are interpreted as paths relative to the source
+    directory.
+    """
+
+    FSTR_SUFFIX = "_fstr"
+    """A suffix used to detect format strings in the path parsing routine.
+
+    If a key ends with such a suffix, the corresponding value is assumed to be
+    a format string and is evaluated. The resulting path is stored, dropping
+    the suffix.
+    """
+
+    PATHS_SCHEMA = (
         ("executable", str, True),
         ("model_info", str),
         ("source_dir", str),
         ("default_cfg", str),
         ("default_plots", str),
         ("base_plots", str),
-        ("python_model_tests_dir", str),
-        ("python_model_plots_dir", str),
+        ("py_tests_dir", str),
+        ("py_plots_dir", str),
     )
-    """Which entries to expect inside the paths property"""
+    """Schema to use for a bundle's ``paths`` entry"""
 
-    PATH_KEYS_REL_TO_SRC = (
-        "default_cfg",
-        "default_plots",
-        "base_plots",
-    )
-    """Path keys that are assumed to be relative to the source directory"""
-
-    SRC_DIR_SEARCH_PATHS = (
-        ("default_cfg", "{}_cfg.yml"),
-        ("default_plots", "{}_plots.yml"),
-        ("base_plots", "{}_base_plots.yml"),
-    )
-    """Paths to inspect relative to the source directory"""
-
-    METADATA_KEYS = (
+    METADATA_SCHEMA = (
         ("version", str),
         ("long_name", str),
         ("description", str),
@@ -60,7 +69,7 @@ class ModelInfoBundle:
         ("requirements", list),
         ("misc", dict),
     )
-    """Which entries to expect inside the metadata property"""
+    """Schema to use for a bundle's ``metadata`` entry"""
 
     # .........................................................................
 
@@ -73,9 +82,24 @@ class ModelInfoBundle:
         project_name: str = None,
         registration_time: str = None,
         missing_path_action: str = "log",
-        **additional_kwargs,
+        extract_model_info: bool = True,
     ):
-        """Initialize a ModelInfoBundle"""
+        """Initialize a ModelInfoBundle
+
+        Args:
+            model_name (str): Name of the model this info bundle describes
+            paths (dict): A dictionary of paths
+            metadata (dict, optional): A dictionary of metadata entries
+            project_name (str, optional): The project this model is part of
+            registration_time (str, optional): Timestamp of registration
+            missing_path_action (str, optional): Action upon a path in the
+                ``paths`` dict that does not exist.
+                Can be ``ignore``, ``log``, ``warn``, ``raise``.
+            extract_model_info (bool, optional): Whether to use the information
+                from a potentially existing file at the ``model_info`` path
+                to pre-populate this bundle. Any explicitly given arguments
+                take precedence over the information from that file.
+        """
         self._model_name = model_name
         self._reg_time = (
             registration_time
@@ -83,34 +107,57 @@ class ModelInfoBundle:
             else time.strftime(TIME_FSTR)
         )
 
-        # Prepare data dict
-        self._d = dict(
-            paths=dict(),
-            metadata=dict(),
-            project_name=project_name,
-            **additional_kwargs,
-        )
-
-        # Parse paths before loading them, already expanding the user '~' ...
+        # Parse paths that were passed as argument here
         paths = self._parse_paths(
             **{k: os.path.expanduser(p) for k, p in paths.items() if p},
             missing_path_action=missing_path_action,
         )
 
-        # Populate it, checking some properties
-        err_msg_fstr = "Failed loading '{}' info for '{}' model info bundle!"
+        # If a model info file is known at this point, use it to pre-populate
+        # the data dict.
+        self._d = dict(
+            paths=dict(),
+            metadata=dict(),
+            project_name=None,
+        )
+
+        if extract_model_info and paths.get("model_info"):
+            self._d = recursive_update(
+                self._d,
+                self._load_and_parse_model_info(paths["model_info"]),
+            )
+
+        # If it was given, check that the project name is one of a registered
+        # project -- otherwise, do not associate the model with it.
+        if project_name:
+            try:
+                load_project(project_name)
+
+            except MissingProjectError as err:
+                log.caution(err)
+                log.remark(
+                    "Will NOT associate a project with the "
+                    f"'{self.model_name}' model's info bundle!"
+                )
+
+            else:
+                self._d["project_name"] = project_name
+
+        # Now populate the data dict with the explicitly passed arguments,
+        # which should take precedence over the information from the model info
+        err_msg_fstr = "Failed loading {} info for '{}' model info bundle!"
 
         load_selected_keys(
             paths,
             add_to=self.paths,
-            keys=self.PATH_KEYS,
+            keys=self.PATHS_SCHEMA,
             err_msg_prefix=err_msg_fstr.format("paths", model_name),
         )
 
         load_selected_keys(
             (metadata if metadata is not None else {}),
             add_to=self.metadata,
-            keys=self.METADATA_KEYS,
+            keys=self.METADATA_SCHEMA,
             err_msg_prefix=err_msg_fstr.format("metadata", model_name),
         )
 
@@ -132,7 +179,7 @@ class ModelInfoBundle:
     # Formatting ..............................................................
 
     def __str__(self) -> str:
-        return "<Info bundle for '{}' model>\n{}\n" "".format(
+        return "<Info bundle for '{}' model>\n{}\n".format(
             self._model_name, pformat(self._d)
         )
 
@@ -178,30 +225,71 @@ class ModelInfoBundle:
         return self._d["project_name"]
 
     @property
+    def project(self) -> Union[None, dict]:
+        """Load the project information corresponding to this project. Will be
+        None if no project is associated.
+        """
+        if not self.project_name:
+            return None
+
+        return load_project(self.project_name)
+
+    @property
     def missing_paths(self) -> dict:
         """Returns those paths where os.path.exists did not evaluate to True"""
         return {k: p for k, p in self.paths.items() if not os.path.exists(p)}
 
     # Helpers .................................................................
 
+    def _load_and_parse_model_info(self, path: str) -> dict:
+        """Loads the model info file from the given path and parses it.
+
+        Parsing steps:
+            - Remove entries ``model_name`` or ``label`` that are not
+              relevant at this point.
+
+        Args:
+            path (str): Path to the model info YAML file
+        """
+        d = load_yml(path)
+
+        for key in ("model_name", "label"):
+            d.pop(key, None)
+
+        return d
+
     def _parse_paths(
         self,
         *,
         missing_path_action: str,
         executable: str,
-        base_executable_dir: str = None,
         source_dir: str = None,
+        base_executable_dir: str = None,
         base_source_dir: str = None,
         model_info: str = None,
         **more_paths,
     ) -> dict:
-        """Given path arguments, parse them into actual paths, e.g. by joining
-        some together ...
+        """Given the path arguments, parse them into absolute paths.
+        There are the following parsing steps:
 
-        NOTE This assumes that all paths already got the os.path.expanduser
-             treament.
+            1. Evaluate ``executable`` and ``source_dir``, potentially using
+               the ``base_*`` arguments to resolve relative paths.
+            2. If a ``model_info`` path is given, the directory of that file
+               is used for any *missing* ``base_*`` argument.
+            3. If a ``source_dir`` was given, that directory is searched for
+               further existing paths using ``SRC_DIR_SEARCH_PATHS``.
+            4. Empty entries in ``more_paths`` are skipped
+            5. Remaining entries in ``more_paths`` that end with the suffix
+               specified by the ``FSTR_SUFFIX`` class attribute are interpreted
+               as format strings and resolved by providing information on the
+               ``model_name`` and all available ``paths``. Relative paths are
+               interpreted as relative to the source directory.
+            6. For all paths, it is checked whether they exist. The
+               ``missing_path_action`` argument determines what to do if not.
         """
-        # Make sure the base directories are not none (os.path.join easier)
+        paths = dict()
+
+        # Make sure the base_* are not None (makes os.path.join call easier)
         base_executable_dir = (
             base_executable_dir if base_executable_dir is not None else ""
         )
@@ -209,12 +297,8 @@ class ModelInfoBundle:
             base_source_dir if base_source_dir is not None else ""
         )
 
-        # Create paths dict, basing it on those paths that need no additional
-        # parsing (only checking, see below)
-        paths = dict(**more_paths)
-
         # If a model info file is given, can use its directory as a base
-        # directory to determine
+        # directory to determine the missing base_* arguments
         model_info_dir = ""
         if model_info:
             if not os.path.isabs(model_info):
@@ -232,7 +316,7 @@ class ModelInfoBundle:
 
             paths["model_info"] = model_info
 
-        # Parse the executable file path
+        # Evaluate the executable file path
         paths["executable"] = os.path.join(base_executable_dir, executable)
 
         # Prepare an absolute version of the source directory path
@@ -246,25 +330,38 @@ class ModelInfoBundle:
         if abs_source_dir_path:
             paths["source_dir"] = abs_source_dir_path
 
-            for key, fname_fstr in self.SRC_DIR_SEARCH_PATHS:
-                # Build the full file path and see if a file exists there
-                fname = fname_fstr.format(self.model_name)
+            for key, fname_fstr in self.SRC_DIR_SEARCH_PATHS.items():
+                # Build the full file path, making the model name available.
+                # If that path points to an existing file or directory, add it.
+                fname = fname_fstr.format(model_name=self.model_name)
                 fpath = os.path.join(abs_source_dir_path, fname)
 
                 if os.path.exists(fpath):
                     paths[key] = fpath
 
-        # Carry over configuration files, potentially overwriting existing and
-        # resolving their potentially relative paths
+        # Parse remaining path entries
         for key, path in more_paths.items():
             if path is None:
                 continue
 
+            # Evaluate potentially existing format string style paths, adding
+            # them to the paths dict *without* the suffix that was used to
+            # identify them.
+            if key.endswith(self.FSTR_SUFFIX):
+                subkey = key[: -len(self.FSTR_SUFFIX)]
+                path = path.format(model_name=self.model_name, paths=paths)
+                if subkey in paths or not os.path.exists(path):
+                    continue
+
+                # Path exists and was not yet added; store it under the subkey
+                key = subkey
+
+            # Interpret relative paths as relative to the source directory
             if not os.path.isabs(path):
                 # Is relative. Try to resolve it, starting with a path relative
                 # to the source directory. As a fallback, can still attempt to
                 # interpret it relative to the model info file.
-                if key in self.PATH_KEYS_REL_TO_SRC and abs_source_dir_path:
+                if key in self.SRC_DIR_SEARCH_PATHS and abs_source_dir_path:
                     path = os.path.join(abs_source_dir_path, path)
 
                 elif model_info_dir:
@@ -283,7 +380,7 @@ class ModelInfoBundle:
             # error being thrown below ...
             paths[key] = path
 
-        # Done populating.
+        # Done populating paths dict.
         # Make sure paths are all absolute and exist.
         for key, path in paths.items():
             if not os.path.isabs(path):
@@ -307,10 +404,9 @@ class ModelInfoBundle:
 
                 elif missing_path_action == "raise":
                     raise ValueError(
-                        msg + "\nEither adjust the corresponding "
-                        "configuration bundle or place the "
-                        "expected file at that path. To ignore "
-                        "this error, pass `missing_path_action` "
+                        msg + "\nEither adjust the corresponding model info "
+                        "bundle or place the expected file at that path. "
+                        "To ignore this error, pass the `missing_path_action` "
                         "argument to ModelInfoBundle."
                     )
 

@@ -227,6 +227,13 @@ class Multiverse:
         return self.info_bundle.executable
 
     @property
+    def model(self) -> "utopya.model.Model":  # TODO Ok?
+        """A model instance, created ad-hoc using the associated info bundle"""
+        from .model import Model
+
+        return Model(info_bundle=self.info_bundle)
+
+    @property
     def meta_cfg(self) -> dict:
         """The meta configuration."""
         return self._meta_cfg
@@ -452,7 +459,8 @@ class Multiverse:
         # because it is added as part of the base_cfg.
         pspace = meta_tmp["parameter_space"]
 
-        # Adjust parameter space to include model configuration
+        # Adjust parameter space to include model configuration at a specified
+        # key; also communicate that key explicitly.
         log.debug(
             "Updating parameter space with model configuration for "
             "model '%s' ...",
@@ -461,6 +469,7 @@ class Multiverse:
         pspace[self.model_name] = recursive_update(
             pspace.get(self.model_name, {}), model_cfg
         )
+        pspace["root_model_name"] = self.model_name
         # NOTE this works because meta_tmp is a dict and thus mutable :)
 
         # On top of all of that: add the run configuration, if given

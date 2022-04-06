@@ -7,32 +7,30 @@ import pytest
 
 import utopya.model_registry as umr
 from utopya.model_registry import BundleExistsError, ModelRegistryError
-from utopya.yaml import write_yml, yaml
+from utopya.yaml import load_yml, write_yml, yaml
 
-from . import get_cfg_fpath
+from . import DEMO_DIR, DEMO_PROJECT_NAME, get_cfg_fpath
 from .test_cfg import tmp_cfg_dir
+
+TEST_CFG = load_yml(get_cfg_fpath("model_registry.yml"))
+
 
 # Fixtures --------------------------------------------------------------------
 
 
-@pytest.fixture
-def test_cfg() -> dict:
-    """Loads the test configuration file for this test module"""
-    with open(get_cfg_fpath("model_registry.yml")) as f:
-        return yaml.load(f)
+def mib_kwargs(**misc_metadata) -> dict:
+    """Some default kwargs for a ModelInfoBundle
 
-
-@pytest.fixture
-def mib_kwargs() -> dict:
-    """Some default kwargs for a ModelInfoBundle"""
+    The additional arguments can be used to insert metadata keys such that the
+    resulting info bundles differ from each other
+    """
     return dict(
         paths=dict(
             executable="/abs/foo/executable/path",
             default_cfg="/abs/foo/config/path",
         ),
-        metadata=dict(description="bar"),
-        additional_stuff=123,
-        project_name="ProjectName",
+        metadata=dict(description="bar", misc=misc_metadata),
+        project_name=DEMO_PROJECT_NAME,
     )
 
 
@@ -40,6 +38,14 @@ def mib_kwargs() -> dict:
 def tmp_model_registry(tmp_cfg_dir) -> umr._ModelRegistry:
     """A temporary model registry"""
     return umr._ModelRegistry(tmp_cfg_dir)
+
+
+@pytest.fixture
+def tmp_projects(tmp_cfg_dir):
+    from utopya._projects import load_projects, register_project
+
+    register_project(base_dir=DEMO_DIR, exists_action="raise")
+    assert DEMO_PROJECT_NAME in load_projects()
 
 
 # Utilities module ------------------------------------------------------------
@@ -67,17 +73,16 @@ def test_load_model_cfg():
 # Info Bundle module ----------------------------------------------------------
 
 
-def test_ModelInfoBundle(tmpdir, mib_kwargs):
+def test_ModelInfoBundle(tmpdir, tmp_projects):
     """Tests the ModelInfoBundle"""
     # Most basic
-    mib = umr.ModelInfoBundle(model_name="foo", **mib_kwargs)
+    mib = umr.ModelInfoBundle(model_name="foo", **mib_kwargs())
 
     assert mib.model_name == "foo"
     assert mib.registration_time
 
     assert "paths" in mib.as_dict
     assert "metadata" in mib.as_dict
-    assert "additional_stuff" in mib.as_dict
 
     # Paths and metadata access
     assert mib["paths"] is mib.paths
@@ -95,9 +100,9 @@ def test_ModelInfoBundle(tmpdir, mib_kwargs):
     assert "foo" in str(mib)
 
     # Equality
-    assert mib == mib_kwargs
-    assert mib == umr.ModelInfoBundle(model_name="foo", **mib_kwargs)
-    assert mib != umr.ModelInfoBundle(model_name="bar", **mib_kwargs)
+    assert mib == mib_kwargs()
+    assert mib == umr.ModelInfoBundle(model_name="foo", **mib_kwargs())
+    assert mib != umr.ModelInfoBundle(model_name="bar", **mib_kwargs())
 
     # YAML representation
     with open(tmpdir.join("yaml_repr.yml"), "w+") as f:
@@ -110,9 +115,9 @@ def test_ModelInfoBundle(tmpdir, mib_kwargs):
         assert "registration_time" not in s
 
 
-def test_ModelInfoBundle_path_parsing(test_cfg):
+def test_ModelInfoBundle_path_parsing():
     """Test the path parsing method of the ModelInfoBundle"""
-    cfg = test_cfg["ModelInfoBundle_path_parsing"]
+    cfg = TEST_CFG["ModelInfoBundle_path_parsing"]
 
     for spec_name, spec in cfg.items():
         print(f"--- Test case: {spec_name}")
@@ -152,11 +157,11 @@ def test_ModelRegistryEntry(tmpdir):
     assert e == umr.ModelRegistryEntry("foo", registry_dir=tmpdir)
 
 
-def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
+def test_ModelRegistryEntry_bundle_handling(tmpdir):
     """Test adding bundles to a model registry entry"""
     e = umr.ModelRegistryEntry("foo", registry_dir=tmpdir)
 
-    b_0 = e.add_bundle(**mib_kwargs, label="first", some_val=123)
+    b_0 = e.add_bundle(**mib_kwargs(some_val=123), label="first")
 
     # should have item access now
     assert e.item() is b_0
@@ -169,7 +174,7 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
     assert len(e) == 1
 
     # Add a labelled bundle
-    b_l = e.add_bundle(label="second", **mib_kwargs, some_val=234)
+    b_l = e.add_bundle(label="second", **mib_kwargs(some_val=234))
     assert "second" in e.keys()
     assert len(e) == 2
     assert b_l in e
@@ -193,7 +198,7 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
 
     # Can also add a bundle that already exists (compares equal) if using
     # a different label
-    e.add_bundle(label="a_new_label", **mib_kwargs, some_val=123)
+    e.add_bundle(label="a_new_label", **mib_kwargs(some_val=123))
     assert len(e) == 3
     assert e["a_new_label"] == e["first"]
     e.pop("a_new_label")
@@ -201,16 +206,16 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
 
     # Bad label type
     with pytest.raises(TypeError, match="needs to be a string"):
-        e.add_bundle(label=42, **mib_kwargs, some_val=345)
+        e.add_bundle(label=42, **mib_kwargs(some_val=345))
     assert len(e) == 2
 
     # Already existing bundles are only overwritten if explicitly allowed
     with pytest.raises(BundleExistsError, match="already exists"):
-        e.add_bundle(label="first", **mib_kwargs, some_val=345)
+        e.add_bundle(label="first", **mib_kwargs(some_val=345))
     assert len(e) == 2
 
     e.add_bundle(
-        label="second", **mib_kwargs, some_val=345, exists_action="overwrite"
+        label="second", **mib_kwargs(some_val=345), exists_action="overwrite"
     )
     assert len(e) == 2
 
@@ -221,14 +226,14 @@ def test_ModelRegistryEntry_bundle_handling(tmpdir, mib_kwargs):
     assert len(e) == 0
 
     # Clearing
-    e.add_bundle(label="first", **mib_kwargs, some_val=123)
-    e.add_bundle(label="second", **mib_kwargs, some_val=234)
+    e.add_bundle(label="first", **mib_kwargs(some_val=123))
+    e.add_bundle(label="second", **mib_kwargs(some_val=234))
     assert len(e) == 2
     e.clear()
     assert len(e) == 0
 
 
-def test_ModelRegistryEntry_file_handling(tmpdir, mib_kwargs):
+def test_ModelRegistryEntry_file_handling(tmpdir):
     """Test adding bundles to a model registry entry"""
     # There should be no file at
     registry_file_path = tmpdir.join("foo.yml")
@@ -245,18 +250,18 @@ def test_ModelRegistryEntry_file_handling(tmpdir, mib_kwargs):
 
     # Add a bundle without writing
     e.add_bundle(
-        **mib_kwargs, label="first", some_val=123, update_registry_file=False
+        **mib_kwargs(some_val=123), label="first", update_registry_file=False
     )
     assert registry_file_path.size() == fsize_empty
 
     # Add another, this time with updating
-    e.add_bundle(**mib_kwargs, label="second", some_val=234)
+    e.add_bundle(**mib_kwargs(some_val=234), label="second")
 
     # Data should be written now
     assert registry_file_path.size() > fsize_empty
 
     # Add another bundle
-    e.add_bundle(label="some_label", **mib_kwargs, some_val=345)
+    e.add_bundle(label="some_label", **mib_kwargs(some_val=345))
 
     # Error is raised when overwriting is disabled
     with pytest.raises(FileExistsError, match="At least one file"):
@@ -280,7 +285,7 @@ def test_ModelRegistryEntry_file_handling(tmpdir, mib_kwargs):
 # Model Registry Module -------------------------------------------------------
 
 
-def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
+def test_ModelRegistry(tmp_cfg_dir):
     """Test the ModelRegistry class"""
     # Write a stray file into the directory; should be ignored
     os.makedirs(os.path.join(tmp_cfg_dir, "models"), exist_ok=True)
@@ -306,13 +311,15 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
     assert len(mr) == 1
 
     # Add another entry, this time with a bundle
-    entry2 = mr.register_model_info("model2", label="some_label", **mib_kwargs)
+    entry2 = mr.register_model_info(
+        "model2", label="some_label", **mib_kwargs()
+    )
     assert len(entry2) == 1
     assert len(mr) == 2
 
     # Try to add it again; should be skipped
     assert entry2 is mr.register_model_info(
-        "model2", exists_action="skip", label="some_label", **mib_kwargs
+        "model2", exists_action="skip", label="some_label", **mib_kwargs()
     )
     assert len(entry2) == 1
     assert len(mr) == 2
@@ -323,13 +330,13 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
 
     # Same with extending the bundles
     assert entry2 is mr.register_model_info(
-        "model2", label="some_label", **mib_kwargs, some_val=123123
+        "model2", label="some_label", **mib_kwargs(some_val=123123)
     )
     assert len(entry2) == 1
 
     # Adding it again but with a different label
     mr.register_model_info(
-        "model2", label="another_label", **mib_kwargs, some_val=123123
+        "model2", label="another_label", **mib_kwargs(some_val=123123)
     )
     assert len(entry2) == 2
     entry2.pop("another_label")
@@ -339,8 +346,7 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
     mr.register_model_info(
         "model2",
         label="some_label",
-        **mib_kwargs,
-        some_val=123123,
+        **mib_kwargs(some_val=123123),
         exists_action="validate",
     )
     assert len(entry2) == 1
@@ -348,7 +354,7 @@ def test_ModelRegistry(tmp_cfg_dir, mib_kwargs):
     # Could also desire raising
     with pytest.raises(ModelRegistryError, match="already exists"):
         mr.register_model_info(
-            "model2", label="some_label", **mib_kwargs, some_val=123123
+            "model2", label="some_label", **mib_kwargs(some_val=123123)
         )
 
     # Bad exists action

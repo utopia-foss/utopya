@@ -1,6 +1,7 @@
 """Tests the utopya models <...> subcommands of the CLI"""
 
 import os
+import shutil
 
 import pytest
 
@@ -19,14 +20,20 @@ TEST_MODEL = DUMMY_MODEL + "Test"
 def registry():
     """A fixture that prepares the model registry by adding a dummy model
     and ensuring to remove it again in the teardown of a test.
+
+    This uses the actual model registry in order to test the CLI in a realistic
+    scenario and without the caveats of a mock registry.
     """
     mr = utopya.MODELS
 
-    # Register the dummy model under a new name and with multiple labels
+    # Register the test model under a new name and with multiple labels
     assert TEST_MODEL not in mr
 
     DUMMY_EXECUTABLE = os.path.join(
         DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}.py"
+    )
+    DUMMY_CFG = os.path.join(
+        DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}_cfg.yml"
     )
     reg_args = (
         "models",
@@ -35,6 +42,12 @@ def registry():
         TEST_MODEL,
         "-e",
         DUMMY_EXECUTABLE,
+        "--source-dir",
+        os.path.dirname(DUMMY_EXECUTABLE),
+        "--default-cfg",
+        DUMMY_CFG,
+        "--exists-action",
+        "raise",  # safeguard against corrupting existing entry
     )
 
     res = invoke_cli(reg_args)
@@ -51,10 +64,43 @@ def registry():
     assert "some_label" in mr[TEST_MODEL]
     assert "another_label" in mr[TEST_MODEL]
 
+    res = invoke_cli(("models", "set-default", TEST_MODEL, "set_via_cli"))
+    assert res.exit_code == 0
+
     yield mr
 
     if TEST_MODEL in mr:
         mr.remove_entry(TEST_MODEL)
+
+
+@pytest.fixture(scope="module")
+def tmp_output_dir():
+    """Replaces the user configuration such that the same temporary output
+    directory is used throughout the whole module this fixture is used in.
+    """
+    import tempfile
+
+    user_cfg_path = os.path.expanduser("~/.config/utopya/user_cfg.yml")
+    have_user_cfg = os.path.exists(user_cfg_path)
+
+    if have_user_cfg:
+        # Need to move that file away temporarily
+        tmp_user_cfg_path = user_cfg_path + ".tmp"
+        shutil.move(user_cfg_path, tmp_user_cfg_path)
+
+    # Create a temporary output directory
+    with tempfile.TemporaryDirectory() as tmpdir:
+        utopya.tools.write_yml(
+            dict(paths=dict(out_dir=str(tmpdir))), path=user_cfg_path
+        )
+        yield
+
+    # Restore previous state
+    if have_user_cfg:
+        shutil.move(tmp_user_cfg_path, user_cfg_path)
+
+    else:
+        os.remove(user_cfg_path)
 
 
 # -----------------------------------------------------------------------------
@@ -96,8 +142,102 @@ def test_register_single(registry):
     res = invoke_cli(reg_args)
     print(res.output)
     assert res.exit_code != 0
-    assert "Failed registering" in res.output
+    assert "Registration failed!" in res.output
     assert "Bundle validation failed" in res.output
+
+
+def test_register_from_list(registry):
+    """Tests utopya models register single
+
+    NOTE The fixture already performs some of the tests
+    """
+    DUMMY_EXECUTABLE = os.path.join(
+        DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}.py"
+    )
+
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        TEST_MODEL,
+        "--executables",
+        DUMMY_EXECUTABLE,
+    )
+    res = invoke_cli(reg_args + ("--label", "some_new_label"))
+    print(res.output)
+    assert res.exit_code == 0
+    assert "Model registration succeeded" in res.output
+
+    # Can also use format strings
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        TEST_MODEL,
+        "--executable-fstr",
+        "{model_name:}/{model_name:}.py",
+        "--source-dir-fstr",
+        "{model_name:}/",
+        "--base-executable-dir",
+        os.path.join(DEMO_DIR, "models"),
+        "--base-source-dir",
+        os.path.join(DEMO_DIR, "models"),
+    )
+    res = invoke_cli(reg_args + ("--label", "yet_another_label"))
+    print(res.output)
+    assert res.exit_code == 0
+    assert "Model registration succeeded" in res.output
+
+    # Mutually exclusive
+    res = invoke_cli(
+        (
+            "models",
+            "register",
+            "from-list",
+            TEST_MODEL,
+            "--executable-fstr",
+            "{model_name:}/{model_name:}.py",
+            "--source-dir-fstr",
+            "{model_name:}/",
+            "--source-dirs",
+            "/foo/bar",
+        )
+    )
+    print(res.output)
+    assert res.exit_code != 0
+    assert "mutually exclusive" in res.output
+
+    # Superfluous arguments
+    res = invoke_cli(reg_args + ("--executables", "'foo;bar'"))
+    print(res.output)
+    assert res.exit_code != 0
+    assert "mutually exclusive" in res.output
+
+    # Missing arguments
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        TEST_MODEL,
+    )
+    res = invoke_cli(reg_args)
+    print(res.output)
+    assert res.exit_code != 0
+    assert "Missing argument --executables or" in res.output
+
+    # Length mismatch
+    reg_args = (
+        "models",
+        "register",
+        "from-list",
+        f"'{TEST_MODEL};{TEST_MODEL}'",
+        "--executables",
+        DUMMY_EXECUTABLE,
+    )
+    res = invoke_cli(reg_args)
+    print(res.output)
+    assert res.exit_code != 0
+    assert "Mismatch of sequence lengths" in res.output
 
 
 def test_register_from_manifest(registry):
@@ -172,7 +312,7 @@ def test_remove(registry):
 
 def test_set_default(registry):
     """Tests utopya models set-default"""
-    assert registry[TEST_MODEL].default_label is None
+    assert registry[TEST_MODEL].default_label == "set_via_cli"  # see fixture
 
     res = invoke_cli(("models", "set-default", TEST_MODEL, "some_label"))
     print(res.output)
@@ -181,16 +321,26 @@ def test_set_default(registry):
     assert registry[TEST_MODEL].default_label == "some_label"
 
 
-def test_edit():
-    """Tests utopya models edit
-
-    This will not succeed in the test context, because no editor can be opened.
-    """
+def test_edit(monkeypatch):
+    """Tests utopya models edit"""
     res = invoke_cli(("models", "edit", DUMMY_MODEL), input="y\n")
     assert res.exit_code == 1
     assert "Editing model registry file failed!" in res.output
+
+    monkeypatch.setenv("EDITOR", "echo")  # this will always work
+    res = invoke_cli(("models", "edit", DUMMY_MODEL), input="y\n")
+    assert res.exit_code == 0
+    assert "Successfully edited registry file" in res.output
 
     # Not continuing
     res = invoke_cli(("models", "edit", DUMMY_MODEL), input="N\n")
     assert res.exit_code == 0
     assert "Not opening" in res.output
+
+
+@pytest.mark.skip("NotImplemented")
+def test_copy():
+    """Tests utopya models copy"""
+    new_model_args = ("--new-name", "foo", "--target-project", "bar")
+    res = invoke_cli(("models", "copy", DUMMY_MODEL) + new_model_args)
+    assert res.exit_code == 0

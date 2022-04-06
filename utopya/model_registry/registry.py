@@ -252,13 +252,10 @@ class ModelRegistry:
             self.registry_dir,
         )
 
-        # Go over files in registery directory
         new_entries = []
         for fname in os.listdir(self.registry_dir):
-            # Get the model name from the file name
             model_name, ext = os.path.splitext(fname)
 
-            # Continue only if it is a YAML file
             if not ext.lower() in (".yml", ".yaml") or model_name in self:
                 continue
 

@@ -68,7 +68,7 @@ setup(
     # Package information
     version=find_version("utopya", "__init__.py"),
     #
-    description="The Utopia Frontend Package",
+    description="The Utopia Frontend Package",  # TODO Expand
     url="https://gitlab.com/utopia-project/utopya",
     author="utopya developers",
     author_email=(
@@ -98,7 +98,6 @@ setup(
     entry_points={
         "console_scripts": [
             "utopya = utopya_cli.cli:cli",
-            "utopia = utopya_cli.legacy:cli",  # FIXME Remove once migrated
         ],
     },
 )

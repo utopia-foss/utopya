@@ -104,7 +104,7 @@ def enqueue_lines(
     # `tail -f` does it ...
     if follow:
         # Get the current thread to allow stopping to follow
-        ct = threading.currentThread()
+        ct = threading.current_thread()
         should_stop = lambda: getattr(ct, "stop_follow", False)
 
         it = _follow(stream, should_stop=should_stop)

@@ -15,6 +15,7 @@ from ..cfg import UTOPIA_CFG_DIR
 from ..exceptions import (
     BundleExistsError,
     BundleValidationError,
+    MissingBundleError,
     ModelRegistryError,
 )
 from ..tools import pformat
@@ -80,7 +81,7 @@ class ModelRegistryEntry:
         return os.path.join(self.registry_dir, f"{self.model_name}.yml")
 
     @property
-    def default_label(self) -> str:
+    def default_label(self) -> Union[str, None]:
         """The default label"""
         return self._default_label
 
@@ -122,7 +123,7 @@ class ModelRegistryEntry:
         return other in self.values()
 
     def __str__(self) -> str:
-        return "<{} '{}'; {} bundle{}, default: {}>".format(
+        return "<{} '{}'; {} bundle{}, default: '{}'>".format(
             type(self).__name__,
             self.model_name,
             len(self),
@@ -142,7 +143,15 @@ class ModelRegistryEntry:
         """Return a bundle for the given label. If None, tries to return the
         single registered item.
         """
-        return self._bundles[key]
+        try:
+            return self._bundles[key]
+
+        except KeyError as err:
+            _avail = ", ".join(self.keys())
+            raise MissingBundleError(
+                f"No bundle labelled '{key}' registered in {self}!\n"
+                f"Available labels:  {_avail}"
+            ) from err
 
     def item(self) -> ModelInfoBundle:
         """Retrieve a single bundle for this model, if not ambiguous.
@@ -161,12 +170,13 @@ class ModelRegistryEntry:
             return self.default_bundle
 
         elif len(self) != 1:
-            raise ModelRegistryError(
+            _avail = ", ".join(self.keys())
+            raise MissingBundleError(
                 f"Could not unambiguously select single bundle from {self}, "
                 "because no default was set or because the number of bundles "
-                "is not exactly one. "
+                "is not exactly one.\n"
                 "Define a `default_label` or use `__getitem__` to access a "
-                "bundle with a specific label."
+                f"bundle with a specific label (available: {_avail})."
             )
 
         return self[list(self.keys())[0]]
@@ -253,10 +263,23 @@ class ModelRegistryEntry:
 
             elif exists_action == "validate":
                 if self[label] != bundle:
+                    # Generate a diff such that its clearer where they differ
+                    import difflib
+
+                    diff = "\n".join(
+                        difflib.Differ().compare(
+                            pformat(self[label].as_dict).split("\n"),
+                            pformat(bundle.as_dict).split("\n"),
+                        )
+                    )
+
                     raise BundleValidationError(
                         f"Bundle validation failed for label '{label}'! "
                         "The to-be-added bundle did not compare equal to the "
-                        "bundle that already exists under that label."
+                        "bundle that already exists under that label.\n"
+                        "Either change the `exists_action` argument to "
+                        "'overwrite' or make sure the bundles are equal; "
+                        f"their diff is as follows:\n\n{diff}"
                     )
 
                 log.debug("Validation successful for label '%s'.", label)
@@ -268,8 +291,9 @@ class ModelRegistryEntry:
             else:  # "raise"
                 raise BundleExistsError(
                     f"An info bundle with label '{label}' already exists in "
-                    f"{self}! Set `exists_action` to 'overwrite', 'skip', or "
-                    "'validate' to no longer trigger this error."
+                    f"{self}!\n"
+                    "Set `exists_action` to 'overwrite', 'skip', or "
+                    "'validate' to handle this error."
                 )
 
         log.debug(

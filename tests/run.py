@@ -13,11 +13,16 @@ import sys
 
 import pytest
 
-# Ensure that utopya is in the path and already imported at this point. If not
-# doing this, discovery of the utopya module may fail if the test modules are
-# imported when *spawning* a new multiprocessing.Process ...
+# Ensure that the root directory of the utopya packages are in the path and
+# utopya is already imported at this point.
+# If not doing this, discovery of the utopya modules may fail if the test
+# modules are imported when *spawning* a new multiprocessing.Process ...
 sys.path.insert(0, os.path.dirname(__file__))
+
 import utopya
+
+# Set an invalid EDITOR variable
+os.environ["EDITOR"] = "mock-editor"
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__] + sys.argv[1:]))

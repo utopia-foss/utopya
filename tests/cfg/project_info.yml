@@ -1,0 +1,16 @@
+# A project info file used for testing project registration
+---
+project_name: ValidTestProject
+
+paths:
+  models_dir: models
+
+metadata:
+  description: A TEST project info file to TEST project registration
+  license: LGPLv3+
+  language: python3
+
+run_cfg_format: yaml
+
+output_files:
+  foo: bar

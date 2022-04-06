@@ -1,6 +1,5 @@
 """Implements generally useful functions, partly by importing from dantro"""
 
-import collections
 import io
 import logging
 import os
@@ -45,8 +44,8 @@ def load_selected_keys(
         src (dict): The dict to load values from
         add_to (dict): The dict to load values into
         keys (Sequence[Tuple[str, type, bool]]): Which keys to load, given
-            as sequence of (key, allowed types, [required=False]) tuples.
-        description (str): A description string, used in error message
+            as sequence of ``(key, allowed types, [required=False])`` tuples.
+        err_msg_prefix (str): A description string, used in error message
         prohibit_unexpected (bool, optional): Whether to raise on keys
             that were unexpected, i.e. not given in ``keys`` argument.
 
@@ -55,13 +54,19 @@ def load_selected_keys(
         TypeError: On bad type of value in ``src``
         ValueError: On unexpected keys in ``src``
     """
-    for spec in keys:
+
+    def unpack(spec) -> Tuple[str, Union[type, Sequence[type]], bool]:
+        """Unpacks a schema entry into a 3-tuple"""
         if len(spec) == 3:
             k, allowed_types, required = spec
         else:
             k, allowed_types = spec
             required = False
 
+        return k, allowed_types, required
+
+    for spec in keys:
+        k, allowed_types, required = unpack(spec)
         if k not in src:
             if not required:
                 continue
@@ -72,14 +77,14 @@ def load_selected_keys(
 
         if not isinstance(src[k], allowed_types):
             raise TypeError(
-                "{}Bad type for value of '{}': {}! Expected "
-                "{} but got {}."
+                "{}Bad type for value of '{}'! Expected "
+                "{} but got {}: {}"
                 "".format(
                     err_msg_prefix + " " if err_msg_prefix else "",
                     k,
-                    src[k],
                     allowed_types,
                     type(src[k]),
+                    src[k],
                 )
             )
 
@@ -88,15 +93,16 @@ def load_selected_keys(
     if not prohibit_unexpected:
         return
 
-    unexpected_keys = [k for k in src if k not in add_to]
+    allowed_keys = tuple(unpack(spec)[0] for spec in keys)
+    unexpected_keys = tuple(k for k in src if k not in allowed_keys)
     if unexpected_keys:
         raise ValueError(
-            "{}Received unexpected keys: {}! "
+            "{}Received unexpected keys: {}\n"
             "Expected only: {}"
             "".format(
                 err_msg_prefix + " " if err_msg_prefix else "",
                 ", ".join(unexpected_keys),
-                ", ".join([s[0] for s in keys]),
+                ", ".join(allowed_keys),
             )
         )
 
@@ -170,51 +176,19 @@ def pprint(obj: Any, **kwargs):
     print(pformat(obj), **kwargs)
 
 
-def pformat(obj) -> str:
+def pformat(obj: Any) -> str:
     """Creates a "pretty" string representation of the given object.
 
     This is achieved by creating a yaml representation.
+
+    .. todo::
+
+        Improve parsing of leaf-level mappings
     """
     sstream = io.StringIO("")
     yaml.dump(obj, stream=sstream)
     sstream.seek(0)
     return sstream.read()
-
-
-# filesystem tools ------------------------------------------------------------
-
-
-def open_folder(path: str):
-    """Opens the folder at the specified path.
-
-    .. note::
-
-        This refuses to open a *file*.
-
-    Args:
-        path (str): The absolute path to the folder that is to be opened. The
-            home directory ``~`` is expanded.
-    """
-    path = os.path.expanduser(path)
-
-    if not os.path.isabs(path):
-        raise ValueError(f"Need an absolute path, but got '{path}'!")
-
-    if not os.path.isdir(path):
-        raise ValueError(f"No folder found at '{path}'!")
-
-    # Depending on platform, define the opening function
-    if sys.platform == "windows":
-        open_now = lambda p: os.startfile(p)
-
-    elif sys.platform == "darwin":
-        open_now = lambda p: subprocess.Popen(["open", p])
-
-    else:
-        open_now = lambda p: subprocess.Popen(["xdg-open", p])
-
-    # ... and call it
-    open_now(path)
 
 
 # misc ------------------------------------------------------------------------

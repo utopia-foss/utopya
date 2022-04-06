@@ -11,17 +11,12 @@ from typing import Any, Sequence, Tuple, Union
 import numpy as np
 import paramspace as psp
 
-# Local constants
+from .exceptions import ValidationError
+
 log = logging.getLogger(__name__)
 
 
 # -----------------------------------------------------------------------------
-
-
-class ValidationError(ValueError):
-    """Raised upon failure to validate a parameter"""
-
-    pass
 
 
 class Parameter:

@@ -53,7 +53,7 @@ def imshow_hexagonal(
     width, height = _get_ax_size(hlpr.ax, hlpr.fig)
     s = (height / data.y.size) / 0.75 / 2
     # NOTE the 0.75 factor is required because of the hexagonal offset geometry
-    area = 3 ** 1.5 / 2 * s ** 2
+    area = 3**1.5 / 2 * s**2
 
     # distinguish pair and impair rows (impair have offset)
     hex_s = 2 * data.isel(y=0).y
