@@ -19,7 +19,8 @@
       The legacy CLI is removed.
     - Makes it much easier to expand the CLI and allows testing using pytest.
     - Improves modularization by moving all CLI-related implementations into the new and separate `utopya_cli` package.
-- !4 adds a validated project registry
+    - Provides more ways to register models. In particular, there is now the option to register a model's metadata via a "model info file".
+- !4 adds a validated project registry, which keeps track of utopya projects (which in turn contain models).
 
 
 ## v0.8.8
