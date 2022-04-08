@@ -1196,8 +1196,12 @@ class Multiverse:
         """
         to_validate = self.meta_cfg.get("parameters_to_validate", {})
 
-        if not (to_validate or self.meta_cfg.get("perform_validation", True)):
-            log.info("Not performing parameter validation.")
+        if not to_validate:
+            log.info("Skipping parameter validation: nothing to validate.")
+            return None
+
+        elif not self.meta_cfg.get("perform_validation", True):
+            log.info("Skipping parameter validation: is deactivated.")
             return None
 
         log.info("Validating %d parameters ...", len(to_validate))
