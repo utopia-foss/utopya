@@ -75,8 +75,9 @@ log = logging.getLogger(__name__)
 @click.pass_context
 def evaluate(ctx, **params):
     """Invokes a model simulation run and subsequent evaluation"""
-    for k, v in params.items():
-        print(f"  {k:>21s} :  {v}")
+    # FIXME Remove or make optional
+    # for k, v in params.items():
+    #     print(f"  {k:>21s} :  {v}")
 
     import utopya
     from utopya.exceptions import ValidationError

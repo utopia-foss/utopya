@@ -156,8 +156,9 @@ from ._utils import Echo
 @click.pass_context
 def run(ctx, **kwargs):
     """Invokes a model simulation run and subsequent evaluation"""
-    for k, v in kwargs.items():
-        print(f"  {k:>21s} :  {v}")
+    # FIXME Remove or make optional
+    # for k, v in kwargs.items():
+    #     print(f"  {k:>21s} :  {v}")
 
     import utopya
     from utopya.exceptions import ValidationError
