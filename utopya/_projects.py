@@ -16,7 +16,10 @@ from .tools import load_selected_keys, load_yml, pformat, recursive_update
 
 log = logging.getLogger(__name__)
 
-PROJECT_INFO_FILE_SEARCH_PATHS = (".utopya_project.yml",)
+PROJECT_INFO_FILE_SEARCH_PATHS = (
+    ".utopya_project.yml",
+    ".utopya-project.yml",
+)
 """Potential names of project info files, relative to base directory"""
 
 PROJECT_SCHEMA = (
