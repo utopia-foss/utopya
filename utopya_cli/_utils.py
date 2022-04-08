@@ -7,6 +7,7 @@ import sys
 from typing import Tuple
 
 import click
+import paramspace as psp
 
 log = logging.getLogger(__name__)
 
@@ -414,7 +415,7 @@ def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
         if args.num_seeds is not None:
             add_item(
                 args.num_seeds,
-                value_func=lambda v: ParamDim(default=42, range=[v]),
+                value_func=lambda v: psp.ParamDim(default=42, range=[v]),
                 add_to=update_dict,
                 key_path=("parameter_space", "seed"),
                 is_valid=lambda v: bool(v >= 1),
