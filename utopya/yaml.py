@@ -107,10 +107,12 @@ def _model_cfg_constructor(loader, node) -> dict:
 
     # Extract the model name and a potentially existing bundle key
     model_name = d.pop("model_name")
-    bundle_key = d.pop("bundle_key", None)
+    bundle_label = d.pop("bundle_label", None)
 
     # Load the corresponding model configuration
-    mcfg, _, _ = load_model_cfg(model_name=model_name, bundle_key=bundle_key)
+    mcfg, _, _ = load_model_cfg(
+        model_name=model_name, bundle_label=bundle_label
+    )
 
     # Update the loaded config with the remaining keys
     mcfg = _recursive_update(mcfg, d)
