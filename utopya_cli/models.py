@@ -69,7 +69,16 @@ def list_models(long_mode: bool):
     is_flag=True,
     help="If set, removes all info bundles and deletes the registry entry",
 )
-def remove_model_or_bundle(*, model_name: str, label: str, remove_all: bool):
+@click.option(
+    "-y",
+    "--yes",
+    "removal_confirmed",
+    is_flag=True,
+    help="If set, skips the confirmation prompt for removing all info bundles",
+)
+def remove_model_or_bundle(
+    *, model_name: str, label: str, remove_all: bool, removal_confirmed: bool
+):
     import utopya
 
     if not remove_all:
@@ -89,7 +98,7 @@ def remove_model_or_bundle(*, model_name: str, label: str, remove_all: bool):
 
     else:
         Echo.info(f"Removing registry entry for model '{model_name}'...")
-        if not click.confirm("Are you sure?"):
+        if not removal_confirmed and not click.confirm("Are you sure?"):
             Echo.info("Not removing anything.")
             sys.exit(0)
 
