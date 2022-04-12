@@ -145,7 +145,15 @@ def remove(
     type=str,
     help=(
         "A custom project name that may differ from the one given in the "
-        "project info file. "
+        "project info file."
+    ),
+)
+@click.option(
+    "--require-matching-names",
+    is_flag=True,
+    help=(
+        "If set, requires that an optionally given --custom-name and the name "
+        "set in the project info file match exactly."
     ),
 )
 @click.option(
