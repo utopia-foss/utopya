@@ -76,7 +76,7 @@
     <<: *default_style
 
 # .. Multiple lineplots from universe data ....................................
-.basic_uni.lineplots:
+.basic_uni.lineplots:  # FIXME No longer exists
   creator: universe
   universes: all
 
