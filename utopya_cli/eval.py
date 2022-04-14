@@ -495,7 +495,7 @@ def _prompt_new_params(
     bad_args = {
         arg: new_params[arg]
         for arg in INTERACTIVE_MODE_PROHIBITED_ARGS
-        if new_params.get(arg) != defaults[arg]
+        if new_params.get(arg) != defaults.get(arg)
     }
     if bad_args:
         raise click.exceptions.UsageError(
