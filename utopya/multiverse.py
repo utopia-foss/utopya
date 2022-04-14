@@ -113,7 +113,7 @@ class Multiverse:
             update_meta_cfg=update_meta_cfg,
         )
         self._meta_cfg = mcfg
-        log.info("Loaded meta configuration.")
+        log.info("Built meta configuration.")
 
         # In cluster mode, need to make some adjustments via additional dicts
         dm_cluster_kwargs = dict()
@@ -356,27 +356,32 @@ class Multiverse:
         The final configuration dict is built from up to four components,
         where one is always recursively updating the previous level:
 
-            1. base: the default configuration, which is always present
-            2. user (optional): configuration of user- and machine-related
+            1. ``base``: the default configuration, which is always present
+            2. ``project`` (optional): used if the selected model is
+               associated with a project and that project has a project
+               configuration file available
+            3. ``user`` (optional): configuration of user- and machine-related
                parameters
-            3. run (optional): the configuration for the current Multiverse
+            4. ``run`` (optional): the configuration for the current Multiverse
                instance
-            4. update (optional): can be used for a last update step
+            5. ``update`` (optional): can be used for a last update step
 
         The resulting configuration is the meta configuration and is stored
-        to the `meta_cfg` attribute.
+        to the ``meta_cfg`` attribute.
 
-        Note that all model configurations can be loaded into the meta config
-        via the yaml !model tag; this will already have occurred during
-        loading of that file and does not depend on the model chosen in this
-        Multiverse object.
-
-        The parts are recorded in the `cfg_parts` dict and returned such that
+        The parts are recorded in the ``cfg_parts`` dict and returned such that
         a backup can be created.
 
+        .. note::
+
+            All model configurations can be loaded into the meta config
+            via the yaml ``!model`` tag; this will already have occurred during
+            loading of that file and does not depend on the model chosen in
+            this Multiverse object.
+
         Args:
-            run_cfg_path (str): path to run_config
-            user_cfg_path (str): path to the user_config file
+            run_cfg_path (str): path to the run configuration
+            user_cfg_path (str): path to the user configuration file
             update_meta_cfg (dict): will be used to update the resulting dict
 
         Returns:
@@ -388,6 +393,20 @@ class Multiverse:
 
         # Read in the base meta configuration
         base_cfg = load_yml(self.BASE_META_CFG_PATH)
+
+        # See if there is a project-level config file available
+        project_cfg = {}
+        project_cfg_path = None
+
+        if self.info_bundle.project_name:
+            project_cfg_path = self.info_bundle.project["paths"].get(
+                "mv_project_cfg"
+            )
+
+            if project_cfg_path:
+                project_cfg = load_yml(project_cfg_path)
+
+        print(project_cfg_path, project_cfg)
 
         # Decide whether to read in the user configuration from the default
         # search location or use a user-passed one
@@ -449,6 +468,11 @@ class Multiverse:
             "configuration ..."
         )
 
+        # Update with project config, if available
+        if project_cfg:
+            log.debug("Updating with project configuration ...")
+            meta_tmp = recursive_update(meta_tmp, project_cfg)
+
         # Update with user configuration, if given
         if user_cfg:
             log.debug("Updating with user configuration ...")
@@ -502,6 +526,7 @@ class Multiverse:
         log.debug("Preparing dict of config parts ...")
         cfg_parts = dict(
             base=self.BASE_META_CFG_PATH,
+            project=project_cfg_path,
             user=user_cfg_path,
             model=model_cfg_path,
             run=run_cfg_path,

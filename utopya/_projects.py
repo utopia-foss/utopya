@@ -38,6 +38,7 @@ Note that some of the dict-like entries have additional schemas defined.
 PATHS_SCHEMA = (
     ("base_dir", str, True),
     ("project_info", str),
+    ("mv_project_cfg", str),
     ("models_dir", str),
     ("py_tests_dir", str),
     ("py_plots_dir", str),

@@ -62,11 +62,12 @@ class Model:
         Raises:
             ValueError: Upon bad ``base_dir``
         """
-        # Determine model info bundle to use
+        # First, determine exact model info bundle to use
         self._info_bundle = get_info_bundle(
             model_name=name, info_bundle=info_bundle, bundle_label=bundle_label
         )
         log.progress("Initializing '%s' model ...", self.name)
+        log.note("  Associated project:  %s", self._info_bundle.project_name)
 
         # Store other attributes
         self._sim_errors = sim_errors
