@@ -428,6 +428,28 @@ plot_manager:
   # Enable auto-detection of plot creators, e.g. via is_plot_func decorator
   auto_detect_creator: true
 
+  # Base plot configuration pools
+  # These specify the base plot configurations that are made available for each
+  # model run, updated and extended in the order specified here.
+  # In some cases, defining additional pools can be useful, e.g. to generate
+  # publication-ready output without redundantly defining plots or styles.
+  #
+  # This is expected to be a list of 2-tuples in form (name, dict or path).
+  # If the second entry is a string, it may be a format string and it will have
+  # access to `model_name` and the model's `paths` dict.
+  # If there is no file available at the given path, will warn about it and use
+  # an empty pool for that entry.
+  #
+  # There are some special keys, which can be used instead of the 2-tuple:
+  #   `utopya_base`, `framework_base`, `project_base`, `model_base`
+  # These expand to a respective configuration file path, depending on the
+  # framework, project, or model that is being used.
+  base_cfg_pools:
+    - utopya_base
+    - framework_base
+    - project_base
+    - model_base
+
   # Can set creator initialization arguments here
   creator_init_kwargs:
     universe:
@@ -450,6 +472,7 @@ plot_manager:
 # IMPORTANT: In order to remain general, neither the base nor the user config
 #            should add any model-specific content here
 #
+# FIXME Remove the entries that are only relevant for Utopia itself
 parameter_space:
   # NOTE: These settings only apply if appropriate depedencies are detected
   parallel_execution:

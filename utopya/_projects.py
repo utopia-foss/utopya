@@ -24,6 +24,7 @@ PROJECT_INFO_FILE_SEARCH_PATHS = (
 
 PROJECT_SCHEMA = (
     ("project_name", str, True),
+    ("framework_name", str),
     ("paths", dict),
     ("metadata", dict),
     ("custom_py_modules", dict),
@@ -38,10 +39,11 @@ Note that some of the dict-like entries have additional schemas defined.
 PATHS_SCHEMA = (
     ("base_dir", str, True),
     ("project_info", str),
-    ("mv_project_cfg", str),
     ("models_dir", str),
     ("py_tests_dir", str),
     ("py_plots_dir", str),
+    ("mv_project_cfg", str),
+    ("project_base_plots", str),
 )
 """Schema to use for a project's ``paths`` entry"""
 
