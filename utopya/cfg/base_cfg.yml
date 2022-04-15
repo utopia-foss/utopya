@@ -12,12 +12,9 @@
 # NOTE that this configuration file documents some features in the comments.
 #      This cannot be exhaustive. Check the docstrings of the functions for
 #      further information.
-#      Also, this file is used for deployment of the user configuration (with
-#      this header section removed).
 ---
 # Multiverse configuration ....................................................
 # Output paths
-# These are passed to Multiverse._create_run_dir
 paths:
   # base output directory
   out_dir: ~/utopya_output
@@ -26,8 +23,8 @@ paths:
   model_note: ~
 
   # From the two above, the run directory will be created at:
-  # <out_dir>/<model_name>/<timestamp>-<model_note>/
-  # With subfolders: config, eval, universes
+  #     <out_dir>/<model_name>/<timestamp>-<model_note>/
+  # Subfolders will be:  config, eval, data
 
 # Control of the backup of files that belong to a simulation
 backups:
@@ -40,9 +37,9 @@ backups:
 
 # Control of the model executable
 executable_control:
-  # Whether to copy the binary to a temporary directory at the initialization
-  # of the Multiverse and execute it from there. This way, accidental changes
-  # to the executable _during_ a simulation are prevented.
+  # Whether to copy the executable to a temporary directory at the
+  # initialization of the Multiverse and execute it from there. This way,
+  # accidental changes to the executable _during_ a simulation are prevented.
   run_from_tmpdir: true
 
 # Whether to perfom a parameter sweep
@@ -241,7 +238,7 @@ worker_kwargs:
     encoding: utf8
 
 
-# Cluster mode configuration
+# Cluster mode configuration ..................................................
 # Whether cluster mode is enabled
 cluster_mode: false
 
@@ -302,6 +299,7 @@ cluster_params:
   # is extracted from the environment variables is available as keyword
   # argument to format. Should be a sequence of format strings.
   additional_run_dir_fstrs: [ "job{job_id:}" ]
+
 
 # Data Manager ................................................................
 # The DataManager takes care of loading the data into a tree-like structure
@@ -454,8 +452,7 @@ plot_manager:
   creator_init_kwargs:
     universe:
       style: &default_style
-        # Choose a slightly wider figure (16:10 instead of 4:3)
-        figure.figsize: [8., 5.]
+        figure.figsize: [8., 5.]  # 16:10
 
     multiverse:
       style:
@@ -463,22 +460,12 @@ plot_manager:
 
 
 # Parameter Space .............................................................
-# Only entries below this one will be available to the Utopia model binaries.
+# Only entries below this one will be available to the model executable.
 #
 # The content of the `parameter_space` level is parsed by the frontend and then
 # dumped to a file, the path to which is passed to the binary as positional
 # argument.
-#
-# IMPORTANT: In order to remain general, neither the base nor the user config
-#            should add any model-specific content here
-#
-# FIXME Remove the entries that are only relevant for Utopia itself
 parameter_space:
-  # NOTE: These settings only apply if appropriate depedencies are detected
-  parallel_execution:
-    # Enable parallel features of Utopia
-    enabled: false
-
   # Set a default PRNG seed
   seed: 42
 
@@ -494,34 +481,18 @@ parameter_space:
   #       sub model can overwrite this entry by adding an entry in their model
   #       configuration level (analogous to `log_levels`.)
 
-  # By default, emit monitor data to the terminal every two seconds:
-  monitor_emit_interval: 2.
-
-  # The default logging levels and pattern
+  # Log levels
+  # NOTE The framework may define further levels in here but may also choose
+  #      to ignore these entries altogether. The `model` and `backend` keys
+  #      are those that are accessible from the utopya CLI.
   log_levels:
-    # level for backend internal operations
-    core: warning
-
-    # level for general I/O operations
-    data_io: warning
-
-    # level for the DataManager in WriteMode::managed
-    data_mngr: warning
-
-    # level for all models, if not specified otherwise in the run cfg
-    # NOTE The level is propagated hierarchically, with models 'inheriting' the
-    #      log level of their parents if they don't receive a custom level.
+    backend: warning  # TODO Implement setting this via CLI
     model: info
-
-  log_pattern: "[%T.%e] [%^%l%$] [%n]  %v"
 
   # The path to the config file to load
   # output_path: /abs/path/to/uni<#>/cfg.yml
   # NOTE This entry is always added by the frontend. Depending on which
   #      universe is to be simulated, the <#> is set.
-
-  # In which mode the output file is to be created, can be: w, r+, a, x
-  output_file_mode: w
 
   # Below here, the model configuration starts, i.e. the config that is used by
   # a model instance. To add it
