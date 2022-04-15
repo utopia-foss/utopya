@@ -15,7 +15,7 @@ from . import PlotHelper, is_plot_func
     ),
 )
 def time_series(
-    *, data: dict, hlpr: PlotHelper, label_fstr: str = "{.2g}", **plot_kwargs
+    *, data: dict, hlpr: PlotHelper, label_fstr: str = "{:.2g}", **plot_kwargs
 ):
     """This is a generic plotting function that plots one or multiple time
     series from the 'y' tag that is selected via the DAG framework.
