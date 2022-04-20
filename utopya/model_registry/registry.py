@@ -10,7 +10,7 @@ from typing import Dict
 
 import dantro.utils
 
-from .._yaml import load_yml, write_yml, yaml
+from .._yaml import load_yml, write_yml
 from ..cfg import UTOPIA_CFG_DIR
 from ..exceptions import BundleExistsError
 from ..tools import make_columns, pformat, recursive_update

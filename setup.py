@@ -11,9 +11,10 @@ INSTALL_DEPS = [
     "coloredlogs>=15.0",
     "colorama>=0.4.4",
     "click>=8.0",
+    "pydantic>=1.9",
     #
     # related to utopya:
-    "paramspace>=2.5.8",
+    "paramspace>=2.5.9",
     "dantro>=0.17.2",
 ]
 # NOTE When changing any of the dependencies, make sure to update the table of
