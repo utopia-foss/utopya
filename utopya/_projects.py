@@ -30,6 +30,7 @@ PROJECT_SCHEMA = (
     ("custom_py_modules", dict),
     ("output_files", dict),  # TODO needs sub-schema
     ("run_cfg_format", str),
+    ("debug_level_updates", dict),  # TODO Implement... here or elsewhere?
 )
 """Schema to use for an entry in the projects file, i.e.: a single project.
 
@@ -46,6 +47,7 @@ PATHS_SCHEMA = (
     ("project_base_plots", str),
 )
 """Schema to use for a project's ``paths`` entry"""
+# TODO What about the BatchTaskManager configuration?
 
 METADATA_SCHEMA = (
     ("version", str),

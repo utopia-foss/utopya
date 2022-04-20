@@ -486,8 +486,12 @@ parameter_space:
   #      to ignore these entries altogether. The `model` and `backend` keys
   #      are those that are accessible from the utopya CLI.
   log_levels:
-    backend: warning  # TODO Implement setting this via CLI
     model: info
+
+    backend: warning
+    # TODO Implement setting this via CLI… perhaps even more general?
+    #      Coolest would be: allow frameworks to provide a mapping of each CLI
+    #      debug level to an update dict.
 
   # The path to the config file to load
   # output_path: /abs/path/to/uni<#>/cfg.yml

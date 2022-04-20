@@ -353,6 +353,8 @@ def parse_update_dicts(
     update_plots_cfg = {}
 
     # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    # TODO Take into account framework-level defaults
+    # TODO Make use of additional debug levels to select more verbose output
     if args.debug >= 1:
         # Set model log level to DEBUG and let PlotManager and WorkerManager
         # raise exceptions
