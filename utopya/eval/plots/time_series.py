@@ -14,7 +14,9 @@ from . import PlotHelper, is_plot_func
         set_labels=dict(x="Time"), set_limits=dict(x=["min", "max"])
     ),
 )
-def time_series(*, data: dict, hlpr: PlotHelper, **plot_kwargs):
+def time_series(
+    *, data: dict, hlpr: PlotHelper, label_fstr: str = "{:.2g}", **plot_kwargs
+):
     """This is a generic plotting function that plots one or multiple time
     series from the 'y' tag that is selected via the DAG framework.
 
@@ -28,6 +30,7 @@ def time_series(*, data: dict, hlpr: PlotHelper, **plot_kwargs):
     Args:
         data (dict): The data selected by the DAG framework
         hlpr (PlotHelper): The plot helper
+        label_fstr (str, optional): Formatting to use for label
         **plot_kwargs: Passed on ot matplotlib.pyplot.plot
     """
     y = data["y"]
@@ -51,7 +54,7 @@ def time_series(*, data: dict, hlpr: PlotHelper, **plot_kwargs):
                 hlpr.ax.plot(
                     line.coords["time"],
                     line,
-                    label=f"{c.item():.2g}",
+                    label=label_fstr.format(c.item()),
                     **plot_kwargs,
                 )
 
@@ -62,12 +65,9 @@ def time_series(*, data: dict, hlpr: PlotHelper, **plot_kwargs):
 
         else:
             raise ValueError(
-                "Given y-data needs to be of one- or two-"
-                "dimensional, was of dimensionality {}! Data: {}"
-                "".format(y.ndim, y)
+                "Given y-data needs to be of one- or two-dimensional, "
+                f"was of dimensionality {y.ndim}! Data: {y}"
             )
 
     else:
-        raise TypeError(
-            "Expected xr.Dataset or xr.DataArray, got {}" "".format(type(y))
-        )
+        raise TypeError(f"Expected xr.Dataset or xr.DataArray, got {type(y)}")

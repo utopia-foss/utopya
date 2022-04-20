@@ -7,8 +7,11 @@ import sys
 from typing import Tuple
 
 import click
+import paramspace as psp
 
 log = logging.getLogger(__name__)
+# FIXME This logger does not support all levels that are used throughout this
+#       module, because it is setup prior to the utopya import.
 
 # -----------------------------------------------------------------------------
 # Communication via Terminal
@@ -326,7 +329,9 @@ def parse_run_and_plots_cfg(
     return run_cfg, plots_cfg
 
 
-def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
+def parse_update_dicts(
+    *, _mode: str, _log=log, **all_arguments
+) -> Tuple[dict, dict]:
     """Parses the given arguments, extracting update dictionaries for the
     Multiverse and the plots configuration
 
@@ -348,6 +353,8 @@ def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
     update_plots_cfg = {}
 
     # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    # TODO Take into account framework-level defaults
+    # TODO Make use of additional debug levels to select more verbose output
     if args.debug >= 1:
         # Set model log level to DEBUG and let PlotManager and WorkerManager
         # raise exceptions
@@ -414,7 +421,7 @@ def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
         if args.num_seeds is not None:
             add_item(
                 args.num_seeds,
-                value_func=lambda v: ParamDim(default=42, range=[v]),
+                value_func=lambda v: psp.ParamDim(default=42, range=[v]),
                 add_to=update_dict,
                 key_path=("parameter_space", "seed"),
                 is_valid=lambda v: bool(v >= 1),
@@ -442,6 +449,7 @@ def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
             set_entries_from_kv_pairs(
                 *args.set_model_params,
                 add_to=update_dict["parameter_space"][args.model_name],
+                _log=_log,
             )
 
         if args.set_pspace_params:
@@ -451,6 +459,7 @@ def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
             set_entries_from_kv_pairs(
                 *args.set_pspace_params,
                 add_to=update_dict["parameter_space"],
+                _log=_log,
             )
 
     # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -482,6 +491,7 @@ def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
         set_entries_from_kv_pairs(
             *args.set_params,
             add_to=update_dict,
+            _log=_log,
         )
 
     if args.update_plots_cfg:
@@ -489,10 +499,14 @@ def parse_update_dicts(*, _mode: str, **all_arguments) -> Tuple[dict, dict]:
             set_entries_from_kv_pairs(
                 *args.update_plots_cfg,
                 add_to=update_plots_cfg,
+                _log=_log,
             )
 
         except ValueError:
-            # FIXME need iteration
+            from utopya.yaml import load_yml
+
             update_plots_cfg = load_yml(*args.update_plots_cfg)
+            # FIXME needs to cover case where update_plots_cfg has more than
+            #       a single argument
 
     return update_dict, update_plots_cfg

@@ -135,6 +135,15 @@ def test_register(tmp_projects):
     assert res.exit_code == 0
     assert f"Successfully stored 'some_custom_name'" in res.output
 
+    # Name needs to match
+    res = invoke_cli(
+        reg_args
+        + ("--custom-name", "some_custom_name", "--require-matching-names")
+    )
+    print(res.output)
+    assert res.exit_code != 0
+    assert f"does not match the name given in the project info" in res.output
+
     # Missing info file
     res = invoke_cli(("projects", "register", os.path.join(DEMO_DIR, "../")))
     print(res.output)

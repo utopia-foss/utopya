@@ -156,8 +156,9 @@ from ._utils import Echo
 @click.pass_context
 def run(ctx, **kwargs):
     """Invokes a model simulation run and subsequent evaluation"""
-    for k, v in kwargs.items():
-        print(f"  {k:>21s} :  {v}")
+    # FIXME Remove or make optional
+    # for k, v in kwargs.items():
+    #     print(f"  {k:>21s} :  {v}")
 
     import utopya
     from utopya.exceptions import ValidationError
@@ -170,7 +171,9 @@ def run(ctx, **kwargs):
 
     # Preparations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     _log.info("Parsing additional command line arguments ...")
-    update_dict, update_plots_cfg = parse_update_dicts(_mode="run", **kwargs)
+    update_dict, update_plots_cfg = parse_update_dicts(
+        _mode="run", **kwargs, _log=_log
+    )
 
     if update_dict:
         _log.note("Updates to meta configuration:\n\n%s", pformat(update_dict))

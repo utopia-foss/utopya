@@ -11,11 +11,13 @@ import time
 from collections import defaultdict
 from shutil import copy2
 from tempfile import TemporaryDirectory
+from typing import List, Tuple, Union
 
 import paramspace as psp
 from pkg_resources import resource_filename
 
 from ._cluster import parse_node_list
+from ._projects import load_project as _load_project
 from .cfg import get_cfg_path as _get_cfg_path
 from .eval import DataManager, PlotManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
@@ -113,7 +115,7 @@ class Multiverse:
             update_meta_cfg=update_meta_cfg,
         )
         self._meta_cfg = mcfg
-        log.info("Loaded meta configuration.")
+        log.info("Built meta configuration.")
 
         # In cluster mode, need to make some adjustments via additional dicts
         dm_cluster_kwargs = dict()
@@ -356,27 +358,32 @@ class Multiverse:
         The final configuration dict is built from up to four components,
         where one is always recursively updating the previous level:
 
-            1. base: the default configuration, which is always present
-            2. user (optional): configuration of user- and machine-related
+            1. ``base``: the default configuration, which is always present
+            2. ``project`` (optional): used if the selected model is
+               associated with a project and that project has a project
+               configuration file available
+            3. ``user`` (optional): configuration of user- and machine-related
                parameters
-            3. run (optional): the configuration for the current Multiverse
+            4. ``run`` (optional): the configuration for the current Multiverse
                instance
-            4. update (optional): can be used for a last update step
+            5. ``update`` (optional): can be used for a last update step
 
         The resulting configuration is the meta configuration and is stored
-        to the `meta_cfg` attribute.
+        to the ``meta_cfg`` attribute.
 
-        Note that all model configurations can be loaded into the meta config
-        via the yaml !model tag; this will already have occurred during
-        loading of that file and does not depend on the model chosen in this
-        Multiverse object.
-
-        The parts are recorded in the `cfg_parts` dict and returned such that
+        The parts are recorded in the ``cfg_parts`` dict and returned such that
         a backup can be created.
 
+        .. note::
+
+            All model configurations can be loaded into the meta config
+            via the yaml ``!model`` tag; this will already have occurred during
+            loading of that file and does not depend on the model chosen in
+            this Multiverse object.
+
         Args:
-            run_cfg_path (str): path to run_config
-            user_cfg_path (str): path to the user_config file
+            run_cfg_path (str): path to the run configuration
+            user_cfg_path (str): path to the user configuration file
             update_meta_cfg (dict): will be used to update the resulting dict
 
         Returns:
@@ -388,6 +395,37 @@ class Multiverse:
 
         # Read in the base meta configuration
         base_cfg = load_yml(self.BASE_META_CFG_PATH)
+
+        # Framework- and project-level configuration files
+        framework_cfg = {}
+        framework_cfg_path = None
+
+        project_cfg = {}
+        project_cfg_path = None
+
+        project_name = self.info_bundle.project_name
+        if project_name:
+            project = self.info_bundle.project
+
+            # Framework-level
+            framework_name = project.get("framework_name")
+            if framework_name:
+                framework_project = _load_project(framework_name)
+                framework_cfg_path = framework_project["paths"].get(
+                    "mv_project_cfg"
+                )
+
+                if framework_cfg_path:
+                    framework_cfg = load_yml(framework_cfg_path)
+
+            # Project level
+            if project_name != framework_name:
+                project_cfg_path = self.info_bundle.project["paths"].get(
+                    "mv_project_cfg"
+                )
+
+                if project_cfg_path:
+                    project_cfg = load_yml(project_cfg_path)
 
         # Decide whether to read in the user configuration from the default
         # search location or use a user-passed one
@@ -449,6 +487,15 @@ class Multiverse:
             "configuration ..."
         )
 
+        # Update with framework and project config, if available
+        if framework_cfg:
+            log.debug("Updating with framework configuration ...")
+            meta_tmp = recursive_update(meta_tmp, framework_cfg)
+
+        if project_cfg:
+            log.debug("Updating with project configuration ...")
+            meta_tmp = recursive_update(meta_tmp, project_cfg)
+
         # Update with user configuration, if given
         if user_cfg:
             log.debug("Updating with user configuration ...")
@@ -502,6 +549,8 @@ class Multiverse:
         log.debug("Preparing dict of config parts ...")
         cfg_parts = dict(
             base=self.BASE_META_CFG_PATH,
+            framework=framework_cfg_path,
+            project=project_cfg_path,
             user=user_cfg_path,
             model=model_cfg_path,
             run=run_cfg_path,
@@ -636,21 +685,21 @@ class Multiverse:
 
     def _setup_pm(self, **update_kwargs) -> PlotManager:
         """Helper function to setup a PlotManager instance"""
-        paths = self.info_bundle.paths
         pm_kwargs = copy.deepcopy(self.meta_cfg["plot_manager"])
 
         if update_kwargs:
             pm_kwargs = recursive_update(pm_kwargs, update_kwargs)
 
+        base_cfg_pools = pm_kwargs.pop(
+            "base_cfg_pools", ["utopya_base", "model_base"]
+        )
+
         log.info("Initializing PlotManager ...")
         pm = PlotManager(
             dm=self.dm,
             _model_info_bundle=self.info_bundle,
-            base_cfg_pools=[
-                ("utopya", self.UTOPYA_BASE_PLOTS_PATH),
-                (f"{self.model_name}_base", paths.get("base_plots", {})),
-            ],
-            default_plots_cfg=paths.get("default_plots"),
+            default_plots_cfg=self.info_bundle.paths.get("default_plots"),
+            base_cfg_pools=self._parse_base_cfg_pools(base_cfg_pools),
             **pm_kwargs,
         )
 
@@ -665,6 +714,110 @@ class Multiverse:
         )
 
         return pm
+
+    def _parse_base_cfg_pools(
+        self, base_cfg_pools: List[Union[str, Tuple[str, Union[str, dict]]]]
+    ) -> List[Tuple[str, Union[str, dict]]]:
+        """Prepares the ``base_cfg_pools`` argument to be valid input to the
+        PlotManager. This method resolves format strings and thus allows to
+        more generically define base config pools.
+
+        Possible formats for each entry of ``base_cfg_pools`` argument are:
+
+            - A 2-tuple ``(name, pool dict)`` which specifies the name of the
+              base config pool alongside with the pool entries.
+            - A 2-tuple ``(name, path to pool config file)``, which is later
+              loaded by the PlotManager
+            - A shortcut key which resolves to the corresponding 2-tuple.
+              Available shortcuts are:  ``utopya_base``, ``framework_base``,
+              ``project_base``, and ``model_base``.
+
+        Both the pool name and path may be format strings which get resolved
+        with the ``model_name`` key and (in the case of the path) the full
+        ``paths`` dict of the current model's info bundle. A format string may
+        look like this:
+
+            "{paths[source_dir]}/{model_name}_more_plots.yml"
+            "~/some/more/plots/{model_name}/plots.yml"
+
+        If such a path cannot be resolved, an error is logged and an empty pool
+        is used instead; this allows for more flexibility in defining locations
+        for additional config pools.
+
+        Args:
+            base_cfg_pools (List[Union[str, Tuple[str, Union[str, dict]]]]):
+                The unparsed specification of config pools.
+        """
+
+        def parse_entry(
+            entry: Union[str, list, tuple], replacements: dict
+        ) -> Tuple[str, Union[str, dict]]:
+            """Unpacks an entry into (name, pool) format and resolves any
+            remaining format specifiers in the name or pool path.
+            """
+            if isinstance(entry, str):
+                try:
+                    pool_name, pool = replacements[entry]
+                except KeyError as err:
+                    _avail = ", ".join(replacements)
+                    raise ValueError(
+                        f"Invalid base config pool shortcut key '{entry}'! "
+                        f"Available shortcuts are: {_avail}. "
+                        "Use one of those or specify the config pool as a "
+                        "2-tuple in form (name, path to pool)."
+                    ) from err
+            else:
+                pool_name, pool = entry
+
+            # Parse pool name and the path to the pool config file
+            pool_name = pool_name.format(model_name=self.model_name)
+            if isinstance(pool, str):
+                pool = pool.format(model_name=self.model_name, paths=paths)
+                pool = os.path.abspath(os.path.expanduser(pool))
+                if not os.path.isfile(pool):
+                    log.error(
+                        "No base plot config pool file found at:\n  %s", pool
+                    )
+                    log.caution("Using an empty pool instead.")
+                    pool = {}
+
+            return pool_name, pool
+
+        if not isinstance(base_cfg_pools, list):
+            raise TypeError(
+                "Base config pools need to be specified as a list of "
+                f"2-tuples or strings, got {type(base_cfg_pools)}!"
+            )
+
+        paths = self.info_bundle.paths
+        replacements = dict(
+            utopya_base=("utopya", self.UTOPYA_BASE_PLOTS_PATH),
+            framework_base=("framework", {}),
+            project_base=("project", {}),
+            model_base=("{model_name:}_base", paths.get("base_plots", {})),
+        )
+
+        project = self.info_bundle.project
+        if project:
+            fw_name = project.get("framework_name")
+            if fw_name:
+                fw_project = _load_project(fw_name)
+                replacements["framework_base"] = (
+                    "framework",
+                    fw_project["paths"].get("project_base_plots"),
+                )
+
+            # Only add a project-level replacement if it is different from the
+            # framework-level replacement
+            if self.info_bundle.project_name != fw_name and project[
+                "paths"
+            ].get("project_base_plots"):
+                replacements["project_base"] = (
+                    "project",
+                    project["paths"].get("project_base_plots"),
+                )
+
+        return [parse_entry(p, replacements) for p in base_cfg_pools]
 
     def _perform_backup(
         self,
@@ -1196,8 +1349,12 @@ class Multiverse:
         """
         to_validate = self.meta_cfg.get("parameters_to_validate", {})
 
-        if not (to_validate or self.meta_cfg.get("perform_validation", True)):
-            log.info("Not performing parameter validation.")
+        if not to_validate:
+            log.info("Skipping parameter validation: nothing to validate.")
+            return None
+
+        elif not self.meta_cfg.get("perform_validation", True):
+            log.info("Skipping parameter validation: is deactivated.")
             return None
 
         log.info("Validating %d parameters ...", len(to_validate))

@@ -75,8 +75,9 @@ log = logging.getLogger(__name__)
 @click.pass_context
 def evaluate(ctx, **params):
     """Invokes a model simulation run and subsequent evaluation"""
-    for k, v in params.items():
-        print(f"  {k:>21s} :  {v}")
+    # FIXME Remove or make optional
+    # for k, v in params.items():
+    #     print(f"  {k:>21s} :  {v}")
 
     import utopya
     from utopya.exceptions import ValidationError
@@ -494,7 +495,7 @@ def _prompt_new_params(
     bad_args = {
         arg: new_params[arg]
         for arg in INTERACTIVE_MODE_PROHIBITED_ARGS
-        if new_params.get(arg) != defaults[arg]
+        if new_params.get(arg) != defaults.get(arg)
     }
     if bad_args:
         raise click.exceptions.UsageError(

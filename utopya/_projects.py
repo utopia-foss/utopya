@@ -16,16 +16,21 @@ from .tools import load_selected_keys, load_yml, pformat, recursive_update
 
 log = logging.getLogger(__name__)
 
-PROJECT_INFO_FILE_SEARCH_PATHS = (".utopya_project.yml",)
+PROJECT_INFO_FILE_SEARCH_PATHS = (
+    ".utopya_project.yml",
+    ".utopya-project.yml",
+)
 """Potential names of project info files, relative to base directory"""
 
 PROJECT_SCHEMA = (
     ("project_name", str, True),
+    ("framework_name", str),
     ("paths", dict),
     ("metadata", dict),
     ("custom_py_modules", dict),
     ("output_files", dict),  # TODO needs sub-schema
     ("run_cfg_format", str),
+    ("debug_level_updates", dict),  # TODO Implement... here or elsewhere?
 )
 """Schema to use for an entry in the projects file, i.e.: a single project.
 
@@ -38,8 +43,11 @@ PATHS_SCHEMA = (
     ("models_dir", str),
     ("py_tests_dir", str),
     ("py_plots_dir", str),
+    ("mv_project_cfg", str),
+    ("project_base_plots", str),
 )
 """Schema to use for a project's ``paths`` entry"""
+# TODO What about the BatchTaskManager configuration?
 
 METADATA_SCHEMA = (
     ("version", str),
@@ -84,13 +92,12 @@ def register_project(
     base_dir: str,
     info_file: str = None,
     custom_project_name: str = None,
+    require_matching_names: bool = None,
     exists_action: str = "raise",
     _log=log,
 ) -> dict:
     """Register or update information of an Utopia project, i.e. a repository
     that implements models.
-
-    TODO Consider implementing a project registry, akin to the models registry.
 
     Args:
         base_dir (str): Project base directory
@@ -99,6 +106,10 @@ def register_project(
             If not given, will use some defaults to search for it.
         custom_project_name (str, optional): Custom project name, overwrites
             the one given in the info file
+        require_matching_names (bool, optional): If set, will require that the
+            custom project name is equal to the one given in the project info
+            file. This allows checking that the file content does not diverge
+            from some outside state.
         exists_action (str, optional): Action to take upon existing project
         _log (TYPE, optional): A logger-like object
 
@@ -174,6 +185,15 @@ def register_project(
 
     # May want to use a custom project name
     if custom_project_name:
+        _project_name = project_info.get("project_name")
+        if require_matching_names and custom_project_name != _project_name:
+            raise ValueError(
+                "The custom project name '{}' does not match the name given "
+                "in the project info file, '{}'! Either ensure that the names "
+                "match exactly or unset the `require_matching_names` flag."
+                "".format(custom_project_name, project_info["project_name"])
+            )
+
         project_info["project_name"] = custom_project_name
         _log.remark("Using a custom project name:  %s", custom_project_name)
         _log.remark(

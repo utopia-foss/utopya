@@ -181,7 +181,7 @@ reporter:
       #   - `total_progress` (in %)
       #   - `active_progress` (mean progress of _active_ simulations, in %)
       #   - `cnt` (dict of counters: `total`, `finished`, `active`)
-      info_fstr: "{total_progress:>5.1f}% "
+      info_fstr: "{total_progress:>5.1f}% ({cnt[finished]} / {cnt[total]})"
       # Example of how to access counters in format string:
       # info_fstr: "finished {cnt[finished]}/{cnt[total]} "
 
@@ -191,7 +191,7 @@ reporter:
       # How to display time information.
       # Available keys: `elapsed`, `est_left`, `est_end`, `start`, `now`
       # (see `times` parser for more information)
-      times_fstr: "| {elapsed:>7s} elapsed | ~{est_left:>7s} left "
+      times_fstr: "| {elapsed} elapsed"
       times_fstr_final: "| finished in {elapsed:} "
       times_kwargs:
         # How to compute the estimated time left to finish the work session

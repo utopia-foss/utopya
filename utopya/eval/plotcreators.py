@@ -115,9 +115,9 @@ class ExternalPlotCreator(dantro.plot_creators.ExternalPlotCreator):
             # then import `model_plots.bar` will make the lookup _only_ in the
             # cached module. As we want several import attempts here, the cache
             # is not desired.
-            _tmp_sys_path = _tmp_sys_path(parent_dir)
-            _tmp_sys_modules = _tmp_sys_modules(reset_only_on_fail=True)
-            with _tmp_sys_path, _tmp_sys_modules:
+            tmp_sys_path = _tmp_sys_path(parent_dir)
+            tmp_sys_modules = _tmp_sys_modules(reset_only_on_fail=True)
+            with tmp_sys_path, tmp_sys_modules:
                 try:
                     mod = super()._get_module_via_import(module)
 

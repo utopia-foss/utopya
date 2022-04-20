@@ -269,6 +269,32 @@ def test_prepare_executable(mv_kwargs):
         mv._prepare_executable()
 
 
+@pytest.mark.skip("Needs an advanced model with base_plots and default_plots")
+def test_base_cfg_pools(mv_kwargs):
+    """Tests the generation of valid base config pools"""
+    mv = Multiverse(**mv_kwargs)
+    parse = mv._parse_base_cfg_pools
+
+    # Check special keywords get replaced
+    assert parse(["utopya_base"]) == [("utopya", mv.UTOPYA_BASE_PLOTS_PATH)]
+    assert parse(["model_base"]) == [
+        (DUMMY_MODEL + "_base", mv.info_bundle.paths.get("base_plots", {}))
+    ]
+
+    # Check additional paths get resolved
+    assert parse(
+        [("{model_name}_foo", "{paths[source_dir]}/{model_name}_plots.yml")]
+    ) == [("dummy_foo", mv.info_bundle.paths["default_plots"])]
+    assert parse([("foo", "some_invalid_path")]) == [("foo", {})]  # empty pool
+
+    # Error messages
+    with pytest.raises(TypeError, match="need to be specified as a list"):
+        parse("not a list")
+
+    with pytest.raises(ValueError, match="Invalid base config pool shortcut"):
+        parse(["some bad shortcut"])
+
+
 # Simulation tests ------------------------------------------------------------
 
 
