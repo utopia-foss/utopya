@@ -325,26 +325,24 @@ def test_entry_manipulation_and_validation(test_registry):
     assert entry_from_file.desc == "I used to have a different value!"
 
     # Change the entry to an invalid value ...
-    # ... that *could* be coerced: fails to write and value stays as before
+    # ... that *could* be coerced: assignment leads to type coercion
     entry.desc = 1.23
-    with pytest.raises(ValidationError, match="required type coercion"):
-        entry.write()
+    assert entry.desc == "1.23"
+    entry.write()
 
     entry_from_file = NestedEntry("test_entry", registry=reg)
-    assert entry_from_file.desc == "I used to have a different value!"
+    assert entry_from_file.desc == "1.23"
 
-    # ... that could *not* be coerced: fails to write and value stays as before
-    entry.desc = dict(foo="bar")
+    # ... that could *not* be coerced: fails to set attribute (because of
+    # config option `validate_assignment`)
     with pytest.raises(pydantic.ValidationError):
-        entry.write()
+        entry.desc = dict(foo="bar")
 
-    entry_from_file = NestedEntry("test_entry", registry=reg)
-    assert entry_from_file.desc == "I used to have a different value!"
-
-    # ... that *could* be coerced -- but with coercion now allowed
-    entry.RAISE_ON_COERCION = False
+    # ... that *could* be coerced -- but without validation
+    entry.Config.validate_assignment = False
 
     entry.desc = -123
+    assert entry.desc == -123
     entry.write()
 
     entry_from_file = NestedEntry("test_entry", registry=reg)

@@ -9,12 +9,7 @@ import pydantic
 
 from .._yaml import load_yml as _load_yml
 from .._yaml import write_yml as _write_yml
-from ..exceptions import (
-    MissingRegistryError,
-    SchemaValidationError,
-    ValidationError,
-)
-from ..tools import recursive_update
+from ..exceptions import MissingRegistryError, SchemaValidationError
 
 log = logging.getLogger(__name__)
 
@@ -23,10 +18,29 @@ log = logging.getLogger(__name__)
 
 
 class BaseSchema(pydantic.BaseModel):
-    """A base schema for registry entries"""
+    """A base schema for registry entries.
+
+    This base schema is configured such that it provides safe defaults: Extra
+    keys are not allowed and all default values as well as assignments are
+    validated.
+
+    .. note::
+
+        The ``validate_assignment`` pydantic configuration option may also lead
+        to type coercion! For instance, an integer type value is always
+        representable as a string; thus, assigning an integer to a field of
+        type string will simply lead to ``str(my_int)`` being stored.
+
+    .. warning::
+
+        If foregoing validation on item assignment, it is no longer guaranteed
+        that the written data can be loaded without errors.
+    """
 
     class Config:
         extra = "forbid"
+        validate_all = True
+        validate_assignment = True
 
 
 class RegistryEntry:
@@ -40,12 +54,6 @@ class RegistryEntry:
     FILE_EXTENSION = ".yml"
     """The file extension that is used for the yaml files -- case-sensitive
     and *with* leading dot.
-    """
-
-    RAISE_ON_COERCION = True
-    """Default behavior in case that type coercion takes place when changing
-    an entry's data *after* initialization. If True, the ``check`` method will
-    raise an error if there was any coercion.
     """
 
     _NO_FORWARDING_ATTRS = (
@@ -110,7 +118,7 @@ class RegistryEntry:
         """Associates a registry with this entry"""
         self._registry = registry
 
-    # Properties ..............................................................
+    # Properties and data access ..............................................
 
     @property
     def name(self) -> str:
@@ -138,6 +146,10 @@ class RegistryEntry:
     def data(self) -> BaseSchema:
         """The entry's data"""
         return self._data
+
+    def dict(self) -> dict:
+        """The entry's data in pydantic's dict format, deep-copied."""
+        return copy.deepcopy(self._data.dict())
 
     # Magic methods ...........................................................
 
@@ -192,59 +204,7 @@ class RegistryEntry:
             return super().__setattr__(attr, value)
         return setattr(self._data, attr, value)
 
-    # Checking, loading, and writing data .....................................
-
-    def dict(self) -> dict:
-        """The entry's data in pydantic's dict format, deep-copied."""
-        return copy.deepcopy(self._data.dict())
-
-    def check(
-        self, *, input_data: dict = None, raise_on_coercion: bool = None
-    ):
-        """Invokes schema validation on this entry's data or explicitly passed
-        input data.
-
-        Args:
-            input_data (dict, optional): If given, will use this data instead
-                of this entry's own data (retrieved via ``dict()`` method).
-            raise_on_coercion (bool, optional): Whether to check if type
-                coercion would be required to make the current data compatible
-                with this entry's data scheme. If None, will use the default
-                value defined in the ``RAISE_ON_COERCION`` class variable.
-
-        Raises:
-            pydantic.ValidationError: If this entry's data model could not be
-                validated with the current state of this entry.
-            utopya.exceptions.ValidationError: If data coercion would be
-                required for the current state of this entry to be valid.
-        """
-        # Prepare input data
-        input_data = input_data if input_data is not None else self.dict()
-
-        # Perform the validation
-        output_data, _, validation_error = pydantic.validate_model(
-            model=self.SCHEMA, input_data=input_data
-        )
-
-        if validation_error:
-            raise validation_error
-
-        # Evaluate whether to raise in case of type coercions
-        if raise_on_coercion is None:
-            raise_on_coercion = self.RAISE_ON_COERCION
-
-        if raise_on_coercion:
-            import json
-
-            if input_data != json.loads(self.SCHEMA(**output_data).json()):
-                raise ValidationError(
-                    f"The data in {self} required type coercion to be "
-                    "compatible with its schema! Either ensure that all "
-                    "changes are strictly compatible with the schema or "
-                    "disable raising on type coercion.\n"
-                    f"Input data:\n  {input_data}\n"
-                    f"Output data:\n  {output_data}"
-                )
+    # Loading and writing data ................................................
 
     def load(self):
         """Reads the entry from the registry file, raising an error if the
@@ -273,10 +233,9 @@ class RegistryEntry:
 
         self._data = self._parse_data(d)
 
-    def write(self, *, check_before_writing: bool = True):
+    def write(self):
         """Writes the registry entry to the corresponding registry file,
-        creating it if it does not exist. Furthermore, this invokes checking of
-        the data to ensure that only valid data is written.
+        creating it if it does not exist.
 
         .. note::
 
@@ -293,10 +252,6 @@ class RegistryEntry:
         import json
 
         data = json.loads(self.data.json())
-
-        if check_before_writing:
-            self.check(input_data=data)
-
         _write_yml(data, path=self.registry_file_path)
 
     def remove_registry_file(self):
