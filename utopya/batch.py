@@ -9,7 +9,7 @@ from typing import Callable, Dict, Sequence, Tuple, Union
 
 from pkg_resources import resource_filename as _resource_filename
 
-from .cfg import UTOPIA_CFG_FILE_PATHS as _UTOPIA_CFG_FILE_PATHS
+from .cfg import UTOPYA_CFG_FILE_PATHS as _UTOPYA_CFG_FILE_PATHS
 from .cfg import load_from_cfg_dir as _load_from_cfg_dir
 from .reporter import WorkerManagerReporter
 from .task import MPProcessTask
@@ -189,7 +189,7 @@ class BatchTaskManager:
 
         self._perform_backup(
             base_cfg=_BTM_BASE_CFG_PATH,
-            user_cfg=_UTOPIA_CFG_FILE_PATHS.get("batch"),
+            user_cfg=_UTOPYA_CFG_FILE_PATHS.get("batch"),
             batch_file=batch_cfg_path,
             update_cfg=update_batch_cfg,
             batch_cfg=self._cfg,

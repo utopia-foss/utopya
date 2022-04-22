@@ -11,7 +11,7 @@ from itertools import chain
 from typing import Generator, Iterator, Tuple, Union
 
 from .._yaml import load_yml, write_yml
-from ..cfg import UTOPIA_CFG_DIR
+from ..cfg import UTOPYA_CFG_DIR
 from ..exceptions import (
     BundleExistsError,
     BundleValidationError,

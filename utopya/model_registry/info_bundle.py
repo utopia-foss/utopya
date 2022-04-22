@@ -7,7 +7,6 @@ import os
 import time
 from typing import Sequence, Tuple, Union
 
-from .._projects import load_project
 from ..exceptions import MissingProjectError
 from ..tools import load_selected_keys, load_yml, pformat, recursive_update
 
@@ -130,10 +129,7 @@ class ModelInfoBundle:
         # If it was given, check that the project name is one of a registered
         # project -- otherwise, do not associate the model with it.
         if project_name:
-            try:
-                load_project(project_name)
-
-            except MissingProjectError as err:
+            if False:  # project_name not in PROJECTS: # FIXME circular import
                 log.caution(err)
                 log.remark(
                     "Will NOT associate a project with the "
@@ -232,7 +228,9 @@ class ModelInfoBundle:
         if not self.project_name:
             return None
 
-        return load_project(self.project_name)
+        from .. import PROJECTS
+
+        return PROJECTS[self.project_name]
 
     @property
     def missing_paths(self) -> dict:

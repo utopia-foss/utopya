@@ -1,12 +1,13 @@
 """Tests the YAML registry submodule"""
 
+import copy
 import os
 
 import pydantic
 import pytest
 
 from utopya._yaml_registry import BaseSchema, RegistryEntry, YAMLRegistry
-from utopya.exceptions import ValidationError
+from utopya.exceptions import *
 from utopya.yaml import load_yml
 
 # -----------------------------------------------------------------------------
@@ -59,54 +60,55 @@ def test_registry(tmpdir):
 # -- Tests --------------------------------------------------------------------
 
 
-def test_entry_initialization(tmpdir):
-    """Tests initializing an entry from a file and from a data dict"""
-    # From dict
-    entry_from_dict = SimpleEntry(
-        "test00", registry_dir=tmpdir, an_int=1, a_str="2", a_dict={}
-    )
+def test_entry_initialization():
+    """Tests initializing an entry (without registry)"""
+    payload = dict(an_int=1, a_str="2", a_dict={})
+    entry = SimpleEntry("test00", **payload)
 
-    # This will have created a file
-    assert os.path.isfile(entry_from_dict.registry_file_path)
-
-    # Creating another entry object with the same name will load that file
-    entry_from_file = SimpleEntry("test00", registry_dir=tmpdir)
-
-    # They should compare equal
-    assert entry_from_file == entry_from_dict
-
-    # Cannot create an entry with the same name from dict
+    # Cannot create an entry without data if there is no registry
     with pytest.raises(
-        FileExistsError, match="there already exists a registry file"
+        MissingRegistryError, match="registry needs to be associated"
     ):
-        SimpleEntry("test00", registry_dir=tmpdir, an_int=2)
+        SimpleEntry("test123")
 
-    # Cannot create an entry without data if it is missing
-    with pytest.raises(FileNotFoundError, match="Missing registry file"):
-        SimpleEntry("test123", registry_dir=tmpdir)
+    # Data needs to adhere to schema
+    with pytest.raises(SchemaValidationError, match="Failed parsing data"):
+        SimpleEntry("test00", **payload, extra_key="I am superfluous!")
+
+    # Cannot load, write, or remove without registry associated
+    with pytest.raises(MissingRegistryError):
+        entry.load()
+
+    with pytest.raises(MissingRegistryError):
+        entry.write()
+
+    with pytest.raises(MissingRegistryError):
+        entry.remove_registry_file()
 
 
-def test_entry_interface(tmpdir):
+def test_entry_interface():
     """Tests some methods of the RegistryEntry class"""
     payload = dict(
         desc="foo",
         nested=dict(an_int=1, a_str="bar", a_dict={}),
     )
-    entry = NestedEntry("test_entry", registry_dir=tmpdir, **payload)
+    entry = NestedEntry("test_entry", **payload)
 
-    # Registry directory and file path
-    assert entry.registry_dir == tmpdir
-    assert entry.registry_file_path.endswith("test_entry.yml")
+    assert entry.name == "test_entry"
+
+    # cannot change name
+    with pytest.raises(AttributeError):
+        entry.name = "new name"
 
     # __str__ and __repr__
     assert str(entry) == "<NestedEntry 'test_entry'>"
     assert repr(entry) == f"<NestedEntry 'test_entry': {entry.data}>"
 
     # __eq__
-    equal_entry = NestedEntry("test_entry", registry_dir=tmpdir)
+    equal_entry = NestedEntry("test_entry", **payload)
     assert entry == equal_entry
 
-    unequal_entry = NestedEntry("unequal", registry_dir=tmpdir, **payload)
+    unequal_entry = NestedEntry("unequal", **payload)
     assert entry != unequal_entry  # because the name is different
 
     assert entry != "an object of another type"
@@ -116,64 +118,8 @@ def test_entry_interface(tmpdir):
     assert entry.nested.a_str == "bar"
     assert entry.nested.a_float == 1.23
 
-
-def test_entry_manipulation_and_validation(tmpdir):
-    """Checks that entries can be manipulated but writing to the YAML store is
-    only successful if the schema can be validated"""
-    payload = dict(
-        desc="i will be manipulated",
-        nested=dict(an_int=1, a_str="2", a_dict=dict(foo="bar"), a_float=3.4),
-    )
-    entry = NestedEntry("test_entry", registry_dir=tmpdir, **payload)
-    assert entry.desc == "i will be manipulated"
-
-    # Change the entry and store it back to the YAML file
-    entry.desc = "I used to have a different value!"
-    entry.write()
-
-    entry_from_file = NestedEntry("test_entry", registry_dir=tmpdir)
-    assert entry_from_file.desc == "I used to have a different value!"
-
-    # Change the entry to an invalid value ...
-    # ... that *could* be coerced: fails to write and value stays as before
-    entry.desc = 1.23
-    with pytest.raises(ValidationError, match="required type coercion"):
-        entry.write()
-
-    entry_from_file = NestedEntry("test_entry", registry_dir=tmpdir)
-    assert entry_from_file.desc == "I used to have a different value!"
-
-    # ... that could *not* be coerced: fails to write and value stays as before
-    entry.desc = dict(foo="bar")
-    with pytest.raises(pydantic.ValidationError):
-        entry.write()
-
-    entry_from_file = NestedEntry("test_entry", registry_dir=tmpdir)
-    assert entry_from_file.desc == "I used to have a different value!"
-
-    # ... that *could* be coerced -- but with coercion now allowed
-    entry.RAISE_ON_COERCION = False
-
-    entry.desc = -123
-    entry.write()
-
-    entry_from_file = NestedEntry("test_entry", registry_dir=tmpdir)
-    assert entry_from_file.desc == "-123"
-
-
-def test_corrupt_registry_file(tmpdir):
-    """Tests that there is an error message if there is a corrupt registry file
-    that cannot be read"""
-    entry_from_dict = SimpleEntry(
-        "entry", registry_dir=tmpdir, an_int=1, a_str="2", a_dict={}
-    )
-
-    registry_file_path = entry_from_dict.registry_file_path
-    with open(registry_file_path, mode="w") as f:
-        f.write("!bad-yaml-tag: {{asdasd [|–¡“{¶}|¡“¶≠¡“¶]]")
-
-    with pytest.raises(Exception, match="Failed loading registry"):
-        SimpleEntry("entry", registry_dir=tmpdir)
+    # dict representation
+    assert entry.dict() == entry._data.dict()
 
 
 # -----------------------------------------------------------------------------
@@ -198,13 +144,22 @@ def test_registry_basics(tmpdir):
     )
     assert len(reg) == 2
 
-    # Check that files have been created and contain the expected values
+    # Check entries
     for name, entry in reg.items():
+        # files have been created and contain the expected values
         assert entry.registry_file_path.endswith(f"{name}.yml")
         assert os.path.isfile(entry.registry_file_path)
 
         d = load_yml(entry.registry_file_path)
         assert d["nested"]["a_str"] == reg[name].nested.a_str
+
+        # entries have a reference to the registry itself
+        assert entry._registry is reg
+
+    # __str__
+    assert "YAMLRegistry" in str(reg)
+    assert "NestedEntry" in str(reg)
+    assert str(tmpdir) in str(reg)
 
     # Create another registry that automatically loads existing entries from
     # the registry directory -- stray files and directories are ignored
@@ -218,9 +173,24 @@ def test_registry_basics(tmpdir):
     reg2 = YAMLRegistry(NestedEntry, registry_dir=tmpdir)
     assert len(reg2) == 2
 
-    assert "YAMLRegistry" in str(reg)
-    assert "NestedEntry" in str(reg)
-    assert str(tmpdir) in str(reg)
+    # EntryCls needs to be a subclass of RegistryEntry
+    with pytest.raises(TypeError, match="needs to be a subclass"):
+        YAMLRegistry(NestedSchema, registry_dir=tmpdir)
+
+    with pytest.raises(TypeError, match="needs to be a subclass"):
+        YAMLRegistry(str, registry_dir=tmpdir)
+
+
+def test_registry_reload(test_registry):
+    """Tests reloading"""
+    reg = test_registry
+    old_entries = copy.copy(reg._registry)
+
+    reg.reload()
+    assert len(reg) == len(old_entries)
+    for entry_name, old_entry in old_entries.items():
+        assert entry_name in reg
+        assert reg[entry_name] is not old_entry
 
 
 def test_registry_adding_and_removing_entries(test_registry):
@@ -228,25 +198,90 @@ def test_registry_adding_and_removing_entries(test_registry):
     reg = test_registry
 
     # Add a new entry
-    reg.add_entry(
-        "test02", desc="spam", nested=dict(an_int=0, a_str="fish", a_dict={})
-    )
+    payload = dict(desc="spam", nested=dict(an_int=0, a_str="fish", a_dict={}))
+    reg.add_entry("test02", **payload)
     assert "test02" in reg
 
-    # Adding an already existing entry will raise an error
+    # Adding an already existing entry will (by default) raise an error
     assert "test00" in reg
-    with pytest.raises(ValueError, match="already exists"):
-        reg.add_entry("test00")
+    with pytest.raises(EntryExistsError, match="already exists"):
+        reg.add_entry("test00", **payload)
 
     # Removing an entry
     entry = reg["test00"]
+    registry_file_path = entry.registry_file_path
     reg.remove_entry("test00")
     assert "test00" not in reg
-    assert not os.path.exists(entry.registry_file_path)
+    assert entry._registry is None
+    assert not os.path.exists(registry_file_path)
 
     # Cannot remove it again
-    with pytest.raises(ValueError, match="no such entry"):
+    with pytest.raises(MissingEntryError, match="no such entry"):
         reg.remove_entry("test00")
+
+
+def test_registry_exists_action(test_registry):
+    """Tests the behavior of the `exists_action` argument"""
+    reg = test_registry
+    payload = dict(
+        desc="spam",
+        nested=dict(
+            an_int=0,
+            a_str="fish",
+            a_dict=dict(foo="bar", spam=123, another_level=dict(foo="bar")),
+        ),
+    )
+
+    entry = reg.add_entry("entry", **payload)
+    assert "entry" in reg
+
+    # exists_action: not given -> default -> raise
+    with pytest.raises(EntryExistsError):
+        reg.add_entry("entry", **payload)
+
+    # exists_action: validate -> existing entry does not change
+    reg.add_entry("entry", exists_action="validate", **payload)
+    assert reg["entry"] is entry
+
+    # exists_action: validate, but with in-place changed entry (wrt. payload)
+    entry.desc = "some changed value"
+    with pytest.raises(EntryValidationError, match="some changed value"):
+        reg.add_entry("entry", exists_action="validate", **payload)
+    assert reg["entry"] is entry
+
+    # exists_action: validate, but with changed payload
+    payload["desc"] = "another changed value"
+    with pytest.raises(EntryValidationError, match="another changed value"):
+        reg.add_entry("entry", exists_action="validate", **payload)
+    assert reg["entry"] is entry
+
+    # exists_action: overwrite
+    new_entry = reg.add_entry("entry", exists_action="overwrite", **payload)
+    assert reg["entry"] is not entry
+    assert new_entry is not entry
+    assert new_entry.desc == "another changed value"
+
+    # exists_action: skip
+    payload["desc"] = "some new value"
+    reg.add_entry("entry", exists_action="skip", **payload)
+    assert reg["entry"] is new_entry
+    assert reg["entry"].desc == "another changed value"
+
+    # exists_action: update
+    payload["nested"]["a_dict"] = dict(
+        spam=234, fish="fish", another_level=dict(bar="baz")
+    )
+    reg.add_entry("entry", exists_action="update", **payload)
+    assert reg["entry"].nested.a_dict == dict(
+        foo="bar",
+        spam=234,
+        fish="fish",
+        another_level=dict(foo="bar", bar="baz"),
+    )
+
+    # exist_action: (invalid)
+    with pytest.raises(ValueError, match="Invalid"):
+        reg.add_entry("entry", exists_action="bad value", **payload)
 
 
 def test_registry_dict_interface(test_registry):
@@ -261,7 +296,7 @@ def test_registry_dict_interface(test_registry):
 
     # Item access
     assert reg["test00"] is reg._registry["test00"]
-    with pytest.raises(ValueError, match="No entry with name"):
+    with pytest.raises(MissingEntryError, match="NestedEntry"):
         reg["a key that does not exist"]
 
     # Item deletion
@@ -269,3 +304,78 @@ def test_registry_dict_interface(test_registry):
     del reg["test00"]
     assert "test00" not in reg
     assert len(reg) == initial_len - 1
+
+
+def test_entry_manipulation_and_validation(test_registry):
+    """Checks that entries can be manipulated but writing to the YAML store is
+    only successful if the schema can be validated"""
+    reg = test_registry
+    payload = dict(
+        desc="i will be manipulated",
+        nested=dict(an_int=1, a_str="2", a_dict=dict(foo="bar"), a_float=3.4),
+    )
+    entry = NestedEntry("test_entry", registry=reg, **payload)
+    assert entry.desc == "i will be manipulated"
+
+    # Change the entry and store it back to the YAML file
+    entry.desc = "I used to have a different value!"
+    entry.write()
+
+    entry_from_file = NestedEntry("test_entry", registry=reg)
+    assert entry_from_file.desc == "I used to have a different value!"
+
+    # Change the entry to an invalid value ...
+    # ... that *could* be coerced: fails to write and value stays as before
+    entry.desc = 1.23
+    with pytest.raises(ValidationError, match="required type coercion"):
+        entry.write()
+
+    entry_from_file = NestedEntry("test_entry", registry=reg)
+    assert entry_from_file.desc == "I used to have a different value!"
+
+    # ... that could *not* be coerced: fails to write and value stays as before
+    entry.desc = dict(foo="bar")
+    with pytest.raises(pydantic.ValidationError):
+        entry.write()
+
+    entry_from_file = NestedEntry("test_entry", registry=reg)
+    assert entry_from_file.desc == "I used to have a different value!"
+
+    # ... that *could* be coerced -- but with coercion now allowed
+    entry.RAISE_ON_COERCION = False
+
+    entry.desc = -123
+    entry.write()
+
+    entry_from_file = NestedEntry("test_entry", registry=reg)
+    assert entry_from_file.desc == "-123"
+
+
+def test_missing_registry_file(test_registry):
+    """Tests that there is an error message if there is a corrupt registry file
+    that cannot be read"""
+    reg = test_registry
+    entry = reg[list(reg)[0]]
+
+    os.remove(entry.registry_file_path)
+    with pytest.raises(FileNotFoundError, match="Missing registry file"):
+        entry.load()
+
+
+def test_corrupt_registry_file(test_registry):
+    """Tests that there is an error message if there is a corrupt registry file
+    that cannot be read"""
+    reg = test_registry
+
+    payload = dict(
+        desc="foo",
+        nested=dict(an_int=1, a_str="bar", a_dict={}),
+    )
+    entry_from_dict = NestedEntry("entry", registry=reg, **payload)
+
+    registry_file_path = entry_from_dict.registry_file_path
+    with open(registry_file_path, mode="w") as f:
+        f.write("!bad-yaml-tag: {{asdasd [|–¡“{¶}|¡“¶≠¡“¶]]")
+
+    with pytest.raises(Exception, match="Failed loading registry"):
+        NestedEntry("entry", registry=reg)

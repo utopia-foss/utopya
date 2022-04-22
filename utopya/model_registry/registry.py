@@ -11,7 +11,7 @@ from typing import Dict
 import dantro.utils
 
 from .._yaml import load_yml, write_yml
-from ..cfg import UTOPIA_CFG_DIR
+from ..cfg import UTOPYA_CFG_DIR
 from ..exceptions import BundleExistsError
 from ..tools import make_columns, pformat, recursive_update
 from .entry import ModelRegistryEntry
@@ -47,16 +47,16 @@ class ModelRegistry:
     registered models and the known information about them.
     """
 
-    def __init__(self, utopia_cfg_dir_path: str = UTOPIA_CFG_DIR):
+    def __init__(self, UTOPYA_CFG_DIR_path: str = UTOPYA_CFG_DIR):
         """Loads the utopia model registry from the configuration at the given
         path.
 
         Args:
-            utopia_cfg_dir_path (str, optional): The path to store the model
+            UTOPYA_CFG_DIR_path (str, optional): The path to store the model
                 registry folder in.
         """
         self._paths = dict()
-        self._paths["utopia_cfg"] = utopia_cfg_dir_path
+        self._paths["utopia_cfg"] = UTOPYA_CFG_DIR_path
         self._paths["registry"] = os.path.join(
             self._paths["utopia_cfg"], "models"
         )

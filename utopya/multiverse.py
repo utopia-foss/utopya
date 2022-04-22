@@ -17,11 +17,11 @@ import paramspace as psp
 from pkg_resources import resource_filename
 
 from ._cluster import parse_node_list
-from ._projects import load_project as _load_project
 from .cfg import get_cfg_path as _get_cfg_path
 from .eval import DataManager, PlotManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .parameter import ValidationError
+from .project_registry import PROJECTS
 from .reporter import WorkerManagerReporter
 from .tools import parse_num_steps, pformat, recursive_update
 from .workermanager import WorkerManager
@@ -410,7 +410,7 @@ class Multiverse:
             # Framework-level
             framework_name = project.get("framework_name")
             if framework_name:
-                framework_project = _load_project(framework_name)
+                framework_project = PROJECTS[framework_name]
                 framework_cfg_path = framework_project["paths"].get(
                     "mv_project_cfg"
                 )
@@ -801,7 +801,7 @@ class Multiverse:
         if project:
             fw_name = project.get("framework_name")
             if fw_name:
-                fw_project = _load_project(fw_name)
+                fw_project = PROJECTS[fw_name]
                 replacements["framework_base"] = (
                     "framework",
                     fw_project["paths"].get("project_base_plots"),

@@ -19,7 +19,14 @@ import pytest
 # modules are imported when *spawning* a new multiprocessing.Process ...
 sys.path.insert(0, os.path.dirname(__file__))
 
-import utopya
+import dantro
+import dantro.logging
+
+# Import packages for which re-imports should be avoided or which need to be
+# imported early to avoid errors from partial imports.
+import numpy
+
+# NOTE Do not import utopya here as this hinders measuring test coverage
 
 # Set an invalid EDITOR variable
 os.environ["EDITOR"] = "mock-editor"

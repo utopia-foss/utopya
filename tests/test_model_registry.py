@@ -42,10 +42,22 @@ def tmp_model_registry(tmp_cfg_dir) -> umr._ModelRegistry:
 
 @pytest.fixture
 def tmp_projects(tmp_cfg_dir):
-    from utopya._projects import load_projects, register_project
+    """A "temporary" projects registry that adds the demo project to it and
+    removes it again at fixture teardown"""
+    from utopya import PROJECTS
 
-    register_project(base_dir=DEMO_DIR, exists_action="raise")
-    assert DEMO_PROJECT_NAME in load_projects()
+    original_project_names = list(PROJECTS)
+
+    PROJECTS.register(base_dir=DEMO_DIR, exists_action="raise")
+    assert DEMO_PROJECT_NAME in PROJECTS
+    yield
+
+    # Make sure no projects added by the test remain in the registry
+    new_project_names = [
+        name for name in PROJECTS if name not in original_project_names
+    ]
+    for project_name in new_project_names:
+        PROJECTS.remove_entry(project_name)
 
 
 # Utilities module ------------------------------------------------------------
