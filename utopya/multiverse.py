@@ -781,6 +781,10 @@ class Multiverse:
                     log.caution("Using an empty pool instead.")
                     pool = {}
 
+            # Make sure it is either a dict or a string, not a Path-like object
+            if not isinstance(pool, dict):
+                pool = str(pool)
+
             return pool_name, pool
 
         if not isinstance(base_cfg_pools, list):
