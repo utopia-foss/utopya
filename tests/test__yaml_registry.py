@@ -118,6 +118,18 @@ def test_entry_interface():
     assert entry.nested.a_str == "bar"
     assert entry.nested.a_float == 1.23
 
+    # data access via item access
+    assert entry["desc"] is entry.desc
+    assert entry["nested"]["a_str"] is entry.nested.a_str
+
+    # data access via .get, behaving like `getattr`
+    assert entry.get("desc") == entry.desc
+    assert entry.get("i_do_not_exist", "FaLLbaCK") == "FaLLbaCK"
+    assert entry.nested.get("i_do_not_exist", "FaLLbaCK") == "FaLLbaCK"
+
+    with pytest.raises(AttributeError):
+        entry.nested.get("i_do_not_exist")
+
     # dict representation
     assert entry.dict() == entry._data.dict()
 

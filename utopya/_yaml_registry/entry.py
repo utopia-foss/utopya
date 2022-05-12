@@ -42,6 +42,17 @@ class BaseSchema(pydantic.BaseModel):
         validate_all = True
         validate_assignment = True
 
+    def __getitem__(self, name: str):
+        """Retrieves an item from the underlying schema data."""
+        return getattr(self, name)
+
+    def get(self, *args) -> Any:
+        """Get a named attribute from this object.
+
+        Behaves exactly like ``getattr(self, *args)``.
+        """
+        return getattr(self, *args)
+
 
 class RegistryEntry:
     """A registry entry holds some data (in the form of a validated pydantic
@@ -203,6 +214,17 @@ class RegistryEntry:
         ):
             return super().__setattr__(attr, value)
         return setattr(self._data, attr, value)
+
+    def __getitem__(self, name: str):
+        """Retrieves an item from the underlying entry data."""
+        return getattr(self._data, name)
+
+    def get(self, *args) -> Any:
+        """Get a named attribute from this object's entry or return a fallback.
+
+        Behaves exactly like ``getattr(self, *args)``.
+        """
+        return getattr(self._data, *args)
 
     # Loading and writing data ................................................
 
