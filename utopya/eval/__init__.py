@@ -8,4 +8,4 @@ from .groups import MultiverseGroup, UniverseGroup
 from .plotcreators import MultiversePlotCreator, UniversePlotCreator
 from .plothelper import PlotHelper
 from .plotmanager import PlotManager
-from .transform import register_operation
+from .transform import is_operation, register_operation

@@ -18,3 +18,29 @@ def register_operation(*, skip_existing: bool = True, **kws) -> None:
         **kws: Passed to :py:func:`~dantro.utils.data_ops.register_operation`
     """
     return _register_operation(**kws, skip_existing=skip_existing)
+
+
+def is_operation(name: str, **kws):
+    """Decorator for registering operations with the dantro data operations
+    database.
+
+    Usage example:
+
+    .. code-block:: python
+
+        from utopya.eval import is_operation
+
+        @is_operation("my_operation")
+        def my_operation(data, *args):
+            # ...
+
+    Args:
+        name (str): The name that should be used in the operation registry
+        **kws: Passed to :py:func:`~utopya.eval.transform.register_operation`
+    """
+
+    def wrapper(func):
+        register_operation(name=name, func=func, **kws)
+        return func
+
+    return wrapper

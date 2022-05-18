@@ -87,8 +87,8 @@ class PlotManager(dantro.plot_mngr.PlotManager):
         return super().plot_from_cfg(*args, plots_cfg=plots_cfg, **kwargs)
 
     def _get_plot_creator(self, *args, **kwargs):
-        """Before actually retrieving the plot creator, pre-loads the model-
-        and project- specific plot function modules.
+        """Before actually retrieving the plot creator, pre-loads the model-,
+        project-, and framework-specific plot function modules.
         This allows to execute code (like registering model-specific dantro
         data operations) and have them available prior to the invocation of
         the creator and independently from the module that contains the plot
@@ -105,6 +105,23 @@ class PlotManager(dantro.plot_mngr.PlotManager):
                     mod_path=mod_path,
                     mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}.{mib.model_name}",
                 )
+
+            # Also do this on the project and framework level
+            # TODO Should make module name configurable separately! See #9
+            project = mib.project
+            if project and project.paths.py_plots_dir:
+                import_module_from_path(
+                    mod_path=project.paths.py_plots_dir,
+                    mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
+                )
+
+            if project and project.framework_project:
+                fw = project.framework_project
+                if fw and fw.paths.py_plots_dir:
+                    import_module_from_path(
+                        mod_path=fw.paths.py_plots_dir,
+                        mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
+                    )
 
         # Now create the actual plot creator and attach some additional info
         creator = super()._get_plot_creator(*args, **kwargs)
