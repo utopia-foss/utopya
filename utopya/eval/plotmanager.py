@@ -63,7 +63,10 @@ class PlotManager(dantro.plot_mngr.PlotManager):
 
         If there was no plot information yet, the return value will be empty.
         """
-        return os.path.commonprefix([d["target_dir"] for d in self.plot_info])
+        p = os.path.commonprefix([d["target_dir"] for d in self.plot_info])
+        if not os.path.exists(p):
+            p = os.path.dirname(p)
+        return p
 
     def plot_from_cfg(
         self, *args, plots_cfg: Union[str, dict] = None, **kwargs

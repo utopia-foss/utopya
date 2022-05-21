@@ -161,7 +161,7 @@ def _load_and_eval(
 
         if params["reveal_output"] and mv.pm.common_out_dir:
             _log.progress("Revealing output ...")
-            _log.remark("Output directory:  %s", mv.pm.common_out_dir)
+            _log.remark("Output directory:\n  %s", mv.pm.common_out_dir)
             click.launch(mv.pm.common_out_dir)
 
         _log.success("All done.\n")
