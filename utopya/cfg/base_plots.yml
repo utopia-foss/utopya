@@ -60,82 +60,68 @@
     writer_kwargs: *default_writer_kwargs
 
 
+# -----------------------------------------------------------------------------
 # -- Basic plots --------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # .. Basic lineplot from universe data ........................................
 .basic_uni.lineplot:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: lineplot
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 # .. Multiple lineplots from universe data ....................................
 .basic_uni.lineplots:  # FIXME No longer exists
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: lineplots
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 # .. Basic errorbar plot from universe data ...................................
 # NOTE Preferably, use the .dag.generic.errorbar function instead! See below.
 .basic_uni.errorbar:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: errorbar
-
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
   # Passed to plt.errorbar or plt.fill_between
   elinewidth: .5
   fill_between_kwargs:
     linewidth: 0.
 
+
 # .. Distance map from Universe data .......................................
 .basic_uni.distance_map:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: distance_map
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Errorbar plot from Multiverse data .......................................
 # NOTE Preferably, use the .dag.generic.errorbar function instead! See below.
 .basic_mv.errorbar:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
 
   module: .basic_mv
   plot_func: errorbar
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
   # Passed to plt.errorbar
   elinewidth: .5
@@ -145,15 +131,12 @@
 
 # .. Asymptotic average from Multiverse data ..................................
 .basic_mv.asymptotic_average:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
 
   module: .basic_mv
   plot_func: asymptotic_average
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
   # Passed to plt.errorbar
   linestyle: ''
@@ -239,23 +222,20 @@
 
 # -- Distributions ------------------------------------------------------------
 # .. A histogram plot .........................................................
-.distribution.histogram: &histogram
+.distribution.histogram:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .distribution
   plot_func: histogram
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Plot of a complementary cumulative distribution ..........................
 # Based on histogram, but with normalization and complementary cumulation
 .distribution.histogram.complementary_cumulative:
-  <<: *histogram
+  based_on: .distribution.histogram
 
   use_unique: true
   mask_repeated: true
@@ -274,75 +254,62 @@
 # -- Time Series --------------------------------------------------------------
 # .. Plot of a single density .................................................
 .time_series.density:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .time_series
   plot_func: density
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Plot of multiple densities ...............................................
 .time_series.densities:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .time_series
   plot_func: densities
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Phase space with colour-coded time .......................................
 .time_series.phase_space:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .time_series
   plot_func: phase_space
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # -- Bifurcation diagrams -----------------------------------------------------
 .attractor.bifurcation_diagram_1d:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
   module: .attractor
   plot_func: bifurcation_diagram
 
   analysis_kwargs: ~
 
-  # Use default helpers and style, but disable grid
-  helpers:
-    <<: *default_helpers
+  # Disable grid
   style:
-    <<: *default_style
     axes.grid: false
 
 .attractor.bifurcation_diagram_2d:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
   module: .attractor
   plot_func: bifurcation_diagram
 
   analysis_kwargs: ~
 
-  # Use default helpers and style, but disable grid
-  helpers:
-    <<: *default_helpers
+  # Disable grid
   style:
-    <<: *default_style
     axes.grid: false
 
 
@@ -352,76 +319,67 @@
 # -- Generic Multiverse or Universe plots -------------------------------------
 # .. Time series ..............................................................
 .dag.generic.time_series:
+  based_on: .default_style_and_helpers
+
   module: .time_series
   plot_func: time_series
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 
 # .. Facet Grid ...............................................................
 # For conveniently plotting high-dimensional data, using dantro.
 #    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
 .dag.generic.facet_grid:
+  based_on: .default_style_and_helpers
+
   module: &dantro_plots dantro.plot_creators.ext_funcs.generic
   plot_func: facet_grid
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 
 # .. Errorbar and Errorbands ..................................................
 # For visualizing confidence intervals using error bars or bands (shaded area)
 #    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
 .dag.generic.errorbar:
+  based_on: .default_style_and_helpers
+
   module: *dantro_plots
   plot_func: errorbar
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 .dag.generic.errorbands:
+  based_on: .default_style_and_helpers
+
   module: *dantro_plots
   plot_func: errorbands
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 
 # .. Distributions ............................................................
 # A histogram plot that supports stacking
 .dag.generic.histogram:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .generic
   plot_func: histogram
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Multiplot ................................................................
 # Plot one or multiple overlaying functions, also supporting seaborn
 #    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
 .dag.multiplot:
+  based_on: .default_style_and_helpers
+
   module: dantro.plot_creators.ext_funcs.multiplot
   plot_func: multiplot
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
+# .. Seaborn plots ............................................................
+# Invoke seaborn plotting functions
+.dag.snsplot:
+  based_on: .default_style_and_helpers
+
+  module: .snsplot
+  plot_func: snsplot
 
 
 # .. Graph plots ..............................................................

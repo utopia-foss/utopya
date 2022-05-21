@@ -7,6 +7,7 @@ INSTALL_DEPS = [
     "numpy>=1.21",
     "scipy>=1.7.3",
     "matplotlib>=3.3",
+    "seaborn>=0.11.2",
     "ruamel.yaml>=0.16.5",
     "coloredlogs>=15.0",
     "colorama>=0.4.4",
