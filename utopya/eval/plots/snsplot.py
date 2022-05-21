@@ -131,14 +131,14 @@ def snsplot(
     log.remark("  Length:           %d", len(df))
     log.remark("  Shape:            %s", df.shape)
     log.remark("  Size:             %d", df.size)
-    if df.columns:
+    try:
         log.remark("  Columns:          %s", ", ".join(df.columns))
-    else:
+    except:  # TODO Make more specific or even avoid try-except
         log.remark("  Columns:          (none)")
 
-    if df.index.names:
+    try:
         log.remark("  Indices:          %s", ", ".join(df.index.names))
-    else:
+    except:  # TODO Make more specific or even avoid try-except
         log.remark("  Indices:          (no named indices)")
 
     log.remark("  Free indices:     %s", ", ".join(free_indices))

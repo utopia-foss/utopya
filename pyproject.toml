@@ -3,9 +3,9 @@
 
 # isort configuration .........................................................
 [tool.isort]
-known_first_party = ["utopya", "dantro"]
+known_first_party = ["utopya", "dantro", "paramspace"]
 known_third_party = [
-    "dask", "dill", "h5py", "matplotlib", "networkx", "numpy", "paramspace",
+    "dask", "dill", "h5py", "matplotlib", "networkx", "numpy",
     "pkg_resources", "pytest", "ruamel", "scipy", "setuptools", "sympy",
     "xarray",
 ]

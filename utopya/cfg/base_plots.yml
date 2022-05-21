@@ -36,6 +36,11 @@
 
 
 # .. Default parameters for animations ........................................
+.animation.disabled:
+  file_ext: pdf
+  animation:
+    enabled: false
+
 .animation.frames:
   file_ext: pdf
   animation:
@@ -146,7 +151,30 @@
 
 # -- CA Plots -----------------------------------------------------------------
 # .. A spatial CA plot of a state .............................................
+
+# A plot function specialized for Cellular Automata snapshots or animations.
+# Unlike its predecessor, it supports the data transformation framework.
+.plot.ca:
+  based_on: .default_style_and_helpers
+
+  module: .ca
+  plot_func: caplot
+
+  compute_only: all
+
+  default_imshow_kwargs:
+    interpolation: 'none'
+
+  suptitle_fstr: "{}: {:>5}"
+  suptitle_kwargs:
+    fontsize: x-large
+    fontfamily: monospace
+
+  style:
+    figure.constrained_layout.use: true
+
 # Supports PlotHelper and animation
+# NOTE This is the legacy plot function, should be removed
 .ca.state: &ca_state
   creator: universe
   universes: all
