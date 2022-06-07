@@ -1,0 +1,6 @@
+# The model default configuration for the MinimalModel
+---
+state_size: 100
+distribution_params:
+  low: -1.
+  high: +1.

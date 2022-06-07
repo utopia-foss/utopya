@@ -370,6 +370,7 @@ data_manager:
         min_total_size: 1048576  # 1 MiB
 
     # Load the binary output data from each simulation.
+    # TODO Remove?
     data:
       loader: hdf5_proxy
       glob_str: data/uni*/data.h5
@@ -492,6 +493,11 @@ parameter_space:
     # TODO Implement setting this via CLI… perhaps even more general?
     #      Coolest would be: allow frameworks to provide a mapping of each CLI
     #      debug level to an update dict.
+
+  # Monitoring
+  # How frequently to send a monitoring message to the frontend; note that the
+  # timing needs to be implemented by the model itself
+  monitor_emit_interval: 2.
 
   # The path to the config file to load
   # output_path: /abs/path/to/uni<#>/cfg.yml

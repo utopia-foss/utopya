@@ -1,0 +1,4 @@
+# The project-level Multiverse configuration
+---
+executable_control:
+  run_from_tmpdir: false

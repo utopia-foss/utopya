@@ -8,7 +8,7 @@ repos:
 
   # Run if desiring to make use of newer language features
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.31.0
+    rev: v2.34.0
     hooks:
     - id: pyupgrade
       name: upgrade python syntax
@@ -41,7 +41,7 @@ repos:
         name: check RST backticks
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v4.2.0
     hooks:
       - id: end-of-file-fixer
         name: fix end of files

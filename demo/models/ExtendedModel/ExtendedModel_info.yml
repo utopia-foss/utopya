@@ -1,0 +1,46 @@
+# An example manifest file that contains model information and can be used
+# to register a model in the utopya model registry
+#
+# NOTE Updating the information in this file does NOT automatically update the
+#      corresponding entries in the model registry! Call
+#
+#           utopya models register from-manifest [MANIFEST_FILE]...
+#
+#      for updating information in the model registry.
+---
+# -- General information and options
+model_name: ExtendedModel
+set_as_default: true
+
+# Associate this model with the demo project, embedding the model into the
+# project's configuration hierarchy and making use of project-level defaults.
+project_name: utopyaDemoProject
+
+
+# -- Path information, interpreted relative to this file
+paths:
+  executable: run_model.py
+  source_dir: ./
+  default_cfg: ExtendedModel_cfg.yml
+
+# -- Metadata
+# TODO
+metadata:
+  description: A (dummy) model illustrating the extended utopya interface
+  long_description: >
+    This model does a little more than the MinimalModel, while the model
+    dynamics are still mostly boring.
+    Instead, the main aim is to use more parts of the utopya interface to
+    allow simulation monitoring and data evaluation.
+    Furthermore, it illustrated how a more complex package structure can be
+    used to implement a model using Python.
+
+  version: "0.1"
+  author: Yunus Sevinchan
+  license: LGPLv3+
+  language: python3
+  requirements:
+    - ruamel.yaml
+    - numpy
+    - h5py
+  utopya_compatibility: ">=1.0.0a1"
