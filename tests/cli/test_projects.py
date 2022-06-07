@@ -94,7 +94,7 @@ def test_register(tmp_projects):
     # Explicitly pass path to (same) info file
     res = invoke_cli(
         reg_args
-        + ("--info-file", os.path.join(DEMO_DIR, ".utopya_project.yml"))
+        + ("--info-file", os.path.join(DEMO_DIR, ".utopya-project.yml"))
     )
     print(res.output)
     assert res.exit_code == 0

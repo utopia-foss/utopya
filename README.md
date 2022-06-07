@@ -21,15 +21,27 @@ It aims to provide a simulation management and evaluation framework with the fol
 To install utopya, enter the virtual environment of your choice and call:
 
 ```
-pip install https://gitlab.com/utopia-project/utopya.git
+pip install git+https://gitlab.com/utopia-project/utopya.git
 ```
 
-⚠️ utopya is **not** on PyPI (yet)!
+To install from a certain branch, append `@<branch-name>` to the end of the command.
+
+⚠️ Note that utopya is **not** on PyPI (yet)!
 The package of the same name is a scam that we are hoping to get removed soon.
 
+The above command will install utopya and the utopya CLI, pulling in all requirements.
+You should now be able to invoke the utopya CLI:
+
+```
+utopya --help
+```
 
 ## Basic Usage
 🚧
+
+See the [demo project](demo/) for an implementation example.
+
+
 
 
 ## License & Copyright
