@@ -369,27 +369,26 @@ data_manager:
         min_files: 1000
         min_total_size: 1048576  # 1 MiB
 
-    # Load the binary output data from each simulation.
-    # TODO Remove?
-    data:
-      loader: hdf5_proxy
-      glob_str: data/uni*/data.h5
-      required: true
-      path_regex: data/uni(\d+)/data.h5
-      target_path: multiverse/{match:}/data
-      enable_mapping: true   # see DataManager for content -> type mapping
+    # Example: Load the binary output data from each simulation.
+    # data:
+    #   loader: hdf5_proxy
+    #   glob_str: data/uni*/data.h5
+    #   required: true
+    #   path_regex: data/uni(\d+)/data.h5
+    #   target_path: multiverse/{match:}/data
+    #   enable_mapping: true   # see DataManager for content -> type mapping
 
-      # Options for loading data in parallel (speeds up CPU-limited loading)
-      parallel:
-        enabled: false
+    #   # Options for loading data in parallel (speeds up CPU-limited loading)
+    #   parallel:
+    #     enabled: false
 
-        # Number of processes to use; negative is deduced from os.cpu_count()
-        processes: ~
+    #     # Number of processes to use; negative is deduced from os.cpu_count()
+    #     processes: ~
 
-        # Threshold values for parallel loading; if any is below these
-        # numbers, loading will *not* be in parallel.
-        min_files: 5
-        min_total_size: 104857600  # 100 MiB
+    #     # Threshold values for parallel loading; if any is below these
+    #     # numbers, loading will *not* be in parallel.
+    #     min_files: 5
+    #     min_total_size: 104857600  # 100 MiB
 
     # The resulting data tree is then:
     #  └┬ cfg

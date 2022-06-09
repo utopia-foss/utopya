@@ -1,4 +1,30 @@
 # The project-level Multiverse configuration
 ---
 executable_control:
+  # For python-based projects, running from a temporary directory does more
+  # harm than it does good, because it effectively prohibits path-based imports
+  # within the executable.
   run_from_tmpdir: false
+
+data_manager:
+  load_cfg:
+    # Configure the DataManager to load the HDF5 simulation data
+    data:
+      loader: hdf5_proxy
+      glob_str: data/uni*/data.h5
+      required: true
+      path_regex: data/uni(\d+)/data.h5
+      target_path: multiverse/{match:}/data
+      enable_mapping: true   # see DataManager for content -> type mapping
+
+      # Options for loading data in parallel (speeds up CPU-limited loading)
+      parallel:
+        enabled: false
+
+        # Number of processes to use; negative is deduced from os.cpu_count()
+        processes: ~
+
+        # Threshold values for parallel loading; if any is below these
+        # numbers, loading will *not* be in parallel.
+        min_files: 5
+        min_total_size: 104857600  # 100 MiB
