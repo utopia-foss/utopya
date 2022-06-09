@@ -143,8 +143,13 @@ from ._utils import Echo
 #
 @click.option(
     "--no-eval",
+    "--no-plot",
     flag_value=True,
-    help="If given, no evaluation will be carried out.",
+    help=(
+        "If given, no evaluation will be carried out. "
+        "The --no-plot flag exists to be backwards-compatible to an earlier "
+        "version of this CLI."
+    ),
 )
 @add_options(OPTIONS["load"])
 @add_options(OPTIONS["eval"])
