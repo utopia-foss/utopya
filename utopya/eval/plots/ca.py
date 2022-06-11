@@ -119,6 +119,7 @@ def _plot_ca_property(
     hlpr: PlotHelper,
     data: xr.DataArray,
     default_imshow_kwargs: dict,
+    cax=None,
     grid_structure: str = None,
     limits: list = None,
     cmap: Union[str, dict] = "viridis",
@@ -139,6 +140,7 @@ def _plot_ca_property(
         data (xr.DataArray): The array-like data to plot as image
         grid_structure (str, optional): Description
         default_imshow_kwargs (dict): Description
+        cax: colorbar axis object
         limits (list, optional): The imshow limits to use; will also be
             the limits of the colorbar.
         cmap (Union[str, dict], optional): The colormap to use. If a dict is
@@ -201,7 +203,7 @@ def _plot_ca_property(
         if grid_structure
         else data.attrs.get("grid_structure", "square")
     )
-    if grid_structure == "square" or structure is None:
+    if grid_structure == "square" or grid_structure is None:
         im = hlpr.ax.imshow(
             data.T,
             cmap=colormap,
@@ -396,6 +398,14 @@ def caplot(
     """
     # Helper functions ........................................................
 
+    def get_grid_structure(d: xr.DataArray) -> str:
+        """Retrieves the grid structure from data attributes"""
+        grid_structure = d.attrs.get("grid_structure")
+        if isinstance(grid_structure, np.ndarray):
+            grid_structure = grid_structure.item()
+
+        return grid_structure
+
     def prepare_data(data: dict, *, prop_name: str) -> xr.DataArray:
         """Prepares data for creating an xr.Dataset"""
         d = data[prop_name]
@@ -459,18 +469,14 @@ def caplot(
 
     # If not given, retrieve the structure from the data variable's attributes.
     if not grid_structure:
-        structures = [
-            ds[p].attrs.get("grid_structure", "square") for p in to_plot
-        ]
-        if any(s != structures[0] for s in structures):
+        structures = {p: get_grid_structure(ds[p]) for p in to_plot}
+
+        if len(set(structures.values())) != 1:
             raise ValueError(
                 "Mismatch in grid structure; all grid structures need to be "
                 f"the same but were:  {structures}"
             )
-        grid_structure = structures[0]
-
-        if isinstance(grid_structure, np.ndarray):
-            grid_structure = grid_structure.item()
+        grid_structure = next(iter(structures.values()))
 
     # Evaluate limits argument for all properties
     for prop_name, spec in to_plot.items():
@@ -552,9 +558,10 @@ def caplot(
         hlpr.ax.set_visible(True)
 
         # For hexagonal grids, need to add custom colorbar axis here
+        # TODO Parameterise default values
         if props.get("draw_cbar", True) and grid_structure == "hexagonal":
             divider = make_axes_locatable(hlpr.ax)
-            cax = divider.append_axes("right", size="5%", pad=0.2)  # TODO
+            props["cax"] = divider.append_axes("right", size="5%", pad=0.2)
             hlpr.select_axis(**axis_map[prop_name])
 
         # Select the appropriate data, then plot the data variable
