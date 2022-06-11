@@ -12,6 +12,18 @@ from . import invoke_cli
 
 BATCH_FILE = get_cfg_fpath("batch_file.yml")
 
+# Fixtures --------------------------------------------------------------------
+from .._utils import tmp_cfg_dir, tmp_projects
+
+
+@pytest.fixture(autouse=True)
+def register_demo_project(tmp_projects):
+    """Use on all tests in this module"""
+    pass
+
+
+# -----------------------------------------------------------------------------
+
 
 def test_batch():  # FIXME Produces artifacts in the batch output directory!
     """Tests the `utopya batch` subcommand"""

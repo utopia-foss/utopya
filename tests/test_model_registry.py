@@ -10,7 +10,7 @@ from utopya.model_registry import BundleExistsError, ModelRegistryError
 from utopya.yaml import load_yml, write_yml, yaml
 
 from . import DEMO_DIR, DEMO_PROJECT_NAME, get_cfg_fpath
-from .test_cfg import tmp_cfg_dir
+from ._utils import tmp_cfg_dir, tmp_model_registry, tmp_projects
 
 TEST_CFG = load_yml(get_cfg_fpath("model_registry.yml"))
 
@@ -32,32 +32,6 @@ def mib_kwargs(**misc_metadata) -> dict:
         metadata=dict(description="bar", misc=misc_metadata),
         project_name=DEMO_PROJECT_NAME,
     )
-
-
-@pytest.fixture
-def tmp_model_registry(tmp_cfg_dir) -> umr._ModelRegistry:
-    """A temporary model registry"""
-    return umr._ModelRegistry(tmp_cfg_dir)
-
-
-@pytest.fixture
-def tmp_projects(tmp_cfg_dir):
-    """A "temporary" projects registry that adds the demo project to it and
-    removes it again at fixture teardown"""
-    from utopya import PROJECTS
-
-    original_project_names = list(PROJECTS)
-
-    PROJECTS.register(base_dir=DEMO_DIR, exists_action="raise")
-    assert DEMO_PROJECT_NAME in PROJECTS
-    yield
-
-    # Make sure no projects added by the test remain in the registry
-    new_project_names = [
-        name for name in PROJECTS if name not in original_project_names
-    ]
-    for project_name in new_project_names:
-        PROJECTS.remove_entry(project_name)
 
 
 # Utilities module ------------------------------------------------------------

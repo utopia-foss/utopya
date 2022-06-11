@@ -21,6 +21,13 @@ ADVANCED_MODEL = "MinimalModel"  # FIXME "FullModel"
 """Name of the model used for advanced functionality tests"""
 
 # Fixtures --------------------------------------------------------------------
+from ._utils import tmp_cfg_dir, tmp_projects
+
+
+@pytest.fixture(autouse=True)
+def register_demo_project(tmp_projects):
+    """Use on all tests in this module"""
+    pass
 
 
 @pytest.fixture

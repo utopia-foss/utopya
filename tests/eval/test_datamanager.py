@@ -18,7 +18,15 @@ from .. import ADVANCED_MODEL, DUMMY_MODEL, get_cfg_fpath
 RUN_CFG_PATH = get_cfg_fpath("run_cfg.yml")
 LARGE_SWEEP_CFG_PATH = get_cfg_fpath("large_sweep_cfg.yml")
 
+
 # Fixtures --------------------------------------------------------------------
+from .._utils import tmp_cfg_dir, tmp_projects
+
+
+@pytest.fixture(autouse=True)
+def register_demo_project(tmp_projects):
+    """Use on all tests in this module"""
+    pass
 
 
 @pytest.fixture

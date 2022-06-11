@@ -51,6 +51,13 @@ GRAPH_PLOTS = get_cfg_fpath("plots/graph_plot_cfg.yml")
 GRAPH_PLOT_CLS = get_cfg_fpath("graphplot_class_cfg.yml")
 
 # Fixtures --------------------------------------------------------------------
+from .._utils import tmp_cfg_dir, tmp_projects
+
+
+@pytest.fixture(autouse=True)
+def register_demo_project(tmp_projects):
+    """Use on all tests in this module"""
+    pass
 
 
 # Tests -----------------------------------------------------------------------
