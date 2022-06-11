@@ -7,29 +7,35 @@ This repo hosts the `utopya` Python package, which provides simulation managemen
 ---
 
 ## About `utopya`
-`utopya` is a Python package that provides the frontend for the [Utopia] simulation framework but can also be used with other software.
-It aims to provide a simulation management and evaluation framework with the following feature set:
+The `utopya` package aims to provide a simulation management and evaluation
+framework with the following feature set:
 
-- Model configuration with several update levels
+- Provide model configuration with several update levels
+- Project and framework handling
 - A powerful CLI to run and evaluate models
 - Executing model simulations in parallel and on cluster architectures
 - Managing data output directories
 - Interfacing with the [dantro] data processing pipeline
 
+It evolved as part of the [Utopia Project][Utopia-Project] and provides the frontend of the [Utopia modelling framework][Utopia].
+Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry: in the simplest case, only only the path to an executable is required to run simulations.
+With more compliance to the utopya interface, more features become available.
 
 ## Installation
-To install utopya, enter the virtual environment of your choice and call:
+To install utopya, first enter the virtual environment of your choice.
+The utopya package is available on [PyPI][utopya-pypi]:
 
 ```
-pip install git+https://gitlab.com/utopia-project/utopya.git
+pip install utopya
 ```
 
-To install from a certain branch, append `@<branch-name>` to the end of the command.
+Alternatively, use the following command to install from a certain branch:
 
-⚠️ Note that utopya is **not** on PyPI (yet)!
-The package of the same name is a scam that we are hoping to get removed soon.
+```
+pip install git+https://gitlab.com/utopia-project/utopya.git@<branch-name>
+```
 
-The above command will install utopya and the utopya CLI, pulling in all requirements.
+The above commands will install utopya and the utopya CLI, pulling in all requirements.
 You should now be able to invoke the utopya CLI:
 
 ```
@@ -68,14 +74,11 @@ See the [demo project](demo/) for an implementation example.
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-A copy of the [GNU General Public License Version 3][GPL], and the
-[GNU Lesser General Public License Version 3][LGPL] extending it, is distributed with
-the source code of this program.
+A copy of the [GNU General Public License Version 3][GPL], and the [GNU Lesser General Public License Version 3][LGPL] extending it, is distributed with the source code of this program.
 
 ### Copyright Holders
 
-The copyright holders of the utopya software package are collectively referred
-to as "utopya developers" in the respective copyright notices.
+The copyright holders of the utopya software package are collectively referred to as "utopya developers" in the respective copyright notices.
 
 * Narek Baghumian
 * Lorenzo Biasi
@@ -95,5 +98,7 @@ to as "utopya developers" in the respective copyright notices.
 
 [GPL]: https://www.gnu.org/licenses/gpl-3.0.en.html
 [LGPL]: https://www.gnu.org/licenses/lgpl-3.0.en.html
-[Utopia]: https://utopia-project.org/
-[dantro]: https://dantro.readthedocs.io/
+[utopya-pypi]: https://pypi.org/project/utopya/
+[Utopia]: https://gitlab.org/utopia-project/utopia
+[dantro]: https://gitlab.org/utopia-project/dantro
+[Utopia-Project]: https://utopia-project.org/
