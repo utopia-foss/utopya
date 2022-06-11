@@ -1,6 +1,6 @@
 """The utopya package implements a versatile simulation runner and manager"""
 
-__version__ = "1.0.0a4"
+__version__ = "1.0.0a5"
 """The utopya package version"""
 
 # .. Logging ..................................................................

@@ -8,11 +8,11 @@ Welcome to utopya's documentation!
     This documentation is **WORK IN PROGRESS**.
 
 The :py:mod:`utopya` package is **open source software** released under the `LGPLv3+ <https://www.gnu.org/licenses/lgpl-3.0.html>`_ license.
-It was developed alongside the `Utopia project <https://ts-gitlab.iup.uni-heidelberg.de/utopia/utopia>`_ (a modelling framework for complex and adaptive systems), but is an independent package.
+It was developed alongside the `Utopia project <https://gitlab.com/utopia-project/utopia>`_ (a modelling framework for complex and adaptive systems), but is an independent package.
 
 .. note::
 
-    If you find any errors in this documentation or would like to contribute to the project, we are happy about your visit to the `project page <https://ts-gitlab.iup.uni-heidelberg.de/utopia/dantro>`_.
+    If you find any errors in this documentation or would like to contribute to the project, we are happy about your visit to the `project page <https://gitlab.com/utopia-project/dantro>`_.
 
 
 .. toctree::
