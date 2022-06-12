@@ -10,7 +10,6 @@
 ---
 # -- General information and options
 model_name: ExtendedModel
-set_as_default: true
 
 # Associate this model with the demo project, embedding the model into the
 # project's configuration hierarchy and making use of project-level defaults.
@@ -23,6 +22,12 @@ paths:
   source_dir: ./
   default_cfg: ExtendedModel_cfg.yml
 
+  default_plots: ExtendedModel_plots.yml
+  base_plots: ExtendedModel_base_plots.yml
+
+  py_plots_dir:  ../../model_plots/ExtendedModel
+  py_tests_dir:  ../../model_tests/ExtendedModel
+
 # -- Metadata
 # TODO
 metadata:
@@ -32,8 +37,9 @@ metadata:
     dynamics are still mostly boring.
     Instead, the main aim is to use more parts of the utopya interface to
     allow simulation monitoring and data evaluation.
-    Furthermore, it illustrated how a more complex package structure can be
-    used to implement a model using Python.
+    Furthermore, it illustrates how a more complex package structure can be
+    used to implement a model using Python and accompany it with model-specific
+    plots and tests.
 
   version: "0.1"
   author: Yunus Sevinchan

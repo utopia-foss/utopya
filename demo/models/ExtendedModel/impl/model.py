@@ -11,6 +11,7 @@ class Model(BaseModel):
         *,
         distribution_params: dict,
         state_size: int,
+        dataset_kwargs: dict = None,
     ):
         """Sets up the model: stores parameters, sets up the state, created
         datasets"""
@@ -22,24 +23,40 @@ class Model(BaseModel):
             **self._distribution_params, size=(state_size,)
         )
 
-        # Setup chunked datasets to store the state data in
+        # .. Dataset setup ....................................................
+        # Setup chunked datasets to store the state data in and add labelling
+        # attributes that are interpreted by dantro to determine dimension
+        # names and coordinate labels
         self._dsets = dict()
+        dataset_kwargs = dict(
+            chunks=True, **(dataset_kwargs if dataset_kwargs else {})
+        )
+        start_and_step = [self._write_start, self._write_every]
+
+        # The full state vector over time
         self._dsets["state"] = self._h5group.create_dataset(
             "state",
             (0, state_size),
             maxshape=(None, state_size),
-            chunks=True,
-            compression=3,
+            **dataset_kwargs,
         )
+        self._dsets["state"].attrs["dim_names"] = ["time", "state_idx"]
+        self._dsets["state"].attrs["coords_mode__time"] = "start_and_step"
+        self._dsets["state"].attrs["coords__time"] = start_and_step
+        self._dsets["state"].attrs["coords_mode__state_idx"] = "trivial"
+
+        # The mean state over time
         self._dsets["mean_state"] = self._h5group.create_dataset(
             "mean_state",
             (0,),
             maxshape=(None,),
-            chunks=True,
-            compression=3,
+            **dataset_kwargs,
         )
+        self._dsets["mean_state"].attrs["dim_name__0"] = "time"
+        self._dsets["mean_state"].attrs["coords_mode__time"] = "start_and_step"
+        self._dsets["mean_state"].attrs["coords__time"] = start_and_step
 
-        # TODO Add labelling attributes?
+        # Add labelling attributes
 
     def perform_step(self):
         """Performs the model's state iteration: adding random values to the

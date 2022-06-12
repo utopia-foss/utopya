@@ -4,3 +4,6 @@ state_size: 100
 distribution_params:
   low: -1.
   high: +1.
+
+dataset_kwargs:
+  compression: 3
