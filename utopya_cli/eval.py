@@ -75,10 +75,6 @@ log = logging.getLogger(__name__)
 @click.pass_context
 def evaluate(ctx, **params):
     """Invokes a model simulation run and subsequent evaluation"""
-    # FIXME Remove or make optional
-    # for k, v in params.items():
-    #     print(f"  {k:>21s} :  {v}")
-
     import utopya
     from utopya.exceptions import ValidationError
     from utopya.tools import pformat
@@ -132,6 +128,10 @@ def _load_and_eval(
     **params,
 ):
     """Wrapper that takes care of loading and evaluating"""
+    _log.progress(
+        "Beginning evaluation: loading data and starting PlotManager ...\n"
+    )
+
     # Loading data into the data tree and (optionally) showing it .............
     if not params["use_data_tree_cache"]:
         mv.dm.load_from_cfg()

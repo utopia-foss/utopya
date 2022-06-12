@@ -760,7 +760,7 @@ class WorkerManager:
         self._invoke_report("after_work", force=True)
 
         print("")
-        log.success(
+        log.progress(
             "Finished working. Total tasks worked on: %d", self.task_count
         )
 

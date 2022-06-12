@@ -79,6 +79,7 @@ class ModelInfoBundle:
         paths: dict,
         metadata: dict = None,
         project_name: str = None,
+        eval_after_run: bool = None,
         registration_time: str = None,
         missing_path_action: str = "log",
         extract_model_info: bool = True,
@@ -90,6 +91,8 @@ class ModelInfoBundle:
             paths (dict): A dictionary of paths
             metadata (dict, optional): A dictionary of metadata entries
             project_name (str, optional): The project this model is part of
+            eval_after_run (bool, optional): Whether a model run should be
+                followed by an evaluation.
             registration_time (str, optional): Timestamp of registration
             missing_path_action (str, optional): Action upon a path in the
                 ``paths`` dict that does not exist.
@@ -117,7 +120,8 @@ class ModelInfoBundle:
         self._d = dict(
             paths=dict(),
             metadata=dict(),
-            project_name=None,
+            project_name=project_name,
+            eval_after_run=eval_after_run,
         )
 
         if extract_model_info and paths.get("model_info"):
@@ -125,19 +129,6 @@ class ModelInfoBundle:
                 self._d,
                 self._load_and_parse_model_info(paths["model_info"]),
             )
-
-        # If it was given, check that the project name is one of a registered
-        # project -- otherwise, do not associate the model with it.
-        if project_name:
-            if False:  # project_name not in PROJECTS: # FIXME circular import
-                log.caution(err)
-                log.remark(
-                    "Will NOT associate a project with the "
-                    f"'{self.model_name}' model's info bundle!"
-                )
-
-            else:
-                self._d["project_name"] = project_name
 
         # Now populate the data dict with the explicitly passed arguments,
         # which should take precedence over the information from the model info
@@ -219,6 +210,11 @@ class ModelInfoBundle:
     def project_name(self) -> str:
         """Access to the Utopia project name information of the bundle"""
         return self._d["project_name"]
+
+    @property
+    def eval_after_run(self) -> Union[bool, None]:
+        """Whether a model run should be followed by the evaluation routine."""
+        return self._d["eval_after_run"]
 
     @property
     def project(self) -> Union[None, dict]:

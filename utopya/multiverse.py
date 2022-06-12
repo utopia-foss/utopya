@@ -95,9 +95,12 @@ class Multiverse:
                 generated from the previous configuration levels
         """
         # First things first: get the info bundle
-        self._info_bundle = get_info_bundle(
-            model_name=model_name, info_bundle=info_bundle
-        )
+        if info_bundle is None:
+            info_bundle = get_info_bundle(
+                model_name=model_name, info_bundle=info_bundle
+            )
+        self._info_bundle = info_bundle
+
         log.progress(
             "Initializing Multiverse for '%s' model ...", self.model_name
         )
@@ -314,7 +317,7 @@ class Multiverse:
         self.wm.start_working(**self.meta_cfg["run_kwargs"])
 
         # Done! :)
-        log.success("Finished run. Wohoo. :)")
+        log.success("Finished simulation run. Wohoo. :)\n")
 
     def run_single(self):
         """Runs a single simulation using the parameter space's default value.

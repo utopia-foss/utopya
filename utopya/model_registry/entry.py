@@ -166,7 +166,9 @@ class ModelRegistryEntry:
         Raises:
             ModelRegistryError: In case the selection was ambiguous
         """
+        log.remark("Getting info bundle for model '%s' ...", self.model_name)
         if self.default_label is not None:
+            log.remark("  ... using default label:  %s", self.default_label)
             return self.default_bundle
 
         elif len(self) != 1:
@@ -179,7 +181,9 @@ class ModelRegistryEntry:
                 f"bundle with a specific label (available: {_avail})."
             )
 
-        return self[list(self.keys())[0]]
+        label = next(iter(self.keys()))
+        log.remark("  ... selecting only registered info bundle:  %s", label)
+        return self[label]
 
     def keys(self) -> Iterator[str]:
         """Returns keys for item access, i.e.: all registered keys"""
@@ -203,7 +207,7 @@ class ModelRegistryEntry:
         self,
         *,
         label: str,
-        set_as_default: bool = None,
+        set_as_default: bool = True,
         exists_action: str = "raise",
         update_registry_file: bool = True,
         **bundle_kwargs,
@@ -215,8 +219,8 @@ class ModelRegistryEntry:
 
         Args:
             label (str): The label under which to add it.
-            set_as_default (bool, optional): If set, will mark this bundle
-                as the default value
+            set_as_default (bool, optional): Controls whether to set this
+                bundle's ``label`` as the default label for this entry.
             exists_action (str, optional): What to do if the given ``label``
                 already exists:
 

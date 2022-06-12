@@ -15,7 +15,6 @@ from .eval import DataManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .multiverse import FrozenMultiverse, Multiverse
 
-# Get a logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
@@ -62,12 +61,19 @@ class Model:
         Raises:
             ValueError: Upon bad ``base_dir``
         """
-        # First, determine exact model info bundle to use
+        # First, determine which model info bundle to use
         self._info_bundle = get_info_bundle(
             model_name=name, info_bundle=info_bundle, bundle_label=bundle_label
         )
-        log.progress("Initializing '%s' model ...", self.name)
-        log.note("  Associated project:  %s", self._info_bundle.project_name)
+        log.progress("Initializing Model instance for '%s' ...", self.name)
+
+        # Show some project and framework information
+        fw_name = None
+        if self._info_bundle.project:
+            fw_name = self._info_bundle.project.framework_name
+
+        log.note("  Project:        %s", self._info_bundle.project_name)
+        log.note("  Framework:      %s", fw_name)
 
         # Store other attributes
         self._sim_errors = sim_errors
@@ -262,7 +268,10 @@ class Model:
 
         # Create the Multiverse and store it, to not let it go out of scope
         mv = Multiverse(
-            model_name=self.name, run_cfg_path=run_cfg_path, **update_meta_cfg
+            model_name=self.name,
+            info_bundle=self.info_bundle,
+            run_cfg_path=run_cfg_path,
+            **update_meta_cfg,
         )
         self._store_mv(mv, **objs_to_store)
 
