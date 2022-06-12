@@ -30,6 +30,7 @@
     - Adds `snsplot` for seaborn-based plots
     - Modernizes the CA plot (`caplot`), now supporting the data transformation framework and deprecating the old `ca.state` plot
 - !6 adds an extended demo model that showcases utopya usage for Python-based model implementations.
+- !6 moves definition of custom config set search directories to the project-level and extends search to a wider set of model source subdirectories.
 
 
 ## v0.8.8

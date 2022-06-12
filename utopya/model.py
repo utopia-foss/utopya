@@ -27,6 +27,11 @@ class Model:
     create a Multiverse from them, run it, and work with it further...
     """
 
+    CONFIG_SET_MODEL_SOURCE_SUBDIRS = ("cfgs", "cfg_sets", "config_sets")
+    """Directories within the model source directories to search through when
+    looking for configuration sets. These are *not* used if the utopya config
+    contains an entry overwriting this."""
+
     def __init__(
         self,
         *,
@@ -139,30 +144,52 @@ class Model:
     @property
     def default_config_set_search_dirs(self) -> List[str]:
         """Returns the default config set search directories for this model
-        in the order of precedence.
+        in the order of precedence:
+
+            - defined on the project-level via ``cfg_set_abs_search_dirs``;
+              these may also be format strings supporting the following set of
+              keys: ``model_name``, ``project_base_dir``, and
+              ``model_source_dir`` (if set).
+              If no project is associated, there will be no additional search
+              directories.
+            - names of subdirectories relative to the model source directory,
+              defined in ``cfg_set_model_source_subdirs``. If no model source
+              directory is known, no search directories will be added. If no
+              project is associated, a standard set of search directories is
+              used: ``cfgs``, ``cfg_sets``, ``config_sets``.
 
         .. note::
 
-            These *may* be relative paths.
+            The output *may* contain relative paths.
         """
         search_dirs = []
 
-        # User-specified search directories, potentially format strings
-        utopya_cfg = load_from_cfg_dir("utopya")
-        _cs_dirs = utopya_cfg.get("config_set_search_dirs", [])
-        if isinstance(_cs_dirs, list):
-            search_dirs += [d.format(model_name=self.name) for d in _cs_dirs]
-        else:
-            raise TypeError(
-                "The `config_set_search_dirs` key of the utopya configuration "
-                f"needs to be a list! Got: {type(_cs_dirs)} {repr(_cs_dirs)}"
-            )
+        project = self.info_bundle.project
+        model_source_dir = self.info_bundle.paths.get("source_dir")
 
-        # Model source directory
-        _model_cfgs_dir = os.path.join(
-            os.path.dirname(self.info_bundle.paths["default_cfg"]), "cfgs"
-        )
-        search_dirs.append(_model_cfgs_dir)
+        # Project-level search directories, potentially format strings
+        if project and project.cfg_set_abs_search_dirs:
+            format_kwargs = dict(
+                project_base_dir=project.paths.base_dir,
+                model_name=self.name,
+            )
+            if model_source_dir:
+                format_kwargs["model_source_dir"] = model_source_dir
+
+            search_dirs += [
+                d.format(**format_kwargs)
+                for d in project.cfg_set_abs_search_dirs
+            ]
+
+        # Relative to model source directory
+        if model_source_dir:
+            if project and project.cfg_set_model_source_subdirs:
+                subdirs = project.cfg_set_model_source_subdirs
+            else:
+                subdirs = ("cfgs", "cfg_sets", "config_sets")
+
+            for subdir in subdirs:
+                search_dirs.append(os.path.join(model_source_dir, subdir))
 
         return search_dirs
 

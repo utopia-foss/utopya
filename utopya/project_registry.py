@@ -3,7 +3,7 @@
 import copy
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from pydantic import DirectoryPath, FilePath
 
@@ -59,6 +59,8 @@ class ProjectSchema(BaseSchema):
     paths: ProjectPaths
     metadata: ProjectMetadata
     run_cfg_format: str = "yaml"
+    cfg_set_abs_search_dirs: Optional[List[str]]
+    cfg_set_model_source_subdirs: Optional[List[str]]
     custom_py_modules: Optional[Dict[str, DirectoryPath]]
     output_files: Optional[dict]  # TODO Needs sub-schema
     debug_level_updates: Optional[Dict[str, dict]]  # TODO Implement

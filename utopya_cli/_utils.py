@@ -297,8 +297,8 @@ def parse_run_and_plots_cfg(
 
     If ``_interactive_mode`` is given, will not read the run configuration but
     only the plots configuration where it would be confusing to have the
-    corresponding log message appear. Also, this will not lead to system exit
-    if parsing failed.
+    corresponding log message appear. Also, in interactive mode, this will not
+    lead to system exit if parsing failed.
     """
     if cfg_set and (run_cfg is None or plots_cfg is None):
         _log.info("Looking up config set '%s' ...", cfg_set)
@@ -309,7 +309,7 @@ def parse_run_and_plots_cfg(
             if _interactive_mode:
                 raise
             _log.error(err)
-            # sys.exit(1)  # FIXME This should not happen here
+            sys.exit(1)
 
         # Explicitly given arguments take precedence. Also, the config set may
         # not contain a run or eval configuration.
