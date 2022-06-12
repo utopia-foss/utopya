@@ -31,6 +31,7 @@ def mib_kwargs(**misc_metadata) -> dict:
         ),
         metadata=dict(description="bar", misc=misc_metadata),
         project_name=DEMO_PROJECT_NAME,
+        eval_after_run=None,
     )
 
 

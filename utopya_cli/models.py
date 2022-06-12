@@ -314,6 +314,13 @@ models.add_command(register)
     ),
 )
 @click.option(
+    "--set-default",
+    "set_as_default",
+    is_flag=True,
+    default=None,
+    help=("Whether to set the registered model(s) as default."),
+)
+@click.option(
     "--project-name",
     type=click.STRING,
     default=None,
@@ -337,8 +344,9 @@ def register_single(
     default_cfg: str,
     plots_cfg: str,
     label: str,
-    exists_action: str,
+    set_as_default: bool,
     project_name: str,
+    exists_action: str,
 ):
     """Registers a new model"""
     Echo.progress(f"Registering model '{model_name}' (label: '{label}')...")
@@ -364,6 +372,7 @@ def register_single(
         utopya.MODELS.register_model_info(
             model_name,
             exists_action=exists_action,
+            set_as_default=set_as_default,
             **bundle_kwargs,
         )
 
@@ -478,6 +487,13 @@ def register_single(
     ),
 )
 @click.option(
+    "--set-default",
+    "set_as_default",
+    is_flag=True,
+    default=None,
+    help=("Whether to set the registered model(s) as default."),
+)
+@click.option(
     "--project-name",
     type=click.STRING,
     default=None,
@@ -502,6 +518,7 @@ def register_from_list(
     executable_fstr: str,
     source_dir_fstr: str,
     separator: str,
+    set_as_default: bool,
     **kwargs,
 ):
     if executable_fstr:
@@ -544,6 +561,7 @@ def register_from_list(
             source_dirs=source_dirs,
             separator=separator,
             **kwargs,
+            set_as_default=set_as_default,
             _log=Echo,
         )
 
@@ -592,6 +610,23 @@ def register_from_list(
     ),
 )
 @click.option(
+    "--set-default",
+    "set_as_default",
+    is_flag=True,
+    default=None,
+    help=("Whether to set the registered model(s) as default."),
+)
+@click.option(
+    "--project-name",
+    "custom_project_name",
+    type=click.STRING,
+    default=None,
+    help=(
+        "This option can be used to specify the project name, ignoring the "
+        "name(s) specified in the manifest file(s)."
+    ),
+)
+@click.option(
     "--exists-action",
     default="validate",
     type=click.Choice(("skip", "raise", "validate", "overwrite")),
@@ -606,6 +641,8 @@ def register_from_manifest(
     *,
     manifest_files: Tuple[str],
     custom_model_name: str,
+    set_as_default: bool,
+    custom_project_name: str,
     custom_label: str,
     exists_action: str,
 ):
@@ -635,16 +672,27 @@ def register_from_manifest(
 
         bundle_kwargs = utopya.tools.load_yml(manifest_file)
 
-        # Handle custom model name or label
+        # Handle custom model name, label, or project name
         model_name = bundle_kwargs.pop("model_name")
         if custom_model_name:
-            Echo.note(f"Using custom model name '{custom_model_name}' ...")
+            Echo.note(f"Using custom model name:     {custom_model_name}")
             model_name = custom_model_name
+        else:
+            Echo.note(f"Model name:                  {model_name}")
 
         label = bundle_kwargs.pop("label", "from_manifest_file")
         if custom_label:
-            Echo.note(f"Using custom label '{custom_label}' ...")
+            Echo.note(f"Using custom label:          {custom_label}")
             label = custom_label
+        else:
+            Echo.note(f"Label:                       {label}")
+
+        Echo.note(f"Setting as default?          {set_as_default}")
+
+        project_name = bundle_kwargs.pop("project_name", None)
+        if custom_project_name:
+            Echo.note(f"Using custom project name:   {custom_project_name}")
+            project_name = custom_project_name
 
         # Also add path to manifest file in the paths dict, such that the
         # info bundle knows about it. Then register.
@@ -657,8 +705,10 @@ def register_from_manifest(
             utopya.MODELS.register_model_info(
                 model_name,
                 label=label,
+                project_name=project_name,
                 exists_action=exists_action,
                 extract_model_info=False,  # already done here
+                set_as_default=set_as_default,
                 **bundle_kwargs,
             )
 

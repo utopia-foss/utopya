@@ -17,6 +17,7 @@ def register_models_from_list(
     label: str,
     source_dirs: str = None,
     exists_action: str = "raise",
+    set_as_default: bool = None,
     project_name: str = None,
     _log=log,
     **more_paths,
@@ -90,6 +91,7 @@ def register_models_from_list(
             model_name,
             **bundle_kwargs,
             label=label,
+            set_as_default=set_as_default,
             exists_action=exists_action,
         )
 

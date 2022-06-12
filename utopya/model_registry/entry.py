@@ -207,7 +207,7 @@ class ModelRegistryEntry:
         self,
         *,
         label: str,
-        set_as_default: bool = True,
+        set_as_default: bool = None,
         exists_action: str = "raise",
         update_registry_file: bool = True,
         **bundle_kwargs,
