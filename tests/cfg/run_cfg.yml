@@ -4,5 +4,5 @@ perform_sweep: false
 
 parameter_space:
   seed: 1337
-  num_steps: 10
+  num_steps: 20
   write_every: 2
