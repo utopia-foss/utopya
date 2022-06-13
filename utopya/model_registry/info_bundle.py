@@ -82,7 +82,7 @@ class ModelInfoBundle:
         eval_after_run: bool = None,
         registration_time: str = None,
         missing_path_action: str = "log",
-        extract_model_info: bool = True,
+        extract_model_info: bool = False,
     ):
         """Initialize a ModelInfoBundle
 

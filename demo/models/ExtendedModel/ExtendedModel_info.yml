@@ -25,11 +25,11 @@ paths:
   default_plots: ExtendedModel_plots.yml
   base_plots: ExtendedModel_base_plots.yml
 
-  py_plots_dir:  ../../model_plots/ExtendedModel
-  py_tests_dir:  ../../model_tests/ExtendedModel
+  py_plots_dir: ../../model_plots/ExtendedModel
+  py_tests_dir: ../../model_tests/ExtendedModel
 
 # -- Metadata
-# TODO
+# TODO Expand
 metadata:
   description: A (dummy) model illustrating the extended utopya interface
   long_description: >

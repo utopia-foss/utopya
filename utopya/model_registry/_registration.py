@@ -15,12 +15,13 @@ def register_models_from_list(
     model_names: str,
     executables: str,
     label: str,
+    more_paths: dict = dict(),
     source_dirs: str = None,
     exists_action: str = "raise",
     set_as_default: bool = None,
     project_name: str = None,
     _log=log,
-    **more_paths,
+    **shared_bundle_kwargs,
 ):
     """Handles registration of multiple models where the model names,
     executables, and source directories are splittable lists of equal lengths.
@@ -33,13 +34,13 @@ def register_models_from_list(
         model_names (str): Splittable string of model names
         executables (str): Splittable string of executables
         label (str): Label under which to add the entries
+        more_paths (dict, optional): Additional paths that are to be parsed
         source_dirs (str, optional): Splittable string of model source
             directories
         exists_action (str, optional): Action to take upon existing label
         project_name (str, optional): The associated project name
         _log (TYPE, optional): A logger-like object
-        **more_paths: Additional paths that are to be parsed
-
+        **shared_bundle_kwargs: passed on to bundle creation
     """
 
     _log.debug(
@@ -77,7 +78,9 @@ def register_models_from_list(
             **more_paths,
         )
 
-        specs[model_name] = dict(paths=paths, project_name=project_name)
+        specs[model_name] = dict(
+            paths=paths, project_name=project_name, **shared_bundle_kwargs
+        )
 
     _log.progress(
         "Received information for %d model%s. Now registering ...\n",

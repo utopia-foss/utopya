@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import traceback
 
 import pytest
 
@@ -165,6 +166,8 @@ def test_register_from_list(registry):
     )
     res = invoke_cli(reg_args + ("--label", "some_new_label"))
     print(res.output)
+    if res.exception:
+        traceback.print_tb(res.exception.__traceback__)
     assert res.exit_code == 0
     assert "Model registration succeeded" in res.output
 

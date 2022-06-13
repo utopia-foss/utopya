@@ -7,7 +7,7 @@ import pytest
 import utopya.cfg as ucfg
 import utopya.model_registry as umr
 
-from . import DEMO_DIR, DEMO_PROJECT_NAME
+from . import DEMO_DIR, TEST_PROJECT_NAME
 
 
 @pytest.fixture
@@ -50,8 +50,13 @@ def tmp_projects(tmp_cfg_dir):
 
     original_project_names = list(PROJECTS)
 
-    PROJECTS.register(base_dir=DEMO_DIR, exists_action="raise")
-    assert DEMO_PROJECT_NAME in PROJECTS
+    PROJECTS.register(
+        base_dir=DEMO_DIR,
+        exists_action="raise",
+        custom_project_name=TEST_PROJECT_NAME,
+        require_matching_names=False,
+    )
+    assert TEST_PROJECT_NAME in PROJECTS
     yield
 
     # Make sure no projects added by the test remain in the registry

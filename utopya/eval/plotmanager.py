@@ -107,6 +107,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
                 import_module_from_path(
                     mod_path=mod_path,
                     mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}.{mib.model_name}",
+                    debug=self.raise_exc,
                 )
 
             # Also do this on the project and framework level
@@ -116,6 +117,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
                 import_module_from_path(
                     mod_path=project.paths.py_plots_dir,
                     mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
+                    debug=self.raise_exc,
                 )
 
             if project and project.framework_project:
@@ -124,6 +126,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
                     import_module_from_path(
                         mod_path=fw.paths.py_plots_dir,
                         mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
+                        debug=self.raise_exc,
                     )
 
         # Now create the actual plot creator and attach some additional info

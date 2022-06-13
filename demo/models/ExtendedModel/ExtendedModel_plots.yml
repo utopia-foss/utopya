@@ -2,3 +2,14 @@
 #
 # These can use the base configuration pools defined in *_base_plots.yml
 ---
+overview:
+  based_on: overview
+
+time_series/mean_state:
+  based_on: time_series/mean_state
+
+time_series/state:
+  based_on: time_series/state
+
+custom_plot:
+  based_on: custom_plot

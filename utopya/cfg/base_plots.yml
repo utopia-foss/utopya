@@ -2,6 +2,12 @@
 #
 # The names of the configuration entries should follow a module path naming
 # scheme, i.e. what is specified for the `module` and `plot_func` keys.
+#
+# TODO Needs cleanup:
+#   - Whatever can be defined upstream (in dantro) *should* be defined there
+#   - Reduce duplicates
+#   - Improve and simplify naming scheme
+#
 ---
 # -- Defaults -----------------------------------------------------------------
 # .. A config with defaults styles and helpers ................................
@@ -152,27 +158,6 @@
 # -- CA Plots -----------------------------------------------------------------
 # .. A spatial CA plot of a state .............................................
 
-# A plot function specialized for Cellular Automata snapshots or animations.
-# Unlike its predecessor, it supports the data transformation framework.
-.plot.ca:
-  based_on: .default_style_and_helpers
-
-  module: .ca
-  plot_func: caplot
-
-  compute_only: all
-
-  default_imshow_kwargs:
-    interpolation: 'none'
-
-  suptitle_fstr: "{}: {:>5}"
-  suptitle_kwargs:
-    fontsize: x-large
-    fontfamily: monospace
-
-  style:
-    figure.constrained_layout.use: true
-
 # Supports PlotHelper and animation
 # NOTE This is the legacy plot function, should be removed
 .ca.state: &ca_state
@@ -280,27 +265,7 @@
 
 
 # -- Time Series --------------------------------------------------------------
-# .. Plot of a single density .................................................
-.time_series.density:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .time_series
-  plot_func: density
-
-
-# .. Plot of multiple densities ...............................................
-.time_series.densities:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .time_series
-  plot_func: densities
-
+# TODO Check which ones make sense to keep
 
 # .. Phase space with colour-coded time .......................................
 .time_series.phase_space:
@@ -344,15 +309,9 @@
 # -----------------------------------------------------------------------------
 # -- DAG-based plots ----------------------------------------------------------
 # -----------------------------------------------------------------------------
+# TODO These should be renamed!
+
 # -- Generic Multiverse or Universe plots -------------------------------------
-# .. Time series ..............................................................
-.dag.generic.time_series:
-  based_on: .default_style_and_helpers
-
-  module: .time_series
-  plot_func: time_series
-
-
 # .. Facet Grid ...............................................................
 # For conveniently plotting high-dimensional data, using dantro.
 #    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
@@ -430,3 +389,89 @@
 
   helpers:
     <<: *default_helpers
+
+
+# #############################################################################
+# #############################################################################
+# #############################################################################
+# New-style plot functions below this line
+
+
+# -----------------------------------------------------------------------------
+# -- Plot functions and specializations ---------------------------------------
+# -----------------------------------------------------------------------------
+# These should follow the .plot.<name> pattern!
+
+# .. CA plot ..................................................................
+# A plot function specialized for Cellular Automata snapshots or animations.
+# Unlike its predecessor, it supports the data transformation framework.
+.plot.ca:
+  based_on: .default_style_and_helpers
+
+  module: .ca
+  plot_func: caplot
+
+  compute_only: all
+
+  default_imshow_kwargs:
+    interpolation: 'none'
+
+  suptitle_fstr: "{}: {:>5}"
+  suptitle_kwargs:
+    fontsize: x-large
+    fontfamily: monospace
+
+  style:
+    figure.constrained_layout.use: true
+
+.plot.ca.snapshot:
+  based_on:
+    # - .plot.ca  # do not inherit again, would cause overwriting downstream
+    - .animation.disabled
+
+  frames_isel: -1
+
+# .. Facet grid ...............................................................
+.plot.facet_grid:
+  based_on:
+    - .defaults
+    - .dag.generic.facet_grid  # TODO Move that definition here
+
+# .. Mixins
+.plot.facet_grid.with_auto_encoding:
+  based_on: .plot.facet_grid
+  auto_encoding: true
+  col_wrap: auto
+
+# .. Specializations: working on xr.DataArray
+.plot.facet_grid.line:
+  based_on: .plot.facet_grid
+  kind: line
+
+.plot.facet_grid.hist:
+  based_on: .plot.facet_grid
+  kind: hist
+
+.plot.facet_grid.errorbars:
+  based_on: .plot.facet_grid
+  kind: errorbars
+
+.plot.facet_grid.errorbands:
+  based_on: .plot.facet_grid
+  kind: errorbars
+  use_bands: true
+
+# .. Specializations: working on xr.Dataset
+.plot.facet_grid.scatter:
+  based_on: .plot.facet_grid
+  kind: scatter
+
+
+# .. Seaborn plots ............................................................
+.plot.snsplot:
+  based_on: .dag.snsplot
+
+
+# .. Graph plot ...............................................................
+.plot.graph:
+  based_on: .dag.graph

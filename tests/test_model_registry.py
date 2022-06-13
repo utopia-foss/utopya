@@ -9,7 +9,7 @@ import utopya.model_registry as umr
 from utopya.model_registry import BundleExistsError, ModelRegistryError
 from utopya.yaml import load_yml, write_yml, yaml
 
-from . import DEMO_DIR, DEMO_PROJECT_NAME, get_cfg_fpath
+from . import DEMO_DIR, TEST_PROJECT_NAME, get_cfg_fpath
 from ._utils import tmp_cfg_dir, tmp_model_registry, tmp_projects
 
 TEST_CFG = load_yml(get_cfg_fpath("model_registry.yml"))
@@ -30,7 +30,7 @@ def mib_kwargs(**misc_metadata) -> dict:
             default_cfg="/abs/foo/config/path",
         ),
         metadata=dict(description="bar", misc=misc_metadata),
-        project_name=DEMO_PROJECT_NAME,
+        project_name=TEST_PROJECT_NAME,
         eval_after_run=None,
     )
 

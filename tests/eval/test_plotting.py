@@ -16,6 +16,7 @@ from dantro.utils import available_operations
 from pkg_resources import resource_filename
 
 from utopya import Multiverse
+from utopya._import_tools import temporary_sys_modules as tmp_sys_modules
 from utopya._import_tools import temporary_sys_path as tmp_sys_path
 from utopya.eval.plots._graph import GraphPlot
 from utopya.testtools import ModelTest
@@ -63,7 +64,6 @@ def register_demo_project(tmp_projects):
 # Tests -----------------------------------------------------------------------
 
 
-@pytest.mark.skip("dummy model has no labelled dimensions")
 def test_dag_custom_operations():
     """Tests if custom dantro data operations can be registered via the
     extensions made to PlotManager.
@@ -72,73 +72,95 @@ def test_dag_custom_operations():
          tests can lead to some pre-conditions of this test not being valid.
     """
     print("Available operations:", ", ".join(available_operations()))
-    assert "my_custom_dummy_operation" not in available_operations()
+    assert "my_custom_data_operation" not in available_operations()
 
     # Now, set up the model and its PlotManager
-    model = ModelTest(DUMMY_MODEL)
+    model = ModelTest(ADVANCED_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True
     plot_cfgs = load_yml(DAG_PLOTS)
 
     # Should still not be available
-    assert "my_custom_dummy_operation" not in available_operations()
+    assert "my_custom_data_operation" not in available_operations()
 
     # Now, do some unrelated plot operation, i.e. not requiring model-specific
     # plot functions, but only utopya plot functions.
     # This should still lead to the _invoke_creator method being called, which
-    # takes care of invoking register_operation
-    mv.pm.plot("test", out_dir=mv.dirs["eval"], **plot_cfgs["uni_ts"])
+    # takes care of pre-loading model-specific module definitions, which in
+    # turn call register_operation during import
+    with tmp_sys_modules():
+        mv.pm.plot("test", out_dir=mv.dirs["eval"], **plot_cfgs["uni_ts"])
 
-    assert "my_custom_dummy_operation" in available_operations()
+        assert "my_custom_data_operation" in available_operations()
 
 
-@pytest.mark.skip("Needs advanced demo model with custom plot functions")
 def test_preloading():
     """Tests the preloading feature of the utopya.PlotManager"""
-    assert "model_plots.ForestFire" not in sys.modules
+    model_plot_modstr = f"model_plots.{ADVANCED_MODEL}"
+    model_plot_name = "custom_plot"
+    assert model_plot_modstr not in sys.modules
 
-    model = ModelTest("ForestFire")
+    model = ModelTest(ADVANCED_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True
-    assert "model_plots.ForestFire" not in sys.modules
+    assert model_plot_modstr not in sys.modules
 
-    mv.pm.plot_from_cfg(plot_only=["tree_density"])
-    assert "model_plots.ForestFire" in sys.modules
+    mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
+    assert model_plot_modstr in sys.modules
 
     # How about a case with a bad import location; adjust a copy of the info
     # bundle to be corrupt in such a way ... Also, temporarily clear the
     # sys.path, as it _might_ include a path that allows import.
-    del sys.modules["model_plots.ForestFire"]
+    mv.renew_plot_manager(out_dir=f"session_2/", raise_exc=False)
+
+    del sys.modules[model_plot_modstr]
+    del sys.modules["model_plots"]
     assert "model_plots" not in sys.modules
-    assert "model_plots.ForestFire" not in sys.modules
+    assert model_plot_modstr not in sys.modules
 
     # Corrupt the bundle
-    mib = copy.deepcopy(mv.pm._model_info_bundle)
-    mpd = os.path.dirname(os.path.dirname(mib.paths["python_model_plots_dir"]))
+    mib = mv.pm._model_info_bundle
+    mpd = os.path.dirname(os.path.dirname(mib.paths["py_plots_dir"]))
 
     # Prepare the temporary sys.path corruption
-    bad_sys_path = "/some_invalid_path/sub1/sub2/sub3"
-    mib.paths["python_model_plots_dir"] = bad_sys_path
+    bad_sys_path = "/"  # valid path, but nothing useful in there
+    mib.paths["py_plots_dir"] = bad_sys_path
+
+    # Need to disassociate the project to not have the PlotManager load the
+    # project-defined plot directory
+    mib._project_name = None
+
+    # Assign it back
     mv.pm._model_info_bundle = mib
 
-    # Without exception raising, this should just go ahead ...
-    mv.pm.raise_exc = False
-    with tmp_sys_path(bad_sys_path):
+    # Without exception raising, this should just go ahead, even though the
+    # import will fail ...
+    assert not mv.pm.raise_exc
+    with tmp_sys_path(bad_sys_path), tmp_sys_modules():
         # Remove the model plots directories from the path
         sys.path = [p for p in sys.path if not p.startswith(mpd)]
 
-        mv.pm.plot_from_cfg(plot_only=["mean_tree_age"])
-    assert "model_plots.ForestFire" not in sys.modules
+        mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
+
+        # The module will still be loaded though, because the associated
+        # project will load it.
+        assert model_plot_modstr in sys.modules
 
     # With exception raising, there should be an appropriate error message
-    mv.pm.raise_exc = True
-    with tmp_sys_path(bad_sys_path), pytest.raises(
-        RuntimeError, match="Failed pre-loading " "the model-specific"
+    mv.renew_plot_manager(out_dir=f"session_3/", raise_exc=True)
+    mv.pm._model_info_bundle = mib
+
+    with tmp_sys_path(bad_sys_path), tmp_sys_modules(), pytest.raises(
+        ImportError, match="Failed importing module"
     ):
+        assert "model_plots" not in sys.modules
+        assert model_plot_modstr not in sys.modules
+        assert mv.pm.raise_exc
+
         # Remove the model plots directories from the path
         sys.path = [p for p in sys.path if not p.startswith(mpd)]
-        mv.pm.plot_from_cfg(plot_only=["forest_snapshot"])
-    assert "model_plots.ForestFire" not in sys.modules
+
+        mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
 
 
 @pytest.mark.skip("dummy model data is not labelled")

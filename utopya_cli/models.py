@@ -373,6 +373,7 @@ def register_single(
             model_name,
             exists_action=exists_action,
             set_as_default=set_as_default,
+            extract_model_info=True,
             **bundle_kwargs,
         )
 
@@ -513,13 +514,15 @@ def register_single(
 def register_from_list(
     *,
     model_names: str,
+    label: str,
     executables: str,
     source_dirs: str,
     executable_fstr: str,
     source_dir_fstr: str,
     separator: str,
     set_as_default: bool,
-    **kwargs,
+    exists_action: str,
+    **more_paths,
 ):
     if executable_fstr:
         if executables:
@@ -557,11 +560,14 @@ def register_from_list(
         register_models_from_list(
             registry=utopya.MODELS,
             model_names=model_names,
+            label=label,
             executables=executables,
             source_dirs=source_dirs,
             separator=separator,
-            **kwargs,
+            more_paths=more_paths,
             set_as_default=set_as_default,
+            extract_model_info=True,
+            exists_action=exists_action,
             _log=Echo,
         )
 
@@ -707,7 +713,7 @@ def register_from_manifest(
                 label=label,
                 project_name=project_name,
                 exists_action=exists_action,
-                extract_model_info=False,  # already done here
+                extract_model_info=False,  # already done above
                 set_as_default=set_as_default,
                 **bundle_kwargs,
             )

@@ -7,7 +7,7 @@ import pytest
 import utopya
 from utopya import PROJECTS
 
-from .. import DEMO_DIR, DEMO_PROJECT_NAME, get_cfg_fpath
+from .. import DEMO_DIR, TEST_PROJECT_NAME, get_cfg_fpath
 from ..test_model_registry import tmp_cfg_dir, tmp_projects
 from . import invoke_cli
 
@@ -22,7 +22,7 @@ def test_list(tmp_projects):
     # Lists projects as expected
     res = invoke_cli(("projects", "ls"))
     assert "Utopya Projects" in res.output
-    assert DEMO_PROJECT_NAME in res.output
+    assert TEST_PROJECT_NAME in res.output
 
     # Long mode shows additional info
     res = invoke_cli(("projects", "ls", "--long"))
@@ -35,7 +35,7 @@ def test_list(tmp_projects):
 
 def test_edit(tmp_projects, monkeypatch):
     """Tests utopya projects edit"""
-    args = ("projects", "edit", DEMO_PROJECT_NAME)
+    args = ("projects", "edit", TEST_PROJECT_NAME)
     res = invoke_cli(args, input="y\n")
     print(res.output)
     assert res.exit_code == 1
@@ -60,7 +60,7 @@ def test_edit(tmp_projects, monkeypatch):
 def test_remove(tmp_projects):
     """Tests utopya projects rm"""
     # Do not confirm
-    res = invoke_cli(("projects", "rm", DEMO_PROJECT_NAME), input="N\n")
+    res = invoke_cli(("projects", "rm", TEST_PROJECT_NAME), input="N\n")
     assert "Not removing" in res.output
     assert res.exit_code == 0
 
@@ -72,24 +72,35 @@ def test_remove(tmp_projects):
     assert "missingProjectName" not in PROJECTS
 
     # Now remove it
-    assert DEMO_PROJECT_NAME in PROJECTS
-    res = invoke_cli(("projects", "rm", "utopyaDemoProject", "-y"))
+    assert TEST_PROJECT_NAME in PROJECTS
+    res = invoke_cli(("projects", "rm", TEST_PROJECT_NAME, "-y"))
     assert res.exit_code == 0
-    assert "utopyaDemoProject" not in PROJECTS
+    assert TEST_PROJECT_NAME not in PROJECTS
 
 
 def test_register(tmp_projects):
     """Tests utopya project register"""
-    assert DEMO_PROJECT_NAME in PROJECTS
+    assert TEST_PROJECT_NAME in PROJECTS
 
-    reg_args = ("projects", "register", DEMO_DIR)
+    reg_args = (
+        "projects",
+        "register",
+        DEMO_DIR,
+        "--custom-name",
+        TEST_PROJECT_NAME,
+    )
+
+    # Invoke for the first time
+    res = invoke_cli(reg_args)
+    print(res.output)
+    assert res.exit_code == 0
 
     # Can invoke again, despite existing entry: Will validate by default
     res = invoke_cli(reg_args)
     print(res.output)
     assert res.exit_code == 0
     assert "Validating" in res.output
-    assert f"Validation of entry '{DEMO_PROJECT_NAME}' succeeded" in res.output
+    assert f"Validation of entry '{TEST_PROJECT_NAME}' succeeded" in res.output
 
     # Explicitly pass path to (same) info file
     res = invoke_cli(
@@ -130,7 +141,11 @@ def test_register(tmp_projects):
     assert "bad_exists_action" in res.output
 
     with pytest.raises(ValueError, match="Invalid `exists_action`"):
-        PROJECTS.register(base_dir=DEMO_DIR, exists_action="bad_exists_action")
+        PROJECTS.register(
+            base_dir=DEMO_DIR,
+            custom_project_name=TEST_PROJECT_NAME,
+            exists_action="bad_exists_action",
+        )
 
     # Store under custom name
     res = invoke_cli(reg_args + ("--custom-name", "some_custom_name"))
@@ -156,7 +171,7 @@ def test_register(tmp_projects):
     # Validation failure
     res = invoke_cli(
         reg_args
-        + ("--info-file", VALID_INFO_FILE, "--custom-name", DEMO_PROJECT_NAME)
+        + ("--info-file", VALID_INFO_FILE, "--custom-name", TEST_PROJECT_NAME)
     )
     print(res.output)
     assert res.exit_code != 0
@@ -164,7 +179,7 @@ def test_register(tmp_projects):
     assert "Their YAML diff is as follows" in res.output
 
     # ... old info is still there
-    project = PROJECTS[DEMO_PROJECT_NAME]
+    project = PROJECTS[TEST_PROJECT_NAME]
     assert "A demo project" in project.metadata.description
 
     # exists_action: overwrite ...
@@ -174,7 +189,7 @@ def test_register(tmp_projects):
             "--info-file",
             VALID_INFO_FILE,
             "--custom-name",
-            DEMO_PROJECT_NAME,
+            TEST_PROJECT_NAME,
             "--exists-action",
             "overwrite",
         )
@@ -186,7 +201,7 @@ def test_register(tmp_projects):
 
     # ... have new info there
     PROJECTS.reload()
-    project = PROJECTS[DEMO_PROJECT_NAME]
+    project = PROJECTS[TEST_PROJECT_NAME]
     assert "A TEST project" in project.metadata.description
 
     # exists_action: update ...

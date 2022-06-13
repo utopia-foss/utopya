@@ -103,7 +103,7 @@ def import_module_from_path(
     if not os.path.isdir(mod_path):
         raise ValueError(
             "The `mod_path` argument to import a module from a path should be "
-            f"the path to a directory! Given path:  {mod_path}"
+            f"the path to an existing directory! Given path:  {mod_path}"
         )
 
     # Need the parent directory in the path, because the import is only
