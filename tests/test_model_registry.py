@@ -10,7 +10,7 @@ from utopya.model_registry import BundleExistsError, ModelRegistryError
 from utopya.yaml import load_yml, write_yml, yaml
 
 from . import DEMO_DIR, TEST_PROJECT_NAME, get_cfg_fpath
-from ._utils import tmp_cfg_dir, tmp_model_registry, tmp_projects
+from ._fixtures import tmp_cfg_dir, tmp_model_registry, tmp_projects
 
 TEST_CFG = load_yml(get_cfg_fpath("model_registry.yml"))
 
@@ -287,7 +287,7 @@ def test_ModelRegistry(tmp_cfg_dir):
     assert len(mr) == 0
 
     # Sring representation
-    assert "Utopia Model Registry" in str(mr)
+    assert "utopya.ModelRegistry" in str(mr)
     assert "0 models registered" in mr.info_str
     assert "0 models registered" in mr.info_str_detailed
 

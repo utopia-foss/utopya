@@ -6,7 +6,7 @@ import pytest
 
 import utopya.cfg as ucfg
 
-from ._utils import tmp_cfg_dir
+from ._fixtures import tmp_cfg_dir
 
 # Fixtures --------------------------------------------------------------------
 

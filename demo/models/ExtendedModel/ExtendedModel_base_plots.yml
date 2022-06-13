@@ -25,17 +25,23 @@ time_series/mean_state:
   based_on:
     - .creator.universe
     - .plot.facet_grid.line
+    - .plot.facet_grid.with_auto_encoding
 
   select:
     data: mean_state
+
+  x: time
 
 time_series/state:
   based_on:
     - .creator.universe
     - .plot.facet_grid.line
+    - .plot.facet_grid.with_auto_encoding
 
   select:
     data: state
+
+  x: time
 
 overview:
   based_on:

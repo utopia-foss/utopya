@@ -170,7 +170,7 @@ def run(ctx, **kwargs):
     from ._utils import parse_run_and_plots_cfg, parse_update_dicts
     from .eval import _load_and_eval
 
-    _log = utopya._getLogger("utopya_cli")  # TODO How best to do this?!
+    _log = utopya._getLogger("utopya")  # TODO How best to do this?!
 
     # Preparations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     _log.info("Parsing additional command line arguments ...")

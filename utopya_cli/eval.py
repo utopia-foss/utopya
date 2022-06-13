@@ -79,7 +79,7 @@ def evaluate(ctx, **params):
     from utopya.exceptions import ValidationError
     from utopya.tools import pformat
 
-    _log = utopya._getLogger("utopya_cli")  # TODO How best to do this?!
+    _log = utopya._getLogger("utopya")  # TODO How best to do this?!
 
     # Preparations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     _log.info("Parsing additional command line arguments ...")

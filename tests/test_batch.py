@@ -11,7 +11,7 @@ from utopya.model import Model
 from utopya.tools import load_yml, recursive_update
 
 from . import ADVANCED_MODEL, DUMMY_MODEL, get_cfg_fpath
-from ._utils import tmp_cfg_dir, tmp_projects
+from ._fixtures import tmp_cfg_dir, tmp_projects
 
 BATCH_FILE_PATH = get_cfg_fpath("batch_file.yml")
 BATCH_CFG = load_yml(get_cfg_fpath("batch.yml"))

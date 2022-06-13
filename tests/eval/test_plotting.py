@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 
+import dantro
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -13,7 +14,6 @@ import paramspace as psp
 import pytest
 from dantro.plot_mngr import PlotCreatorError
 from dantro.utils import available_operations
-from pkg_resources import resource_filename
 
 from utopya import Multiverse
 from utopya._import_tools import temporary_sys_modules as tmp_sys_modules
@@ -34,7 +34,7 @@ BASIC_UNI_PLOTS = get_cfg_fpath("plots/basic_uni.yml")
 # DAG-based plots
 DAG_PLOTS = get_cfg_fpath("plots/dag.yml")
 
-# Bifurcation diagram, 1D and 2D
+# Bifurcation diagram plots, 1D and 2D
 BIFURCATION_DIAGRAM_RUN = get_cfg_fpath("plots/bifurcation_diagram/run.yml")
 BIFURCATION_DIAGRAM_PLOTS = get_cfg_fpath(
     "plots/bifurcation_diagram/plots.yml"
@@ -45,33 +45,45 @@ BIFURCATION_DIAGRAM_2D_RUN = get_cfg_fpath(
 BIFURCATION_DIAGRAM_2D_PLOTS = get_cfg_fpath(
     "plots/bifurcation_diagram_2d/plots.yml"
 )
+
+# Graph plots
 GRAPH_RUN = get_cfg_fpath("graphgroup_cfg.yml")
-
 GRAPH_PLOTS = get_cfg_fpath("plots/graph_plot_cfg.yml")
-
 GRAPH_PLOT_CLS = get_cfg_fpath("graphplot_class_cfg.yml")
 
 # Fixtures --------------------------------------------------------------------
-from .._utils import tmp_cfg_dir, tmp_projects
+from .._fixtures import *
 
 
 @pytest.fixture(autouse=True)
-def register_demo_project(tmp_projects):
+def register_demo_project(tmp_projects, with_test_models):
     """Use on all tests in this module"""
     pass
+
+
+@pytest.fixture
+def without_cached_model_plots_modules():
+    remove_from_cache = [m for m in sys.modules if m.startswith("model_plots")]
+    for m in remove_from_cache:
+        del sys.modules[m]
+
+    assert "model_plots" not in sys.modules
 
 
 # Tests -----------------------------------------------------------------------
 
 
-def test_dag_custom_operations():
+def test_dag_custom_operations(without_cached_model_plots_modules):
     """Tests if custom dantro data operations can be registered via the
     extensions made to PlotManager.
-
-    NOTE This test has to be the FIRST here, because side effects of other
-         tests can lead to some pre-conditions of this test not being valid.
     """
-    print("Available operations:", ", ".join(available_operations()))
+    op_name = "my_custom_data_operation"
+
+    # Make sure the operation is not yet registered
+    OPERATIONS = dantro.utils.data_ops._OPERATIONS
+    if op_name in OPERATIONS:
+        del OPERATIONS["my_custom_data_operation"]
+
     assert "my_custom_data_operation" not in available_operations()
 
     # Now, set up the model and its PlotManager
@@ -87,19 +99,19 @@ def test_dag_custom_operations():
     # plot functions, but only utopya plot functions.
     # This should still lead to the _invoke_creator method being called, which
     # takes care of pre-loading model-specific module definitions, which in
-    # turn call register_operation during import
+    # turn call register_operation during their import
     with tmp_sys_modules():
         mv.pm.plot("test", out_dir=mv.dirs["eval"], **plot_cfgs["uni_ts"])
 
         assert "my_custom_data_operation" in available_operations()
 
 
-def test_preloading():
+def test_preloading(without_cached_model_plots_modules):
     """Tests the preloading feature of the utopya.PlotManager"""
     model_plot_modstr = f"model_plots.{ADVANCED_MODEL}"
     model_plot_name = "custom_plot"
-    assert model_plot_modstr not in sys.modules
 
+    # Now create the model test object, which should load it
     model = ModelTest(ADVANCED_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True

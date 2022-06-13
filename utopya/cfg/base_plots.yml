@@ -434,7 +434,7 @@
 # .. Facet grid ...............................................................
 .plot.facet_grid:
   based_on:
-    - .defaults
+    - .default_style_and_helpers
     - .dag.generic.facet_grid  # TODO Move that definition here
 
 # .. Mixins

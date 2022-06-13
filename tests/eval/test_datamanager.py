@@ -25,7 +25,7 @@ logging.getLogger("utopya.reporter").setLevel(logging.INFO)
 
 
 # Fixtures --------------------------------------------------------------------
-from .._utils import tmp_cfg_dir, tmp_projects
+from .._fixtures import *
 
 
 @pytest.fixture(autouse=True)
@@ -54,7 +54,7 @@ def mv_kwargs(tmpdir) -> dict:
 
 
 @pytest.fixture
-def dm_dummy_model(mv_kwargs) -> DataManager:
+def dm_dummy_model(mv_kwargs, with_test_models) -> DataManager:
     """Initialises a Multiverse with a DataManager, runs a simulation with
     output going into a temporary directory, then returns the DataManager."""
     mv_kwargs["model_name"] = DUMMY_MODEL
@@ -65,7 +65,7 @@ def dm_dummy_model(mv_kwargs) -> DataManager:
 
 
 @pytest.fixture
-def dm_after_single(mv_kwargs) -> DataManager:
+def dm_after_single(mv_kwargs, with_test_models) -> DataManager:
     """Initialises a Multiverse with a DataManager, runs a simulation with
     output going into a temporary directory, then returns the DataManager."""
     mv_kwargs["run_cfg_path"] = RUN_CFG_PATH
@@ -75,7 +75,7 @@ def dm_after_single(mv_kwargs) -> DataManager:
 
 
 @pytest.fixture
-def dm_after_large_sweep(mv_kwargs) -> DataManager:
+def dm_after_large_sweep(mv_kwargs, with_test_models) -> DataManager:
     """Initialises a Multiverse with a DataManager, runs a simulation with
     output going into a temporary directory, then returns the DataManager."""
     mv_kwargs["run_cfg_path"] = LARGE_SWEEP_CFG_PATH

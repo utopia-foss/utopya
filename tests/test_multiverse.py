@@ -17,7 +17,7 @@ from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
 
 from . import DUMMY_MODEL, get_cfg_fpath
-from ._utils import tmp_cfg_dir, tmp_projects
+from ._fixtures import tmp_cfg_dir, tmp_projects
 
 # Get the test resources
 # TODO Sort these and find better names

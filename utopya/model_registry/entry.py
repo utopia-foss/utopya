@@ -88,16 +88,7 @@ class ModelRegistryEntry:
     @default_label.setter
     def default_label(self, val: Union[str, None]):
         """Sets the default label value. If None, there will be no default."""
-        if val is not None and val not in self.keys():
-            _avail = ", ".join(self.keys())
-            raise ValueError(
-                f"Given info bundle label '{val}' for the '{self.model_name}' "
-                "model does not exist and thus cannot be set as default!\n"
-                f"Available labels:  {_avail}"
-            )
-
-        self._default_label = val
-        log.debug("Set default label to '%s'", self.default_label)
+        self.set_default_label(val, update_registry_file=True)
 
     @property
     def default_bundle(self) -> ModelInfoBundle:
@@ -306,7 +297,7 @@ class ModelRegistryEntry:
         self._bundles[label] = bundle
 
         if set_as_default:
-            self.default_label = label
+            self.set_default_label(label, update_registry_file=False)
 
         if update_registry_file:
             self._update_registry_file()
@@ -325,7 +316,7 @@ class ModelRegistryEntry:
         bundle = self._bundles.pop(key)
 
         if key == self.default_label:
-            self.default_label = None
+            self.set_default_label(None, update_registry_file=False)
 
         if update_registry_file:
             self._update_registry_file()
@@ -336,6 +327,31 @@ class ModelRegistryEntry:
         """Removes all configuration bundles from this entry."""
         self._bundles = dict()
         self.default_label = None
+
+        if update_registry_file:
+            self._update_registry_file()
+
+    def set_default_label(
+        self, label: str, *, update_registry_file: bool = True
+    ):
+        """Sets the default label
+
+        Args:
+            label (str): The new label
+            update_registry_file (bool, optional): Whether to update the
+                registry file.
+        """
+        if label is not None and label not in self.keys():
+            _avail = ", ".join(self.keys())
+            raise ValueError(
+                f"Given info bundle label '{label}' for the "
+                f"'{self.model_name}' model does not exist and thus cannot be "
+                "set as default!\n"
+                f"Available labels:  {_avail}"
+            )
+
+        self._default_label = label
+        log.debug("Set default label to '%s'", self.default_label)
 
         if update_registry_file:
             self._update_registry_file()
@@ -367,10 +383,12 @@ class ModelRegistryEntry:
             )
 
         # Populate self. Need not update because content is freshly loaded.
-        self._default_label = obj.get("default_label")
-        bundles = obj.get("info_bundles", {})
-        for label, kwargs in bundles.items():
+        for label, kwargs in obj.get("info_bundles", {}).items():
             self.add_bundle(label=label, **kwargs, update_registry_file=False)
+
+        self.set_default_label(
+            obj.get("default_label"), update_registry_file=False
+        )
 
     def _update_registry_file(self, *, overwrite_existing: bool = True) -> str:
         """Stores a YAML representation of this bundle in a file in the given
