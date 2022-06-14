@@ -13,3 +13,9 @@ time_series/state:
 
 custom_plot:
   based_on: custom_plot
+
+ca/animated:
+  based_on: ca/animated
+
+ca/snapshot:
+  based_on: ca/snapshot

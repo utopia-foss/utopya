@@ -42,5 +42,5 @@ uni_custom_operation:
     data:
       path: data/ExtendedModel/state
       transform:
-        - my_custom_dummy_operation: [!dag_prev ]
+        - my_custom_data_operation: [!dag_prev ]
         - getattr: [!dag_prev , data]

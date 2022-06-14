@@ -62,3 +62,21 @@ custom_plot:
 
   select:
     data_to_plot: state
+
+ca/animated:
+  based_on:
+    - .creator.universe
+    - .plot.ca
+    - .animation.frames
+
+  select:
+    ca_data: ca
+
+  to_plot:
+    ca_data:
+      title: CA state
+
+ca/snapshot:
+  based_on:
+    - ca/animated
+    - .plot.ca.snapshot

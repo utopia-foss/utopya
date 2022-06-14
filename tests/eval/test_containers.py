@@ -7,6 +7,9 @@ from pkg_resources import resource_filename
 from utopya.eval.containers import GridDC
 from utopya.testtools import ModelTest
 
+from .. import ADVANCED_MODEL
+from .._fixtures import *
+
 # -----------------------------------------------------------------------------
 
 
@@ -106,12 +109,10 @@ def test_griddc():
     assert (gdc_2d_C == expected_2d_C).all()
 
 
-@pytest.mark.skip("No grid data available in backend; externalise?")
-def test_griddc_integration():
-    """Integration test for the GridDC using the ContDisease model"""
+def test_griddc_integration(with_test_models):
+    """Integration test for the GridDC using one of the demo models"""
 
-    # Configure the ModelTest class for ContDisease
-    mtc = ModelTest("ContDisease", test_file=__file__)
+    mtc = ModelTest(ADVANCED_MODEL, test_file=__file__)
 
     # Create and run a multiverse and load the data
     _, dm = mtc.create_run_load(
@@ -119,7 +120,7 @@ def test_griddc_integration():
     )
 
     # Get the data
-    grid_data = dm["multiverse"][0]["data/ContDisease/kind"]
+    grid_data = dm["multiverse"][0][f"data/{ADVANCED_MODEL}/ca"]
     print("Grid data: ", grid_data)
 
     # Assert the type of the state is a GridDC
@@ -141,9 +142,9 @@ def test_griddc_integration():
 
     # And the format string should show dimension information
     assert "time: 4" in grid_data._format_info()
-    assert "x: 8" in grid_data._format_info()
-    assert "y: 4" in grid_data._format_info()
-    assert "ids" not in grid_data._format_info()
+    assert "x: 24" in grid_data._format_info()
+    assert "y: 32" in grid_data._format_info()
+    assert "cell_ids" not in grid_data._format_info()
 
     # ... without resolving
     assert grid_data.data_is_proxy
@@ -159,17 +160,17 @@ def test_griddc_integration():
     assert grid_data.grid_shape == tuple(grid_data.attrs["grid_shape"])
 
     assert "time: 4" in grid_data._format_info()
-    assert "x: 8" in grid_data._format_info()
-    assert "y: 4" in grid_data._format_info()
-    assert "ids" not in grid_data._format_info()
+    assert "x: 24" in grid_data._format_info()
+    assert "y: 32" in grid_data._format_info()
+    assert "cell_ids" not in grid_data._format_info()
 
     # Check that coordinate information is available
     assert (grid_data.coords["time"] == [0, 1, 2, 3]).all()
     assert np.isclose(
-        grid_data.coords["x"], np.linspace(0.0, 2.0, 8, False) + 2.0 / (2 * 8)
+        grid_data.coords["x"], np.linspace(0.0, 24.0, 24, False) + 0.5
     ).all()
     assert np.isclose(
-        grid_data.coords["y"], np.linspace(0.0, 1.0, 4, False) + 1.0 / (2 * 4)
+        grid_data.coords["y"], np.linspace(0.0, 32.0, 32, False) + 0.5
     ).all()
 
     # Try re-instating the proxy
@@ -189,31 +190,17 @@ def test_griddc_integration():
     assert grid_data.shape == (4,) + tuple(grid_data.attrs["grid_shape"])
     assert grid_data.grid_shape == tuple(grid_data.attrs["grid_shape"])
 
-    # Make sure the grid shape is a multiple of the space extent
-    # Resolution 4 set in griddc_cfg.yml
-    assert (grid_data.grid_shape == 4 * grid_data.space_extent).all()
-
     # Test some further things related to grid shape . . . . . . . . . . . . .
-    cfg = dm["multiverse"][0]["cfg/ContDisease"]
-    space_extent = tuple(cfg["space"]["extent"])
-    resolution = cfg["cell_manager"]["grid"]["resolution"]
+    cfg = dm["multiverse"][0][f"cfg/{ADVANCED_MODEL}"]
+    assert grid_data.space_extent[0] == tuple(cfg["grid_shape"])[0]
+    assert grid_data.space_extent[1] == tuple(cfg["grid_shape"])[1]
 
-    # Calculate the expected grid shape
-    expected_grid_shape = (
-        int(space_extent[0] * resolution),
-        int(space_extent[1] * resolution),
-    )
-
-    assert grid_data.shape == (4, *expected_grid_shape)
-    assert len(grid_data["x"]) == expected_grid_shape[0]
-    assert len(grid_data["y"]) == expected_grid_shape[1]
-
-    # Test coordinates . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    # Test time coordinates again . . . . . . . . . . . . . . . . . . . . . . .
     _, dm = mtc.create_run_load(
         from_cfg="../cfg/griddc_cfg.yml",
         parameter_space=dict(num_steps=11, write_every=2),
     )
-    grid_data = dm["multiverse"][0]["data/ContDisease/kind"]
+    grid_data = dm["multiverse"][0][f"data/{ADVANCED_MODEL}/ca"]
     print("Grid data: ", grid_data)
     print("Attributes: ", dict(grid_data.attrs))
 
@@ -225,24 +212,20 @@ def test_griddc_integration():
     assert (grid_data.coords["time"] == [0, 2, 4, 6, 8, 10]).all()
 
 
-@pytest.mark.skip("No grid data available in backend; externalise?")
+@pytest.mark.skip("No hexagonal grid data available in model")
 def test_griddc_integration_hexagonal():
     """Integration test for the GridDC using the ContDisease model with
     hexagonal lattice"""
     # Configure the ModelTest class for ContDisease
-    mtc = ModelTest("ContDisease", test_file=__file__)
+    mtc = ModelTest(ADVANCED_MODEL, test_file=__file__)
 
     # Create and run a multiverse and load the data
     update_meta_cfg = {
         "parameter_space": {
-            "ContDisease": {
-                "cell_manager": {
-                    "grid": {"structure": "hexagonal"},
-                    "neighborhood": {"mode": "hexagonal"},
-                },
+            ADVANCED_MODEL: {
+                "grid_structure": "hexagonal",
                 "space": {"extent": [2.217, 0.96]},
             },
-            "num_steps": 3,
         }
     }
     _, dm = mtc.create_run_load(
@@ -250,12 +233,12 @@ def test_griddc_integration_hexagonal():
     )
 
     # # Get the data
-    grid_data = dm["multiverse"][0]["data/ContDisease/kind"]
+    grid_data = dm["multiverse"][0][f"data/{ADVANCED_MODEL}/kind"]
     grid_data.data  # resolve proxy
     print("resolved hexagonal grid data:\n", grid_data._data)
 
-    assert "x: 8" in grid_data._format_info()
-    assert "y: 4" in grid_data._format_info()
+    assert "x: 24" in grid_data._format_info()
+    assert "y: 32" in grid_data._format_info()
 
     height = 0.96 / 4 / 0.75
     size = height / 2.0

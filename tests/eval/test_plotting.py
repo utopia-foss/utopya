@@ -70,7 +70,9 @@ def without_cached_model_plots_modules():
     assert "model_plots" not in sys.modules
 
 
-# Tests -----------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 
 def test_dag_custom_operations(without_cached_model_plots_modules):
@@ -175,37 +177,12 @@ def test_preloading(without_cached_model_plots_modules):
         mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
 
 
-@pytest.mark.skip("dummy model data is not labelled")
-def test_dag_plotting():
-    """Makes sure that DAG plotting works as expected"""
-    # Now, set up the model
-    model = ModelTest(DUMMY_MODEL)
-    mv, dm = model.create_run_load()
-    mv.pm.raise_exc = True
-    print(dm.tree)
-
-    # Load some configuration arguments
-    shared_kwargs = dict(out_dir=mv.dirs["eval"])
-    plot_cfgs = load_yml(DAG_PLOTS)
-
-    # Can do a simple DAG-based universe and multiverse plot
-    for cfg_name, plot_cfg in plot_cfgs.items():
-        if cfg_name.startswith("."):
-            continue
-
-        # The actual plotting
-        print(f"Plotting '{cfg_name}' ...")
-        mv.pm.plot(cfg_name, **shared_kwargs, **plot_cfg)
-        print(f"Successfully plotted '{cfg_name}'!\n\n")
-
-
-@pytest.mark.skip("Plot function no longer included")
 def test_pcr_ext_extensions():
     """Test the changes and extensions to the ExternalPlotCreator
 
     ... indirectly, using some other plot creator.
     """
-    model = ModelTest(DUMMY_MODEL)
+    model = ModelTest(ADVANCED_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True
     print(dm.tree)
@@ -223,7 +200,7 @@ def test_pcr_ext_extensions():
             universes="all",
             module=".basic_uni",
             plot_func="lineplot",
-            model_name=DUMMY_MODEL,
+            model_name=ADVANCED_MODEL,
             path_to_data="state",
         )
 
@@ -264,36 +241,39 @@ def test_pcr_ext_extensions():
         )
 
 
-# Tests of built-in plotting functions, via models ----------------------------
+# -----------------------------------------------------------------------------
+# -- Demo model default plots -------------------------------------------------
+# -----------------------------------------------------------------------------
 
 
-def test_dummy_plotting():
+def test_dummy_model_plotting():
     """Test plotting of the dummy model works"""
     mv, _ = ModelTest(DUMMY_MODEL).create_run_load()
     mv.pm.plot_from_cfg()
 
 
-@pytest.mark.skip("No grid model available")
-def test_ca_plotting():
-    """Tests the plot_funcs.ca module"""
-    mv, _ = ModelTest("CopyMeGrid").create_run_load()
-
-    # Run the CA plots (initial frame + animation)
-    mv.pm.plot_from_cfg(plot_only=["initial_state_and_trait"])
-    mv.pm.plot_from_cfg(plot_only=["state_and_trait_anim"])
-
-    # Same again with SimpleEG . . . . . . . . . . . . . . . . . . . . . . . .
-    mv, _ = ModelTest("SimpleEG").create_run_load()
-
-    # Plot the default configuration, which already includes some CA plotting
+def test_advanced_model_plotting():
+    """Test plotting of the dummy model works"""
+    mv, _ = ModelTest(ADVANCED_MODEL).create_run_load()
     mv.pm.plot_from_cfg()
 
-    # To explicitly plot with the frames writer, select the disabled config
-    mv.pm.plot_from_cfg(plot_only=["strategy_and_payoff_frames"])
+
+# -----------------------------------------------------------------------------
+# -- CA Plots -----------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 
-@pytest.mark.skip("No grid model available")
-def test_ca_plotting_hexagonal():
+def test_caplot():
+    """Tests the plot_funcs.ca module"""
+    mv, _ = ModelTest(ADVANCED_MODEL).create_run_load()
+
+    # Run the CA plots (initial frame + animation)
+    mv.pm.plot_from_cfg(plot_only=["ca/animated"])
+    mv.pm.plot_from_cfg(plot_only=["ca/snapshot"])
+
+
+@pytest.mark.skip("No hexagonal grid model available")
+def test_caplot_hexagonal():
     """Tests the plot_funcs.ca module with hexagonal lattice"""
     update_meta_cfg = {
         "parameter_space": {
@@ -321,7 +301,49 @@ def test_ca_plotting_hexagonal():
     mv.pm.plot_from_cfg(plot_only=["strategy_and_payoff_frames"])
 
 
-@pytest.mark.skip("Plot function no longer included")
+# -----------------------------------------------------------------------------
+# -- DAG Plots ----------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# TODO Decide which ones need to be tested here at all
+
+
+def test_dag_plotting():
+    """Makes sure that DAG plotting works as expected"""
+    # Now, set up the model
+    model = ModelTest(ADVANCED_MODEL)
+    mv, dm = model.create_run_load()
+    mv.pm.raise_exc = True
+    print(dm.tree)
+
+    # Load some configuration arguments
+    shared_kwargs = dict(out_dir=mv.dirs["eval"])
+    plot_cfgs = load_yml(DAG_PLOTS)
+
+    # Can do a simple DAG-based universe and multiverse plot
+    for cfg_name, plot_cfg in plot_cfgs.items():
+        if cfg_name.startswith("."):
+            continue
+
+        # The actual plotting
+        print(f"Plotting '{cfg_name}' ...")
+        mv.pm.plot(cfg_name, **shared_kwargs, **plot_cfg)
+        print(f"Successfully plotted '{cfg_name}'!\n\n")
+
+
+@pytest.mark.skip("No model with DAG based plots available")  # TODO
+def test_generic_dag_plots(tmpdir):
+    """Tests the plot_funcs.dag.generic module"""
+    mv, _ = ModelTest("SEIRD").create_run_load()
+    mv.pm.plot_from_cfg(
+        plot_only=[
+            "age_distribution/final",
+            "age_distribution/time_series",
+            "age_distribution/deceased",
+        ]
+    )
+
+
+@pytest.mark.skip("Plot function no longer included")  # TODO
 def test_time_series_plots():
     """Tests the plot_funcs.time_series module"""
     mv, _ = ModelTest("SandPile").create_run_load()
@@ -338,7 +360,7 @@ def test_time_series_plots():
     mv.pm.plot_from_cfg(plot_only=["species_densities", "phase_space"])
 
 
-@pytest.mark.skip("Plot function no longer included")
+@pytest.mark.skip("Plot function no longer included")  # TODO
 def test_distribution_plots():
     """Tests the plot_funcs.distribution module"""
     mv, _ = ModelTest("SandPile").create_run_load()
@@ -350,181 +372,12 @@ def test_distribution_plots():
     )
 
 
-@pytest.mark.skip("Need alternative way of testing this")
-def test_bifurcation_diagram(tmpdir):
-    """Test plotting of the bifurcation diagram"""
-    # Create and run simulation
-    raise_exc = {"plot_manager": {"raise_exc": True}}
-    mv = Multiverse(
-        model_name="SavannaHomogeneous",
-        run_cfg_path=BIFURCATION_DIAGRAM_RUN,
-        paths=dict(out_dir=str(tmpdir)),
-        **raise_exc,
-    )
-    mv.run_sweep()
-
-    # Load
-    mv.dm.load_from_cfg(print_tree=False)
-
-    # Plot the bifurcation using the last datapoint
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_endpoint"]
-    )
-    # Plot the bifurcation using the fixpoint
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_fixpoint"]
-    )
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_PLOTS,
-        plot_only=["bifurcation_fixpoint_to_plot"],
-    )
-    # Plot the bifurcation using scatter
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_scatter"]
-    )
-    # Plot the bifurcation using oscillation
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_PLOTS,
-        plot_only=["bifurcation_oscillation"],
-    )
-
-    # Redo simulation, but using several initial conditions
-    mv = Multiverse(
-        model_name="SavannaHomogeneous",
-        run_cfg_path=BIFURCATION_DIAGRAM_RUN,
-        paths=dict(out_dir=str(tmpdir)),
-        **raise_exc,
-        parameter_space=dict(seed=psp.ParamDim(default=0, range=[4])),
-    )
-    mv.run_sweep()
-    mv.dm.load_from_cfg(print_tree=False)
-
-    # Plot the bifurcation using multistability
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_fixpoint"]
-    )
+# -----------------------------------------------------------------------------
+# -- Graph plots --------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 
-@pytest.mark.skip("Need alternative way of testing this")
-def test_bifurcation_diagram_2d(tmpdir):
-    """Test plotting of the bifurcation diagram"""
-    # Create and run simulation
-    raise_exc = {"plot_manager": {"raise_exc": True}}
-    mv = Multiverse(
-        model_name="SavannaHomogeneous",
-        run_cfg_path=BIFURCATION_DIAGRAM_2D_RUN,
-        paths=dict(out_dir=str(tmpdir)),
-        **raise_exc,
-    )
-    mv.run_sweep()
-
-    # Load
-    mv.dm.load_from_cfg(print_tree=False)
-
-    # Plot the bifurcation using the last datapoint
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_2D_PLOTS,
-        plot_only=["bifurcation_diagram_2d"],
-    )
-    # Plot the bifurcation using the fixpoint
-    mv.pm.plot_from_cfg(
-        plots_cfg=BIFURCATION_DIAGRAM_2D_PLOTS,
-        plot_only=["bifurcation_diagram_2d_fixpoint_to_plot"],
-    )
-
-
-@pytest.mark.skip("No model with DAG based plots available")
-def test_generic_dag_plots(tmpdir):
-    """Tests the plot_funcs.dag.generic module"""
-    mv, _ = ModelTest("SEIRD").create_run_load()
-    mv.pm.plot_from_cfg(
-        plot_only=[
-            "age_distribution/final",
-            "age_distribution/time_series",
-            "age_distribution/deceased",
-        ]
-    )
-
-
-@pytest.mark.skip("No graph model available")
-def test_graph_plots(tmpdir):
-    """Tests the plot_funcs.dag.graph module"""
-    # Create and run simulation
-    raise_exc = {"plot_manager": {"raise_exc": True}}
-    mv = Multiverse(
-        model_name="CopyMeGraph",
-        run_cfg_path=GRAPH_RUN,
-        paths=dict(out_dir=str(tmpdir)),
-        **raise_exc,
-    )
-
-    mv.run_single()
-
-    # Load
-    mv.dm.load_from_cfg(print_tree=False)
-
-    # Single graph plots
-    mv.pm.plot_from_cfg(
-        plots_cfg=GRAPH_PLOTS,
-        plot_only=(
-            "Graph",
-            "DiGraph",
-            "MultiGraph",
-            "MultiDiGraph",
-            "ExternalProperties",
-            "Example_graph_plot",
-            "custom_node_positioning_model",
-            "explicit_node_positions",
-            "custom_graph_creation",
-            "custom_graph_arr_creation",
-        ),
-    )
-
-    # Animation plots
-    mv.pm.plot_from_cfg(
-        plots_cfg=GRAPH_PLOTS,
-        plot_only=[
-            "graph_anim1",
-            "graph_anim2",
-            "graph_anim3",
-            "graph_anim_external",
-            "graph_anim4",
-            "graph_anim_custom_graph_creation",
-        ],
-    )
-
-    # Test failing cases – if possible these test are done in the (faster)
-    # GraphPlot-class test.
-    # Providing invalid dag tag for external property
-    with pytest.raises(
-        PlotCreatorError,
-        match=(
-            "No tag 'some_state_transformed' found in the data selected by "
-            "the DAG!"
-        ),
-    ):
-        mv.pm.plot_from_cfg(
-            plots_cfg=GRAPH_PLOTS, plot_only=["invalid_ext_prop"]
-        )
-
-    # Ambiguous time specifications for animation
-    with pytest.raises(
-        PlotCreatorError, match="ambiguous animation time specifications"
-    ):
-        mv.pm.plot_from_cfg(
-            plots_cfg=GRAPH_PLOTS, plot_only=["anim_amgiguous_time_spec"]
-        )
-
-    # Trying to animate from single nx.Graph
-    with pytest.raises(
-        PlotCreatorError, match="due to invalid type of the 'graph'"
-    ):
-        mv.pm.plot_from_cfg(
-            plots_cfg=GRAPH_PLOTS, plot_only=["anim_not_dataarray"]
-        )
-
-
-def test_graph_plot_class():
+def test_GraphPlot_class():
     """Tests the plot_funcs._graph module.
 
     Mainly tests basic functionality, class attribute management and
@@ -648,3 +501,170 @@ def test_graph_plot_class():
             gp.clear_plot()
 
         plt.close(fig)
+
+
+@pytest.mark.skip("No graph model available")  # TODO
+def test_graph_plots(tmpdir):
+    """Tests the plot_funcs.dag.graph module"""
+    # Create and run simulation
+    raise_exc = {"plot_manager": {"raise_exc": True}}
+    mv = Multiverse(
+        model_name="CopyMeGraph",
+        run_cfg_path=GRAPH_RUN,
+        paths=dict(out_dir=str(tmpdir)),
+        **raise_exc,
+    )
+
+    mv.run_single()
+
+    # Load
+    mv.dm.load_from_cfg(print_tree=False)
+
+    # Single graph plots
+    mv.pm.plot_from_cfg(
+        plots_cfg=GRAPH_PLOTS,
+        plot_only=(
+            "Graph",
+            "DiGraph",
+            "MultiGraph",
+            "MultiDiGraph",
+            "ExternalProperties",
+            "Example_graph_plot",
+            "custom_node_positioning_model",
+            "explicit_node_positions",
+            "custom_graph_creation",
+            "custom_graph_arr_creation",
+        ),
+    )
+
+    # Animation plots
+    mv.pm.plot_from_cfg(
+        plots_cfg=GRAPH_PLOTS,
+        plot_only=[
+            "graph_anim1",
+            "graph_anim2",
+            "graph_anim3",
+            "graph_anim_external",
+            "graph_anim4",
+            "graph_anim_custom_graph_creation",
+        ],
+    )
+
+    # Test failing cases – if possible these test are done in the (faster)
+    # GraphPlot-class test.
+    # Providing invalid dag tag for external property
+    with pytest.raises(
+        PlotCreatorError,
+        match=(
+            "No tag 'some_state_transformed' found in the data selected by "
+            "the DAG!"
+        ),
+    ):
+        mv.pm.plot_from_cfg(
+            plots_cfg=GRAPH_PLOTS, plot_only=["invalid_ext_prop"]
+        )
+
+    # Ambiguous time specifications for animation
+    with pytest.raises(
+        PlotCreatorError, match="ambiguous animation time specifications"
+    ):
+        mv.pm.plot_from_cfg(
+            plots_cfg=GRAPH_PLOTS, plot_only=["anim_amgiguous_time_spec"]
+        )
+
+    # Trying to animate from single nx.Graph
+    with pytest.raises(
+        PlotCreatorError, match="due to invalid type of the 'graph'"
+    ):
+        mv.pm.plot_from_cfg(
+            plots_cfg=GRAPH_PLOTS, plot_only=["anim_not_dataarray"]
+        )
+
+
+# -----------------------------------------------------------------------------
+# -- Bifurcation diagram plots ------------------------------------------------
+# -----------------------------------------------------------------------------
+# TODO Need alternative way of testing this
+
+
+@pytest.mark.skip("Need alternative way of testing this")
+def test_bifurcation_diagram(tmpdir):
+    """Test plotting of the bifurcation diagram"""
+    # Create and run simulation
+    raise_exc = {"plot_manager": {"raise_exc": True}}
+    mv = Multiverse(
+        model_name="SavannaHomogeneous",
+        run_cfg_path=BIFURCATION_DIAGRAM_RUN,
+        paths=dict(out_dir=str(tmpdir)),
+        **raise_exc,
+    )
+    mv.run_sweep()
+
+    # Load
+    mv.dm.load_from_cfg(print_tree=False)
+
+    # Plot the bifurcation using the last datapoint
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_endpoint"]
+    )
+    # Plot the bifurcation using the fixpoint
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_fixpoint"]
+    )
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_PLOTS,
+        plot_only=["bifurcation_fixpoint_to_plot"],
+    )
+    # Plot the bifurcation using scatter
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_scatter"]
+    )
+    # Plot the bifurcation using oscillation
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_PLOTS,
+        plot_only=["bifurcation_oscillation"],
+    )
+
+    # Redo simulation, but using several initial conditions
+    mv = Multiverse(
+        model_name="SavannaHomogeneous",
+        run_cfg_path=BIFURCATION_DIAGRAM_RUN,
+        paths=dict(out_dir=str(tmpdir)),
+        **raise_exc,
+        parameter_space=dict(seed=psp.ParamDim(default=0, range=[4])),
+    )
+    mv.run_sweep()
+    mv.dm.load_from_cfg(print_tree=False)
+
+    # Plot the bifurcation using multistability
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_PLOTS, plot_only=["bifurcation_fixpoint"]
+    )
+
+
+@pytest.mark.skip("Need alternative way of testing this")
+def test_bifurcation_diagram_2d(tmpdir):
+    """Test plotting of the bifurcation diagram"""
+    # Create and run simulation
+    raise_exc = {"plot_manager": {"raise_exc": True}}
+    mv = Multiverse(
+        model_name="SavannaHomogeneous",
+        run_cfg_path=BIFURCATION_DIAGRAM_2D_RUN,
+        paths=dict(out_dir=str(tmpdir)),
+        **raise_exc,
+    )
+    mv.run_sweep()
+
+    # Load
+    mv.dm.load_from_cfg(print_tree=False)
+
+    # Plot the bifurcation using the last datapoint
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_2D_PLOTS,
+        plot_only=["bifurcation_diagram_2d"],
+    )
+    # Plot the bifurcation using the fixpoint
+    mv.pm.plot_from_cfg(
+        plots_cfg=BIFURCATION_DIAGRAM_2D_PLOTS,
+        plot_only=["bifurcation_diagram_2d_fixpoint_to_plot"],
+    )
