@@ -65,6 +65,33 @@ class WorkerTaskStopConditionFulfilled(WorkerTaskNonZeroExit):
 # -----------------------------------------------------------------------------
 
 
+class YAMLRegistryError(UtopyaException, ValueError):
+    """Base class for errors in YAMLRegistry"""
+
+
+class EntryExistsError(YAMLRegistryError):
+    """Raised if an entry already exists"""
+
+
+class MissingEntryError(YAMLRegistryError):
+    """Raised if an entry is missing"""
+
+
+class MissingRegistryError(YAMLRegistryError):
+    """Raised if a registry is missing"""
+
+
+class EntryValidationError(YAMLRegistryError):
+    """Raised upon failed validation of a registry entry"""
+
+
+class SchemaValidationError(YAMLRegistryError):
+    """If schema validation failed"""
+
+
+# -----------------------------------------------------------------------------
+
+
 class ModelRegistryError(UtopyaException, ValueError):
     """Raised on errors with model registry"""
 
@@ -87,3 +114,7 @@ class ProjectRegistryError(UtopyaException, ValueError):
 
 class MissingProjectError(ProjectRegistryError):
     """Raised on a missing project"""
+
+
+class ProjectExistsError(ProjectRegistryError):
+    """Raised if a project or project file of that name already exists"""

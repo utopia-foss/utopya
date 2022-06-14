@@ -17,11 +17,11 @@ import paramspace as psp
 from pkg_resources import resource_filename
 
 from ._cluster import parse_node_list
-from ._projects import load_project as _load_project
 from .cfg import get_cfg_path as _get_cfg_path
 from .eval import DataManager, PlotManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .parameter import ValidationError
+from .project_registry import PROJECTS
 from .reporter import WorkerManagerReporter
 from .tools import parse_num_steps, pformat, recursive_update
 from .workermanager import WorkerManager
@@ -95,9 +95,12 @@ class Multiverse:
                 generated from the previous configuration levels
         """
         # First things first: get the info bundle
-        self._info_bundle = get_info_bundle(
-            model_name=model_name, info_bundle=info_bundle
-        )
+        if info_bundle is None:
+            info_bundle = get_info_bundle(
+                model_name=model_name, info_bundle=info_bundle
+            )
+        self._info_bundle = info_bundle
+
         log.progress(
             "Initializing Multiverse for '%s' model ...", self.model_name
         )
@@ -314,7 +317,7 @@ class Multiverse:
         self.wm.start_working(**self.meta_cfg["run_kwargs"])
 
         # Done! :)
-        log.success("Finished run. Wohoo. :)")
+        log.success("Finished simulation run. Wohoo. :)\n")
 
     def run_single(self):
         """Runs a single simulation using the parameter space's default value.
@@ -410,7 +413,7 @@ class Multiverse:
             # Framework-level
             framework_name = project.get("framework_name")
             if framework_name:
-                framework_project = _load_project(framework_name)
+                framework_project = PROJECTS[framework_name]
                 framework_cfg_path = framework_project["paths"].get(
                     "mv_project_cfg"
                 )
@@ -781,6 +784,10 @@ class Multiverse:
                     log.caution("Using an empty pool instead.")
                     pool = {}
 
+            # Make sure it is either a dict or a string, not a Path-like object
+            if not isinstance(pool, dict):
+                pool = str(pool)
+
             return pool_name, pool
 
         if not isinstance(base_cfg_pools, list):
@@ -801,7 +808,7 @@ class Multiverse:
         if project:
             fw_name = project.get("framework_name")
             if fw_name:
-                fw_project = _load_project(fw_name)
+                fw_project = PROJECTS[fw_name]
                 replacements["framework_base"] = (
                     "framework",
                     fw_project["paths"].get("project_base_plots"),

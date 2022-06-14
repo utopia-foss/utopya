@@ -134,10 +134,10 @@ def test_config(tmp_cfg_dir, monkeypatch):
     # Reveal; will create an empty file if such a file does not exist
     # NOTE This will not actually reveal the file when run as part of the test
     #      suite, because this does not work in all environments.
-    res = invoke_cli(("config", "projects", "--reveal"))
+    res = invoke_cli(("config", "user", "--reveal"))
     print(res.output)
     assert res.exit_code == 0
-    assert os.path.isfile(get_cfg_path("projects"))
+    assert os.path.isfile(get_cfg_path("user"))
 
     # Edit
     res = invoke_cli(("config", "utopya", "--edit"))

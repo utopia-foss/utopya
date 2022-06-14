@@ -9,22 +9,41 @@ log = logging.getLogger(__name__)
 
 # Some globally relevant variables --------------------------------------------
 
-UTOPIA_CFG_DIR = os.path.expanduser("~/.config/utopya")
+UTOPYA_CFG_DIR = os.path.expanduser("~/.config/utopya")
 """Path to the persistent utopya configuration directory"""
 
-UTOPIA_CFG_FILE_NAMES = dict(
+UTOPYA_CFG_FILE_NAMES = dict(
     user="user_cfg.yml",
     utopya="utopya_cfg.yml",
     batch="batch_cfg.yml",
-    projects="projects.yml",
 )
 """Names and paths of valid configuration entries"""
 
-UTOPIA_CFG_FILE_PATHS = {
-    k: os.path.join(UTOPIA_CFG_DIR, fname)
-    for k, fname in UTOPIA_CFG_FILE_NAMES.items()
+UTOPYA_CFG_FILE_PATHS = {
+    k: os.path.join(UTOPYA_CFG_DIR, fname)
+    for k, fname in UTOPYA_CFG_FILE_NAMES.items()
 }
 """Absolute configuration file paths"""
+
+UTOPYA_CFG_SUBDIR_NAMES = dict(
+    models="models",
+    projects="projects",
+)
+"""Names and paths of valid configuration subdirectories"""
+
+UTOPYA_CFG_SUBDIRS = {
+    k: os.path.join(UTOPYA_CFG_DIR, dirname)
+    for k, dirname in UTOPYA_CFG_SUBDIR_NAMES.items()
+}
+"""Absolute configuration file paths"""
+"""Names and paths of valid configuration directories"""
+
+PROJECT_INFO_FILE_SEARCH_PATHS = (
+    ".utopya_project.yml",
+    ".utopya-project.yml",
+)
+"""Potential names of project info files, relative to base directory"""
+
 
 # -----------------------------------------------------------------------------
 
@@ -32,10 +51,10 @@ UTOPIA_CFG_FILE_PATHS = {
 def get_cfg_path(cfg_name: str) -> str:
     """Returns the absolute path to the specified configuration file"""
     try:
-        return UTOPIA_CFG_FILE_PATHS[cfg_name]
+        return UTOPYA_CFG_FILE_PATHS[cfg_name]
 
     except KeyError as err:
-        _avail = ", ".join(UTOPIA_CFG_FILE_NAMES.keys())
+        _avail = ", ".join(UTOPYA_CFG_FILE_NAMES.keys())
         raise ValueError(
             f"No configuration entry '{cfg_name}' available! "
             f"Possible keys: {_avail}"

@@ -86,7 +86,7 @@ def import_module_from_path(
     the module's parent directory to ``sys.path``.
 
     Args:
-        mod_path (str): Path to the module's root directory
+        mod_path (str): Path to the module's root *directory*
         mod_str (str): Name under which the module can be imported with
             ``mod_path`` being in ``sys.path``. This is also used to add the
             module to the ``sys.modules`` cache.
@@ -98,9 +98,20 @@ def import_module_from_path(
 
     Raises:
         ImportError: If ``debug`` is set and import failed for whatever reason
+        ValueError: If ``mod_path`` did not point to an existing directory
     """
-    # Need the parent directory in the path: import is only possible from there
-    mod_parent_dir = os.path.dirname(os.path.dirname(mod_path))
+    if not os.path.isdir(mod_path):
+        raise ValueError(
+            "The `mod_path` argument to import a module from a path should be "
+            f"the path to an existing directory! Given path:  {mod_path}"
+        )
+
+    # Need the parent directory in the path, because the import is only
+    # possible from there. This, in turn, depends on the depth of the module
+    # string, so the parent directory should be chosen accordingly.
+    mod_parent_dir = mod_path
+    for _ in mod_str.split("."):
+        mod_parent_dir = os.path.dirname(mod_parent_dir)
 
     try:
         # Use the temporary environments to prevent that a *failed* import ends

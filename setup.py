@@ -7,13 +7,15 @@ INSTALL_DEPS = [
     "numpy>=1.21",
     "scipy>=1.7.3",
     "matplotlib>=3.3",
+    "seaborn>=0.11.2",
     "ruamel.yaml>=0.16.5",
     "coloredlogs>=15.0",
     "colorama>=0.4.4",
     "click>=8.0",
+    "pydantic>=1.9",
     #
     # related to utopya:
-    "paramspace>=2.5.8",
+    "paramspace>=2.5.9",
     "dantro>=0.17.2",
 ]
 # NOTE When changing any of the dependencies, make sure to update the table of
@@ -34,6 +36,34 @@ DOC_DEPS = [
     "sphinx-book-theme",
     "ipython>=7.0",
 ]
+
+
+DESCRIPTION = "A simulation management and evaluation framework"
+LONG_DESCRIPTION = """
+``utopya``: A simulation management and evaluation framework
+============================================================
+
+The ``utopya`` package aims to provide a simulation management and evaluation
+framework with the following feature set:
+
+- Provide model configuration with several update levels
+- Project and framework handling
+- A powerful CLI to run and evaluate models
+- Executing model simulations in parallel and on cluster architectures
+- Managing data output directories
+- Interfacing with the `dantro <https://gitlab.com/utopia-project/dantro>`_
+  data processing pipeline
+
+It evolved as part of the `Utopia Project <https://utopia-project.org>`_ and
+provides the frontend of the `Utopia modelling framework <https://gitlab.com/utopia-project/utopia>`_.
+Having been outsourced from that project, it can be used with arbitrary model
+implementations with a very low barrier for entry: in the simplest case, only
+only the path to an executable is required to run simulations.
+With more compliance to the utopya interface, more features become available.
+
+Visit the `project website <https://gitlab.com/utopia-project/utopya>`_ for more information and documentation.
+"""
+# TODO Mention docs
 
 
 # .............................................................................
@@ -68,7 +98,8 @@ setup(
     # Package information
     version=find_version("utopya", "__init__.py"),
     #
-    description="The Utopia Frontend Package",  # TODO Expand
+    description=DESCRIPTION,
+    long_description=LONG_DESCRIPTION,
     url="https://gitlab.com/utopia-project/utopya",
     author="utopya developers",
     author_email=(

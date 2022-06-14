@@ -11,6 +11,7 @@ from .info_bundle import ModelInfoBundle
 from .registry import ModelRegistry as _ModelRegistry
 
 MODELS = _ModelRegistry()
+"""The model registry"""
 
 # Make utility functions available which work on the created model registry
 from .utils import get_info_bundle, load_model_cfg

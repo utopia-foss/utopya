@@ -11,6 +11,7 @@ from utopya.model import Model
 from utopya.tools import load_yml, recursive_update
 
 from . import ADVANCED_MODEL, DUMMY_MODEL, get_cfg_fpath
+from ._fixtures import tmp_cfg_dir, tmp_projects
 
 BATCH_FILE_PATH = get_cfg_fpath("batch_file.yml")
 BATCH_CFG = load_yml(get_cfg_fpath("batch.yml"))
@@ -18,7 +19,7 @@ BATCH_CFG = load_yml(get_cfg_fpath("batch.yml"))
 # -----------------------------------------------------------------------------
 
 
-def test_BatchTaskManager_basics():
+def test_BatchTaskManager_basics(tmp_projects):
     """Tests BatchTaskManager"""
     # Make sure the required models have some output generated
     for model_name in (DUMMY_MODEL,):

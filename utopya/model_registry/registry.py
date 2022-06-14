@@ -10,8 +10,8 @@ from typing import Dict
 
 import dantro.utils
 
-from .._yaml import load_yml, write_yml, yaml
-from ..cfg import UTOPIA_CFG_DIR
+from .._yaml import load_yml, write_yml
+from ..cfg import UTOPYA_CFG_DIR
 from ..exceptions import BundleExistsError
 from ..tools import make_columns, pformat, recursive_update
 from .entry import ModelRegistryEntry
@@ -47,18 +47,18 @@ class ModelRegistry:
     registered models and the known information about them.
     """
 
-    def __init__(self, utopia_cfg_dir_path: str = UTOPIA_CFG_DIR):
-        """Loads the utopia model registry from the configuration at the given
+    def __init__(self, UTOPYA_CFG_DIR_path: str = UTOPYA_CFG_DIR):
+        """Loads the utopya model registry from the configuration at the given
         path.
 
         Args:
-            utopia_cfg_dir_path (str, optional): The path to store the model
+            UTOPYA_CFG_DIR_path (str, optional): The path to store the model
                 registry folder in.
         """
         self._paths = dict()
-        self._paths["utopia_cfg"] = utopia_cfg_dir_path
+        self._paths["utopya_cfg"] = UTOPYA_CFG_DIR_path
         self._paths["registry"] = os.path.join(
-            self._paths["utopia_cfg"], "models"
+            self._paths["utopya_cfg"], "models"
         )
 
         # If the directories at these paths do not exist, create them
@@ -89,7 +89,7 @@ class ModelRegistry:
     # Information .............................................................
 
     def __str__(self) -> str:
-        return "<Utopia Model Registry; {} model{} registered>".format(
+        return "<utopya.ModelRegistry; {} model{} registered>".format(
             len(self), "s" if len(self) != 1 else ""
         )
 
@@ -97,12 +97,13 @@ class ModelRegistry:
     def info_str(self) -> str:
         lines = []
         lines.append(
-            "Utopia Model Registry ({} model{} registered)"
+            "utopya model registry ({} model{} registered)"
             "".format(len(self), "s" if len(self) != 1 else "")
         )
+        lines.append("-" * len(lines[-1]) + "\n")
 
         for model_name, _ in self.items():
-            lines.append(f"  - {model_name}")
+            lines.append(f"{model_name}")
 
         return "\n".join(lines)
 
@@ -110,17 +111,36 @@ class ModelRegistry:
     def info_str_detailed(self) -> str:
         lines = []
         lines.append(
-            "Utopia Model Registry ({} model{} registered)"
+            "utopya model registry ({} model{} registered)"
             "".format(len(self), "s" if len(self) != 1 else "")
         )
+        lines.append("-" * len(lines[-1]))
+        lines.append("Default bundles are marked (*)\n")
 
         for model_name, entry in self.items():
-            info = f"{len(entry)} bundle(s), default: {entry.default_label}"
-            lines.append(f"  - {model_name:19s} {info}")
+            lines.append(f"{model_name}")
+
+            # Bundle information
+            lines.append(
+                f"  {len(entry)} bundle{'s' if len(entry) != 1 else ''}:"
+            )
+            default_label = entry.default_label
+            is_default = lambda l: l == default_label
+            is_default_str = "(*)"
+            lines += [
+                f"    - {l}  {is_default_str if is_default(l) else ''}"
+                for l in entry.keys()
+            ]
+
+            # TODO Show more information here
+
+            # Done for this model
+            lines.append("")
 
         return "\n".join(lines)
 
     # TODO Improve output formats and amount of information
+    # TODO Consider supporting machine-parseable form?
 
     # Dict interface ..........................................................
 

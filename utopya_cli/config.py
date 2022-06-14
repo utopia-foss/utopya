@@ -42,10 +42,7 @@ from ._utils import Echo, set_entries_from_kv_pairs
         (
             "user",
             "utopya",
-            "projects",
             "batch",
-            "external_module_paths",
-            "plot_module_paths",
         )  # TODO load these from utopya if import time allows
     ),
 )

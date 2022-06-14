@@ -28,12 +28,16 @@ workflow:
 .reports:
   variables:
     SRC_DIR: utopya
+  coverage: '/TOTAL.*?(\d+\.?\d*)%\s*/'  # https://regex101.com/r/vW26X0/1
   after_script:
     - sed -i "s=<source>.*${SRC_DIR}</source>=<source>./${SRC_DIR}</source>=g" coverage.xml
     - sed -i "s;filename=\";filename=\"${SRC_DIR}/;g" coverage.xml
   artifacts:
     when: always
     expire_in: 6 months
+    paths:
+      - coverage.xml
+      - report.xml
     reports:
       coverage_report:
         coverage_format: cobertura
@@ -75,6 +79,7 @@ test:py38:
         --cov-report=term-missing --cov-report=xml
         --junitxml=report.xml
         tests/.
+
 
 test:py39:
   extends: test:py38

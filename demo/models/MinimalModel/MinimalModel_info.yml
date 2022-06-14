@@ -10,7 +10,13 @@
 ---
 # -- General information and options
 model_name: MinimalModel
-set_as_default: true
+
+# This model will not use the evaluation routine so we can disable it
+eval_after_run: false
+
+# Optionally, associate this model with the demo project, embedding the model
+# into the project's config hierarchy and making use of project-level defaults.
+# project_name: utopyaDemoProject
 
 
 # -- Path information, interpreted relative to this file

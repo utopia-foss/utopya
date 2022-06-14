@@ -1,0 +1,10 @@
+# The model default configuration for the MinimalModel
+---
+state_size: 100
+grid_shape: [24, 32]
+distribution_params:
+  low: -1.
+  high: +1.
+
+dataset_kwargs:
+  compression: 3

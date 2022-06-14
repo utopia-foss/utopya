@@ -31,17 +31,16 @@ def list_projects(long_mode: bool):
     """Lists available projects"""
     Echo.info("Loading utopya project list ...")
 
-    from utopya.cfg import load_from_cfg_dir
+    from utopya import PROJECTS
     from utopya.tools import pformat
 
-    projects = load_from_cfg_dir("projects")
     Echo.info("\n--- Utopya Projects ---")
-    for project_name, project_info in projects.items():
+    for project_name, project in PROJECTS.items():
         Echo.info(f"- {project_name}")
         if not long_mode:
             continue
 
-        for k, v in project_info.items():
+        for k, v in project.data.dict().items():
             Echo.remark(f"  {k:15s}: {v}")  # TODO make dict-compatible
         Echo.info("")
 
@@ -49,28 +48,30 @@ def list_projects(long_mode: bool):
 # .. utopya projects edit .....................................................
 
 
-@projects.command(help="Edit the projects registry directly.")
-def edit():
-    """Edits the projects registry file"""
-    Echo.info(f"Opening projects registry file for editing ...")
+@projects.command(help="Edit a project's registry file directly.")
+@click.argument("project_name")
+def edit(project_name: str):
+    """Edits a project registry file"""
+    Echo.info(f"Editing registry file for project '{project_name}' ...")
     Echo.warning("Take care not to corrupt the file!")
-    from utopya.cfg import get_cfg_path
 
     if not click.confirm("Open file for editing?"):
         Echo.info("Not opening.")
         sys.exit(0)
 
     try:
+        from utopya import PROJECTS
+
         click.edit(
-            filename=get_cfg_path("projects"),
+            filename=PROJECTS[project_name].registry_file_path,
             extension=".yml",
         )
 
     except Exception as exc:
-        Echo.error("Editing projects registry file failed!", error=exc)
+        Echo.error("Editing project registry file failed!", error=exc)
         sys.exit(1)
 
-    Echo.success(f"Successfully edited projects registry file.")
+    Echo.success(f"Successfully edited project registry file.")
 
 
 # .. utopya projects rm .......................................................
@@ -93,7 +94,7 @@ def remove(
     skip_confirmation: bool,
 ):
     """Removes an entry from the project registry file"""
-    from utopya.cfg import load_from_cfg_dir, write_to_cfg_dir
+    from utopya import PROJECTS
 
     Echo.info(f"Removing project registry entry '{project_name}' ...")
 
@@ -101,15 +102,12 @@ def remove(
         Echo.info("Not removing.")
         sys.exit(0)
 
-    projects = load_from_cfg_dir("projects")
-
-    if project_name not in projects:
+    if project_name not in PROJECTS:
         Echo.error(f"There is no project named '{project_name}' registered!")
         Echo.info(f"Registered projects:  {', '.join(projects)}")
         sys.exit(1)
 
-    del projects[project_name]
-    write_to_cfg_dir("projects", projects)
+    PROJECTS.remove_entry(project_name)
     Echo.success(f"Successfully removed project entry '{project_name}'.")
 
 
@@ -164,11 +162,12 @@ def remove(
 )
 def register(**kwargs):
     """Registers a project or validates an existing one"""
-    from utopya._projects import register_project
+    from utopya import PROJECTS
 
     try:
-        register_project(**kwargs, _log=Echo)
+        PROJECTS.register(**kwargs)
 
     except Exception as exc:
         Echo.error("Project registration failed!", error=exc)
+        raise
         sys.exit(1)

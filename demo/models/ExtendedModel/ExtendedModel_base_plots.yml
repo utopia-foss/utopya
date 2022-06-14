@@ -1,0 +1,82 @@
+# Base plot configuration pools for this model
+---
+# Shared variable definitions
+.variables:
+  base_path: &base_path data/ExtendedModel
+
+
+# Overload some plot config defaults to insert model-specific information
+.creator.universe:
+  based_on: .creator.universe
+
+  dag_options:
+    select_path_prefix: *base_path
+
+.creator.multiverse:
+  based_on: .creator.multiverse
+
+  select_and_combine:
+    base_path: *base_path
+
+
+
+# -- Plot definitions ---------------------------------------------------------
+time_series/mean_state:
+  based_on:
+    - .creator.universe
+    - .plot.facet_grid.line
+    - .plot.facet_grid.with_auto_encoding
+
+  select:
+    data: mean_state
+
+  x: time
+
+time_series/state:
+  based_on:
+    - .creator.universe
+    - .plot.facet_grid.line
+    - .plot.facet_grid.with_auto_encoding
+
+  select:
+    data: state
+
+  x: time
+
+overview:
+  based_on:
+    - .creator.multiverse
+    - .plot.facet_grid.line
+    - .plot.facet_grid.with_auto_encoding
+
+  select_and_combine:
+    fields:
+      data: state
+
+custom_plot:
+  based_on:
+    - .creator.universe
+
+  module: model_plots.ExtendedModel
+  plot_func: my_custom_plot_function
+
+  select:
+    data_to_plot: state
+
+ca/animated:
+  based_on:
+    - .creator.universe
+    - .plot.ca
+    - .animation.frames
+
+  select:
+    ca_data: ca
+
+  to_plot:
+    ca_data:
+      title: CA state
+
+ca/snapshot:
+  based_on:
+    - ca/animated
+    - .plot.ca.snapshot

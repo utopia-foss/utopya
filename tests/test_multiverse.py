@@ -17,6 +17,7 @@ from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
 
 from . import DUMMY_MODEL, get_cfg_fpath
+from ._fixtures import tmp_cfg_dir, tmp_projects
 
 # Get the test resources
 # TODO Sort these and find better names
@@ -30,7 +31,15 @@ SWEEP_CFG_PATH = get_cfg_fpath("sweep_cfg.yml")
 STOP_COND_CFG_PATH = get_cfg_fpath("stop_conds_integration.yml")
 CLUSTER_MODE_CFG_PATH = get_cfg_fpath("cluster_mode_cfg.yml")
 
-# Fixtures ----------------------------------------------------------------
+# Fixtures --------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def register_demo_project(tmp_projects):
+    """Use on all tests in this module"""
+    pass
+
+
 @pytest.fixture
 def mv_kwargs(tmpdir) -> dict:
     """Returns a dict that can be passed to Multiverse for initialisation.
@@ -107,7 +116,7 @@ def cluster_env_specific(tmpdir, request) -> dict:
 # Initialisation tests --------------------------------------------------------
 
 
-def test_simple_init(mv_kwargs):
+def test_simple_init(mv_kwargs, tmp_projects):
     """Tests whether initialisation works for all basic cases."""
     # With the full set of arguments
     mv = Multiverse(**mv_kwargs)

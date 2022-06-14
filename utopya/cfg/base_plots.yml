@@ -2,6 +2,12 @@
 #
 # The names of the configuration entries should follow a module path naming
 # scheme, i.e. what is specified for the `module` and `plot_func` keys.
+#
+# TODO Needs cleanup:
+#   - Whatever can be defined upstream (in dantro) *should* be defined there
+#   - Reduce duplicates
+#   - Improve and simplify naming scheme
+#
 ---
 # -- Defaults -----------------------------------------------------------------
 # .. A config with defaults styles and helpers ................................
@@ -36,6 +42,11 @@
 
 
 # .. Default parameters for animations ........................................
+.animation.disabled:
+  file_ext: pdf
+  animation:
+    enabled: false
+
 .animation.frames:
   file_ext: pdf
   animation:
@@ -60,82 +71,68 @@
     writer_kwargs: *default_writer_kwargs
 
 
+# -----------------------------------------------------------------------------
 # -- Basic plots --------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # .. Basic lineplot from universe data ........................................
 .basic_uni.lineplot:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: lineplot
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 # .. Multiple lineplots from universe data ....................................
 .basic_uni.lineplots:  # FIXME No longer exists
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: lineplots
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 # .. Basic errorbar plot from universe data ...................................
 # NOTE Preferably, use the .dag.generic.errorbar function instead! See below.
 .basic_uni.errorbar:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: errorbar
-
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
   # Passed to plt.errorbar or plt.fill_between
   elinewidth: .5
   fill_between_kwargs:
     linewidth: 0.
 
+
 # .. Distance map from Universe data .......................................
 .basic_uni.distance_map:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .basic_uni
   plot_func: distance_map
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Errorbar plot from Multiverse data .......................................
 # NOTE Preferably, use the .dag.generic.errorbar function instead! See below.
 .basic_mv.errorbar:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
 
   module: .basic_mv
   plot_func: errorbar
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
   # Passed to plt.errorbar
   elinewidth: .5
@@ -145,15 +142,12 @@
 
 # .. Asymptotic average from Multiverse data ..................................
 .basic_mv.asymptotic_average:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
 
   module: .basic_mv
   plot_func: asymptotic_average
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
   # Passed to plt.errorbar
   linestyle: ''
@@ -163,7 +157,9 @@
 
 # -- CA Plots -----------------------------------------------------------------
 # .. A spatial CA plot of a state .............................................
+
 # Supports PlotHelper and animation
+# NOTE This is the legacy plot function, should be removed
 .ca.state: &ca_state
   creator: universe
   universes: all
@@ -239,23 +235,20 @@
 
 # -- Distributions ------------------------------------------------------------
 # .. A histogram plot .........................................................
-.distribution.histogram: &histogram
+.distribution.histogram:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .distribution
   plot_func: histogram
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Plot of a complementary cumulative distribution ..........................
 # Based on histogram, but with normalization and complementary cumulation
 .distribution.histogram.complementary_cumulative:
-  <<: *histogram
+  based_on: .distribution.histogram
 
   use_unique: true
   mask_repeated: true
@@ -272,156 +265,108 @@
 
 
 # -- Time Series --------------------------------------------------------------
-# .. Plot of a single density .................................................
-.time_series.density:
-  creator: universe
-  universes: all
-
-  module: .time_series
-  plot_func: density
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
-
-# .. Plot of multiple densities ...............................................
-.time_series.densities:
-  creator: universe
-  universes: all
-
-  module: .time_series
-  plot_func: densities
-
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
+# TODO Check which ones make sense to keep
 
 # .. Phase space with colour-coded time .......................................
 .time_series.phase_space:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .time_series
   plot_func: phase_space
 
-  # Use default helpers and style
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # -- Bifurcation diagrams -----------------------------------------------------
 .attractor.bifurcation_diagram_1d:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
   module: .attractor
   plot_func: bifurcation_diagram
 
   analysis_kwargs: ~
 
-  # Use default helpers and style, but disable grid
-  helpers:
-    <<: *default_helpers
+  # Disable grid
   style:
-    <<: *default_style
     axes.grid: false
 
 .attractor.bifurcation_diagram_2d:
+  based_on: .default_style_and_helpers
+
   creator: multiverse
   module: .attractor
   plot_func: bifurcation_diagram
 
   analysis_kwargs: ~
 
-  # Use default helpers and style, but disable grid
-  helpers:
-    <<: *default_helpers
+  # Disable grid
   style:
-    <<: *default_style
     axes.grid: false
 
 
 # -----------------------------------------------------------------------------
 # -- DAG-based plots ----------------------------------------------------------
 # -----------------------------------------------------------------------------
+# TODO These should be renamed!
+
 # -- Generic Multiverse or Universe plots -------------------------------------
-# .. Time series ..............................................................
-.dag.generic.time_series:
-  module: .time_series
-  plot_func: time_series
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
-
 # .. Facet Grid ...............................................................
 # For conveniently plotting high-dimensional data, using dantro.
 #    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
 .dag.generic.facet_grid:
+  based_on: .default_style_and_helpers
+
   module: &dantro_plots dantro.plot_creators.ext_funcs.generic
   plot_func: facet_grid
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 
 # .. Errorbar and Errorbands ..................................................
 # For visualizing confidence intervals using error bars or bands (shaded area)
 #    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
 .dag.generic.errorbar:
+  based_on: .default_style_and_helpers
+
   module: *dantro_plots
   plot_func: errorbar
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 .dag.generic.errorbands:
+  based_on: .default_style_and_helpers
+
   module: *dantro_plots
   plot_func: errorbands
-
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
 
 
 # .. Distributions ............................................................
 # A histogram plot that supports stacking
 .dag.generic.histogram:
+  based_on: .default_style_and_helpers
+
   creator: universe
   universes: all
 
   module: .generic
   plot_func: histogram
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
-
 
 # .. Multiplot ................................................................
 # Plot one or multiple overlaying functions, also supporting seaborn
 #    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
 .dag.multiplot:
+  based_on: .default_style_and_helpers
+
   module: dantro.plot_creators.ext_funcs.multiplot
   plot_func: multiplot
 
-  helpers:
-    <<: *default_helpers
-  style:
-    <<: *default_style
+# .. Seaborn plots ............................................................
+# Invoke seaborn plotting functions
+.dag.snsplot:
+  based_on: .default_style_and_helpers
+
+  module: .snsplot
+  plot_func: snsplot
 
 
 # .. Graph plots ..............................................................
@@ -444,3 +389,89 @@
 
   helpers:
     <<: *default_helpers
+
+
+# #############################################################################
+# #############################################################################
+# #############################################################################
+# New-style plot functions below this line
+
+
+# -----------------------------------------------------------------------------
+# -- Plot functions and specializations ---------------------------------------
+# -----------------------------------------------------------------------------
+# These should follow the .plot.<name> pattern!
+
+# .. CA plot ..................................................................
+# A plot function specialized for Cellular Automata snapshots or animations.
+# Unlike its predecessor, it supports the data transformation framework.
+.plot.ca:
+  based_on: .default_style_and_helpers
+
+  module: .ca
+  plot_func: caplot
+
+  compute_only: all
+
+  default_imshow_kwargs:
+    interpolation: 'none'
+
+  suptitle_fstr: "{}: {:>5}"
+  suptitle_kwargs:
+    fontsize: x-large
+    fontfamily: monospace
+
+  style:
+    figure.constrained_layout.use: true
+
+.plot.ca.snapshot:
+  based_on:
+    # - .plot.ca  # do not inherit again, would cause overwriting downstream
+    - .animation.disabled
+
+  frames_isel: -1
+
+# .. Facet grid ...............................................................
+.plot.facet_grid:
+  based_on:
+    - .default_style_and_helpers
+    - .dag.generic.facet_grid  # TODO Move that definition here
+
+# .. Mixins
+.plot.facet_grid.with_auto_encoding:
+  based_on: .plot.facet_grid
+  auto_encoding: true
+  col_wrap: auto
+
+# .. Specializations: working on xr.DataArray
+.plot.facet_grid.line:
+  based_on: .plot.facet_grid
+  kind: line
+
+.plot.facet_grid.hist:
+  based_on: .plot.facet_grid
+  kind: hist
+
+.plot.facet_grid.errorbars:
+  based_on: .plot.facet_grid
+  kind: errorbars
+
+.plot.facet_grid.errorbands:
+  based_on: .plot.facet_grid
+  kind: errorbars
+  use_bands: true
+
+# .. Specializations: working on xr.Dataset
+.plot.facet_grid.scatter:
+  based_on: .plot.facet_grid
+  kind: scatter
+
+
+# .. Seaborn plots ............................................................
+.plot.snsplot:
+  based_on: .dag.snsplot
+
+
+# .. Graph plot ...............................................................
+.plot.graph:
+  based_on: .dag.graph

@@ -1,9 +1,10 @@
 """The utopya package implements a versatile simulation runner and manager"""
 
-__version__ = "1.0.0a4"
+__version__ = "1.0.0a5"
 """The utopya package version"""
 
 # .. Logging ..................................................................
+# TODO Consider setting up logging elsewhere -- but needs to be done first!
 from dantro.logging import REMARK as _DEFAULT_LOG_LEVEL
 from dantro.logging import getLogger as _getLogger
 
@@ -16,7 +17,7 @@ import coloredlogs as _coloredlogs
 _coloredlogs.install(
     logger=_log,
     level=_DEFAULT_LOG_LEVEL,
-    fmt="%(levelname)-8s %(module)-15s %(message)s",
+    fmt="%(levelname)-8s %(module)-16s  %(message)s",
     level_styles=dict(
         trace=dict(faint=True),
         debug=dict(faint=True),
@@ -43,4 +44,5 @@ from .eval import DataManager, MultiverseGroup, UniverseGroup
 from .model import Model
 from .model_registry import MODELS
 from .multiverse import FrozenMultiverse, Multiverse
+from .project_registry import PROJECTS
 from .testtools import ModelTest

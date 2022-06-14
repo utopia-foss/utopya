@@ -142,9 +142,16 @@ from ._utils import Echo
 # -- Evaluation
 #
 @click.option(
-    "--no-eval",
-    flag_value=True,
-    help="If given, no evaluation will be carried out.",
+    "--eval/--no-eval",
+    "perform_eval",
+    default=None,
+    help=(
+        "If given, overwrites the default behavior of whether the simulation "
+        "run should be followed by the evaluation routine (data loading "
+        "and plotting) or not. "
+        "The default can also be set in the model info file. "
+        "If no default is given there, will attempt evaluation."
+    ),
 )
 @add_options(OPTIONS["load"])
 @add_options(OPTIONS["eval"])
@@ -156,10 +163,6 @@ from ._utils import Echo
 @click.pass_context
 def run(ctx, **kwargs):
     """Invokes a model simulation run and subsequent evaluation"""
-    # FIXME Remove or make optional
-    # for k, v in kwargs.items():
-    #     print(f"  {k:>21s} :  {v}")
-
     import utopya
     from utopya.exceptions import ValidationError
     from utopya.tools import pformat
@@ -167,7 +170,7 @@ def run(ctx, **kwargs):
     from ._utils import parse_run_and_plots_cfg, parse_update_dicts
     from .eval import _load_and_eval
 
-    _log = utopya._getLogger("utopya_cli")  # TODO How best to do this?!
+    _log = utopya._getLogger("utopya")  # TODO How best to do this?!
 
     # Preparations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     _log.info("Parsing additional command line arguments ...")
@@ -197,10 +200,17 @@ def run(ctx, **kwargs):
 
     # Running the simulation . . . . . . . . . . . . . . . . . . . . . . . . .
     mv.run()
-    _log.success("Simulation run finished.\n")
 
-    if kwargs["no_eval"]:
-        _log.progress("Received --no-eval. Exiting now.")
+    # Check whether to start evaluation routine
+    perform_eval = model.info_bundle.eval_after_run
+    _perform_eval = kwargs.pop("perform_eval")
+    if _perform_eval is not None:
+        perform_eval = _perform_eval
+
+    if perform_eval is False:
+        _log.note("Evaluation routine was not enabled for this model.")
+        _log.remark("Use --eval / --no-eval to overwrite model defaults.")
+        _log.progress("Exiting now ...\n")
         return
 
     # Loading and evaluating . . . . . . . . . . . . . . . . . . . . . . . . .

@@ -51,6 +51,8 @@ class ExternalPlotCreator(dantro.plot_creators.ExternalPlotCreator):
             - A model's ``py_plots_dir``
             - A project's ``py_plots_dir``
             - A project's additional ``py_modules``
+            - The framework's additional ``py_modules``
+            - The framework's ``py_plots_dir``
         """
         p = dict()
         mib = getattr(self, "_model_info_bundle", None)
@@ -62,11 +64,22 @@ class ExternalPlotCreator(dantro.plot_creators.ExternalPlotCreator):
 
         project = mib.project
         if project:
-            if project["paths"].get("py_plots_dir"):
-                p["project's py_plots_dir"] = project["paths"]["py_plots_dir"]
+            if project.paths.py_plots_dir:
+                p["project's py_plots_dir"] = project.paths.py_plots_dir
 
-            for label, mod_path in project["custom_py_modules"].items():
-                p[f"custom module '{label}'"] = mod_path
+            if project.custom_py_modules:
+                for label, mod_path in project.custom_py_modules.items():
+                    p[f"custom module '{label}'"] = mod_path
+
+            if project.framework_project is not None:
+                fw = project.framework_project
+
+                if fw.paths.py_plots_dir:
+                    p["framework's py_plots_dir"] = fw.paths.py_plots_dir
+
+                if fw.custom_py_modules:
+                    for label, mod_path in fw.custom_py_modules.items():
+                        p[f"framework's custom module '{label}'"] = mod_path
 
         return p
 
