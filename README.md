@@ -7,15 +7,14 @@ This repo hosts the `utopya` Python package, which provides simulation managemen
 ---
 
 ## About `utopya`
-The `utopya` package aims to provide a simulation management and evaluation
-framework with the following feature set:
+The `utopya` package provides a simulation management and evaluation framework with the following feature set:
 
 - Provide model configuration with several update levels
 - Project and framework handling
 - A powerful CLI to run and evaluate models
 - Executing model simulations in parallel and on cluster architectures
 - Managing data output directories
-- Interfacing with the [dantro] data processing pipeline
+- Interfacing with the [dantro][dantro] data processing pipeline
 
 It evolved as part of the [Utopia Project][Utopia-Project] and provides the frontend of the [Utopia modelling framework][Utopia].
 Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry: in the simplest case, only only the path to an executable is required to run simulations.

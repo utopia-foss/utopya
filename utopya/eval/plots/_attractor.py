@@ -24,15 +24,16 @@ def find_endpoint(
     """Find the endpoint of a dataset wrt. ``time`` coordinate.
 
     This function is compatible with the
-    :py:func:`utopya.plot_funcs.attractor.bifurcation_diagram`.
+    :py:func:`utopya.eval.plots.attractor.bifurcation_diagram`.
 
     Arguments:
-        data (xr.DataArray): The data
+        data (xarray.DataArray): The data
         time (int, optional): The time index to select
-        **kwargs: Passed on to ``data.isel`` call
+        **kwargs: Passed on to :py:meth:`xarray.DataArray.isel` call
 
     Returns:
-        Tuple[bool, xr.DataArray]: (endpoint found, endpoint)
+        Tuple[bool, xarray.DataArray]: The result in the form of a 2-tuple
+            ``(endpoint found, endpoint)``
     """
     return True, data.isel(time=time, **kwargs)
 
@@ -49,14 +50,14 @@ def find_fixpoint(
     squeeze: bool = True,
 ) -> Tuple[bool, float]:
     """Find the fixpoint(s) of a dataset and confirm it by standard deviation.
-    For dimensions that are not 'time' the fixpoints are compared and
+    For dimensions that are not ``time`` the fixpoints are compared and
     duplicates removed.
 
     This function is compatible with the
-    :py:func:`utopya.plot_funcs.attractor.bifurcation_diagram`.
+    :py:func:`utopya.eval.plots.attractor.bifurcation_diagram`.
 
     Arguments:
-        data (xr.Dataset): The data
+        data (xarray.Dataset): The data
         spin_up_time (int, optional): The first timestep included
         abs_std (float, optional): The maximal allowed absolute standard
             deviation
@@ -122,15 +123,15 @@ def find_fixpoint(
 def find_multistability(*args, **kwargs) -> Tuple[bool, float]:
     """Find the multistabilities of a dataset.
 
-    Performs find_fixpoint. Method conclusive if find_fixpoint conclusive with
-    multiple entries.
+    Invokes :py:func:`.find_fixpoint`. This function is conclusive if
+    :py:func:`.find_fixpoint` is conclusive with multiple entries.
 
-    Arguments:
-        ``*args``, ``**kwargs``: passed on to
-            :py:func:`~utopya.dataprocessing.find_fixpoint`
+    Args:
+        *args: passed to :py:func:`.find_fixpoint`
+        **kwargs: passed to :py:func:`.find_fixpoint`
 
     Returns
-        Tuple[bool, float]: (multistability found, mean)
+        Tuple[bool, float]: ``(multistability found, mean value)``
     """
     conclusive, mean = find_fixpoint(*args, **kwargs)
 
@@ -157,15 +158,16 @@ def find_oscillation(
     """Find oscillations in a dataset.
 
     This function is compatible with the
-    :py:func:`utopya.plot_funcs.attractor.bifurcation_diagram`.
+    :py:func:`utopya.eval.plots.attractor.bifurcation_diagram`.
 
     Arguments:
-        data (xr.Dataset): The data
+        data (xarray.Dataset): The data
         spin_up_time (int, optional): The first timestep included
         squeeze (bool, optional): Use the data.squeeze method to remove
             dimensions of length one. Default is True.
-        ``**find_peak_kwargs``: Passed on to ``scipy.signal.find_peaks``.
-            Default for kwarg ``height`` is set to ``-1.e+15``.
+        **find_peak_kwargs: Passed on to
+            :py:func:`scipy.signal.find_peaks`.
+            If not given, will set ``height`` kwarg to ``-1.e+15``.
 
     Returns:
         Tuple[bool, list]: (oscillation found, [min, max])
@@ -192,7 +194,7 @@ def find_oscillation(
     coords["osc"] = ["min", "max"]
     attractor = xr.Dataset(coords=coords, attrs={"conclusive": False})
 
-    if not find_peak_kwargs["height"]:
+    if not find_peak_kwargs.get("height"):
         find_peak_kwargs["height"] = -1e15
 
     for data_var_name, data_var in data.items():

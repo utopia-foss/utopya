@@ -268,17 +268,17 @@ class Task:
             return progress
 
         raise ValueError(
-            "The progres function {} of task '{}' returned a "
-            "value outside of the allowed range [0, 1]!"
-            "".format(self._progress_func.__name__, self.name)
+            f"The progres function {self._progress_func.__name__} of "
+            f"task '{self.name}' returned a value outside of the "
+            "allowed range [0, 1]!"
         )
 
     @property
     def fulfilled_stop_conditions(self) -> Set["StopCondition"]:
         """The set of *fulfilled* stop conditions for this task. Typically,
-        this is set by the :py:class:`~utopya.stopcond.StopCondition` itself
-        as part of its evaluation in the
-        :py:meth:`utopya.stopcond.StopCondition.fulfilled` method.
+        this is set by the :py:class:`~utopya.stop_conditions.StopCondition`
+        itself as part of its evaluation in its
+        :py:meth:`~utopya.stop_conditions.StopCondition.fulfilled` method.
         """
         return self._stop_conditions
 
@@ -503,7 +503,7 @@ class WorkerTask(Task):
 
     def __str__(self) -> str:
         """Return basic WorkerTask information."""
-        return "{}<uid: {}, priority: {}, worker_status: {}>" "".format(
+        return "{}<uid: {}, priority: {}, worker_status: {}>".format(
             self.__class__.__name__,
             self.uid,
             self.priority,
@@ -877,9 +877,10 @@ class WorkerTask(Task):
             signum = SIGMAP[signal]
 
         except KeyError as err:
+            _valid_sigs = ", ".join(SIGMAP.keys())
             raise ValueError(
-                "No signal named '{}' available! Valid signals "
-                "are: {}".format(signal, ", ".join(SIGMAP.keys()))
+                f"No signal named '{signal}' available! Valid signals "
+                f"are: {_valid_sigs}"
             ) from err
 
         # Handle some specific cases, then all the other signals ...

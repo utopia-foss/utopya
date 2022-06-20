@@ -1,4 +1,4 @@
-"""This module provides the GraphPlot class."""
+"""This module provides the :py:class:`.GraphPlot` class."""
 
 import copy
 import logging
@@ -17,7 +17,6 @@ log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 
-# Available networkx node layout options
 POSITIONING_MODELS_NETWORKX = {
     "spring": nx.spring_layout,
     "circular": nx.circular_layout,
@@ -29,22 +28,23 @@ POSITIONING_MODELS_NETWORKX = {
     "spectral": nx.spectral_layout,
     "spiral": nx.spiral_layout,
 }
+"""Available networkx node layout options"""
 
 # -----------------------------------------------------------------------------
 
 
 class GraphPlot:
-    """The ``GraphPlot`` class provides an interface for visualizing a
-    ``networkx.Graph`` object or a graph created from a
-    :py:class:`~utopya.datagroup.GraphGroup` via matplotlib.
+    """This class provides an interface for visualizing a
+    :py:class`networkx.Graph` object or a graph created from a
+    :py:class:`~utopya.eval.groups.GraphGroup`.
     """
 
     def __init__(
         self,
         g: nx.Graph,
         *,
-        fig=None,
-        ax=None,
+        fig: "matplotlib.figure.Figure" = None,
+        ax: "matplotlib.axes.Axes" = None,
         select: dict = None,
         positions: dict = None,
         nodes: dict = None,
@@ -58,16 +58,16 @@ class GraphPlot:
         fixed graph.
 
         The drawing kwargs are stored and used when calling
-        :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+        :py:meth:`.draw`.
 
         A ``GraphPlot`` can also be initialized from a
-        :py:class:`~utopya.datagroup.GraphGroup` via the
-        :py:meth:`~utopya.plot_funcs._graph.GraphPlot.from_group` classmethod.
+        :py:class:`~utopya.eval.groups.GraphGroup` via the
+        :py:meth:`.from_group` classmethod.
 
         If drawing multiple times from the same ``GraphPlot`` instance, be
         aware that it only keeps track of the nodes/edges/labels/colorbars that
         were last associated with it. Use
-        :py:meth:`~utopya.plot_funcs._graph.GraphPlot.clear_plot` before
+        :py:meth:`.clear_plot` before
         re-drawing on the same axis.
 
         .. note::
@@ -87,10 +87,11 @@ class GraphPlot:
             values are rescaled linearly the specified interval.
 
         Args:
-            g (nx.Graph): The associated networkx graph
-            fig (None, optional): The matplotlib figure used for drawing
-            ax (None, optional): The matplotlib axis used for drawing
-
+            g (networkx.Graph): The networkx graph object
+            fig (matplotlib.figure.Figure, optional): The matplotlib figure
+                used for drawing
+            ax (matplotlib.axes.Axes, optional): The matplotlib axes used for
+                drawing
             select (dict, optional):
                 Draw only a subgraph induced by a selection of nodes. Either
                 select a list of nodes by passing the ``nodelist`` argument or
@@ -123,13 +124,14 @@ class GraphPlot:
                     are: ``spring``, ``circular``, ``shell``, ``bipartite``,
                     ``kamada_kawai``, ``planar``, ``random``, ``spectral``,
                     ``spiral``.
+                    See :py:data:`.POSITIONING_MODELS_NETWORKX`.
 
                     If installed, `GraphViz <https://pypi.org/project/graphviz/>`_
                     models can be selected with a prepended ``graphviz_``.
                     Options depend on the ``GraphViz`` version but may include:
                     ``dot``, ``neato``, ``fdp``, ``sfdp``, ``twopi``,
-                    ``circo``. (Passed as ``prog`` to
-                    `networkx.graphviz_layout <https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_pydot.graphviz_layout.html>`_).
+                    ``circo``. (Passed as ``prog`` argument to
+                    :py:func:`~networkx.drawing.nx_agraph.graphviz_layout`).
 
                     If the argument is a callable, it is invoked with the graph
                     as the first positional argument and is expected to return
@@ -161,10 +163,10 @@ class GraphPlot:
                     (e.g. categorical) properties.
                 cmap (optional):
                     The colormap. Passed as ``cmap`` to
-                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
+                    :py:class:`~utopya.eval.plots._mpl.ColorManager`.
                 cmap_norm (optional):
                     The norm used for the color mapping. Passed as ``norm`` to
-                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
+                    :py:class:`~utopya.eval.plots._mpl.ColorManager`.
                     Is overwritten, if a discrete colormap is specified in
                     ``cmap``.
                 colorbar (dict, optional):
@@ -176,7 +178,7 @@ class GraphPlot:
                         ``node_color`` is mapped from property.
                     labels (dict, optional):
                         Colorbar tick-labels keyed by tick position (see
-                        :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`).
+                        :py:meth:`~utopya.eval.plots._mpl.ColorManager.create_cbar`).
                     tick_params (dict, optional):
                         Colorbar axis tick parameters
                     label (str, optional):
@@ -185,11 +187,11 @@ class GraphPlot:
                         Further keyword arguments to adjust the aesthetics of
                         the colorbar label
                     further kwargs:
-                        Passed on to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
+                        Passed on to :py:meth:`~utopya.eval.plots._mpl.ColorManager.create_cbar`.
 
                 further kwargs:
                     Passed to `draw_networkx_nodes <https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_pylab.draw_networkx_nodes.html>`_
-                    when calling :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+                    when calling :py:meth:`.draw`.
 
             edges (dict, optional):
                 Drawing configuration for the edges. The following arguments
@@ -200,7 +202,7 @@ class GraphPlot:
                 nodes.cmap, and nodes.colorbar for the nodes. Any further
                 kwargs are (after applying property mapping), passed on to
                 `draw_networkx_edges <https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_pylab.draw_networkx_edges.html>`_
-                when calling :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+                when calling :py:meth:`.draw`.
 
                 If arrows are to be drawn (i.e. for directed edges with
                 arrows=True), only norms of type matplotlib.colors.Normalize
@@ -226,7 +228,7 @@ class GraphPlot:
                     if ``format`` is used.
                 further kwargs:
                     Passed on to `draw_networkx_labels <https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_pylab.draw_networkx_labels.html>`_
-                    when calling :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+                    when calling :py:meth:`.draw`.
 
             edge_labels (dict, optional):
                 Drawing configuration for the edge labels. The following
@@ -251,7 +253,7 @@ class GraphPlot:
                     if ``format`` is used.
                 further kwargs:
                     Passed on to `draw_networkx_edge_labels <https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_pylab.draw_networkx_edge_labels.html>`_
-                    when calling :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+                    when calling :py:meth:`.draw`.
 
             mark_nodes (dict, optional):
                 Mark specific nodes by changing their edgecolor. Either specify
@@ -317,10 +319,10 @@ class GraphPlot:
 
     @property
     def g(self):
-        """Get a deep copy of the graph associated with the GraphPlot instance.
+        """Get a deep copy of the graph associated with this instance.
 
         Returns:
-            nx.Graph: The networkx graph object
+            networkx.Graph: The graph object
         """
         return self._g.copy()
 
@@ -330,8 +332,8 @@ class GraphPlot:
     def draw(
         self,
         *,
-        fig=None,
-        ax=None,
+        fig: "matplotlib.figure.Figure" = None,
+        ax: "matplotlib.axes.Axes" = None,
         positions: dict = None,
         nodes: dict = None,
         edges: dict = None,
@@ -343,17 +345,16 @@ class GraphPlot:
         update_colormapping: bool = True,
         **add_colorbars,
     ):
-        """
-        Draws the graph associated with the ``GraphPlot`` using the current
+        """Draws the graph associated with the ``GraphPlot`` using the current
         drawing configuration.
 
         The current drawing configuration may be temporarily updated for this
         plot. The respective arguments accept the same input as in
-        :py:class:`~utopya.plot_funcs._graph.GraphPlot`.
+        :py:meth:`.__init__`.
 
         Args:
-            fig (None, optional): matplotlib figure
-            ax (None, optional): matplotlib axis
+            fig (matplotlib.figure.Figure, optional): matplotlib figure
+            ax (matplotlib.axes.Axes, optional): matplotlib axis
             positions (dict, optional): Position configuration. If given,
                 the current positions are replaced. If using a node positioning
                 model the positions are recalculated.
@@ -369,12 +370,12 @@ class GraphPlot:
                 colorbars
             update_colormapping (bool, optional): Whether to reconfigure the
                 nodes' and edges'
-                :py:class:`~utopya.plot_funcs._mpl.ColorManager`
+                :py:class:`~utopya.eval.plots._mpl.ColorManager`
                 (default=True). If True, the respective configuration entries
                 are ignored. Set to False if doing repetitive plotting with
                 fixed colormapping.
             **add_colorbars: Passed to
-                :py:meth:`~utopya.plot_funcs._graph.GraphPlot.add_colorbars`
+                :py:meth:`.add_colorbars`
         """
         # Cache the current drawing configuration
         node_colormanager_cache = copy.deepcopy(self._node_colormanager)
@@ -494,7 +495,7 @@ class GraphPlot:
                 If False, the GraphPlot still loses track of the colorbars,
                 they can not be removed via the GraphPlot afterwards.
             **update_cbar_kwargs: Update both node and edge colorbar kwargs,
-                passed to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
+                passed to :py:meth:`~utopya.eval.plots._mpl.ColorManager.create_cbar`.
         """
         fig = fig if fig is not None else self.fig
         ax = ax if ax is not None else self.ax
@@ -596,27 +597,26 @@ class GraphPlot:
     @classmethod
     def from_group(
         cls,
-        graph_group,
+        graph_group: "utopya.eval.groups.GraphGroup",
         *,
         graph_creation: dict = None,
         register_property_maps: dict = None,
         clear_existing_property_maps: bool = True,
         **init_kwargs,
     ):
-        """Initializes a ``GraphPlot`` from a
-        :py:class:`~utopya.datagroup.GraphGroup`.
+        """Initializes a :py:class:`.GraphPlot` from a
+        :py:class:`~utopya.eval.groups.GraphGroup`.
 
         Args:
-            graph_group: The graph group
+            graph_group (utopya.eval.groups.GraphGroup): The graph group
             graph_creation (dict, optional): Configuration of the graph
-                creation. Passed to :py:meth:`~utopya.plot_funcs._graph.GraphPlot.create_graph_from_group`
+                creation. Passed to :py:meth:`.create_graph_from_group`
             register_property_maps (dict, optional): Properties to be
                 registered in the graph group before the graph creation keyed
                 by name
             clear_existing_property_maps (bool, optional): Whether to clear any
                 existing property maps from the graph group
-            **init_kwargs: Passed to
-                :py:class:`~utopya.plot_funcs._graph.GraphPlot`
+            **init_kwargs: Passed to :py:meth:`.__init__`
         """
         g = cls.create_graph_from_group(
             graph_group,
@@ -629,27 +629,30 @@ class GraphPlot:
 
     @staticmethod
     def create_graph_from_group(
-        graph_group,
+        graph_group: "utopya.eval.groups.GraphGroup",
         *,
         register_property_maps: dict = None,
         clear_existing_property_maps: bool = True,
         **graph_creation,
     ) -> nx.Graph:
-        """Creates a ``networkx.Graph`` from a ``GraphGroup``. Additional
-        property maps may be added to the group beforehand.
+        """Creates a :py:class:`networkx.Graph` from a
+        :py:class`utopya.eval.groups.GraphGroup`.
+        Additional property maps may be added to the group beforehand.
 
         Args:
-            graph_group: The ``GraphGroup``.
+            graph_group (utopya.eval.groups.GraphGroup): The group to create
+                the graph from
             register_property_maps (dict, optional): Properties to be
                 registered in the graph group before the graph creation keyed
                 by name.
             clear_existing_property_maps (bool, optional): Whether to clear any
                 existing property maps from the graph group.
-            **graph_creation: Configuration of the graph creation. Passed on
-                to :py:meth:`~utopya.datagroup.GraphGroup.create_graph`.
+            **graph_creation: Configuration of the graph creation.
+                Passed on to the ``create_graph`` method implemented in dantro,
+                :py:meth:`~dantro.groups.graph.GraphGroup.create_graph`.
 
         Returns:
-            nx.Graph: The created ``networkx.Graph`` object.
+            networkx.Graph: The created graph object.
         """
         # Register external property data
         if register_property_maps:
@@ -689,7 +692,7 @@ class GraphPlot:
 
         Raises:
             ModuleNotFoundError: If a graphviz model was chosen but pygraphviz
-                was not importable (via networkx)
+                was not importable (via networkx).
         """
         # Set spring-layout as default if nothing else is specified
         if from_dict is None and model is None:
@@ -761,7 +764,7 @@ class GraphPlot:
                 ``degree``, ``in_degree``, or ``out_degree`` by setting the
                 ``from_property`` argument accordingly.
             node_color (None, optional): Single color (string or RGB(A) tuple
-                or numeric value) or sequence of colors (default='#1f78b4').
+                or numeric value) or sequence of colors.
                 If numeric values are specified they will be mapped to colors
                 using the cmap and vmin, vmax parameters.
 
@@ -771,10 +774,10 @@ class GraphPlot:
                 (e.g. categorical) properties.
             alpha (None, optional): The node transparency
             cmap (None, optional): The colormap. Passed as ``cmap`` to
-                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
+                :py:class:`~utopya.eval.plots._mpl.ColorManager`.
             cmap_norm (None, optional): The norm used for the color mapping.
                 Passed as ``norm`` to
-                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
+                :py:class:`~utopya.eval.plots._mpl.ColorManager`.
                 Is overwritten, if a discrete colormap is specified in
                 ``cmap``.
             vmin (float, optional): Minimum for the colormap scaling
@@ -789,17 +792,19 @@ class GraphPlot:
                     ``node_color`` is mapped from property.
                 labels (dict, optional):
                     Colorbar tick-labels keyed by tick position (see
-                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`).
-                further kwargs:
-                    Passed on to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
+                    :py:class:`~utopya.eval.plots._mpl.ColorManager`).
+                further kwargs: Passed on to
+                    :py:meth:`~utopya.eval.plots._mpl.ColorManager.create_cbar`
 
             update_colormapping (bool, optional): Whether to reconfigure the
-                nodes' :py:class:`~utopya.plot_funcs._mpl.ColorManager`
-                (default=True). If False, the respective arguments are ignored.
+                nodes' :py:class:`~utopya.eval.plots._mpl.ColorManager`
+                (default: True).
+                If False, the respective arguments are ignored.
                 Set to False if doing repetitive plotting with fixed
                 colormapping.
-            **kwargs: Update the node kwargs. Passed to nx.draw_networkx_nodes
-                when calling :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`
+            **kwargs: Update the node kwargs. Passed to
+                :py:func:`~networkx.drawing.nx_pylab.draw_networkx_nodes`
+                when calling :py:meth:`.draw`
         """
         if kwargs.pop("nodelist", None) is not None:
             warnings.warn(
@@ -988,10 +993,10 @@ class GraphPlot:
                 keyed by property value. This allows to map from non-numeric
                 (e.g. categorical) properties.
             edge_cmap (None, optional): The colormap. Passed as ``cmap`` to
-                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
+                :py:class:`~utopya.eval.plots._mpl.ColorManager`.
             cmap_norm (None, optional): The norm used for the color mapping.
                 Passed as ``norm`` to
-                :py:class:`~utopya.plot_funcs._mpl.ColorManager`.
+                :py:class:`~utopya.eval.plots._mpl.ColorManager`.
                 Is overwritten, if a discrete colormap is specified in
                 ``edge_cmap``.
                 If arrows are to be drawn (i.e. for directed edges with
@@ -1007,21 +1012,24 @@ class GraphPlot:
                     ``edge_color`` is mapped from property.
                 labels (dict, optional):
                     Colorbar tick-labels keyed by tick position (see
-                    :py:class:`~utopya.plot_funcs._mpl.ColorManager`).
-                further kwargs:
-                    Passed on to :py:meth:`~utopya.plot_funcs._mpl.ColorManager.create_cbar`.
+                    :py:class:`~utopya.eval.plots._mpl.ColorManager`).
+                further kwargs: Passed on to
+                    :py:meth:`~utopya.eval.plots._mpl.ColorManager.create_cbar`
 
             update_colormapping (bool, optional): Whether to reconfigure the
-                edges' :py:class:`~utopya.plot_funcs._mpl.ColorManager`
-                (default=True). If False, the respective arguments are ignored.
+                edges' :py:class:`~utopya.eval.plots._mpl.ColorManager`
+                (default=True).
+                If False, the respective arguments are ignored.
                 Set to False if doing repetitive plotting with fixed
                 colormapping.
-            **kwargs: Update the edge kwargs. Passed to nx.draw_networkx_edges
-                when calling :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+            **kwargs: Update the edge kwargs. Passed to
+                :py:func:`~networkx.drawing.nx_pylab.draw_networkx_nodes`
+                when calling :py:meth:`.draw`.
 
         Raises:
-            TypeError: On norm type other than mpl.colors.Normalize if arrows
-                are to be drawn.
+            TypeError: On norm type other than
+                :py:class:`matplotlib.colors.Normalize` and if arrows are to be
+                drawn.
         """
         if kwargs.pop("edgelist", None) is not None:
             warnings.warn(
@@ -1148,7 +1156,7 @@ class GraphPlot:
         **kwargs,
     ):
         """Parses the node labels configuration and updates the node label
-        kwargs of the GraphPlot.
+        kwargs of the :py:class:`.GraphPlot`.
 
         Args:
             enabled (bool, optional): Whether to draw node labels.
@@ -1163,7 +1171,7 @@ class GraphPlot:
                 property values if ``format`` is used.
             **kwargs: Update the node label kwargs. Passed to
                 nx.draw_networkx_labels when calling
-                :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+                :py:meth:`.draw`.
         """
         if enabled:
             self._show_node_labels = True
@@ -1247,7 +1255,7 @@ class GraphPlot:
                 property values if ``format`` is used.
             **kwargs: Update the edge label kwargs. Passed to
                 nx.draw_networkx_edge_labels when calling
-                :py:meth:`~utopya.plot_funcs._graph.GraphPlot.draw`.
+                :py:meth:`.draw`.
         """
         # Catch a pitfall: There is no 'labels' argument for the edge labels
         # (as there is for the node labels), here it is named 'edge_labels'.
@@ -1322,7 +1330,7 @@ class GraphPlot:
             This function overwrites the ``edgecolors`` entry in the node
             kwargs. Thus it might overwrite an existing ``edgecolors`` entry
             specified via
-            :py:meth:`~utopya.plot_funcs._graph.GraphPlot.parse_nodes`
+            :py:meth:`.parse_nodes`
             (and vice versa).
 
         Args:
@@ -1402,7 +1410,7 @@ class GraphPlot:
             This function overwrites the ``edge_color`` entry in the edge
             kwargs. Thus it might overwrite an existing ``edge_color`` entry
             specified via
-            :py:meth:`~utopya.plot_funcs._graph.GraphPlot.parse_edges`
+            :py:meth:`.parse_edges`
             (and vice versa).
 
         Args:

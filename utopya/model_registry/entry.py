@@ -448,8 +448,8 @@ class ModelRegistryEntry:
 
         Args:
             representer (ruamel.yaml.representer): The representer module
-            node (type(self)): The node to represent, i.e. an instance of this
-                class.
+            node (ModelRegistryEntry): The node to represent, i.e. an instance
+                of this class.
 
         Returns:
             A YAML representation of the given instance of this class.

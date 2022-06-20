@@ -1,7 +1,6 @@
-"""Implements data group classes specific to the Utopia output data structure.
-
-They are based on dantro BaseDataGroup-derived implementations. In this module,
-they are imported and configured to suit the needs of the Utopia data structes.
+"""Implements specialized data group classes that are based on group types
+provided in :py:mod:`dantro.groups`.
+Here, they are configured using their class variables.
 """
 
 import logging
@@ -23,14 +22,14 @@ class UniverseGroup(dantro.groups.ParamSpaceStateGroup):
 class MultiverseGroup(dantro.groups.ParamSpaceGroup):
     """This group is meant to manage the ``multiverse`` group of the loaded
     data, i.e. the group where output of the individual
-    :py:class:`~utopya.datagroup.UniverseGroup` objects is stored in.
+    :py:class:`~utopya.eval.groups.UniverseGroup` objects is stored in.
 
     Its main aim is to provide easy access to universes. By default, universes
     are only identified by their ID, which is a zero-padded *string*. This
     group adds the ability to access them via integer indices.
 
     Furthermore, via dantro, an easy data selector method is available, see
-    `dantro.groups.ParamSpaceGroup.select`.
+    :py:meth:`dantro.groups.psp.ParamSpaceGroup.select`.
     """
 
     _NEW_GROUP_CLS = UniverseGroup

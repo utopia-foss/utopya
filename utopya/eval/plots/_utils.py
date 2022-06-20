@@ -34,8 +34,8 @@ def calc_pxmap_rectangles(
     evaluated according to a certain scale.
 
     Args:
-        x_coords (np.ndarray): The x coordinates
-        y_coords (np.ndarray): The y coordinates
+        x_coords (numpy.ndarray): The x coordinates
+        y_coords (numpy.ndarray): The y coordinates
         x_scale (str, optional): The x-axis scale, used to determine rectangle
             sizes.
         y_scale (str, optional): The y-axis scale, used to determine rectangle
@@ -53,8 +53,8 @@ def calc_pxmap_rectangles(
             the edge of the rectangle but in the bulk.
 
     Returns:
-        Tuple[xr.Dataset, Dict[str, tuple]]: The first tuple element is the
-            xr.Dataset of rectangle specifications, each available as a data
+        Tuple[xarray.Dataset, Dict[str, tuple]]: The first tuple element is the
+            dataset of rectangle specifications, each available as a data
             variable:
 
                 - ``pos_x``, ``pos_y``: position of the lower-value coordinate
@@ -91,7 +91,7 @@ def calc_pxmap_rectangles(
             axis_name (str): The name of the axis; used for error message only
 
         Returns:
-            Tuple[np.ndarray, str]: The coordinate distances and the new scale
+            Tuple[numpy.ndarray, str]: Coordinate distances and the new scale
 
         Raises:
             ValueError: On invalid scale argument

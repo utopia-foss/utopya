@@ -52,7 +52,6 @@ def is_operation(arg: Union[str, Callable] = None, /, **kws):
         from dantro.data_ops.db import _OPERATIONS
         assert "my_operation" in _OPERATIONS
         assert "op_with_custom_name" in _OPERATIONS
-        assert _OPERATIONS["op_with_custom_name"] is yet_some_other_operation
 
     Args:
         arg (Union[str, Callable], optional): The name that should be used in

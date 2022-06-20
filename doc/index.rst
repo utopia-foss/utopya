@@ -35,6 +35,11 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     Repository <https://gitlab.com/utopia-project/utopya>
     Utopia Project <https://utopia-project.org/>
 
+.. toctree::
+    :hidden:
+
+    _to_do
+
 .. TODO add how-to-cite
 
 .. toctree::

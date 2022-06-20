@@ -38,12 +38,16 @@ class Multiverse:
     It spawns multiple universes, each of which represents a single simulation
     of the selected model with the parameters specified by the meta
     configuration.
-
     The :py:class:`~utopya.workermanager.WorkerManager` takes care to perform
-    these simulations in parallel, the
-    :py:class:`~utopya.datamanager.DataManager` allows loading the created
-    data, and the :py:class:`~utopya.plotting.PlotManager` handles plotting of
-    that data.
+    these simulations in parallel.
+
+    The :py:class:`.Multiverse` then interfaces with the :py:mod:`dantro` data
+    processing pipeline using classes specialized in :py:mod:`utopya.eval`:
+    The :py:class:`~utopya.eval.datamanager.DataManager` loads the created
+    simulation output, making it available in a uniformly accessible and
+    hierarchical data tree.
+    Then, the :py:class:`~utopya.eval.plotmanager.PlotManager` handles
+    plotting of that data.
     """
 
     BASE_META_CFG_PATH = resource_filename("utopya", "cfg/base_cfg.yml")
@@ -57,7 +61,7 @@ class Multiverse:
 
     UTOPYA_BASE_PLOTS_PATH = resource_filename("utopya", "cfg/base_plots.yml")
     """Where the utopya base plots configuration can be found; this is passed
-    to the :py:class:`~utopya.plotting.PlotManager`.
+    to the :py:class:`~utopya.eval.plotmanager.PlotManager`.
     """
 
     def __init__(
@@ -932,21 +936,22 @@ class Multiverse:
         .. note::
 
             This method is separated from the regular backup method
-            :py:`~utopya.multiverse.Multiverse._perform_backup` because the
+            :py:meth:`._perform_backup` because the
             parameter space that is *used* during a simulation run may be a
             lower-dimensional version of the one the Multiverse was
             initialized with.
-            To that end, :py:`~utopya.multiverse.Multiverse.run` will invoke
-            this backup function again once the relevant information is fully
-            determined. This is important because it is needed to communicate
-            the correct information about the sweep to objects downstream in
-            the pipeline (e.g. :py:`~utopya.plotting.MultiversePlotCreator`).
+            To that end, :py:meth:`.run` will invoke this backup function
+            again once the relevant information is fully determined. This is
+            important because it is needed to communicate the correct
+            information about the sweep to objects downstream in the pipeline
+            (e.g. :py:class:`~utopya.eval.plotcreators.MultiversePlotCreator`).
 
         Args:
-            pspace (psp.ParamSpace): The ParamSpace object to save
+            pspace (paramspace.paramspace.ParamSpace): The ParamSpace object
+                to save as backup.
             filename (str, optional): The filename (without extension!) to use.
-                (Also used for the log message, with underscores changed to
-                spaces.)
+                (This is also used for the log message, with underscores
+                changed to spaces.)
             **info_kwargs: Additional kwargs that are to be stored in the meta-
                 data dict.
         """

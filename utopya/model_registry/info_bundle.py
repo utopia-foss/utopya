@@ -420,8 +420,8 @@ class ModelInfoBundle:
 
         Args:
             representer (ruamel.yaml.representer): The representer module
-            node (type(self)): The node to represent, i.e. an instance of this
-                class.
+            node (ModelInfoBundle): The node to represent, i.e. an instance of
+                this class.
 
         Returns:
             A YAML representation of the given instance of this class.

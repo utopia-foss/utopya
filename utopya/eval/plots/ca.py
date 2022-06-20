@@ -45,9 +45,9 @@ def imshow_hexagonal(
     """Display data as an image, i.e., on a 2D hexagonal grid.
 
     Args:
-        data (xr.DataArray): The array-like data to plot as image.
+        data (xarray.DataArray): The array-like data to plot as image.
         hlpr (PlotHelper): The plot helper.
-        colormap (str or mpl.colors.Colormap): The colormap to use.
+        colormap (str or matplotlib.colors.Colormap): The colormap to use.
 
     Returns:
         The RegularPolyCollection representing the hexgrid.
@@ -137,7 +137,7 @@ def _plot_ca_property(
     Args:
         prop_name (str): The property to plot
         hlpr (PlotHelper): Description
-        data (xr.DataArray): The array-like data to plot as image
+        data (xarray.DataArray): The array-like data to plot as image
         grid_structure (str, optional): Description
         default_imshow_kwargs (dict): Description
         cax: colorbar axis object
@@ -362,7 +362,7 @@ def caplot(
                     existing ``vmin`` and ``vmax`` arguments to imshow.
                 - ``**imshow_kwargs``: passed on to imshow invocation
 
-        from_dataset (xr.Dataset, optional): If given, will use this object
+        from_dataset (xarray.Dataset, optional): If given, will use this object
             instead of assembling a dataset from ``data`` and ``to_plot`` keys.
         frames (str, optional): Name of the animated dimension, typically the
             time dimension.
@@ -407,14 +407,15 @@ def caplot(
         return grid_structure
 
     def prepare_data(data: dict, *, prop_name: str) -> xr.DataArray:
-        """Prepares data for creating an xr.Dataset"""
+        """Prepares data for (later) creating an :py:class:`xarray.Dataset`"""
         d = data[prop_name]
         if isinstance(d, AbstractDataContainer):
             d = d.data
         return d
 
     def select_data(ds: xr.Dataset, name: str, isel: dict) -> xr.DataArray:
-        """Selects a slice of data for plotting using ``.isel``"""
+        """Selects a slice of data for plotting using
+        :py:meth:`~xarray.DataArray.isel` on the data variable ``name``."""
         return ds[name].isel(isel)
 
     def set_suptitle(data: xr.DataArray):
@@ -656,7 +657,7 @@ def state(
     Args:
         dm (DataManager): The DataManager that holds all loaded data
         uni (UniverseGroup): The currently selected universe, parsed by the
-            `UniversePlotCreator`.
+            :py:class:`~utopya.eval.plotcreators.UniversePlotCreator`.
         hlpr (PlotHelper): The plot helper
         model_name (str): The name of the model of which the data is to be
             plotted

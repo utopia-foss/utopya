@@ -28,10 +28,10 @@ def _condense_thresh_func(
     *, level: int, num_items: int, total_item_count: int
 ) -> int:
     """Dynamically computes the condensation threshold for the current
-    element in a :py:class:`~utopya.datamanager.DataManager` tree.
+    element in a :py:class:`~utopya.eval.datamanager.DataManager` tree.
     """
     # For high item counts, always condense
-    if total_item_count > 100:  # NOTE This is along one recursion branch!
+    if total_item_count > 100:  # NOTE This is along *one* recursion branch!
         return 7  # shows first three and last three
 
     # Now, distinguish by level
@@ -92,10 +92,10 @@ class DataManager(
     """The mapping of different content values to a data container types"""
 
     _COND_TREE_MAX_LEVEL = 10
-    """Condensed tree representation: maximum level"""
+    """Condensed tree representation maximum level"""
 
     _COND_TREE_CONDENSE_THRESH = lambda _, **kws: _condense_thresh_func(**kws)
-    """Condensed tree representation: threshold parameter"""
+    """Condensed tree representation threshold parameter"""
 
     _DEFAULT_TREE_CACHE_PATH = "data/.tree_cache.d3"
     """Where the tree cache file is to be stored; may be overwritten by a

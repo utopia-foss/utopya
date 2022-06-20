@@ -1,4 +1,5 @@
-"""Provides the Model class to work interactively with Utopia models"""
+"""Provides the :py:class:`.Model` to work interactively with registered
+utopya models"""
 
 import glob
 import logging
@@ -217,7 +218,7 @@ class Model:
         use_tmpdir: bool = None,
         **update_meta_cfg,
     ) -> Multiverse:
-        """Creates a :class:`utopya.multiverse.Multiverse` for this model,
+        """Creates a :py:class:`utopya.multiverse.Multiverse` for this model,
         optionally loading a configuration from a file and updating it with
         further keys.
 
@@ -305,13 +306,14 @@ class Model:
         return mv
 
     def create_frozen_mv(self, **fmv_kwargs) -> FrozenMultiverse:
-        """Create a :class:`utopya.multiverse.FrozenMultiverse`, coupling it
+        """Create a :py:class:`utopya.multiverse.FrozenMultiverse`, coupling it
         to a run directory.
 
-        Use this method if you want to load an existing simulation run.
+        Use this method if you want to load an *existing* simulation run.
 
         Args:
-            **fmv_kwargs: Passed on to FrozenMultiverse.__init__
+            **fmv_kwargs: Passed on to
+                :py:meth:`utopya.multiverse.FrozenMultiverse.__init__`
         """
         mv = FrozenMultiverse(model_name=self.name, **fmv_kwargs)
         self._store_mv(mv)
@@ -328,8 +330,9 @@ class Model:
         print_tree: bool = True,
         **update_meta_cfg,
     ) -> Tuple[Multiverse, DataManager]:
-        """Chains the create_mv, mv.run, and mv.dm.load_from_cfg
-        methods together and returns a (Multiverse, DataManager) tuple.
+        """Chains the :py:meth:`.create_mv`, ``mv.run``, and
+        ``mv.dm.load_from_cfg`` methods calls together and returns a
+        ``(Multiverse, DataManager)`` tuple.
 
         Args:
             from_cfg (str, optional): The name of the config file (relative to
@@ -347,7 +350,8 @@ class Model:
             **update_meta_cfg: Arguments passed to the create_mv function
 
         Returns:
-            Tuple[Multiverse, DataManager]:
+            Tuple[Multiverse, DataManager]: The created Multiverse and the
+                corresponding DataManager (with data already loaded).
         """
         mv = self.create_mv(
             from_cfg=from_cfg,

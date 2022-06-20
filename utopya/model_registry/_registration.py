@@ -39,7 +39,7 @@ def register_models_from_list(
             directories
         exists_action (str, optional): Action to take upon existing label
         project_name (str, optional): The associated project name
-        _log (TYPE, optional): A logger-like object
+        _log (logging.Logger, optional): A logger-like object
         **shared_bundle_kwargs: passed on to bundle creation
     """
 

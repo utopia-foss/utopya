@@ -24,7 +24,7 @@ import utopya.eval.plots._attractor as utdp
 from ...tools import recursive_update
 from .. import DataManager, UniverseGroup
 from . import MultiversePlotCreator, PlotHelper, is_plot_func
-from ._mpl_helpers import HandlerEllipse
+from ._mpl import HandlerEllipse
 from ._utils import calc_pxmap_rectangles
 
 log = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def bifurcation_diagram(
         dm (DataManager): The data manager from which to retrieve the data
         hlpr (PlotHelper): The PlotHelper that instantiates the figure and
             takes care of plot aesthetics (labels, title, ...) and saving
-        mv_data (xr.Dataset): The extracted multidimensional dataset
+        mv_data (xarray.Dataset): The extracted multidimensional dataset
         dim (str, optional): The required parameter dimension of the 1d
             bifurcation diagram.
         dims (str, optional): The required parameter dimensions (x, y) of the
@@ -102,7 +102,7 @@ def bifurcation_diagram(
             - plot_coords_kwargs (dict): Passed to ax.scatter to mark the
                 universe's center in the bifurcation diagram
             - rectangle_map_kwargs (dict): Passed to
-                utopya.plot_funcs._utils.calc_pxmap_rectangles
+                utopya.eval.plots._utils.calc_pxmap_rectangles
             - legend_kwargs (dict): Passed to ax.legend
     """
 
@@ -233,7 +233,7 @@ def bifurcation_diagram(
         """Perform the sequence of analysis steps until the first conclusive.
 
         Args:
-            data (xr.Dataset): The data to analyse.
+            data (xarray.Dataset): The data to analyse.
             analysis_steps (Sequence[Union[str, Tuple[str, str]]]): The analysis steps that are to be made until one is conclusive.
                 Applied per universe.
             analysis_funcs (dict): The entries need to match the
@@ -244,7 +244,7 @@ def bifurcation_diagram(
 
         Returns:
             analysis_key (str): The key of the conclusive analysis step.
-            attractor (xr.Dataset): The data corresponding to this analysis.
+            attractor (xarray.Dataset): The data corresponding to this analysis.
         """
         for analysis_key, analysis_func in analysis_steps:
             analysis_func_kwargs = analysis_kwargs.get(analysis_func, {})
@@ -275,7 +275,7 @@ def bifurcation_diagram(
 
         Args:
             coord (dict): The bifurcation parameter's coordinate
-            rectangles (xr.Dataset): The rectangles that cover the 2D space
+            rectangles (xarray.Dataset): The rectangles that cover the 2D space
                 spanned by the coordiantes. The `coord` should be one entry of
                 rectangles.coords.
 
@@ -316,7 +316,7 @@ def bifurcation_diagram(
 
         Args:
             attractor_key (str): Key according to which to decode the attractor
-            attractor (xr.Dataset): The Dataset with the encoded attractor
+            attractor (xarray.Dataset): The Dataset with the encoded attractor
                 information. See possible encodings
             vis_patches (dict): The map of attractor_key to
                 List[Rectangle] where to append the new patch
@@ -374,7 +374,7 @@ def bifurcation_diagram(
 
         Args:
             attractor_key (str): Key according to which to decode the attractor
-            attractor (xr.Dataset): The Dataset with the encoded attractor
+            attractor (xarray.Dataset): The Dataset with the encoded attractor
                 information. See possible encodings
             coord (float, optional): The bifurcation parameter's coordinate,
                 if None its derived from the attractors coordinates
@@ -383,24 +383,27 @@ def bifurcation_diagram(
             plot_kwargs (dict, optional): The kwargs used to specify ax.scatter
                 where the entries match the attractor.data_vars
 
-        Possible encodings, i.e. values for ``attractor_key``:
-            ``fixpoint``: xr.Dataset with dimensions ()
-            ``scatter``: xr.Dataset with dimensions (time: >=1)
-            ``multistability``: xr.Dataset with dimensions
-                (<initial_state>: >= 1)
-            ``oscillation``: xr.Dataset with dimensions (osc: 2), the minimum
-                and maximum
+        Possible encodings, i.e. values for ``attractor_key`` (of type
+        :py:class:`xarray.Dataset` or a compatible type):
 
-        NOTE the attractor must contain the bifurcation parameter coordinate
+            - ``fixpoint``: dataset with dimensions ``()``
+            - ``scatter``: dataset with dimensions ``(time: >=1)``
+            - ``multistability``: dataset with dimensions
+                ``(<initial_state>: >= 1)``
+            - ``oscillation``: dataset with dimensions ``(osc: 2)``, the
+                minimum and maximum
+
+        .. note::
+
+            The attractor must contain the bifurcation parameter coordinate
 
         Raises:
-            KeyError: Unknown attractor_key
-            KeyError: No bifurcation coordinate received
+            KeyError: Unknown ``attractor_key`` or no bifurcation coordinate
             ValueError: Attractor encoding mismatched with the given
-                attractor_key
+                ``attractor_key``
 
         Returns:
-            scatter_kwargs: The new list of scatter datasets
+            dict: The new list of scatter datasets
         """
         # Get the bifurcation parameter coordinate
         if not coord:
@@ -476,6 +479,11 @@ def bifurcation_diagram(
     ) -> tuple:
         """A mock analysis function to plot all times larger than a spin
         up time.
+
+        Args:
+            data (xarray.Dataset): The dataset to analyse
+            spin_up_time (int, optional): The spin-up-time
+            **kwargs: Ignored
         """
         return True, data.where(data.time >= spin_up_time, drop=True)
 

@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.legend_handler import HandlerPatch
 
-# Get a logger
 log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
@@ -24,8 +23,7 @@ NORMS = {
     "SymLogNorm": mpl.colors.SymLogNorm,
     "TwoSlopeNorm": mpl.colors.TwoSlopeNorm,
 }
-"""matplotlib color normalizations supported by the
-:py:class:`~utopya.plot_funcs._mpl.ColorManager`
+"""matplotlib color normalizations supported by the :py:class:`.ColorManager`.
 """
 
 # -----------------------------------------------------------------------------
@@ -33,6 +31,9 @@ NORMS = {
 
 class HandlerEllipse(HandlerPatch):
     """Custom legend handler to turn an ellipse handle into a legend key."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def create_artists(
         self,
@@ -60,7 +61,8 @@ class HandlerEllipse(HandlerPatch):
 
 class ColorManager:
     """Custom color manager which provides an interface to the
-    ``matplotlib.colors`` module.
+    :py:mod:`matplotlib.colors` module and aims to simplify working with
+    colormaps, colorbars, and different normalizations.
     """
 
     def __init__(
@@ -72,11 +74,11 @@ class ColorManager:
         vmin: float = None,
         vmax: float = None,
     ):
-        """Initializes the ``ColorManager`` by building the colormap, the norm,
-        and the colorbar labels.
+        """Initializes a :py:class:`.ColorManager` by building the colormap,
+        the norm, and the colorbar labels.
 
         Args:
-            cmap (Union[str, dict, mpl.colors.Colormap], optional):
+            cmap (Union[str, dict, matplotlib.colors.Colormap], optional):
                 The colormap. If it is a string, it must name a registered
                 colormap. If it is a dict, the following arguments are
                 available:
@@ -87,7 +89,7 @@ class ColorManager:
                     Dict of colors keyed by bin-specifier. If given, ``name``
                     is ignored and a discrete colormap is created from the list
                     of specified colors. The ``norm`` is then set to
-                    ``BoundaryNorm``.
+                    :py:class:`matplotlib.colors.BoundaryNorm`.
 
                     The bins can be specified either by bin-centers (Scalar) or
                     by bin-intervals (2-tuples). For the former, the deduced
@@ -97,26 +99,24 @@ class ColorManager:
 
                     If a list of colors is passed they are automatically
                     assigned to the bin-centers ``[0, 1, 2, ...]``.
-                under (Union[str, dict], optional):
-                    Passed on to
-                    `Colormap.set_under <https://matplotlib.org/api/_as_gen/matplotlib.colors.Colormap.html#matplotlib.colors.Colormap.set_under>`__.
-                over (Union[str, dict], optional):
-                    Passed on to
-                    `Colormap.set_over <https://matplotlib.org/api/_as_gen/matplotlib.colors.Colormap.html#matplotlib.colors.Colormap.set_over>`__.
-                bad (Union[str, dict], optional):
-                    Passed on to
-                    `Colormap.set_bad <https://matplotlib.org/api/_as_gen/matplotlib.colors.Colormap.html#matplotlib.colors.Colormap.set_bad>`__.
+                under (Union[str, dict], optional): Passed on to
+                    :py:meth:`matplotlib.colors.Colormap.set_under`
+                over (Union[str, dict], optional): Passed on to
+                    :py:meth:`matplotlib.colors.Colormap.set_over`
+                bad (Union[str, dict], optional): Passed on to
+                    :py:meth:`matplotlib.colors.Colormap.set_bad`
                 placeholder_color (optional): ``None`` values in
                     ``from_values`` are replaced with this color
                     (default: white).
 
-            norm (Union[str, dict, mpl.colors.Normalize], optional):
+            norm (Union[str, dict, matplotlib.colors.Normalize], optional):
                 The norm that is applied for the color-mapping. If it is a
-                string, the matching norm in `matplotlib.colors <https://matplotlib.org/api/colors_api.html>`__
-                is created with default values. If it is a dict, the ``name``
-                entry specifies the norm and all further entries are passed to
-                its constructor. Overwritten if a discrete colormap is
-                specified via ``cmap.from_values``.
+                string, the matching norm in :py:mod:`matplotlib.colors`
+                is created with default values.
+                If it is a dict, the ``name`` entry specifies the norm and all
+                further entries are passed to its constructor.
+                Overwritten if a discrete colormap is specified via
+                ``cmap.from_values``.
             labels (Union[dict, list], optional): Colorbar tick-labels keyed by
                 tick position. If a list of labels is passed they are
                 automatically assigned to the positions [0, 1, 2, ...].
@@ -369,11 +369,11 @@ class ColorManager:
 
         return NORMS[name](**norm_kwargs)
 
-    def map_to_color(self, X):
+    def map_to_color(self, X: Union[float, np.ndarray]):
         """Maps the input data to color(s) by applying both norm and colormap.
 
         Args:
-            X (Union[scalar, ndarray]): The data value(s) to convert to RGBA.
+            X (Union[float, numpy.ndarray]): Data value(s) to convert to RGBA.
 
         Returns:
             Tuple of RGBA values if X is scalar, otherwise an array of RGBA
@@ -401,15 +401,13 @@ class ColorManager:
             ax (None, optional): The axis
             label (str, optional): A label for the colorbar
             label_kwargs (dict, optional): Additional parameters passed to
-                `cb.set_label <https://matplotlib.org/stable/api/colorbar_api.html#matplotlib.colorbar.ColorbarBase.set_label>`__.
+                :py:meth:`matplotlib.colorbar.Colorbar.set_label`
             tick_params (dict, optional): Set colorbar tick parameters via
                 `cb.ax.tick_params <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.tick_params.html>`__
-            **cbar_kwargs: Passed on to
-                `fig.colorbar <https://matplotlib.org/api/_as_gen/matplotlib.pyplot.colorbar.html>`__.
-            tick_params
+            **cbar_kwargs: Passed on to :py:func:`matplotlib.pyplot.colorbar`
 
         Returns:
-            The created colorbar.
+            The created :py:class:`matplotlib.colorbar.Colorbar` object
         """
         if fig is None:
             fig = plt.gcf()

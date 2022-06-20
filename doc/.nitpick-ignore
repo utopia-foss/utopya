@@ -20,10 +20,15 @@ py:class optional
 
 # -- Python builtin types --
 # ... that cannot be referenced (for whatever reason)
-py:class collections._Link
-py:class weakref
+py:class module
+py:class ModuleType
 
 # -- third-party packages --
+py:class xarray.core.dataarray.DataArray
+py:class xarray.core.dataset.Dataset
+
+
+# -- first-party packages --
 # ...
 
 
@@ -40,3 +45,10 @@ py:class weakref
 #
 # NOTE That the regex pattern needs to match the whole string, as if ^ and $
 #      would be inserted.
+
+# From pydantic and ruamel.yaml (missing from intersphinx)
+re: py:class pydantic..*
+re: py:class ruamel..*
+
+# From inherited code that uses `:` in places that are mis-interpreted
+# ...

@@ -147,7 +147,7 @@ autodoc_default_options = {
     "member-order": "bysource",
     "undoc-members": True,
     "private-members": True,
-    "inherited-members": True,
+    "inherited-members": False,  # get unresolvable references otherwise
 }
 
 
@@ -348,7 +348,10 @@ intersphinx_mapping = {
     "sympy":        ("https://docs.sympy.org/latest/", None),
     "dill":         ("https://dill.readthedocs.io/en/latest/", None),
     "pytest":       ("https://pytest.org/en/stable/", None),
-    # "ruamel.yaml":  ("https://yaml.readthedocs.io/en/latest/", None),# broken
+    #
+    # Broken:
+    # "pydantic":     ("https://pydantic-docs.helpmanual.io/", None),
+    # "ruamel.yaml":  ("https://yaml.readthedocs.io/en/latest/", None),
 }
 # fmt: on
 

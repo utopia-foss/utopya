@@ -1,4 +1,7 @@
-"""This module provides graph plotting functions."""
+"""This module provides graph plotting functions.
+
+.. default-domain:: utopya.eval.plots
+"""
 
 import copy
 import logging
@@ -24,7 +27,7 @@ log = logging.getLogger(__name__)
 
 
 def graph_array_from_group(
-    graph_group,
+    graph_group: "utopya.eval.groups.GraphGroup",
     *,
     graph_creation: dict = None,
     register_property_maps: dict = None,
@@ -33,27 +36,32 @@ def graph_array_from_group(
     sel: dict = None,
     isel: dict = None,
 ) -> xr.DataArray:
-    """From a ``GraphGroup`` creates a DataArray containing the networkx graphs
-    created from the graph group at the specified points in the group's
-    coordinate space.
+    """From a :py:class:`utopya.eval.groups.GraphGroup` creates a
+    :py:class:`xarray.DataArray` with ``object`` dtype, containing the
+    :py:class:`networkx.Graph` objects created from the graph group at the
+    specified points in the group's coordinate space.
 
     From all coordinates provided via the selection kwargs the cartesian
     product is taken. Each of those points represents one entry in the returned
-    DataArray. The selection kwargs in ``graph_creation`` are ignored silently.
+    :py:class:`xarray.DataArray`.
+    The selection kwargs in ``graph_creation`` are ignored silently.
 
     Args:
-        graph_group: The graph group
+        graph_group (utopya.eval.groups.GraphGroup): The graph group to create
+            the graph array from
         graph_creation (dict, optional): Graph creation configuration
         register_property_maps (dict, optional): Property maps to be registered
             before graph creation
         clear_existing_property_maps (bool, optional): Whether to remove any
             existing property map at first
-        times (dict, optional): *Deprecated*: Equivalent to a sel.time entry
+        times (dict, optional): Equivalent to a ``sel.time`` entry.
+            (**Deprecated!**)
         sel (dict, optional): Select by value
         isel (dict, optional): Select by index
 
     Returns:
-        xr.DataArray: networkx graphs with the respective graph group coordinates
+        xarray.DataArray: :py:class:`networkx.Graph` with the respective graph
+            group coordinates
     """
     # Remove all selection kwargs from the configuration
     graph_creation = (
@@ -179,19 +187,19 @@ def graph_animation_update(
 
     Args:
         hlpr (PlotHelper): The plot helper
-        graphs (xr.DataArray, optional): Networkx graphs to draw. The array
+        graphs (xarray.DataArray, optional): Networkx graphs to draw. The array
             will be flattened beforehand.
         graph_group (None, optional): Required if ``graphs`` is None. The
             GraphGroup from which to generate the animation frames as specified
             via sel and isel in ``animation_kwargs``.
         graph_creation (dict, optional): Graph creation configuration. Passed
-            to :py:meth:`~utopya.plot_funcs._graph.GraphPlot.create_graph_from_group`
+            to :py:meth:`~utopya.eval.plots._graph.GraphPlot.create_graph_from_group`
             if ``graph_group`` is given.
         register_property_maps (dict, optional): Passed to
-            :py:meth:`~utopya.plot_funcs._graph.GraphPlot.create_graph_from_group`
+            :py:meth:`~utopya.eval.plots._graph.GraphPlot.create_graph_from_group`
             if ``graph_group`` is given.
         clear_existing_property_maps (bool, optional): Passed to
-            :py:meth:`~utopya.plot_funcs._graph.GraphPlot.create_graph_from_group`
+            :py:meth:`~utopya.eval.plots._graph.GraphPlot.create_graph_from_group`
             if ``graph_group`` is given.
         positions (dict, optional): The node position configuration.
             If ``update_positions`` is True the positions are reconfigured for
@@ -200,7 +208,7 @@ def graph_animation_update(
             following arguments are allowed:
 
             times (dict, optional):
-                *Deprecated*: Equivaluent to a sel.time entry.
+                *Deprecated*: Equivaluent to a ``sel.time`` entry.
             sel (dict, optional):
                 Select by value. Coordinate values (or ``from_property`` entry)
                 keyed by dimension name.
@@ -212,7 +220,7 @@ def graph_animation_update(
                 (default=False).
             update_colormapping (bool, optional):
                 Whether to reconfigure the nodes' and edges'
-                :py:class:`~utopya.plot_funcs._mpl.ColorManager` for
+                :py:class:`~utopya.eval.plots._mpl.ColorManager` for
                 each frame (default=False). If False, the colormapping (and the
                 colorbar) is configured with the first frame and then fixed.
             skip_empty_frames (bool, optional):
@@ -220,14 +228,16 @@ def graph_animation_update(
                 or of a type different than ``nx.Graph`` (default=False).
                 If False, such frames are empty.
 
-        suptitle_kwargs (dict, optional): Passed on to the PlotHelper's
+        suptitle_kwargs (dict, optional): Passed on to the
+            :py:class:`~utopya.eval.plothelper.PlotHelper` and its
             ``set_suptitle`` helper function. Only used in animation mode.
             The ``title`` can be a format string containing a placeholder with
             the dimension name as key for each dimension along which selection
             is done. The format string is updated for each frame of the
             animation. The default is ``<dim-name> = {<dim-name>}`` for each
             dimension.
-        **drawing_kwargs: Passed to :py:class:`~utopya.plot_funcs._graph.GraphPlot`
+        **drawing_kwargs: Passed to
+            :py:class:`~utopya.eval.plots._graph.GraphPlot`
     """
     suptitle_kwargs = (
         copy.deepcopy(suptitle_kwargs) if suptitle_kwargs is not None else {}
@@ -377,9 +387,9 @@ def draw_graph(
     clear_existing_property_maps: bool = True,
     suptitle_kwargs: dict = None,
 ):
-    """Draws a graph either from a :py:class:`~utopya.datagroup.GraphGroup` or
-    directly from a ``networkx.Graph`` using the
-    :py:class:`~utopya.plot_funcs._graph.GraphPlot` class.
+    """Draws a graph either from a :py:class:`~utopya.eval.groups.GraphGroup`
+    or directly from a :py:class:`networkx.Graph` using the
+    :py:class:`~utopya.eval.plots._graph.GraphPlot` class.
 
     If the graph object is to be created from a graph group the latter needs to
     be selected via the TransformationDAG. Additional property maps can also be
@@ -389,37 +399,39 @@ def draw_graph(
     graphs via the ``graph`` argument.
 
     For more information on how to use the transformation framework, refer to
-    the `dantro documentation <https://dantro.readthedocs.io/en/stable/plotting/plot_data_selection.html>`_.
+    the `dantro documentation <https://dantro.readthedocs.io/en/stable/plotting/plot_data_selection.html>`_
+    and its :py:class:`~dantro.dag.TransformationDAG` class.
 
     For more information on how to configure the graph layout refer to the
-    :py:class:`~utopya.plot_funcs._graph.GraphPlot` documentation.
+    :py:class:`~utopya.eval.plots._graph.GraphPlot` documentation.
 
     Args:
         hlpr (PlotHelper): The PlotHelper instance for this plot
         data (dict): Data from TransformationDAG selection
         graph_group_tag (str, optional): The TransformationDAG tag of the graph
             group
-        graph (Union[nx.Graph, xr.DataArray], optional): If given, the ``data``
-            and ``graph_creation`` arguments are ignored and this graph is
-            drawn directly.
+        graph (Union[networkx.Graph, xarray.DataArray], optional): If given,
+            the ``data`` and ``graph_creation`` arguments are ignored and this
+            graph is drawn directly.
             If a DataArray of graphs is given, the first graph is drawn for a
             single graph plot. In animation mode the (flattened) array
             represents the animation frames.
         graph_creation (dict, optional): Configuration of the graph creation.
             Passed to ``GraphGroup.create_graph``.
         graph_drawing (dict, optional): Configuration of the graph layout.
-            Passed to :py:class:`~utopya.plot_funcs._graph.GraphPlot`.
+            Passed to :py:class:`~utopya.eval.plots._graph.GraphPlot`.
         graph_animation (dict, optional): Animation configuration. The
             following arguments are allowed:
 
             times (dict, optional):
-                *Deprecated*: Equivaluent to a sel.time entry.
+                *Deprecated*: Equivaluent to a ``sel.time`` entry.
             sel (dict, optional):
                 Select by value. Dictionary with dimension names as keys. The
                 values may either be coordinate values or a dict with a single
                 ``from_property`` (str) entry which specifies a container
-                withing the GraphGroup or registered external data from which
-                the coordinates are extracted.
+                within the :py:class:`~utopya.eval.groups.GraphGroup` or
+                registered external data from which the coordinates are
+                extracted.
             isel (dict, optional):
                 Select by index. Coordinate indices keyed by dimension. May be
                 given together with ``sel`` if no key appears in both.
@@ -431,24 +443,26 @@ def draw_graph(
                 fixed.
             update_colormapping (bool, optional):
                 Whether to reconfigure the nodes' and edges'
-                :py:class:`~utopya.plot_funcs._mpl.ColorManager` for
+                :py:class:`~utopya.eval.plots._mpl.ColorManager` for
                 each frame (default=False). If False, the colormapping (and the
                 colorbar) is configured with the first frame and then fixed.
             skip_empty_frames (bool, optional):
                 Whether to skip the frames where the selected graph is missing
-                or of a type different than ``nx.Graph`` (default=False).
-                If False, such frames are empty.
+                or of a type different than :py:class:`networkx.Graph`
+                (default=False). If False, such frames are empty.
 
         register_property_maps (Sequence[str], optional): Names of properties
             to be registered in the graph group before the graph creation.
             The property names must be valid TransformationDAG tags, i.e., be
             available in ``data``. Note that the tags may not conflict with any
-            valid path reachable from inside the selected ``GraphGroup``.
+            valid path reachable from inside the selected
+            :py:class:`~utopya.eval.groups.GraphGroup`.
         clear_existing_property_maps (bool, optional): Whether to clear any
-            existing property maps from the selected ``GraphGroup``. This is
-            enabled by default to reduce side effects from previous plots.
-            Set this to False if you have property maps registered with the
-            GraphGroup that you would like to keep.
+            existing property maps from the selected
+            :py:class:`~utopya.eval.groups.GraphGroup`. This is enabled by
+            default to reduce side effects from previous plots. Set this to
+            False if you have property maps registered with the GraphGroup
+            that you would like to keep.
         suptitle_kwargs (dict, optional): Passed on to the PlotHelper's
             ``set_suptitle`` helper function. Only used in animation mode.
             The ``title`` can be a format string containing a placeholder with
@@ -458,7 +472,8 @@ def draw_graph(
             dimension.
 
     Raises:
-        ValueError: On invalid or non-computed TransformationDAG tags in
+        ValueError: On invalid or non-computed
+            :py:class:`~dantro.dag.TransformationDAG` tags in
             ``register_property_maps`` or invalid graph group tag.
     """
     # Work on a copy such that the original configuration is not modified
@@ -548,7 +563,7 @@ def draw_graph(
 
         def update():
             """The animation frames generator.
-            See :py:meth:`~utopya.plot_funcs.dag.graph.graph_animation_update`.
+            See :py:meth:`~utopya.eval.plots.dag.graph.graph_animation_update`.
             """
             if graph_group is None and not isinstance(graph, xr.DataArray):
                 raise TypeError(

@@ -1,4 +1,5 @@
-"""This module implements the ModelRegistry, which combines ModelRegistryEntry
+"""This module implements the :py:class:`.ModelRegistry`, which combines
+:py:class:`~utopya.model_registry.entry.ModelRegistryEntry`
 objects and makes it possible to register new models.
 """
 
@@ -40,14 +41,14 @@ class ModelRegistry:
 
     It provides a dict-like interface to access the stored registry entries
     under their model name.
-    Via :py:meth:`utopya.model_registry.registry.register_model_info``, a
-    model can be registered and information can be added to it.
+    Via :py:meth:`.register_model_info`, a model can be registered and
+    information can be added to it.
 
     Additionally, there are some functions that provide an overview over the
     registered models and the known information about them.
     """
 
-    def __init__(self, UTOPYA_CFG_DIR_path: str = UTOPYA_CFG_DIR):
+    def __init__(self, utopya_cfg_dir_path: str = None):
         """Loads the utopya model registry from the configuration at the given
         path.
 
@@ -56,7 +57,11 @@ class ModelRegistry:
                 registry folder in.
         """
         self._paths = dict()
-        self._paths["utopya_cfg"] = UTOPYA_CFG_DIR_path
+        self._paths["utopya_cfg"] = (
+            utopya_cfg_dir_path
+            if utopya_cfg_dir_path is not None
+            else UTOPYA_CFG_DIR
+        )
         self._paths["registry"] = os.path.join(
             self._paths["utopya_cfg"], "models"
         )
@@ -95,6 +100,7 @@ class ModelRegistry:
 
     @property
     def info_str(self) -> str:
+        """Returns a multi-line info string showing all registered models"""
         lines = []
         lines.append(
             "utopya model registry ({} model{} registered)"
@@ -109,6 +115,8 @@ class ModelRegistry:
 
     @property
     def info_str_detailed(self) -> str:
+        """Returns a multi-line info string showing all registered models
+        with additional details."""
         lines = []
         lines.append(
             "utopya model registry ({} model{} registered)"
@@ -233,13 +241,13 @@ class ModelRegistry:
     # Helpers .................................................................
 
     def _add_entry(self, model_name: str) -> ModelRegistryEntry:
-        """Create a ModelRegistryEntry for the given model, which loads the
-        associated data from the registry directory, and store it in the
-        registry.
+        """Create a :py:class:`~utopya.model_registry.entry.ModelRegistryEntry`
+        object for the given model, which loads the associated data from the
+        registry directory, and store it here in the registry.
 
         Args:
             model_name (str): Model name for which to add the
-                :py:class:`utopya.model_registry.entry.`ModelRegistryEntry`
+                :py:class:`utopya.model_registry.entry.ModelRegistryEntry`
                 object.
 
         Raises:
