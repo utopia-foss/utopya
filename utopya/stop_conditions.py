@@ -13,7 +13,7 @@ import time
 import warnings
 from typing import Callable, Dict, List, Set, Tuple, Union
 
-from dantro.utils.data_ops import BOOLEAN_OPERATORS as _OPERATORS
+from dantro.data_ops.db import BOOLEAN_OPERATORS as _OPERATORS
 from paramspace.tools import recursive_getitem as _recursive_getitem
 
 log = logging.getLogger(__name__)

@@ -12,13 +12,17 @@ import sys
 from typing import Union
 
 import dantro
-import dantro.plot_creators
+import dantro.plot.creators
+import dantro.plot.utils
 import dantro.plot_mngr
 
-from .._import_tools import temporary_sys_modules as _tmp_sys_modules
-from .._import_tools import temporary_sys_path as _tmp_sys_path
 from ..model_registry import ModelInfoBundle
-from .plotcreators import MultiversePlotCreator, UniversePlotCreator
+from ._plot_func_resolver import PlotFuncResolver
+from .plotcreators import (
+    MultiversePlotCreator,
+    PyPlotCreator,
+    UniversePlotCreator,
+)
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +37,9 @@ class PlotManager(dantro.plot_mngr.PlotManager):
     """
 
     CREATORS = dict(
+        base=dantro.plot.creators.BasePlotCreator,
+        external=PyPlotCreator,
+        pyplot=PyPlotCreator,
         universe=UniversePlotCreator,
         multiverse=MultiversePlotCreator,
     )
@@ -40,6 +47,11 @@ class PlotManager(dantro.plot_mngr.PlotManager):
 
     MODEL_PLOTS_MODULE_NAME = "model_plots"
     """Name under which the model-specific plots are made importable"""
+
+    PLOT_FUNC_RESOLVER: type = PlotFuncResolver
+    """The custom plot function resolver type to use."""
+
+    # .........................................................................
 
     def __init__(
         self, *args, _model_info_bundle: ModelInfoBundle = None, **kwargs
@@ -89,21 +101,45 @@ class PlotManager(dantro.plot_mngr.PlotManager):
 
         return super().plot_from_cfg(*args, plots_cfg=plots_cfg, **kwargs)
 
+    def _get_plot_func_resolver(self, **init_kwargs) -> PlotFuncResolver:
+        """Instantiates the plot function resolver object.
+
+        Additionally attaches the model info bundle to the resolver, such that
+        it can use that information for plot function lookup.
+        """
+        return self.PLOT_FUNC_RESOLVER(
+            **init_kwargs, _model_info_bundle=self._model_info_bundle
+        )
+
     def _get_plot_creator(self, *args, **kwargs):
-        """Before actually retrieving the plot creator, pre-loads the model-,
-        project-, and framework-specific plot function modules.
+        """Before actually retrieving the plot creator, invokes module
+        pre-loading via :py:meth:`.preload_modules`.
+        """
+        self._preload_modules()
+
+        creator = super()._get_plot_creator(*args, **kwargs)
+        creator._model_info_bundle = copy.deepcopy(self._model_info_bundle)
+
+        return creator
+
+    def _preload_modules(self):
+        """Pre-loads the model-, project-, and framework-specific plot
+        function modules.
         This allows to execute code (like registering model-specific dantro
         data operations) and have them available prior to the invocation of
         the creator and independently from the module that contains the plot
         function (which may be part of dantro, for instance).
         """
+
         from .._import_tools import import_module_from_path
 
         mib = self._model_info_bundle
 
         if mib is not None:
+            log.note("Pre-loading plot modules ...")
             mod_path = mib.paths.get("py_plots_dir")
             if mod_path:
+                log.remark("  Loading model-specific modules ...")
                 import_module_from_path(
                     mod_path=mod_path,
                     mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}.{mib.model_name}",
@@ -114,6 +150,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             # TODO Should make module name configurable separately! See #9
             project = mib.project
             if project and project.paths.py_plots_dir:
+                log.remark("  Loading project-specific modules ...")
                 import_module_from_path(
                     mod_path=project.paths.py_plots_dir,
                     mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
@@ -123,14 +160,9 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             if project and project.framework_project:
                 fw = project.framework_project
                 if fw and fw.paths.py_plots_dir:
+                    log.remark("  Loading framework-specific modules ...")
                     import_module_from_path(
                         mod_path=fw.paths.py_plots_dir,
                         mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
                         debug=self.raise_exc,
                     )
-
-        # Now create the actual plot creator and attach some additional info
-        creator = super()._get_plot_creator(*args, **kwargs)
-        creator._model_info_bundle = copy.deepcopy(mib)
-
-        return creator

@@ -2,7 +2,8 @@
 
 from setuptools import find_packages, setup
 
-# Dependency lists
+# .. Dependency lists .........................................................
+
 INSTALL_DEPS = [
     "numpy>=1.21",
     "scipy>=1.7.3",
@@ -16,11 +17,9 @@ INSTALL_DEPS = [
     #
     # related to utopya:
     "paramspace>=2.5.9",
-    "dantro>=0.17.2",
+    "dantro>=0.18.0a10",
 ]
-# NOTE When changing any of the dependencies, make sure to update the table of
-#      dependencies in README.md.
-#      When adding a NEW dependency, make sure to denote it in the isort
+# NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
 
 # Dependencies for running tests and general development of dantro
@@ -37,6 +36,8 @@ DOC_DEPS = [
     "ipython>=7.0",
 ]
 
+
+# .. Description ..............................................................
 
 DESCRIPTION = "A simulation management and evaluation framework"
 LONG_DESCRIPTION = """

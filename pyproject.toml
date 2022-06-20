@@ -1,5 +1,28 @@
 # utopya project configuration
 # ============================
+# pytest-cov / coverage.py ....................................................
+# Configuration for pytest-cov coverage reports
+# For syntax, see here: https://coverage.readthedocs.io/en/latest/config.html
+
+[tool.coverage.run]
+# For a cobertura-compatible coverage report (relevant for CI), need relative
+# file paths (and omit some files, see report section)
+relative_files = true
+
+
+[tool.coverage.report]
+# Increase precision (from default 0) to be able to discern changes
+precision = 2
+
+# Sort by number of lines that are _not_ covered
+sort = "Miss"
+
+# Omit files that should not be part of the report
+omit = [
+    "tests/*",
+    "doc/*",
+    "setup.py",
+]
 
 # isort configuration .........................................................
 [tool.isort]
