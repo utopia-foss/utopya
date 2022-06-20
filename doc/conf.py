@@ -51,7 +51,7 @@ def run_apidoc(_):
 
     argv = [
         "--force",
-        "--separate",
+        # "--separate",
         "--private",
         "--module-first",
         "--no-toc",
@@ -66,7 +66,7 @@ def run_apidoc(_):
 
 
 def setup(app):
-    """A custom sphinx setup function, invoking run_apidoc"""
+    """A custom sphinx setup function, attaching to sphinx hooks"""
     app.connect("builder-inited", run_apidoc)
 
 
@@ -87,20 +87,26 @@ release = find_version("..", "utopya", "__init__.py")
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-needs_sphinx = "4.4"
+needs_sphinx = "4.5"
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autodoc.typehints",
+    "sphinx.ext.intersphinx",
     "sphinx.ext.todo",
+    "sphinx.ext.doctest",
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
-    ### Additional extensions...
+    #
+    # -- Additional extensions...
+    #
     #   ... to pre-process Google-style Python docstrings
     "sphinx.ext.napoleon",
+    #
     #   ... to have the IPython directive available for code examples
     "IPython.sphinxext.ipython_console_highlighting",
     "IPython.sphinxext.ipython_directive",
@@ -133,7 +139,9 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
-# Configure autodoc
+
+# -- Configuration for API reference generation -------------------------------
+
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
@@ -305,6 +313,44 @@ napoleon_include_special_with_doc = True
 
 # NOTE Using default values.
 
+
+# -- Intersphinx --------------------------------------------------------------
+
+# Mappings can be looked up from the following GitHub gist:
+#   https://gist.github.com/bskinn/0e164963428d4b51017cebdb6cda5209
+#
+# Further documentation:
+#   https://docs.readthedocs.io/en/stable/guides/intersphinx.html
+#   https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
+#
+# In case reference targeting fails, consider using the sphobjinv package
+#   https://github.com/bskinn/sphobjinv
+
+# fmt: off
+intersphinx_mapping = {
+    #
+    # First-party docs:
+    "paramspace":   ("https://paramspace.readthedocs.io/en/latest/", None),
+    "dantro":       ("https://dantro.readthedocs.io/en/latest/", None),
+    #
+    # Third-party docs
+    "python":       ("https://docs.python.org/3/", None),
+    "sphinx":       ("https://www.sphinx-doc.org/en/master/", None),
+    "h5py":         ("https://docs.h5py.org/en/latest/", None),
+    "matplotlib":   ("https://matplotlib.org/stable/", None),
+    "seaborn":      ("https://seaborn.pydata.org", None),
+    "numpy":        ("https://numpy.org/doc/stable/", None),
+    "pandas":       ("https://pandas.pydata.org/docs/", None),
+    "scipy":        ("https://docs.scipy.org/doc/scipy/", None),
+    "xarray":       ("https://docs.xarray.dev/en/stable/", None),
+    "dask":         ("https://docs.dask.org/en/stable/", None),
+    "networkx":     ("https://networkx.org/documentation/stable/", None),
+    "sympy":        ("https://docs.sympy.org/latest/", None),
+    "dill":         ("https://dill.readthedocs.io/en/latest/", None),
+    "pytest":       ("https://pytest.org/en/stable/", None),
+    # "ruamel.yaml":  ("https://yaml.readthedocs.io/en/latest/", None),# broken
+}
+# fmt: on
 
 # -- Nitpicky Configuration ---------------------------------------------------
 
