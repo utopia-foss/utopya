@@ -10,7 +10,7 @@ from utopya.model_registry import BundleExistsError, ModelRegistryError
 from utopya.yaml import load_yml, write_yml, yaml
 
 from . import DEMO_DIR, TEST_PROJECT_NAME, get_cfg_fpath
-from ._fixtures import tmp_cfg_dir, tmp_model_registry, tmp_projects
+from ._fixtures import *
 
 TEST_CFG = load_yml(get_cfg_fpath("model_registry.yml"))
 
@@ -33,6 +33,12 @@ def mib_kwargs(**misc_metadata) -> dict:
         project_name=TEST_PROJECT_NAME,
         eval_after_run=None,
     )
+
+
+@pytest.fixture(autouse=True)
+def with_models(with_test_models):
+    """Use on all tests in this module"""
+    pass
 
 
 # Utilities module ------------------------------------------------------------

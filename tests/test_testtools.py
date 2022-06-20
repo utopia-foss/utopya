@@ -14,18 +14,14 @@ import utopya
 from utopya.cfg import load_from_cfg_dir, write_to_cfg_dir
 from utopya.testtools import ModelTest
 
-DUMMY_MODEL = "MinimalModel"
-"""Name of the model used for testing basic functionality"""
-
-ADVANCED_MODEL = "MinimalModel"  # FIXME "FullModel"
-"""Name of the model used for advanced functionality tests"""
+from . import ADVANCED_MODEL, DUMMY_MODEL
+from ._fixtures import *
 
 # Fixtures --------------------------------------------------------------------
-from ._fixtures import tmp_cfg_dir, tmp_projects
 
 
 @pytest.fixture(autouse=True)
-def register_demo_project(tmp_projects):
+def with_models(with_test_models):
     """Use on all tests in this module"""
     pass
 
