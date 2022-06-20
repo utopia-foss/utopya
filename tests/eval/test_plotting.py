@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import paramspace as psp
 import pytest
+from dantro.data_ops import available_operations
 from dantro.plot_mngr import PlotCreatorError
-from dantro.utils import available_operations
 
 from utopya import Multiverse
 from utopya._import_tools import temporary_sys_modules as tmp_sys_modules
@@ -51,6 +51,15 @@ GRAPH_RUN = get_cfg_fpath("graphgroup_cfg.yml")
 GRAPH_PLOTS = get_cfg_fpath("plots/graph_plot_cfg.yml")
 GRAPH_PLOT_CLS = get_cfg_fpath("graphplot_class_cfg.yml")
 
+
+# -----------------------------------------------------------------------------
+
+
+def remove_from_sys_modules(mod_start_string: str):
+    for modstr in [m for m in sys.modules if m.startswith(mod_start_string)]:
+        del sys.modules[modstr]
+
+
 # Fixtures --------------------------------------------------------------------
 from .._fixtures import *
 
@@ -63,11 +72,10 @@ def register_demo_project(tmp_projects, with_test_models):
 
 @pytest.fixture
 def without_cached_model_plots_modules():
-    remove_from_cache = [m for m in sys.modules if m.startswith("model_plots")]
-    for m in remove_from_cache:
-        del sys.modules[m]
+    remove_from_sys_modules("model_plots")
 
     assert "model_plots" not in sys.modules
+    assert not any([ms.startswith("model_plots") for ms in sys.modules])
 
 
 # -----------------------------------------------------------------------------
@@ -82,7 +90,7 @@ def test_dag_custom_operations(without_cached_model_plots_modules):
     op_name = "my_custom_data_operation"
 
     # Make sure the operation is not yet registered
-    OPERATIONS = dantro.utils.data_ops._OPERATIONS
+    OPERATIONS = dantro.data_ops._OPERATIONS
     if op_name in OPERATIONS:
         del OPERATIONS["my_custom_data_operation"]
 
@@ -108,7 +116,7 @@ def test_dag_custom_operations(without_cached_model_plots_modules):
         assert "my_custom_data_operation" in available_operations()
 
 
-def test_preloading(without_cached_model_plots_modules):
+def test_preloading(tmpdir, without_cached_model_plots_modules):
     """Tests the preloading feature of the utopya.PlotManager"""
     model_plot_modstr = f"model_plots.{ADVANCED_MODEL}"
     model_plot_name = "custom_plot"
@@ -136,8 +144,9 @@ def test_preloading(without_cached_model_plots_modules):
     mib = mv.pm._model_info_bundle
     mpd = os.path.dirname(os.path.dirname(mib.paths["py_plots_dir"]))
 
-    # Prepare the temporary sys.path corruption
-    bad_sys_path = "/"  # valid path, but nothing useful in there
+    # Prepare the temporary sys.path corruption, using a valid and existing
+    # path but without any content
+    bad_sys_path = str(tmpdir)
     mib.paths["py_plots_dir"] = bad_sys_path
 
     # Need to disassociate the project to not have the PlotManager load the
@@ -164,21 +173,29 @@ def test_preloading(without_cached_model_plots_modules):
     mv.renew_plot_manager(out_dir=f"session_3/", raise_exc=True)
     mv.pm._model_info_bundle = mib
 
-    with tmp_sys_path(bad_sys_path), tmp_sys_modules(), pytest.raises(
-        ImportError, match="Failed importing module"
-    ):
+    with tmp_sys_path(bad_sys_path), tmp_sys_modules():
+        assert mv.pm._model_info_bundle.paths["py_plots_dir"] == bad_sys_path
         assert "model_plots" not in sys.modules
         assert model_plot_modstr not in sys.modules
         assert mv.pm.raise_exc
 
-        # Remove the model plots directories from the path
-        sys.path = [p for p in sys.path if not p.startswith(mpd)]
+        remove_from_sys_modules("model_plots")
+        assert not any([ms.startswith("model_plots") for ms in sys.modules])
 
+        # This will pass, because import happens via the project's py_plots_dir
         mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
 
+        # But without the project (and also: without framework) it will fail
+        mv.pm._model_info_bundle._d["project_name"] = None
+        assert not mv.pm._model_info_bundle.project
+        remove_from_sys_modules("model_plots")
 
-def test_pcr_ext_extensions():
-    """Test the changes and extensions to the ExternalPlotCreator
+        with pytest.raises(ImportError, match="Could not import module"):
+            mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
+
+
+def test_plot_func_resolver_extensions():
+    """Test the changes and extensions to the plot function resolver.
 
     ... indirectly, using some other plot creator.
     """
@@ -205,7 +222,7 @@ def test_pcr_ext_extensions():
         )
 
     # Cannot do a custom plot with a bad relative module import
-    with pytest.raises(PlotCreatorError, match="ModuleNotFoundError"):
+    with pytest.raises(ModuleNotFoundError, match="Could not import"):
         mv.pm.plot(
             "test2",
             out_dir=mv.dirs["eval"],
@@ -216,7 +233,7 @@ def test_pcr_ext_extensions():
         )
 
     # How about absolute imports? Nope.
-    with pytest.raises(PlotCreatorError, match="No module named 'some'"):
+    with pytest.raises(ModuleNotFoundError, match="No module named 'some'"):
         mv.pm.plot(
             "test3",
             out_dir=mv.dirs["eval"],
@@ -228,7 +245,7 @@ def test_pcr_ext_extensions():
 
     # ... and when an import fails for a custom model plot module?
     with pytest.raises(
-        PlotCreatorError,
+        ModuleNotFoundError,
         match="_unrelated_ ModuleNotFoundError occurred somew",
     ):
         mv.pm.plot(

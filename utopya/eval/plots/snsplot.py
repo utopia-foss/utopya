@@ -8,7 +8,7 @@ import pandas as pd
 import seaborn as sns
 import xarray as xr
 from dantro.exceptions import PlottingError
-from dantro.plot_creators.ext_funcs.generic import (
+from dantro.plot.funcs.generic import (
     determine_encoding,
     figure_leak_prevention,
     make_facet_grid_plot,

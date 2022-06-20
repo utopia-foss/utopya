@@ -423,9 +423,6 @@ plot_manager:
   # Save all plot configurations alongside the plots
   save_plot_cfg: true
 
-  # Enable auto-detection of plot creators, e.g. via is_plot_func decorator
-  auto_detect_creator: true
-
   # Base plot configuration pools
   # These specify the base plot configurations that are made available for each
   # model run, updated and extended in the order specified here.

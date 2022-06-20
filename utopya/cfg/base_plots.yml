@@ -318,7 +318,7 @@
 .dag.generic.facet_grid:
   based_on: .default_style_and_helpers
 
-  module: &dantro_plots dantro.plot_creators.ext_funcs.generic
+  module: &dantro_plots dantro.plot.funcs.generic
   plot_func: facet_grid
 
 
@@ -357,7 +357,7 @@
 .dag.multiplot:
   based_on: .default_style_and_helpers
 
-  module: dantro.plot_creators.ext_funcs.multiplot
+  module: dantro.plot.funcs.multiplot
   plot_func: multiplot
 
 # .. Seaborn plots ............................................................

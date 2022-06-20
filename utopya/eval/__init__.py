@@ -1,6 +1,6 @@
 """Implements a dantro-based simulation data evaluation pipeline."""
 
-from dantro.plot_creators import is_plot_func
+from dantro.plot import is_plot_func
 
 from .containers import GridDC, NumpyDC, XarrayDC, XarrayYamlDC
 from .datamanager import DataManager
