@@ -31,6 +31,9 @@
     - Modernizes the CA plot (`caplot`), now supporting the data transformation framework and deprecating the old `ca.state` plot
 - !6 adds an extended demo model that showcases utopya usage for Python-based model implementations.
 - !6 moves definition of custom config set search directories to the project-level and extends search to a wider set of model source subdirectories.
+- !9 adapts the package structure to the reworked dantro >= v0.18 interface
+    - This pertains mostly to the plotting framework. Due to utopya wrapping many parts of that interface, there are few backwards-*incompatible* changes.
+    - However, notice the [deprecations](https://gitlab.com/utopia-project/dantro/-/blob/master/CHANGELOG.md#v0180) introduced by dantro v0.18.
 
 
 ## v0.8.8
