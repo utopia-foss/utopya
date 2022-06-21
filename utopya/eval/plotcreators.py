@@ -1,4 +1,4 @@
-"""Implements utopya-specializations of dantro plot creators"""
+"""Implements utopya-specializations of :py:mod:`dantro.plot.creators`"""
 
 import logging
 
@@ -13,14 +13,11 @@ log = logging.getLogger(__name__)
 
 
 class PyPlotCreator(dantro.plot.creators.PyPlotCreator):
-    """This is the Utopia-specific version of dantro's ``PyPlotCreator``.
+    """This is the Utopia-specific version of dantro's
+    :py:class:`~dantro.plot.creators.pyplot.PyPlotCreator`.
 
     Its main purpose is to define common settings for plotting. By adding this
     extra layer, it allows for future extensibility as well.
-
-    One of the common settings is that it sets as ``BASE_PKG`` the utopya
-    :py:mod:`utopya.plot_funcs`, which is an extension of those functions
-    supplied by dantro.
     """
 
     EXTENSIONS = "all"
@@ -40,9 +37,10 @@ class UniversePlotCreator(
 ):
     """Makes plotting with data from a single universe more convenient"""
 
-    PSGRP_PATH = "multiverse"
-    """The path within the data tree to arrive at the ParamSpaceGroup that this
-    UniversePlotCreator expects universes to be located in.
+    PSGRP_PATH: str = "multiverse"
+    """The path within the data tree to arrive at the
+    :py:class:`~utopya.eval.groups.MultiverseGroup` that this plot creator
+    expects universes to be located *in*.
     """
 
 
@@ -51,5 +49,7 @@ class MultiversePlotCreator(
 ):
     """Makes plotting with data from *all* universes more convenient"""
 
-    PSGRP_PATH = "multiverse"
-    """The path within the data tree to arrive at the ParamSpaceGroup"""
+    PSGRP_PATH: str = "multiverse"
+    """The path within the data tree to arrive at the
+    :py:class:`~utopya.eval.groups.MultiverseGroup`.
+    """

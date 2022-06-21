@@ -1,4 +1,7 @@
-"""The WorkerManager class."""
+"""The :py:class:`.WorkerManager` is a central part of utopya in that it
+spawns and controls the tasks (:py:class:`~utopya.task.WorkerTask`) that are
+to be worked on.
+"""
 
 import copy
 import logging
@@ -27,18 +30,32 @@ class WorkerManager:
     objects: setting them up, invoking them, tracking their progress, and
     starting new workers if previous workers finished.
 
-    Attributes:
-        pending_exceptions (queue.Queue): A (FiFo) queue of Exception objects
-            that will be handled by the WorkerManager during working. This is
-            the interface that allows for other threads that have access to
-            the WorkerManager to add an exception and let it be handled in the
-            main thread.
+    Attrs:
         rf_spec (dict): The report format specifications that are used
             throughout the WorkerManager. These are invoked at different points
             of the operation of the WorkerManager: ``while_working``,
             ``after_work``, ``after_abort``, ``task_spawn``, ``task_finished``.
-        times (dict): Holds profiling information for the WorkerManager
     """
+
+    pending_exceptions: queue.Queue = None
+    """A (FiFo) queue of :py:exc:`Exception` objects that will be handled by
+    the :py:class:`.WorkerManager` during working. This is the interface that
+    allows for other threads that have access to the WorkerManager to add an
+    exception and let it be handled in the main thread.
+    """
+    rf_spec: dict = None
+    """The report format specifications that are used throughout the
+    WorkerManager. These are invoked at different points of the operation:
+
+    - ``while_working``
+    - ``after_work``
+    - ``after_abort``
+    - ``task_spawn``
+    - ``task_finished``
+    """
+
+    times: dict = None
+    """Holds profiling information"""
 
     def __init__(
         self,
@@ -46,7 +63,7 @@ class WorkerManager:
         poll_delay: float = 0.05,
         lines_per_poll: int = 20,
         periodic_task_callback: int = None,
-        QueueCls=queue.Queue,
+        QueueCls: type = queue.Queue,
         reporter: WorkerManagerReporter = None,
         rf_spec: Dict[str, Union[str, List[str]]] = None,
         save_streams_on: Sequence[str] = (),
@@ -72,8 +89,8 @@ class WorkerManager:
             periodic_task_callback (int, optional): If given, an additional
                 task callback will be invoked after every
                 ``periodic_task_callback`` poll events.
-            QueueCls (Class, optional): Which class to use for the Queue.
-                Defaults to FiFo.
+            QueueCls (type, optional): Which class to use for the queue.
+                Defaults to the FiFo :py:class:`queue.Queue`.
             reporter (WorkerManagerReporter, optional): The reporter associated
                 with this WorkerManager, reporting on the progress.
             rf_spec (Dict[str, Union[str, List[str]]], optional): The names of

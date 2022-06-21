@@ -14,10 +14,22 @@ help:
 
 .PHONY: help Makefile
 
-# A target to build the whole HTML documentation, including API documentation
+# A target to build the whole HTML documentation
 doc:
+	@echo "Building HTML documentation ..."
+	@echo ""
 	make html
+	@echo ""
 	@echo "Built HTML documentation."
+
+build_and_check:
+	make html
+	@echo ""
+	@echo ""
+	make linkcheck
+	@echo ""
+	@echo ""
+	make doctest
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).

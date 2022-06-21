@@ -1,7 +1,9 @@
 """Implements data container classes specialised on Utopia output data.
 
-It is based on the dantro.DataContainer classes, especially its numeric form,
-the NumpyDataContainer.
+It is based on the :py:class:`dantro.base.BaseDataContainer` classes,
+especially their numeric form, the
+:py:class:`~dantro.containers.numeric.NumpyDataContainer` and the
+:py:class:`~dantro.containers.xr.XrDataContainer`.
 """
 
 import logging
@@ -14,10 +16,8 @@ import xarray as xr
 
 from ..tools import yaml as _yaml
 
-# Configure and get logger
 log = logging.getLogger(__name__)
 
-# Local constants
 
 # -----------------------------------------------------------------------------
 
@@ -44,11 +44,12 @@ class XarrayDC(
 
     # Configure proxy support .................................................
     PROXY_RESOLVE_ASTYPE = None
-    """Which type to resolve the proxy to. None defaults to np.ndarray"""
+    """Which type to resolve the proxy to.
+    None defaults to :py:class:`numpy.ndarray`."""
 
     PROXY_RETAIN = True
     """Whether to retain a proxy after resolving it; allows reinstating
-    proxy objects"""
+    proxy objects."""
 
     PROXY_REINSTATE_FAIL_ACTION = "log_warning"
     """Which action to take if reinstating a proxy was not possible"""
@@ -56,7 +57,7 @@ class XarrayDC(
     # Specialize XrDataContainer for Utopia ...................................
     _XRC_DIMS_ATTR = "dim_names"
     """Define as class variable the name of the attribute that determines the
-    dimensions of the xarray.DataArray
+    dimensions of the :py:class:`xarray.DataArray`.
     """
 
     _XRC_DIM_NAME_PREFIX = "dim_name__"
@@ -74,7 +75,8 @@ class XarrayDC(
 
     _XRC_COORDS_MODE_DEFAULT = "values"
     """The default mode by which coordinates are interpreted. See the base
-    class, ``dantro.containers.XrDataContainer`` for more information.
+    class, :py:class:`dantro.containers.xr.XrDataContainer` for more
+    information.
 
     Available modes:
       - ``values``: the explicit values (iterable) to use for coordinates
@@ -111,9 +113,9 @@ class XarrayDC(
 
 
 class XarrayYamlDC(XarrayDC):
-    """An XarrayDC specialization that assumes that each array entry is a
-    YAML string, which is subsequently loaded. This can be done alongside the
-    metadata application of the XarrayDC.
+    """An :py:class:`.XarrayDC` specialization that assumes that each array
+    entry is a YAML string, which is subsequently loaded. This can be done
+    alongside the metadata application of the :py:class:`.XarrayDC`.
     """
 
     def _apply_metadata(self):
@@ -144,9 +146,9 @@ class XarrayYamlDC(XarrayDC):
 class GridDC(XarrayDC):
     """This is the base class for all grid data used in Utopia.
 
-    It is based on the XarrayDC and reshapes the data to the grid shape.
-    The last dimension is assumed to be the dimension that goes along the
-    grid cell IDs.
+    It is based on the :py:class:`.XarrayDC` and reshapes the data to the grid
+    shape. The last dimension is assumed to be the dimension that goes along
+    the grid cell IDs.
     """
 
     # Define class variables to allow specializing behaviour ..................
@@ -169,16 +171,23 @@ class GridDC(XarrayDC):
     ):
         """Initialize a GridDC which represents grid-like data.
 
-        Given the container attribute for _GDC_grid_shape_attr, this container
-        takes care to reshape the underlying data such that it represents that
-        grid, even if it is saved in another shape.
+        Given the container attribute (see :py:attr:`._GDC_grid_shape_attr`),
+        this container takes care to reshape the underlying data such that it
+        represents that grid, even if it is saved in another shape.
+
+        .. note::
+
+            Use this container if it is easier to store array data in a flat
+            format (e.g. because there is no need to take care of slicing etc)
+            but you still desire to work with it in its actual shape.
 
         Args:
-            name (str): The name of the data container
-            data (np.ndarray): The not yet reshaped data. If this is 1D, it is
-                assumed that there is no time dimension. If it is 2D, it is
-                assumed to be (time, cell ids).
-            **kwargs: Further initialization kwargs, e.g. `attrs` ...
+            name (str): The name of this container
+            data (Union[numpy.ndarray, xarray.DataArray]): The not yet
+                reshaped data. If this is 1D, it is assumed that there is no
+                additional dimension.
+                If it is 2D (or more), it is assumed to be ``(..., cell ids)``.
+            **kwargs: Further initialization kwargs, e.g. ``attrs`` ...
         """
         # To prohibit proxy resolution in the below __init__, need a flag
         self._shapes_cached = False
@@ -208,9 +217,10 @@ class GridDC(XarrayDC):
         # otherwise: postpone reshaping until proxy gets resolved
 
     def _postprocess_proxy_resolution(self):
-        """Invoked from ``dantro.Hdf5ProxySupportMixin`` after a proxy was
-        resolved, this takes care to apply the reshaping operation onto the
-        underlying data.
+        """Invoked from
+        :py:class:`~dantro.mixins.proxy_support.Hdf5ProxySupportMixin` after a
+        proxy was resolved, this takes care to apply the reshaping operation
+        onto the underlying data.
         """
         super()._postprocess_proxy_resolution()
         self._data = self._reshape_data()
@@ -218,7 +228,7 @@ class GridDC(XarrayDC):
     def _parse_sizes_from_metadata(self) -> Sequence[Tuple[str, int]]:
         """Invoked from _format_shape when no metadata was applied but the
         dimension names are available. Should return data in the same form as
-        xr.DataArray.sizes.items() does.
+        ``xr.DataArray.sizes.items()`` does.
         """
         if not self._shapes_cached:
             return super()._parse_sizes_from_metadata()
@@ -273,7 +283,7 @@ class GridDC(XarrayDC):
     # Reshaping ...............................................................
 
     def _determine_shape(self):
-        """Determine the new shape and store it as _new_shape attribute"""
+        """Determine the new shape and store it as ``_new_shape`` attribute"""
         try:
             self._grid_shape = tuple(self.attrs[self._GDC_grid_shape_attr])
 

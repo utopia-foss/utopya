@@ -32,7 +32,8 @@ The signature of these functions is: ``(task: WorkerTask, **kws) -> bool``
 """
 
 _FAILED_MONITOR_ENTRY_CHECKS = []
-"""Keeps track of failed monitor entry checks in the ``check_monitor_entry``
+"""Keeps track of failed monitor entry checks in the
+:py:func:`~utopya.stop_conditions.check_monitor_entry`
 stop condition function in order to avoid repetitive warnings.
 """
 
@@ -248,7 +249,7 @@ class StopCondition:
 
         Args:
             representer (ruamel.yaml.representer): The representer module
-            node (type(self)): The node, i.e. an instance of this class
+            node (StopCondition): The node, i.e. an instance of this class
 
         Returns:
             a yaml mapping that is able to recreate this object

@@ -1,32 +1,39 @@
-# `utopya`
+[![utopya logo](doc/_static/img/logo_green.svg)][utopya-repo]
 
-This repo hosts the `utopya` Python package, which provides simulation management and evaluation for [Utopia] and beyond.
+The `utopya` package provides a simulation management and evaluation framework with the following feature set:
+
+- **Run model simulations** in parallel and on cluster architectures
+    - Conveniently perform parameter sweeps of arbitrary parameters with the help of the [paramspace][paramspace] package.
+- A **powerful CLI** to run and evaluate models, including interactive plotting
+- Integrates the [dantro][dantro] **data processing pipeline**:
+    - Loads data into a hierarchical data tree, supplying a uniform interface
+    - Gives access to a configuration-based **data transformation framework**, separating data preprocessing from visualization for increased generality
+    - Easy extensibility of plot creators via model-specific plot implementations
+- A **versatile configuration interface** for both simulation and evaluation:
+    - Assembling multi-level model configurations, including several default levels
+    - Assembling plot configurations with multiple inheritance, reducing redundant definitions
+- Model, project, and framework registration and handling
+- Managing data output directories
+- Tools to simplify model test implementations or working without a CLI
+- ... and more
+
+The `utopya` package evolved as part of the [Utopia Project][Utopia-Project] and provides the frontend of the [Utopia modelling framework][Utopia].
+Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry: in the simplest case, only the path to an executable is required to run simulations.
+With more compliance to the utopya interface, more features become available.
+
+The `utopya` package is **open source software** released under the [LGPLv3+][LGPL] license; see [below](#license-copyright).
 
 [[_TOC_]]
 
----
 
-## About `utopya`
-The `utopya` package aims to provide a simulation management and evaluation
-framework with the following feature set:
 
-- Provide model configuration with several update levels
-- Project and framework handling
-- A powerful CLI to run and evaluate models
-- Executing model simulations in parallel and on cluster architectures
-- Managing data output directories
-- Interfacing with the [dantro] data processing pipeline
 
-It evolved as part of the [Utopia Project][Utopia-Project] and provides the frontend of the [Utopia modelling framework][Utopia].
-Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry: in the simplest case, only only the path to an executable is required to run simulations.
-With more compliance to the utopya interface, more features become available.
-
-## Installation
+# Installation
 To install utopya, first enter the virtual environment of your choice.
 The utopya package is available on [PyPI][utopya-pypi]:
 
 ```
-pip install utopya
+pip install --pre utopya
 ```
 
 Alternatively, use the following command to install from a certain branch:
@@ -42,7 +49,7 @@ You should now be able to invoke the utopya CLI:
 utopya --help
 ```
 
-## Basic Usage
+# Basic Usage
 🚧
 
 See the [demo project](demo/) for an implementation example.
@@ -50,8 +57,11 @@ See the [demo project](demo/) for an implementation example.
 
 
 
-## License & Copyright
-### Copyright Notice
+# License & Copyright
+
+The `utopya` package is **open source software** released under the [LGPLv3+][LGPL] license.
+
+## Copyright Notice
 
     utopya
     Copyright (C) 2018 – 2022  utopya developers
@@ -76,7 +86,7 @@ See the [demo project](demo/) for an implementation example.
 
 A copy of the [GNU General Public License Version 3][GPL], and the [GNU Lesser General Public License Version 3][LGPL] extending it, is distributed with the source code of this program.
 
-### Copyright Holders
+## Copyright Holders
 
 The copyright holders of the utopya software package are collectively referred to as "utopya developers" in the respective copyright notices.
 
@@ -98,7 +108,9 @@ The copyright holders of the utopya software package are collectively referred t
 
 [GPL]: https://www.gnu.org/licenses/gpl-3.0.en.html
 [LGPL]: https://www.gnu.org/licenses/lgpl-3.0.en.html
+[utopya-repo]: https://gitlab.com/utopia-project/utopya
 [utopya-pypi]: https://pypi.org/project/utopya/
 [Utopia]: https://gitlab.org/utopia-project/utopia
 [dantro]: https://gitlab.org/utopia-project/dantro
+[paramspace]: https://gitlab.com/blsqr/paramspace
 [Utopia-Project]: https://utopia-project.org/

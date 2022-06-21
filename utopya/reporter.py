@@ -403,14 +403,17 @@ class Reporter:
 
         Args:
             write_to: a specification of the writers to use. Allows many
-                different ways of specifying the writer functions:
+                different ways of specifying the writer functions, depending
+                on the type of the argument:
 
-                - str: the name of the writer method of this reporter
-                - Callable: the writer function to use
-                - sequence of str and/or Callable: the names and/or functions
-                to use
-                - Dict[str, dict]: the names of the writer functions and
-                additional keyword arguments.
+                    - str: the name of the writer method of this reporter
+                    - Callable: the writer function to use
+                    - sequence of str and/or Callable: the names and/or
+                      functions to use
+                    - Dict[str, dict]: the names of the writer functions and
+                      additional keyword arguments.
+
+                If the type is wrong, will raise.
 
         Returns:
             Dict[str, Callable]: the writers (key: name, value: writer method)
@@ -808,7 +811,7 @@ class WorkerManagerReporter(Reporter):
 
         Args:
             **eta_options: Passed on to method calculating ``est_left``,
-                :py:meth:`~utopya.reporter.WorkerManagerReporter._compute_est_left`.
+                :py:meth:`._compute_est_left`.
 
         Returns:
             Dict[str, float]: Progress information. Guaranteed to contain the
@@ -852,7 +855,7 @@ class WorkerManagerReporter(Reporter):
 
         Args:
             progress (float): The current progress value, in (0, 1]
-            elapsed (timedelta): The elapsed time since start
+            elapsed (datetime.timedelta): The elapsed time since start
             mode (str, optional): By which mode to calculate the ETA. Available
                 modes are:
 
@@ -869,8 +872,8 @@ class WorkerManagerReporter(Reporter):
                 used in  ``from_buffer`` mode.
 
         Returns:
-            timedelta: Estimate for how much time is left until the end of the
-                work session.
+            datetime.timedelta: Estimate for how much time is left until the
+                end of the work session.
         """
         if mode is None or mode == "from_start":
             return ((1.0 - progress) / progress) * elapsed

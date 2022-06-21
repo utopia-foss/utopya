@@ -1,7 +1,42 @@
-"""The utopya package implements a versatile simulation runner and manager"""
+"""The :py:mod:`utopya` package provides a simulation management and
+evaluation framework with the following components:
 
-__version__ = "1.0.0a6"
-"""The utopya package version"""
+.. default-domain:: utopya
+
+- A registry framework for models (:py:mod:`.model_registry`)
+  and projects (:py:class:`~.project_registry.ProjectRegistry`)
+- A configuration manager and simulation runner,
+  the :py:class:`~.multiverse.Multiverse`:
+
+  - Contains a multi-level configuration interface
+  - Parallel simulation execution via
+    :py:class:`~.workermanager.WorkerManager`.
+  - A :py:mod:`parameter validation framework <.parameter>`
+
+- Coupling to the :py:mod:`dantro` data evaluation pipeline, integrated via
+  :py:mod:`utopya.eval`:
+
+  - Custom data :py:mod:`groups <.eval.groups>`
+    and :py:mod:`containers <.eval.containers>`
+  - A :py:class:`.eval.plotmanager.PlotManager` that takes into account
+    project- or model-specific plot function definitions.
+
+- The :py:class:`.model.Model` abstraction which allows convenient interactive work with utopya and registered models.
+
+  - The :py:class:`.testtools.ModelTest` class, containing specializations
+    that make it more convenient to implement model tests using utopya.
+
+- Batch simulation running and evaluation via :py:mod:`.batch`
+
+For a real-world example of how utopya can be integrated, have a look at the
+`Utopia modelling framework <https://utopia-project.org>`_ which uses
+utopya as its frontend.
+
+Also visit :ref:`the user manual front page <welcome>` for more information.
+"""
+
+__version__ = "1.0.0a7"
+"""The :py:mod:`utopya` package version"""
 
 # .. Logging ..................................................................
 # TODO Consider setting up logging elsewhere -- but needs to be done first!

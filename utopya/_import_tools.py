@@ -83,13 +83,13 @@ def import_module_from_path(
     *, mod_path: str, mod_str: str, debug: bool = True
 ) -> Union[None, ModuleType]:
     """Helper function to import a module that is importable only when adding
-    the module's parent directory to ``sys.path``.
+    the module's parent directory to :py:data:`sys.path`.
 
     Args:
         mod_path (str): Path to the module's root *directory*
         mod_str (str): Name under which the module can be imported with
-            ``mod_path`` being in ``sys.path``. This is also used to add the
-            module to the ``sys.modules`` cache.
+            ``mod_path`` being in :py:data:`sys.path`. This is also used to
+            add the module to the :py:data:`sys.modules` cache.
         debug (bool, optional): Whether to raise exceptions if import failed
 
     Returns:

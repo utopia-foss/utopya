@@ -113,7 +113,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
 
     def _get_plot_creator(self, *args, **kwargs):
         """Before actually retrieving the plot creator, invokes module
-        pre-loading via :py:meth:`.preload_modules`.
+        pre-loading via :py:meth:`._preload_modules`.
         """
         self._preload_modules()
 
