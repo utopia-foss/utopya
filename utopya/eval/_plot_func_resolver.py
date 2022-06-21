@@ -9,8 +9,8 @@ from typing import Dict
 
 import dantro.plot.utils
 
+from .._import_tools import added_sys_path as _add_sys_path
 from .._import_tools import temporary_sys_modules as _tmp_sys_modules
-from .._import_tools import temporary_sys_path as _tmp_sys_path
 from ..model_registry import ModelInfoBundle
 
 log = logging.getLogger(__name__)
@@ -124,9 +124,9 @@ class PlotFuncResolver(dantro.plot.utils.PlotFuncResolver):
             # then import `model_plots.bar` will make the lookup _only_ in the
             # cached module. As we want several import attempts here, the cache
             # is not desired.
-            tmp_sys_path = _tmp_sys_path(parent_dir)
+            add_sys_path = _add_sys_path(parent_dir)
             tmp_sys_modules = _tmp_sys_modules(reset_only_on_fail=True)
-            with tmp_sys_path, tmp_sys_modules:
+            with add_sys_path, tmp_sys_modules:
                 try:
                     mod = super()._get_module_via_import(
                         module=module, **kwargs

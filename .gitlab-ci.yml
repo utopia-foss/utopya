@@ -132,15 +132,16 @@ deploy:pypi:
     # Run after pushes to tags in original repo, not forks
     - if: $CI_COMMIT_TAG && $CI_PROJECT_PATH == "utopia-project/utopya"
   script:
-    # Define a regex for matching the tag name, see
-    #   https://regex101.com/r/AsCCJo/2
+    # Define a regex for matching the tag name, see:
+    #     https://regex101.com/r/AsCCJo/2
     # Expects fully-qualified version specifiers, like v1.2.3 or v1.2.3a4
     # Does NOT accept tags like 1.2.3 (missing v) or v1.0 (missing patch version)
-    - export VERSION_PATTERN="v([[:digit:]]+)\.([[:digit:]]+)\.([[:digit:]]+)([[:lower:]]\d+)?"
+    - export VERSION_PATTERN="v([[:digit:]]+)\.([[:digit:]]+)\.([[:digit:]]+)([[:lower:]][[:digit:]]+)?"
     # Before checking that the tag matches the expected pattern, check the regex
     # pattern with a few allowed versions.
     - "[[ \"v1.2.3\" =~ ${VERSION_PATTERN} ]]"
     - "[[ \"v1.23.4a5\" =~ ${VERSION_PATTERN} ]]"
+    - "[[ \"v1.23.4a56\" =~ ${VERSION_PATTERN} ]]"
 
     # Now do the actual check
     - "[[ ${CI_COMMIT_TAG} =~ ${VERSION_PATTERN} ]]"

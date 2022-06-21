@@ -36,6 +36,9 @@
     - This pertains mostly to the plotting framework. Due to utopya wrapping many parts of that interface, there are few backwards-*incompatible* changes.
     - However, notice the [deprecations](https://gitlab.com/utopia-project/dantro/-/blob/master/CHANGELOG.md#v0180) introduced by dantro v0.18.
 
+### Internal
+- !10 outsources `utopya._import_tools` to `dantro._import_tools`
+
 
 ## v0.8.8
 This is the version specification of `utopya` at the time it was outsourced from the Utopia framework repository (January 2022, roughly at commit [`03145665`](https://gitlab.com/utopia-project/utopia/-/commit/03145665dc86f223cbd156b98f4c5dc631abc85b)).

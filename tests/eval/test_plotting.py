@@ -12,12 +12,13 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import paramspace as psp
 import pytest
+from dantro._import_tools import remove_from_sys_modules
 from dantro.data_ops import available_operations
 from dantro.plot_mngr import PlotCreatorError
 
 from utopya import Multiverse
+from utopya._import_tools import added_sys_path
 from utopya._import_tools import temporary_sys_modules as tmp_sys_modules
-from utopya._import_tools import temporary_sys_path as tmp_sys_path
 from utopya.eval.plots._graph import GraphPlot
 from utopya.testtools import ModelTest
 from utopya.yaml import load_yml
@@ -55,11 +56,6 @@ GRAPH_PLOT_CLS = get_cfg_fpath("graphplot_class_cfg.yml")
 # -----------------------------------------------------------------------------
 
 
-def remove_from_sys_modules(mod_start_string: str):
-    for modstr in [m for m in sys.modules if m.startswith(mod_start_string)]:
-        del sys.modules[modstr]
-
-
 # Fixtures --------------------------------------------------------------------
 from .._fixtures import *
 
@@ -72,7 +68,7 @@ def register_demo_project(tmp_projects, with_test_models):
 
 @pytest.fixture
 def without_cached_model_plots_modules():
-    remove_from_sys_modules("model_plots")
+    remove_from_sys_modules(lambda m: m.startswith("model_plots"))
 
     assert "model_plots" not in sys.modules
     assert not any([ms.startswith("model_plots") for ms in sys.modules])
@@ -159,7 +155,7 @@ def test_preloading(tmpdir, without_cached_model_plots_modules):
     # Without exception raising, this should just go ahead, even though the
     # import will fail ...
     assert not mv.pm.raise_exc
-    with tmp_sys_path(bad_sys_path), tmp_sys_modules():
+    with added_sys_path(bad_sys_path), tmp_sys_modules():
         # Remove the model plots directories from the path
         sys.path = [p for p in sys.path if not p.startswith(mpd)]
 
@@ -173,13 +169,13 @@ def test_preloading(tmpdir, without_cached_model_plots_modules):
     mv.renew_plot_manager(out_dir=f"session_3/", raise_exc=True)
     mv.pm._model_info_bundle = mib
 
-    with tmp_sys_path(bad_sys_path), tmp_sys_modules():
+    with added_sys_path(bad_sys_path), tmp_sys_modules():
         assert mv.pm._model_info_bundle.paths["py_plots_dir"] == bad_sys_path
         assert "model_plots" not in sys.modules
         assert model_plot_modstr not in sys.modules
         assert mv.pm.raise_exc
 
-        remove_from_sys_modules("model_plots")
+        remove_from_sys_modules(lambda m: m.startswith("model_plots"))
         assert not any([ms.startswith("model_plots") for ms in sys.modules])
 
         # This will pass, because import happens via the project's py_plots_dir
@@ -188,7 +184,7 @@ def test_preloading(tmpdir, without_cached_model_plots_modules):
         # But without the project (and also: without framework) it will fail
         mv.pm._model_info_bundle._d["project_name"] = None
         assert not mv.pm._model_info_bundle.project
-        remove_from_sys_modules("model_plots")
+        remove_from_sys_modules(lambda m: m.startswith("model_plots"))
 
         with pytest.raises(ImportError, match="Could not import module"):
             mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
