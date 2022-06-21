@@ -1,20 +1,43 @@
+.. _welcome:
+
 Welcome to utopya's documentation!
 ==================================
 
-The :py:mod:`utopya` package provides a simulation management and evaluation framework.
-Features include the following:
+The :py:mod:`utopya` package provides a simulation management and evaluation
+framework with the following feature set:
 
-- Provide model configuration with several default levels
-- Project and framework handling
-- A powerful CLI to run and evaluate models
-- Executing model simulations in parallel and on cluster architectures
+- **Run model simulations** in parallel and on cluster architectures
+
+  - Conveniently perform parameter sweeps of arbitrary parameters with the help
+    of the `paramspace <https://gitlab.com/blsqr/paramspace>`_ package.
+
+- A **powerful CLI** to run and evaluate models, including interactive plotting
+- Integrates the `dantro <https://gitlab.com/utopia-project/dantro>`_
+  **data processing pipeline**:
+
+  - Loads data into a hierarchical data tree, supplying a uniform interface
+  - Gives access to a configuration-based **data transformation framework**,
+    separating data preprocessing from visualization for increased generality
+  - Easy extensibility of plot creators via model-specific plot implementations
+
+- A **versatile configuration interface** for both simulation and evaluation:
+
+  - Assembling multi-level model configurations, including several default
+    levels
+  - Assembling plot configurations with multiple inheritance, reducing
+    redundant definitions
+
+- Model, project, and framework registration and handling
 - Managing data output directories
-- Interfacing with the [dantro] data processing pipeline
+- Tools to simplify model test implementations or working without a CLI
+- ... and more
 
-It evolved as part of the `Utopia Project <https://utopia-project.org/>`_ and provides the frontend of the `Utopia modelling framework <https://gitlab.com/utopia-project/utopia>`_, a modelling framework for complex and adaptive systems.
-
-Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry:
-In the simplest case, only the path to an executable is required to run simulations.
+The :py:mod:`utopya` package evolved as part of the
+`Utopia Project <https://utopia-project.org>`_ and provides the frontend of
+the `Utopia modelling framework <https://gitlab.com/utopia-project/utopia>`_.
+Having been outsourced from that project, it can be used with arbitrary model
+implementations with a very low barrier for entry: in the simplest case, only
+the path to an executable is required to run simulations.
 With more compliance to the utopya interface, more features become available.
 
 The :py:mod:`utopya` package is **open source software** released under the `LGPLv3+ <https://www.gnu.org/licenses/lgpl-3.0.html>`_ license.

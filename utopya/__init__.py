@@ -31,6 +31,8 @@ evaluation framework with the following components:
 For a real-world example of how utopya can be integrated, have a look at the
 `Utopia modelling framework <https://utopia-project.org>`_ which uses
 utopya as its frontend.
+
+Also visit :ref:`the user manual front page <welcome>` for more information.
 """
 
 __version__ = "1.0.0a6"
