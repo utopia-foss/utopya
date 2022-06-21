@@ -1,12 +1,7 @@
+[![utopya logo](doc/_static/img/logo_green.png)][utopya-repo]
+
 # `utopya`
 
-This repo hosts the `utopya` Python package, which provides simulation management and evaluation for [Utopia] and beyond.
-
-[[_TOC_]]
-
----
-
-## About `utopya`
 The `utopya` package provides a simulation management and evaluation framework with the following feature set:
 
 - Provide model configuration with several update levels
@@ -17,8 +12,12 @@ The `utopya` package provides a simulation management and evaluation framework w
 - Interfacing with the [dantro][dantro] data processing pipeline
 
 It evolved as part of the [Utopia Project][Utopia-Project] and provides the frontend of the [Utopia modelling framework][Utopia].
-Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry: in the simplest case, only only the path to an executable is required to run simulations.
+Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry: in the simplest case, only the path to an executable is required to run simulations.
 With more compliance to the utopya interface, more features become available.
+
+[[_TOC_]]
+
+---
 
 ## Installation
 To install utopya, first enter the virtual environment of your choice.
@@ -97,6 +96,7 @@ The copyright holders of the utopya software package are collectively referred t
 
 [GPL]: https://www.gnu.org/licenses/gpl-3.0.en.html
 [LGPL]: https://www.gnu.org/licenses/lgpl-3.0.en.html
+[utopya-repo]: https://gitlab.com/utopia-project/utopya
 [utopya-pypi]: https://pypi.org/project/utopya/
 [Utopia]: https://gitlab.org/utopia-project/utopia
 [dantro]: https://gitlab.org/utopia-project/dantro
