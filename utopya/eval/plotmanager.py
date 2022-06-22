@@ -224,3 +224,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             log.remark(
                 "  Pre-loaded plot modules of:  %s", ", ".join(_preloaded)
             )
+        else:
+            log.remark(
+                "  No `py_plots_dir` available or pre-loading deactivated."
+            )
