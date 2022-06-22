@@ -169,9 +169,12 @@ deploy:pypi:
 post_deploy:install_from_pypi:
   stage: post_deploy
   rules: *pypi_deploy_rules
+  retry: 2
   needs:
     - "deploy:pypi"
   script:
+    # Wait some time before starting to allow PyPI to process the push
+    - sleep 30
     # Install the newly deployed utopya version via PyPI. The current version
     # number is given by the commit tag without the prefixed 'v'.
     - pip install utopya==${CI_COMMIT_TAG#v}
