@@ -178,15 +178,7 @@ def test_preloading(tmpdir, without_cached_model_plots_modules):
         remove_from_sys_modules(lambda m: m.startswith("model_plots"))
         assert not any([ms.startswith("model_plots") for ms in sys.modules])
 
-        # This will pass, because import happens via the project's py_plots_dir
-        mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
-
-        # But without the project (and also: without framework) it will fail
-        mv.pm._model_info_bundle._d["project_name"] = None
-        assert not mv.pm._model_info_bundle.project
-        remove_from_sys_modules(lambda m: m.startswith("model_plots"))
-
-        with pytest.raises(ImportError, match="Could not import module"):
+        with pytest.raises(ImportError, match="Failed pre-loading"):
             mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
 
 

@@ -9,7 +9,7 @@ import importlib
 import logging
 import os
 import sys
-from typing import Union
+from typing import Dict, Union
 
 import dantro
 import dantro.plot.creators
@@ -36,7 +36,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
     interface specifications, e.g. by preloading custom modules.
     """
 
-    CREATORS = dict(
+    CREATORS: Dict[str, type] = dict(
         base=dantro.plot.creators.BasePlotCreator,
         external=PyPlotCreator,
         pyplot=PyPlotCreator,
@@ -111,16 +111,38 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             **init_kwargs, _model_info_bundle=self._model_info_bundle
         )
 
-    def _get_plot_creator(self, *args, **kwargs):
-        """Before actually retrieving the plot creator, invokes module
-        pre-loading via :py:meth:`._preload_modules`.
+    def _get_plot_creator(
+        self, *args, **kwargs
+    ) -> dantro.plot.creators.BasePlotCreator:
+        """Sets up the BasePlotCreator and attaches a model information bundle
+        to it such that this information is available downstream.
         """
-        self._preload_modules()
-
         creator = super()._get_plot_creator(*args, **kwargs)
         creator._model_info_bundle = copy.deepcopy(self._model_info_bundle)
 
         return creator
+
+    def _parse_out_dir(self, *args, **kwargs) -> Union[bool, str]:
+        """Piggybacks onto this method in the plotting procedure to load
+        additional modules that may execute some code. This happens only *once*
+        for both regular plots and parameter-sweep procedures and at the
+        latest possible point.
+
+        Pre-loading happens via :py:meth:`._preload_modules`.
+        """
+
+        try:
+            self._preload_modules()
+
+        except ImportError as exc:
+            raise ImportError(
+                "Failed pre-loading of model-, project-, or framework-"
+                "specific plot modules! Make sure the respective modules "
+                "(specified as `py_plots_dir`) can be imported.\n"
+                "To debug, inspect the chained traceback."
+            ) from exc
+
+        return super()._parse_out_dir(*args, **kwargs)
 
     def _preload_modules(self):
         """Pre-loads the model-, project-, and framework-specific plot
@@ -129,40 +151,51 @@ class PlotManager(dantro.plot_mngr.PlotManager):
         data operations) and have them available prior to the invocation of
         the creator and independently from the module that contains the plot
         function (which may be part of dantro, for instance).
+
+        Uses :py:func:`dantro._import_tools.import_module_from_path`
         """
 
         from .._import_tools import import_module_from_path
 
         mib = self._model_info_bundle
+        _preloaded = []
 
         if mib is not None:
-            log.note("Pre-loading plot modules ...")
+            log.debug("Pre-loading plot modules ...")
             mod_path = mib.paths.get("py_plots_dir")
             if mod_path:
-                log.remark("  Loading model-specific modules ...")
+                log.debug("  Loading model-specific modules ...")
                 import_module_from_path(
                     mod_path=mod_path,
                     mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}.{mib.model_name}",
                     debug=self.raise_exc,
                 )
+                _preloaded.append("model")
 
             # Also do this on the project and framework level
             # TODO Should make module name configurable separately! See #9
             project = mib.project
             if project and project.paths.py_plots_dir:
-                log.remark("  Loading project-specific modules ...")
+                log.debug("  Loading project-specific modules ...")
                 import_module_from_path(
                     mod_path=project.paths.py_plots_dir,
                     mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
                     debug=self.raise_exc,
                 )
+                _preloaded.append("project")
 
             if project and project.framework_project:
                 fw = project.framework_project
                 if fw and fw.paths.py_plots_dir:
-                    log.remark("  Loading framework-specific modules ...")
+                    log.debug("  Loading framework-specific modules ...")
                     import_module_from_path(
                         mod_path=fw.paths.py_plots_dir,
                         mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
                         debug=self.raise_exc,
                     )
+                    _preloaded.append("framework")
+
+        if _preloaded:
+            log.remark(
+                "Pre-loaded plot modules of:  %s", ", ".join(_preloaded)
+            )
