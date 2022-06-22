@@ -522,6 +522,7 @@ def register_from_list(
     separator: str,
     set_as_default: bool,
     exists_action: str,
+    project_name: str,
     **more_paths,
 ):
     if executable_fstr:
@@ -565,6 +566,7 @@ def register_from_list(
             source_dirs=source_dirs,
             separator=separator,
             more_paths=more_paths,
+            project_name=project_name,
             set_as_default=set_as_default,
             extract_model_info=True,
             exists_action=exists_action,
