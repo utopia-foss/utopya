@@ -177,7 +177,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             log.note("Pre-loading plot modules ...")
 
             mod_path = mib.paths.get("py_plots_dir")
-            if mod_path:
+            if mod_path and os.path.exists(mod_path):
                 with exception_handling(ImportError, "model"):
                     log.debug("  Loading model-specific plot module ...")
                     _ms = f"{self.MODEL_PLOTS_MODULE_NAME}.{mib.model_name}"
@@ -190,7 +190,11 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             # Also do this on the project and framework level
             # TODO Should make module name configurable separately! See #9
             project = mib.project
-            if project and project.paths.py_plots_dir:
+            if (
+                project
+                and project.paths.py_plots_dir
+                and project.settings.preload_project_py_plots in (None, True)
+            ):
                 with exception_handling(ImportError, "project"):
                     log.debug("  Loading project-specific plot module ...")
                     import_module_from_path(
@@ -199,7 +203,11 @@ class PlotManager(dantro.plot_mngr.PlotManager):
                     )
                     _preloaded.append("project")
 
-            if project and project.framework_project:
+            if (
+                project
+                and project.framework_project
+                and project.settings.preload_framework_py_plots in (None, True)
+            ):
                 fw = project.framework_project
                 if fw and fw.paths.py_plots_dir:
                     with exception_handling(ImportError, "framework"):
