@@ -35,6 +35,9 @@
 - !9 adapts the package structure to the reworked dantro >= v0.18 interface
     - This pertains mostly to the plotting framework. Due to utopya wrapping many parts of that interface, there are few backwards-*incompatible* changes.
     - However, notice the [deprecations](https://gitlab.com/utopia-project/dantro/-/blob/master/CHANGELOG.md#v0180) introduced by dantro v0.18.
+- !14 improves plot module pre-loading:
+    - Plot modules are now imported at the time of `PlotManager` initialization.
+    - Plot modules specified in the project and framework can be pre-loaded as well; this can disabled via the project `settings`.
 
 ### Internal
 - !10 outsources `utopya._import_tools` to `dantro._import_tools`
