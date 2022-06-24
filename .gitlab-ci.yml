@@ -3,8 +3,8 @@ image: python:3.10
 
 stages:
   - check
-  - test
   - build
+  - test
   - deploy
   - post_deploy
 
@@ -56,11 +56,38 @@ workflow:
 
 check:hooks:
   stage: check
+  needs: []
   before_script:
     - pip install pre-commit
   script:
     - pre-commit run --all-files --verbose --show-diff-on-failure
 
+
+# -- Build Stage --------------------------------------------------------------
+# ... for building the documentation (and potentially more jobs)
+
+build:docs:
+  stage: build
+  allow_failure: true
+  needs: []
+  before_script:
+    - pip3 install .[doc]
+  script:
+    - cd doc
+    - make build_and_check
+  after_script:
+    # Append the error log such that it's more convenient to read
+    - echo "-------- Errors emitted during building of documentation --------"
+    - cat doc/build_errors.log
+
+  artifacts:
+    when: always
+    name: "doc-$CI_COMMIT_REF_NAME"
+    expire_in: 2 weeks
+    expose_as: Documentation Build Results - including error log
+    paths:
+      - doc/_build/html
+      - doc/build_errors.log
 
 
 # -- Test Stage ---------------------------------------------------------------
@@ -95,34 +122,6 @@ test:py310:
   image: python:3.10
 
 
-
-# -- Build Stage --------------------------------------------------------------
-# ... for building the documentation (and potentially more jobs)
-
-build:docs:
-  stage: build
-  allow_failure: true
-  needs: []
-  before_script:
-    - pip3 install .[doc]
-  script:
-    - cd doc
-    - make build_and_check
-  after_script:
-    # Append the error log such that it's more convenient to read
-    - echo "-------- Errors emitted during building of documentation --------"
-    - cat doc/build_errors.log
-
-  artifacts:
-    when: always
-    name: "doc-$CI_COMMIT_REF_NAME"
-    expire_in: 2 weeks
-    expose_as: Documentation Build Results - including error log
-    paths:
-      - doc/_build/html
-      - doc/build_errors.log
-
-
 # -- Deploy Stage -------------------------------------------------------------
 
 # Deploy utopya to PyPI
@@ -131,24 +130,44 @@ deploy:pypi:
   rules: &pypi_deploy_rules
     # Run after pushes to tags in original repo, not forks
     - if: $CI_COMMIT_TAG && $CI_PROJECT_PATH == "utopia-project/utopya"
-  script:
+  variables:
     # Define a regex for matching the tag name, see:
     #     https://regex101.com/r/AsCCJo/2
     # Expects fully-qualified version specifiers, like v1.2.3 or v1.2.3a4
-    # Does NOT accept tags like 1.2.3 (missing v) or v1.0 (missing patch version)
-    - export VERSION_PATTERN="v([[:digit:]]+)\.([[:digit:]]+)\.([[:digit:]]+)([[:lower:]][[:digit:]]+)?"
-    # Before checking that the tag matches the expected pattern, check the regex
-    # pattern with a few allowed versions.
+    # Does NOT accept tags like:
+    #     1.2.3   (missing v)
+    #     v1.0    (missing patch version)
+    VERSION_PATTERN: v([[:digit:]]+)\.([[:digit:]]+)\.([[:digit:]]+)([[:lower:]][[:digit:]]+)?
+
+    # Need another pattern to extract a version number from an __init__.py
+    # __version__ definition (using grep to first get the line)
+    SED_PATTERN: s/.*\"([0-9]+\.[0-9]+\.[0-9]+[a-z]{0,5}[0-9]*)\".*/\1/g
+  before_script:
+    # Test the version pattern itself behaves as expected
+    - "[[ ! \"foo\" =~ ${VERSION_PATTERN} ]]"
+    - "[[ ! \"v1.2\" =~ ${VERSION_PATTERN} ]]"
+    - "[[ ! \"1.2.3\" =~ ${VERSION_PATTERN} ]]"
     - "[[ \"v1.2.3\" =~ ${VERSION_PATTERN} ]]"
     - "[[ \"v1.23.4a5\" =~ ${VERSION_PATTERN} ]]"
-    - "[[ \"v1.23.4a56\" =~ ${VERSION_PATTERN} ]]"
+    - "[[ \"v1.23.45a67\" =~ ${VERSION_PATTERN} ]]"
 
-    # Now do the actual check
+    # Retrieve the utopya version (without importing, to avoid installation)
+    - export UTOPYA_VERSION=$(cat utopya/__init__.py | grep __version__ | sed -E $SED_PATTERN)
+
+    # Now do the actual checks
+    # ... against the selected tag
     - "[[ ${CI_COMMIT_TAG} =~ ${VERSION_PATTERN} ]]"
-    # Tag is of the correct form, yay!
 
+    # ... against the utopya package version number
+    - "[[ ${UTOPYA_VERSION} =~ ${VERSION_PATTERN} ]]"
+
+    # ... and that they are the same
+    - "[[ ${UTOPYA_VERSION} == ${CI_COMMIT_TAG} ]]"
+    # Checks successful
+
+    # Install dependencies needed for pushing packages
     - pip install -U twine
-
+  script:
     # Create distribution files
     - python setup.py sdist bdist_wheel
 
