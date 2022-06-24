@@ -98,38 +98,24 @@ def test_dag_custom_operations(without_cached_model_plots_modules):
     mv.pm.raise_exc = True
     plot_cfgs = load_yml(DAG_PLOTS)
 
-    # Should still not be available
-    assert "my_custom_data_operation" not in available_operations()
-
-    # Now, do some unrelated plot operation, i.e. not requiring model-specific
-    # plot functions, but only utopya plot functions.
-    # This should still lead to the _invoke_creator method being called, which
-    # takes care of pre-loading model-specific module definitions, which in
-    # turn call register_operation during their import
-    with tmp_sys_modules():
-        mv.pm.plot("test", out_dir=mv.dirs["eval"], **plot_cfgs["uni_ts"])
-
-        assert "my_custom_data_operation" in available_operations()
+    # Should now (after PlotManager initialization) be available
+    assert "my_custom_data_operation" in available_operations()
 
 
 def test_preloading(tmpdir, without_cached_model_plots_modules):
     """Tests the preloading feature of the utopya.PlotManager"""
     model_plot_modstr = f"model_plots.{ADVANCED_MODEL}"
     model_plot_name = "custom_plot"
-
-    # Now create the model test object, which should load it
-    model = ModelTest(ADVANCED_MODEL)
-    mv, dm = model.create_run_load()
-    mv.pm.raise_exc = True
     assert model_plot_modstr not in sys.modules
 
-    mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
+    # Now create the model test object, which should already load it
+    model = ModelTest(ADVANCED_MODEL)
+    mv, dm = model.create_run_load(raise_exc=True)
     assert model_plot_modstr in sys.modules
 
     # How about a case with a bad import location; adjust a copy of the info
     # bundle to be corrupt in such a way ... Also, temporarily clear the
     # sys.path, as it _might_ include a path that allows import.
-    mv.renew_plot_manager(out_dir=f"session_2/", raise_exc=False)
 
     del sys.modules[model_plot_modstr]
     del sys.modules["model_plots"]
@@ -137,7 +123,7 @@ def test_preloading(tmpdir, without_cached_model_plots_modules):
     assert model_plot_modstr not in sys.modules
 
     # Corrupt the bundle
-    mib = mv.pm._model_info_bundle
+    mib = model._info_bundle
     mpd = os.path.dirname(os.path.dirname(mib.paths["py_plots_dir"]))
 
     # Prepare the temporary sys.path corruption, using a valid and existing
@@ -147,28 +133,29 @@ def test_preloading(tmpdir, without_cached_model_plots_modules):
 
     # Need to disassociate the project to not have the PlotManager load the
     # project-defined plot directory
-    mib._project_name = None
+    mib._d["project_name"] = None
 
     # Assign it back
-    mv.pm._model_info_bundle = mib
+    model._info_bundle = mib
 
     # Without exception raising, this should just go ahead, even though the
     # import will fail ...
-    assert not mv.pm.raise_exc
     with added_sys_path(bad_sys_path), tmp_sys_modules():
         # Remove the model plots directories from the path
         sys.path = [p for p in sys.path if not p.startswith(mpd)]
 
-        mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
+        # After renwening the plot manager, it should still not be available,
+        # and not cause an exception
+        mv.renew_plot_manager(out_dir=f"session_2/", raise_exc=False)
+        assert "model_plots" not in sys.modules
+        assert model_plot_modstr not in sys.modules
 
-        # The module will still be loaded though, because the associated
-        # project will load it.
-        assert model_plot_modstr in sys.modules
+    # With exception raising, setting up a new PlotManager should fail
+    with pytest.raises(ValueError, match="Failed setting up a new"):
+        mv.renew_plot_manager(out_dir=f"session_3/", raise_exc=True)
 
-    # With exception raising, there should be an appropriate error message
-    mv.renew_plot_manager(out_dir=f"session_3/", raise_exc=True)
-    mv.pm._model_info_bundle = mib
-
+    # Test more explicitly
+    mv.pm.raise_exc = True
     with added_sys_path(bad_sys_path), tmp_sys_modules():
         assert mv.pm._model_info_bundle.paths["py_plots_dir"] == bad_sys_path
         assert "model_plots" not in sys.modules
@@ -178,16 +165,10 @@ def test_preloading(tmpdir, without_cached_model_plots_modules):
         remove_from_sys_modules(lambda m: m.startswith("model_plots"))
         assert not any([ms.startswith("model_plots") for ms in sys.modules])
 
-        # This will pass, because import happens via the project's py_plots_dir
-        mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
-
-        # But without the project (and also: without framework) it will fail
-        mv.pm._model_info_bundle._d["project_name"] = None
-        assert not mv.pm._model_info_bundle.project
-        remove_from_sys_modules(lambda m: m.startswith("model_plots"))
-
-        with pytest.raises(ImportError, match="Could not import module"):
-            mv.pm.plot_from_cfg(plot_only=(model_plot_name,))
+        with pytest.raises(
+            ImportError, match="Model-specific plot module could not be"
+        ):
+            mv.pm._preload_modules()
 
 
 def test_plot_func_resolver_extensions():

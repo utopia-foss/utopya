@@ -9,7 +9,7 @@ import importlib
 import logging
 import os
 import sys
-from typing import Union
+from typing import Dict, Union
 
 import dantro
 import dantro.plot.creators
@@ -36,7 +36,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
     interface specifications, e.g. by preloading custom modules.
     """
 
-    CREATORS = dict(
+    CREATORS: Dict[str, type] = dict(
         base=dantro.plot.creators.BasePlotCreator,
         external=PyPlotCreator,
         pyplot=PyPlotCreator,
@@ -62,10 +62,15 @@ class PlotManager(dantro.plot_mngr.PlotManager):
         model this PlotManager is used with. That information is then used to
         load some additional model-specific information once a creator is
         invoked.
+
+        Furthermore, the :py:meth:`._preload_modules` method takes care to make
+        model-, project-, or framework-specific plot functions available.
         """
         super().__init__(*args, **kwargs)
 
         self._model_info_bundle = copy.deepcopy(_model_info_bundle)
+
+        self._preload_modules()
 
     @property
     def common_out_dir(self) -> str:
@@ -111,12 +116,12 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             **init_kwargs, _model_info_bundle=self._model_info_bundle
         )
 
-    def _get_plot_creator(self, *args, **kwargs):
-        """Before actually retrieving the plot creator, invokes module
-        pre-loading via :py:meth:`._preload_modules`.
+    def _get_plot_creator(
+        self, *args, **kwargs
+    ) -> dantro.plot.creators.BasePlotCreator:
+        """Sets up the BasePlotCreator and attaches a model information bundle
+        to it such that this information is available downstream.
         """
-        self._preload_modules()
-
         creator = super()._get_plot_creator(*args, **kwargs)
         creator._model_info_bundle = copy.deepcopy(self._model_info_bundle)
 
@@ -129,40 +134,97 @@ class PlotManager(dantro.plot_mngr.PlotManager):
         data operations) and have them available prior to the invocation of
         the creator and independently from the module that contains the plot
         function (which may be part of dantro, for instance).
+
+        Uses :py:func:`dantro._import_tools.import_module_from_path`
         """
+
+        import contextlib
 
         from .._import_tools import import_module_from_path
 
+        # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+        # A simple exception handling context
+
+        @contextlib.contextmanager
+        def exception_handling(ExcType, scope: str):
+            try:
+                yield
+
+            except ExcType as exc:
+                _msg = (
+                    f"{scope.title()}-specific plot module "
+                    "could not be imported!"
+                )
+                if self.raise_exc:
+                    raise ExcType(
+                        f"{_msg}\n\nError was: {exc}\n\n"
+                        "For debugging, inspect the traceback. Disable debug "
+                        "mode to ignore exception and continue, even if this "
+                        "may cause errors during plotting."
+                    ) from exc
+                log.warning(_msg)
+                log.caution(
+                    "This may lead to errors during plotting. "
+                    "Enable debug mode to get a traceback."
+                )
+
+        # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
         mib = self._model_info_bundle
+        _preloaded = []
 
         if mib is not None:
             log.note("Pre-loading plot modules ...")
+
             mod_path = mib.paths.get("py_plots_dir")
-            if mod_path:
-                log.remark("  Loading model-specific modules ...")
-                import_module_from_path(
-                    mod_path=mod_path,
-                    mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}.{mib.model_name}",
-                    debug=self.raise_exc,
-                )
+            if mod_path and os.path.exists(mod_path):
+                with exception_handling(ImportError, "model"):
+                    log.debug("  Loading model-specific plot module ...")
+                    _ms = f"{self.MODEL_PLOTS_MODULE_NAME}.{mib.model_name}"
+                    import_module_from_path(
+                        mod_path=mod_path,
+                        mod_str=_ms,
+                    )
+                    _preloaded.append("model")
 
             # Also do this on the project and framework level
             # TODO Should make module name configurable separately! See #9
             project = mib.project
-            if project and project.paths.py_plots_dir:
-                log.remark("  Loading project-specific modules ...")
-                import_module_from_path(
-                    mod_path=project.paths.py_plots_dir,
-                    mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
-                    debug=self.raise_exc,
-                )
+            if (
+                project
+                and project.paths.py_plots_dir
+                and project.settings.preload_project_py_plots in (None, True)
+            ):
+                with exception_handling(ImportError, "project"):
+                    log.debug("  Loading project-specific plot module ...")
+                    import_module_from_path(
+                        mod_path=project.paths.py_plots_dir,
+                        mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
+                    )
+                    _preloaded.append("project")
 
-            if project and project.framework_project:
+            if (
+                project
+                and project.framework_project
+                and project.settings.preload_framework_py_plots in (None, True)
+            ):
                 fw = project.framework_project
                 if fw and fw.paths.py_plots_dir:
-                    log.remark("  Loading framework-specific modules ...")
-                    import_module_from_path(
-                        mod_path=fw.paths.py_plots_dir,
-                        mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
-                        debug=self.raise_exc,
-                    )
+                    with exception_handling(ImportError, "framework"):
+                        log.debug(
+                            "  Loading framework-specific plot module ..."
+                        )
+                        import_module_from_path(
+                            mod_path=fw.paths.py_plots_dir,
+                            mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
+                        )
+                        _preloaded.append("framework")
+
+        if _preloaded:
+            log.remark(
+                "  Pre-loaded plot modules of:  %s", ", ".join(_preloaded)
+            )
+        else:
+            log.remark(
+                "  No `py_plots_dir` available or pre-loading deactivated."
+            )

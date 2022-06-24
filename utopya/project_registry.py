@@ -48,6 +48,22 @@ class ProjectMetadata(BaseSchema):
     misc: Optional[Dict[str, Any]]
 
 
+class ProjectSettings(BaseSchema):
+    """Schema to use for a project's ``settings`` field"""
+
+    preload_project_py_plots: Optional[bool]
+    """Whether to preload the project-level plot module (``py_plots_dir``)
+    after initialization of the :py:mod:`~utopya.eval.plotmanager.PlotManager`.
+    If not given, will load the module.
+    """
+
+    preload_framework_py_plots: Optional[bool]
+    """Whether to preload the framework-level plot module (``py_plots_dir``)
+    after initialization of the :py:mod:`~utopya.eval.plotmanager.PlotManager`.
+    If not given, will load the module.
+    """
+
+
 # .............................................................................
 
 
@@ -58,6 +74,7 @@ class ProjectSchema(BaseSchema):
     framework_name: Optional[str]
     paths: ProjectPaths
     metadata: ProjectMetadata
+    settings: ProjectSettings = {}
     run_cfg_format: str = "yaml"
     cfg_set_abs_search_dirs: Optional[List[str]]
     cfg_set_model_source_subdirs: Optional[List[str]]
