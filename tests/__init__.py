@@ -30,6 +30,19 @@ TEST_PROJECT_NAME = f"_utopyaTestProject_{uuid.uuid4().hex}"
 TEST_LABEL = f"_test_label_{uuid.uuid4().hex}"
 """A label to use for testing temporarily registered models"""
 
+TEST_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "_output")
+"""An output directory that *can* be used to locally store data, e.g. for
+looking at plot output.
+"""
+
+USE_TEST_OUTPUT_DIR = True
+"""Whether to use the test output directory.
+
+NOTE It depends on the tests if they actually take this flag into account!
+     If using the ``tmpdir_or_local_dir`` fixture, this will be used to decide
+     whether to return a tmpdir or a path within ``TEST_OUTPUT_DIR``.
+"""
+
 # Simplify importing config files used in tests
 from pkg_resources import resource_filename
 

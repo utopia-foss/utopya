@@ -12,6 +12,8 @@ from matplotlib.legend_handler import HandlerPatch
 
 log = logging.getLogger(__name__)
 
+to_rgb = mpl.colors.to_rgb
+
 # -----------------------------------------------------------------------------
 
 NORMS = {
@@ -152,42 +154,63 @@ class ColorManager:
 
         # Parse configuration for custom discrete colormapping
         if "from_values" in cmap_kwargs:
+
             mapping = cmap_kwargs.pop("from_values")
 
-            # Parse shortcut notation
+            # Get the placeholder color. If not given, set white as default.
+            _placeholder_color = cmap_kwargs.pop("placeholder_color", "w")
+
+            # Check if the colormap is continuous
+            is_continuous = cmap_kwargs.pop("continuous", False)
+
             if isinstance(mapping, list):
                 mapping = {k: v for k, v in enumerate(mapping)}
 
-            # Replace all None entries by the placeholder color. If not given,
-            # set white as default.
-            _placeholder_color = cmap_kwargs.pop("placeholder_color", "w")
             mapping = {
                 k: (v if v is not None else _placeholder_color)
                 for k, v in mapping.items()
             }
 
-            cmap_kwargs["name"] = "ListedColormap"
-            cmap_kwargs["colors"] = list(mapping.values())
+            if is_continuous:
+                # Get the colordict used to generate the continuous colormap.
+                # Replace all None entries by the placeholder color.
+                cdict = dict()
+                for num, col in enumerate(["red", "green", "blue"]):
+                    cdict[col] = [
+                        [
+                            k,
+                            to_rgb(v)[num],
+                            to_rgb(v)[num],
+                        ]
+                        for k, v in mapping.items()
+                    ]
+                mapping = cdict
+                cmap_kwargs["name"] = "LinearSegmentedColormap"
+                cmap_kwargs["segmentdata"] = mapping
+                cmap_kwargs["N"] = 256
 
-            # Overwrite the norm configuration
-            norm_kwargs = {
-                "name": "BoundaryNorm",
-                "ncolors": len(mapping),
-                "boundaries": self._parse_boundaries(list(mapping.keys())),
-            }
+                log.remark("Configuring a linear colormap 'from values'. ")
 
-            log.remark(
-                "Configuring a discrete colormap 'from values'. "
-                "Overwriting 'norm' to BoundaryNorm with %d colors.",
-                norm_kwargs["ncolors"],
-            )
+            else:
+                cmap_kwargs["name"] = "ListedColormap"
+                cmap_kwargs["colors"] = list(mapping.values())
+                norm_kwargs = {
+                    "name": "BoundaryNorm",
+                    "ncolors": len(mapping),
+                    "boundaries": self._parse_boundaries(list(mapping.keys())),
+                }
+                log.remark(
+                    "Configuring a discrete colormap 'from values'. "
+                    "Overwriting 'norm' to BoundaryNorm with %s colors.",
+                    norm_kwargs["ncolors"],
+                )
 
         # BoundaryNorm has no vmin/vmax argument
         if not norm_kwargs.get("name", None) == "BoundaryNorm":
             norm_kwargs["vmin"] = vmin
             norm_kwargs["vmax"] = vmax
 
-            log.remark("norm.vmin and norm.vmax set to %s and %s.", vmin, vmax)
+            log.remark("norm.vmin and norm.vmax set to %s and %s", vmin, vmax)
 
         # Parse shortcut notation
         if isinstance(labels, list):
@@ -310,7 +333,8 @@ class ColorManager:
         """
         if name == "ListedColormap":
             cmap = mpl.colors.ListedColormap(**cmap_kwargs)
-
+        elif name == "LinearSegmentedColormap":
+            cmap = mpl.colors.LinearSegmentedColormap(name=name, **cmap_kwargs)
         else:
             try:
                 cmap = copy.copy(mpl.cm.get_cmap(name, **cmap_kwargs))

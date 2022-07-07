@@ -90,6 +90,48 @@ TwoSlopeNorm:
     name: TwoSlopeNorm
     vcenter: 1.
 
+# --- Continuous Colormap -----------------------------------------------------
+continuous:
+  cmap:
+    continuous: true
+    from_values:
+      0: '#ec7070'
+      0.5: '#EC9F7E'
+      1: black
+    bad: white
+
+continuous_with_none:
+  cmap:
+    continuous: true
+    from_values:
+      0: '#ec7070'
+      0.5: ~
+      1: black
+
+continuous_lognorm:
+  cmap:
+    continuous: true
+    from_values:
+      0: '#ec7070'
+      0.5: '#EC9F7E'
+      1: black
+    bad: white
+  norm:
+    name: LogNorm
+
+continuous_with_boundaries:
+  cmap:
+    continuous: true
+    from_values:
+      0: '#ec7070'
+      0.5: '#EC9F7E'
+      1: black
+    bad: white
+  norm:
+    name: BoundaryNorm
+    ncolors: 256
+    boundaries: [0, 0.2, 0.7, 1]
+
 # -- Failing configurations ---------------------------------------------------
 invalid_norm:
   norm: norrrm
