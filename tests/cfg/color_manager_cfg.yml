@@ -1,25 +1,29 @@
 # Test configurations of the `plot_funcs._mpl_helpers.ColorHandler`.
 ---
 from_centers:
+  ### START -- labels
   cmap:
-    bad: w
-    over: w
-    under: w
     from_values:
       0: r
       1: g
       4: b
+    bad: w
+    over: w
+    under: w
   labels:
     0: foo
     1: bar
     4: baz
+  ### END ---- labels
 
 from_intervals:
+  ### START -- intervals
   cmap:
     from_values:
       [-.5,0.5]: r
-      [0.5,1.5]: ~ # None entry, use placeholder color here
+      [0.5,1.5]: ~   # None --> will use placeholder color here, default: white
       [1.5,4.5]: b
+  ### END ---- intervals
   norm:
     foo: bar # will be overwritten
 
@@ -34,6 +38,7 @@ simple_syntax:
     orientation: horizontal
 
 advanced_syntax:
+  ### START -- advanced_syntax
   cmap:
     name: Greys
     over:
@@ -47,6 +52,7 @@ advanced_syntax:
   norm:
     name: PowerNorm
     gamma: 0.5
+  ### END ---- advanced_syntax
 
 shortcut_categorical:
   cmap:
@@ -89,6 +95,50 @@ TwoSlopeNorm:
   norm:
     name: TwoSlopeNorm
     vcenter: 1.
+
+# --- Continuous Colormap -----------------------------------------------------
+continuous:
+  cmap:
+    continuous: true
+    from_values:
+      0: '#EC7070'
+      0.5: '#EC9F7E'
+      1: black
+    bad: white
+
+continuous_with_none:
+  cmap:
+    continuous: true
+    from_values:
+      0: '#EC7070'
+      0.5: ~
+      1: black
+
+continuous_lognorm:
+  cmap:
+    continuous: true
+    from_values:
+      0: '#EC7070'
+      0.5: '#EC9F7E'
+      1: black
+    bad: white
+  norm:
+    name: LogNorm
+
+continuous_with_boundaries:
+  ### START -- continuous_with_boundaries
+  cmap:
+    continuous: true
+    from_values:
+      0: "#EC7070"
+      0.5: "#EC9F7E"
+      1: black
+    bad: white
+  norm:
+    name: BoundaryNorm
+    ncolors: 256
+    boundaries: [0, 0.2, 0.7, 1]
+  ### END ---- continuous_with_boundaries
 
 # -- Failing configurations ---------------------------------------------------
 invalid_norm:

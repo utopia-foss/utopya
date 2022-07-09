@@ -2,6 +2,7 @@
 
 import copy
 import os
+import pathlib
 import shutil
 import time
 
@@ -16,7 +17,9 @@ from . import (
     DEMO_DIR,
     DUMMY_MODEL,
     TEST_LABEL,
+    TEST_OUTPUT_DIR,
     TEST_PROJECT_NAME,
+    USE_TEST_OUTPUT_DIR,
 )
 
 # -----------------------------------------------------------------------------
@@ -45,6 +48,24 @@ testing the CLI
 
 
 # -----------------------------------------------------------------------------
+
+
+@pytest.fixture
+def tmpdir_or_local_dir(tmpdir, request) -> pathlib.Path:
+    """If ``USE_TEST_OUTPUT_DIR`` is False, returns a temporary directory;
+    otherwise a test-specific local directory within ``TEST_OUTPUT_DIR`` is
+    returned.
+    """
+    if not USE_TEST_OUTPUT_DIR:
+        return tmpdir
+
+    test_dir = os.path.join(
+        TEST_OUTPUT_DIR,
+        request.node.module.__name__,
+        request.node.originalname,
+    )
+    os.makedirs(test_dir, exist_ok=True)
+    return pathlib.Path(test_dir)
 
 
 @pytest.fixture
