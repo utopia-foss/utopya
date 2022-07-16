@@ -1,7 +1,7 @@
 """Implements the `utopya models` subcommand tree of the CLI"""
 
 import sys
-from typing import Tuple
+from typing import Sequence, Tuple
 
 import click
 
@@ -196,11 +196,20 @@ def info(*, model_name: str, label: str):
 
 
 # .. utopya models copy .......................................................
-# TODO Implement
 
 
 @models.command(
-    help=("Copies a model implementation.\n\nThis is not implemented yet!")
+    help=(
+        "Copies a model implementation, creating a model with a new name and "
+        "refactored file content.\n\n"
+        "For instance, all instances of 'MyModel' will be replaced by "
+        "'CopiedModel' in file paths and within the files themselves. "
+        "There will NOT be any writing without a previous confirmation "
+        "prompt. Alternatively, the --dry-run command can be useful to get a "
+        "preview of the effects this command would have.\n\n"
+        "Note that the model implementation will only be copied, registration "
+        "still has to occur separately."
+    )
 )
 @click.argument("model_name")
 @add_options(OPTIONS["label"])
@@ -220,39 +229,68 @@ def info(*, model_name: str, label: str):
     ),
 )
 @click.option(
+    "--pp/--no-pp",
+    "--postprocess/--no-postprocess",
+    "postprocess",
+    default=True,
+    show_default=True,
+    help=("Whether to run post-processing routines for the copied model."),
+)
+# TODO Expand configurability of postprocessing arguments
+@click.option(
     "--dry-run",
     flag_value=True,
     help=(
         "Perform a dry run: No copy or write operations will be carried out."
     ),
 )
+# TODO Consider making glob arguments accessible
 @click.option(
     "--skip-exts",
     show_default=True,
-    default="pyc",
-    callback=lambda c, _, val: val.split(),
+    default=".pyc",
+    callback=lambda c, _, val: val.split() if val else (),
     help=(
         "File extensions to skip. "
         "To pass multiple values, use quotes and separate individual "
-        "extensions using spaces. There should not be any leading dots!"
+        "extensions using spaces. Leading dots are optional."
     ),
 )
 @click.option(
-    "--register",
-    flag_value=True,
-    help=("If given, will also register the newly created model."),
+    "-y",
+    "--yes",
+    "prompts_confirmed",
+    is_flag=True,
+    help="If set, answers all prompts with yes.",
 )
+@add_options(OPTIONS["debug_flag"])
 def copy(
     *,
     model_name: str,
     label: str,
     new_name: str,
     target_project: str,
+    postprocess: bool,
     dry_run: bool,
-    skip_exts: str,
-    register: bool,
+    skip_exts: Sequence[str],
+    prompts_confirmed: bool,
+    debug: bool,
 ):
-    raise NotImplementedError("copy")  # TODO
+    """Copies a model implementation, adapting to a new name."""
+    from ._copy_model import copy_model_files
+
+    copy_model_files(
+        model_name=model_name,
+        label=label,
+        new_name=new_name,
+        target_project=target_project,
+        postprocess=dict(enabled=postprocess),
+        dry_run=dry_run,
+        skip_exts=skip_exts,
+        prompts_confirmed=prompts_confirmed,
+        raise_exc=debug,
+        _log=Echo,
+    )
 
 
 # -- Registration -------------------------------------------------------------
