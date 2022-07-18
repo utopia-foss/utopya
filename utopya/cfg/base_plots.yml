@@ -466,6 +466,23 @@
   based_on: .plot.facet_grid
   kind: scatter
 
+.plot.facet_grid.scatter3d:
+  based_on: .plot.facet_grid
+  kind: scatter3d
+  subplot_kws:
+    projection: '3d'
+  cbar_kwargs:
+    pad: 0.1
+  sharex: False
+  sharey: False
+  helpers:
+    setup_figure:
+      subplot_kw:
+        projection: '3d'
+    subplots_adjust:
+      wspace: 0.1
+      hspace: 0.1
+
 
 # .. Seaborn plots ............................................................
 .plot.snsplot:
