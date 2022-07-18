@@ -17,7 +17,7 @@ INSTALL_DEPS = [
     #
     # related to utopya:
     "paramspace>=2.5.9",
-    "dantro>=0.18.0a11",
+    "dantro>=0.18.0b1",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
