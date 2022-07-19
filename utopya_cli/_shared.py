@@ -52,7 +52,7 @@ OPTIONS["label"] = (
         help=(
             "For model names that have multiple info bundles registered, a "
             "label is needed to unambiguously select the desired one. "
-            "Alternatively, use the `utopya models set-default` CLI command "
+            "Alternatively, use the ``utopya models set-default`` CLI command "
             "to set a default label for a model."
         ),
     ),
@@ -68,7 +68,7 @@ OPTIONS["model_selection"] = (
             "files from the chosen set for the run and plots config. "
             "Note that the specific arguments still take precedence over the "
             "values from the config sets; to use default paths, "
-            "specify empty strings (`''`) for those arguments."
+            "specify empty strings (``''``) for those arguments."
         ),
     ),
 ) + OPTIONS["label"]
@@ -143,9 +143,9 @@ OPTIONS["eval"] = (
         callback=default_none,
         help=(
             "Sets entries in the selected plots config. "
-            "Example: -u my_plot.some_param=42 sets the 'some_param' entry "
-            "in the plot configuration named 'my_plot'. "
-            "Repeat the -u option to set multiple values."
+            "Example: ``-u my_plot.some_param=42`` sets the ``some_param`` "
+            "entry in the plot configuration named ``my_plot``. "
+            "Repeat the ``-u`` option to set multiple values."
         ),
     ),
     click.option(
@@ -161,7 +161,8 @@ OPTIONS["eval"] = (
             "configuration. Note that simple name globbing is supported, but "
             "the argument needs to be put into quotes to not conflict with "
             "the globbing done by the shell. "
-            "Repeat the --po option to denote multiple plot_only arguments."
+            "Repeat the ``--po`` option to denote multiple ``plot_only`` "
+            "arguments."
         ),
     ),
     click.option(

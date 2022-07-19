@@ -65,11 +65,13 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
 
 .. TODO add how-to-cite
 
+
 .. toctree::
     :caption: Reference
     :maxdepth: 2
     :hidden:
 
+    cli/index
     API Reference <api/utopya>
     LGPLv3 License <https://www.gnu.org/licenses/lgpl-3.0.html>
     index_pages

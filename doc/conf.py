@@ -5,7 +5,7 @@
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
-# -- Path setup --------------------------------------------------------------
+# -- Path setup ---------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -70,7 +70,7 @@ def setup(app):
     app.connect("builder-inited", run_apidoc)
 
 
-# -- Project information -----------------------------------------------------
+# -- Project information ------------------------------------------------------
 
 project = "utopya"
 copyright = "2018 — 2022, utopya developers"
@@ -83,7 +83,7 @@ version = find_version("..", "utopya", "__init__.py")
 release = find_version("..", "utopya", "__init__.py")
 
 
-# -- General configuration ---------------------------------------------------
+# -- General configuration ----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
@@ -104,6 +104,12 @@ extensions = [
     #
     # -- Additional extensions...
     #
+    #   ... to allow Markdown syntax
+    "myst_parser",
+    #
+    #   ... to automatically show the click CLI
+    "sphinx_click",
+    #
     #   ... to pre-process Google-style Python docstrings
     "sphinx.ext.napoleon",
     #
@@ -119,7 +125,10 @@ templates_path = ["_templates"]
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 
 # The master toctree document.
 master_doc = "index"
@@ -151,7 +160,7 @@ autodoc_default_options = {
 }
 
 
-# -- Options for HTML output -------------------------------------------------
+# -- Options for HTML output --------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
@@ -198,13 +207,13 @@ html_logo = "_static/img/logo_green.svg"
 html_favicon = "_static/img/icon_green.png"
 
 
-# -- Options for HTMLHelp output ---------------------------------------------
+# -- Options for HTMLHelp output ----------------------------------------------
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "utopyadoc"
 
 
-# -- Options for LaTeX output ------------------------------------------------
+# -- Options for LaTeX output -------------------------------------------------
 
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
@@ -235,14 +244,14 @@ latex_documents = [
 ]
 
 
-# -- Options for manual page output ------------------------------------------
+# -- Options for manual page output -------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [(master_doc, "utopya", "utopya Documentation", [author], 1)]
 
 
-# -- Options for Texinfo output ----------------------------------------------
+# -- Options for Texinfo output -----------------------------------------------
 
 # Grouping the document tree into Texinfo files. List of tuples
 # (source start file, target name, title, author,
@@ -260,7 +269,7 @@ texinfo_documents = [
 ]
 
 
-# -- Options for Epub output -------------------------------------------------
+# -- Options for Epub output --------------------------------------------------
 
 # Bibliographic Dublin Core info.
 epub_title = project
@@ -278,15 +287,17 @@ epub_title = project
 epub_exclude_files = ["search.html"]
 
 
-# -- Extension configuration -------------------------------------------------
+# -----------------------------------------------------------------------------
+# -- Extension configuration --------------------------------------------------
+# -----------------------------------------------------------------------------
 
-# -- Options for todo extension ----------------------------------------------
+# -- Options for todo extension -----------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
 
-# -- Napoleon configuration --------------------------------------------------
+# -- Napoleon configuration ---------------------------------------------------
 
 napoleon_google_docstring = True
 # Whether to parse Google style docstrings. (default: true)
@@ -306,6 +317,27 @@ napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = True
 # True to include special members (like __membername__) with docstrings in the
 # documentation. False to fall back to Sphinx’s default behavior. Default: True
+
+
+# -- MyST ---------------------------------------------------------------------
+# See docs for more info:
+#   https://myst-parser.readthedocs.io/en/latest/configuration.html
+#
+myst_enable_extensions = [
+    "amsmath",
+    # "colon_fence",
+    # "deflist",
+    # "dollarmath",
+    # "fieldlist",
+    # "html_admonition",
+    # "html_image",
+    "linkify",
+    # "replacements",
+    "smartquotes",
+    "strikethrough",
+    # "substitution",
+    # "tasklist",
+]
 
 
 # -- IPython Configuration ----------------------------------------------------

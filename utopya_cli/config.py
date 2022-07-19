@@ -16,22 +16,22 @@ from ._utils import Echo, set_entries_from_kv_pairs
         "Configuration entries are grouped into multiple categories, which "
         "each category corresponding to a YAML file within the utopya "
         "config directory."
-        "The `utopya config` command allows revealing the configuration "
+        "The ``utopya config`` command allows revealing the configuration "
         "file, opening it in an editor, or setting values directly via the "
         "command line interface.\n"
         "\n"
         "Entries within these configuration files can be set using the "
-        "--set and KV_PAIRS argument, expecting key=value pairs. "
+        "``--set`` and ``KV_PAIRS`` argument, expecting ``key=value`` pairs. "
         "The key may be a dot-separated string of keys for dict traversal, "
-        "like `foo.bar.baz`. "
-        "To delete entries, set the value to `DEL`. For example:\n"
+        "like ``foo.bar.baz``. "
+        "To delete entries, set the value to ``DEL``. For example:\n"
         "\n"
-        "    utopya config user --get --set foo.bar=spam bar.baz=DEL\n"
+        "    ``utopya config user --get --set foo.bar=spam bar.baz=DEL``\n"
         "\n"
-        "This will set the user configuration entry `foo.bar`, delete the "
-        "entry `bar.baz`, and then retrieve the new configuration. "
+        "This will set the user configuration entry ``foo.bar``, delete the "
+        "entry ``bar.baz``, and then retrieve the new configuration. "
         "To include spaces, put the whole key-value pair into quotes "
-        "('key=value'); everything after the `=` is parsed as a string "
+        "(``'key=value'``); everything after the ``=`` is parsed as a string "
         "anyway."
         "If the configuration file does not exist, it will be created."
     )
@@ -68,7 +68,7 @@ from ._utils import Echo, set_entries_from_kv_pairs
     is_flag=True,
     help=(
         "Set entries in the specified configuration, using the KV_PAIRS. "
-        "This option is mutually exclusive with the --edit option."
+        "This option is mutually exclusive with the ``--edit`` option."
     ),
 )
 @click.option(
@@ -76,7 +76,7 @@ from ._utils import Echo, set_entries_from_kv_pairs
     is_flag=True,
     help=(
         "Open the selected config file in an editor. "
-        "This option is mutually exclusive with the --set option."
+        "This option is mutually exclusive with the ``--set`` option."
     ),
 )
 @click.option(
@@ -85,7 +85,7 @@ from ._utils import Echo, set_entries_from_kv_pairs
     is_flag=True,
     help=(
         "Retrieve all entries from the specified configuration. This is "
-        "always invoked *after* the --set command was executed (if given)."
+        "always invoked *after* the ``--set`` command was executed (if given)."
     ),
 )
 @click.option(
@@ -94,8 +94,8 @@ from ._utils import Echo, set_entries_from_kv_pairs
     is_flag=True,
     default=True,
     help=(
-        "Whether to accept YAML syntax for parsing the values in KV_PAIRS "
-        "(default: true). "
+        "Whether to accept YAML syntax for parsing the values in ``KV_PAIRS`` "
+        "(default: ``true``). "
         "This allows specifying list- or dict-like values. In case this "
         "results in a dict, the object at the specified key will be "
         "recursively updated"
