@@ -37,7 +37,7 @@ import click
     default=None,
     type=str,
     help=(
-        "Overwrites the `paths->model_note` entry which is used in creation "
+        "Overwrites the ``paths.model_note`` entry which is used in creation "
         "of the batch run directory path."
     ),
 )

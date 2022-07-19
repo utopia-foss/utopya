@@ -1,7 +1,7 @@
 """Implements the `utopya models` subcommand tree of the CLI"""
 
 import sys
-from typing import Tuple
+from typing import Sequence, Tuple
 
 import click
 
@@ -196,11 +196,20 @@ def info(*, model_name: str, label: str):
 
 
 # .. utopya models copy .......................................................
-# TODO Implement
 
 
 @models.command(
-    help=("Copies a model implementation.\n\nThis is not implemented yet!")
+    help=(
+        "Copies a model implementation, creating a model with a new name and "
+        "refactored file content.\n\n"
+        "For instance, all instances of ``MyModel`` will be replaced by "
+        "``CopiedModel`` in file paths and within the files themselves. "
+        "There will *NOT* be any writing without a previous confirmation "
+        "prompt. Alternatively, the ``--dry-run`` flag can be useful to get a "
+        "preview of the effects this command would have.\n\n"
+        "Note that the model implementation will only be copied, registration "
+        "still has to occur separately."
+    )
 )
 @click.argument("model_name")
 @add_options(OPTIONS["label"])
@@ -220,39 +229,68 @@ def info(*, model_name: str, label: str):
     ),
 )
 @click.option(
+    "--pp/--no-pp",
+    "--postprocess/--no-postprocess",
+    "postprocess",
+    default=True,
+    show_default=True,
+    help=("Whether to run post-processing routines for the copied model."),
+)
+# TODO Expand configurability of postprocessing arguments
+@click.option(
     "--dry-run",
     flag_value=True,
     help=(
         "Perform a dry run: No copy or write operations will be carried out."
     ),
 )
+# TODO Consider making glob arguments accessible
 @click.option(
     "--skip-exts",
     show_default=True,
-    default="pyc",
-    callback=lambda c, _, val: val.split(),
+    default=".pyc",
+    callback=lambda c, _, val: val.split() if val else (),
     help=(
         "File extensions to skip. "
         "To pass multiple values, use quotes and separate individual "
-        "extensions using spaces. There should not be any leading dots!"
+        "extensions using spaces. Leading dots are optional."
     ),
 )
 @click.option(
-    "--register",
-    flag_value=True,
-    help=("If given, will also register the newly created model."),
+    "-y",
+    "--yes",
+    "prompts_confirmed",
+    is_flag=True,
+    help="If set, answers all prompts with yes.",
 )
+@add_options(OPTIONS["debug_flag"])
 def copy(
     *,
     model_name: str,
     label: str,
     new_name: str,
     target_project: str,
+    postprocess: bool,
     dry_run: bool,
-    skip_exts: str,
-    register: bool,
+    skip_exts: Sequence[str],
+    prompts_confirmed: bool,
+    debug: bool,
 ):
-    raise NotImplementedError("copy")  # TODO
+    """Copies a model implementation, adapting to a new name."""
+    from ._copy_model import copy_model_files
+
+    copy_model_files(
+        model_name=model_name,
+        label=label,
+        new_name=new_name,
+        target_project=target_project,
+        postprocess=dict(enabled=postprocess),
+        dry_run=dry_run,
+        skip_exts=skip_exts,
+        prompts_confirmed=prompts_confirmed,
+        raise_exc=debug,
+        _log=Echo,
+    )
 
 
 # -- Registration -------------------------------------------------------------
@@ -397,7 +435,7 @@ def register_single(
         "corresponding model source directory or a potentially existing model "
         "information file.\n"
         "Note that the arguments need to be separable lists, where the "
-        "`--separator` argument determines the separation string. "
+        "``--separator`` argument determines the separation string. "
         "Also, arguments probably need to be put into quotes and spaces need "
         "to be escaped."
     ),
@@ -408,9 +446,9 @@ def register_single(
     type=click.STRING,
     help=(
         "A list of paths pointing to the model executables. "
-        "Paths may be given as relative to the --base-executable-dir. "
+        "Paths may be given as relative to the ``--base-executable-dir``. "
         "If all paths match a pattern, consider using the "
-        "--executable-fstr argument instead. "
+        "``--executable-fstr`` argument instead. "
         "One of these arguments *needs* to be given."
     ),
 )
@@ -419,9 +457,9 @@ def register_single(
     type=click.STRING,
     help=(
         "A list of paths pointing to the model source directories. "
-        "Paths may be given as relative to the --base-source-dir. "
+        "Paths may be given as relative to the ``--base-source-dir``. "
         "If all paths match a pattern, consider using the "
-        "--source-dir-fstr argument instead."
+        "``--source-dir-fstr`` argument instead."
     ),
 )
 @click.option(
@@ -441,16 +479,16 @@ def register_single(
     "--executable-fstr",
     type=click.STRING,
     help=(
-        "A format string that can be used instead of the --executables "
-        "argument and is evaluated for each entry in MODEL_NAMES."
+        "A format string that can be used instead of the ``--executables`` "
+        "argument and is evaluated for each entry in ``MODEL_NAMES``."
     ),
 )
 @click.option(
     "--source-dir-fstr",
     type=click.STRING,
     help=(
-        "A format string that can be used instead of the --source-dirs "
-        "argument and is evaluated for each entry in MODEL_NAMES."
+        "A format string that can be used instead of the ``--source-dirs`` "
+        "argument and is evaluated for each entry in ``MODEL_NAMES``."
     ),
 )
 @click.option(
@@ -473,8 +511,8 @@ def register_single(
     "--separator",
     default=";",
     help=(
-        "By which separator to split the --model-names, --executables, and "
-        "--source-dirs arguments. Default: ';'"
+        "By which separator to split the ``--model-names``, "
+        "``--executables``, and ``--source-dirs`` arguments. Default: ``;``"
     ),
 )
 @click.option(
@@ -614,7 +652,7 @@ def register_from_list(
         "If given, this label will be used instead of the one given in the "
         "manifest file(s). "
         "If no custom label is given and the manifest file does not define "
-        "one either, the default will be 'from_manifest_file'."
+        "one either, the default will be ``from_manifest_file``."
     ),
 )
 @click.option(

@@ -20,6 +20,7 @@
     - Makes it much easier to expand the CLI and allows testing using pytest.
     - Improves modularization by moving all CLI-related implementations into the new and separate `utopya_cli` package.
     - Provides more ways to register models. In particular, there is now the option to register a model's metadata via a "model info file".
+    - !19 improves the implementation of `utopya models copy`, becoming more language-agnostic and extendable.
 - !4 and !6 add a validated project registry, which keeps track of utopya projects (which in turn contain models) and frameworks: two abstraction levels that play a role in determining the configuration hierarchy.
 - !5 adds changes that allow a proper [outsourcing of utopya from Utopia](https://gitlab.com/utopia-project/utopia/-/merge_requests/277):
     - Extends the project registration CLI with `--require-matching-names` option.

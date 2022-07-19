@@ -1,7 +1,9 @@
 """Tests the utopya models <...> subcommands of the CLI"""
 
 import os
+import pickle
 import traceback
+from shutil import rmtree
 
 import pytest
 
@@ -276,9 +278,187 @@ def test_edit(monkeypatch, with_test_models):
     assert "Not opening" in res.output
 
 
-@pytest.mark.skip("NotImplemented")
-def test_copy():
+def test_copy(registry):
     """Tests utopya models copy"""
-    new_model_args = ("--new-name", "foo", "--target-project", "bar")
-    res = invoke_cli(("models", "copy", DUMMY_MODEL) + new_model_args)
+    cmd = ("models", "copy", ADVANCED_MODEL)
+    shared_args = ("--dry-run", "--yes")
+    COPIED_MODEL_NAME = f"_CopyTest_{ADVANCED_MODEL}"
+
+    # Simple invocation with all parameters given
+    args = (
+        "--new-name",
+        COPIED_MODEL_NAME,
+        "--target-project",
+        TEST_PROJECT_NAME,
+    )
+    res = invoke_cli(cmd + args + shared_args)
     assert res.exit_code == 0
+
+    # Can disable postprocessing
+    res = invoke_cli(cmd + args + shared_args + ("--no-pp",))
+    assert res.exit_code == 0
+    assert "Post-processing routines were disabled." in res.output
+
+    # And may not be getting a prompt
+    res = invoke_cli(cmd + args + ("--dry-run",))
+    assert res.exit_code == 0
+
+    # Can pass file extensions to skip, which may also lead to empty file maps
+    res = invoke_cli(cmd + args + shared_args + ("--skip-exts", "pyc py .yml"))
+    print(res.output)
+    assert res.exit_code == 0
+    assert ".pyc .py .yml" in res.output
+    assert "check the file extensions" in res.output
+    assert "No files found to copy!" in res.output  # ... as all are ignored
+
+    # Informs about py_tests_dir or py_plots_dir not being defined
+    res = invoke_cli(("models", "copy", DUMMY_MODEL) + args + shared_args)
+    print(res.output, res.exception)
+    assert res.exit_code == 0
+    assert "do not define a 'py_tests_dir'" in res.output
+    assert "do not define a 'py_plots_dir'" in res.output
+
+    # .. Actually copy ........................................................
+    model = registry[ADVANCED_MODEL].item()
+    prj = model.project
+
+    try:
+        res = invoke_cli(cmd + args + ("--yes",))
+        print(res.output)
+        assert "Copying failed" not in res.output
+        assert res.exit_code == 0
+
+        # And do it again, which should trigger writing errors
+        res = invoke_cli(cmd + args + ("--yes",))
+        print(res.output)
+        assert "Copying failed with FileExistsError" in res.output
+        assert res.exit_code == 0
+
+        # Copying error will also raise
+        res = invoke_cli(cmd + args + ("--yes", "--debug"))
+        print(res.output)
+        assert res.exit_code != 0
+
+        # File name replacements were carried out
+        model_dir = os.path.join(prj.paths["models_dir"], COPIED_MODEL_NAME)
+        cfg_file = os.path.join(model_dir, f"{COPIED_MODEL_NAME}_cfg.yml")
+        assert os.path.isfile(cfg_file)
+
+        # Replacements took place
+        info_file = os.path.join(model_dir, f"{COPIED_MODEL_NAME}_info.yml")
+        assert os.path.isfile(info_file)
+        with open(info_file) as f:
+            info_file = f.read()
+
+        print(info_file)
+        assert f"model_name: {COPIED_MODEL_NAME}" in info_file
+
+        # .. Postprocessing . . . . . . . . . . . . . . . . . . . . . . . . . .
+        cml_root = os.path.join(prj.paths["models_dir"], "CMakeLists.txt")
+        cml_model = os.path.join(
+            prj.paths["models_dir"], ADVANCED_MODEL, "CMakeLists.txt"
+        )
+
+        # With a CMakeLists.txt file in the file map, should trigger automatic
+        # postprocessing ... regardless of content
+        with open(cml_model, "w") as f:
+            f.write("")
+
+        res = invoke_cli(cmd + args + shared_args)
+        print(res.output)
+        assert "No CMakeLists.txt file found in expected loc" in res.output
+        assert res.exit_code == 0
+
+        # With the root file existing, extending it is attempted, but the
+        # add_subdirectory command is missing.
+        with open(cml_root, "w") as f:
+            f.write("\n")
+
+        res = invoke_cli(cmd + args + shared_args)
+        print(res.output)
+        assert "inserting at the end" in res.output
+        assert "preview of how the new" in res.output
+        assert res.exit_code == 0
+
+        # Now with some add_subdirectory commands existing
+        with open(cml_root, "a") as f:
+            f.write("\n")
+            f.write("# Some comment\n")
+            f.write(f"add_subdirectory(__i_should_be_first__)\n")
+            f.write(f"add_subdirectory({ADVANCED_MODEL})\n")
+            f.write(f"add_subdirectory({DUMMY_MODEL})\n")
+            f.write("\n")
+            f.write("# More content here\n")
+            f.write("\n")
+            f.write("# End of file\n")
+
+        res = invoke_cli(cmd + args + ("--yes",))
+        print(res.output)
+        assert res.exit_code == 0
+
+        # ... the location is correct
+        with open(cml_root, "r") as f:
+            print("Written file:")
+            f = f.read()
+            print(f)
+            assert f.find(COPIED_MODEL_NAME) > f.find("__i_should_be_first__")
+            assert f.find(COPIED_MODEL_NAME) < f.find(ADVANCED_MODEL)
+            assert f.find(COPIED_MODEL_NAME) < f.find(DUMMY_MODEL)
+            assert f.find(COPIED_MODEL_NAME) < f.find("End of file")
+
+        # Insert behind the last add_subdirectory command
+        with open(cml_root, "w") as f:
+            f.write("\n")
+            f.write("# Some comment\n")
+            f.write(f"add_subdirectory(__i_should_be_first__)\n")
+            f.write("\n")
+            f.write("# End of file\n")
+
+        res = invoke_cli(cmd + args + ("--yes",))
+        print(res.output)
+        assert res.exit_code == 0
+
+        with open(cml_root, "r") as f:
+            print("Written file:")
+            f = f.read()
+            print(f)
+            assert f.find(COPIED_MODEL_NAME) > f.find("__i_should_be_first__")
+            assert f.find(COPIED_MODEL_NAME) < f.find("End of file")
+
+    finally:
+        # Remove artifacts
+        rmtree(os.path.join(prj.paths["models_dir"], COPIED_MODEL_NAME))
+        rmtree(os.path.join(prj.paths["py_tests_dir"], COPIED_MODEL_NAME))
+        rmtree(os.path.join(prj.paths["py_plots_dir"], COPIED_MODEL_NAME))
+        os.remove(cml_model)
+        os.remove(cml_root)
+
+    # .. Errors ...............................................................
+    # Provoke a reading error by adding a binary file
+    bad_file = os.path.join(prj.paths["models_dir"], ADVANCED_MODEL, "so_bad")
+    try:
+        with open(bad_file, mode="wb") as f:
+            pickle.dump("some object", f)
+
+        res = invoke_cli(cmd + args + shared_args)
+        print(res.output)
+        assert "Reading failed" in res.output
+        assert res.exit_code == 0
+
+        res = invoke_cli(cmd + args + shared_args + ("--debug",))
+        print(res.output)
+        assert "Reading failed" in res.output
+        assert res.exit_code != 0
+
+    finally:
+        os.remove(bad_file)
+
+    # Existing model name throws an error
+    args = (
+        "--new-name",
+        ADVANCED_MODEL,  # already exists, of course
+        "--target-project",
+        TEST_PROJECT_NAME,
+    )
+    res = invoke_cli(cmd + args + shared_args)
+    assert res.exit_code == 1

@@ -27,10 +27,10 @@ log = logging.getLogger(__name__)
     help=(
         "Evaluate a previously finished simulation run.\n"
         "\n"
-        "Loads a simulation of the given MODEL_NAME model and evaluates it "
-        "either using the configured defaults or with custom plots configs. "
-        "If no RUN_DIR is given, will use the latest output; to evaluate a "
-        "specific simulation, the directory name can be used."
+        "Loads a simulation of the given ``MODEL_NAME` model and evaluates "
+        "it either using the configured defaults or with custom plots "
+        "configs. If no ``RUN_DIR`` is given, will use the latest output; to "
+        "evaluate a specific simulation, the directory name can be used."
     ),
 )
 @click.argument("model_name")
@@ -57,9 +57,9 @@ log = logging.getLogger(__name__)
     callback=default_none,
     help=(
         "Sets entries in the meta configuration using key-value pairs. "
-        "Example: -p some.param=42 sets the 'param' entry in 'some' to 42. "
-        "Specify DELETE as value to remove an entry. "
-        "Repeat the -p option to set multiple values."
+        "Example: ``-p some.param=42`` sets the ``param`` entry in ``some`` "
+        "to ``42``. Specify ``DELETE`` as value to remove an entry. "
+        "Repeat the ``-p`` option to set multiple values."
     ),
 )
 #

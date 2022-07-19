@@ -34,6 +34,8 @@ DOC_DEPS = [
     "sphinx>=4.5,<5",
     "sphinx-book-theme",
     "ipython>=7.0",
+    "myst-parser[linkify]",
+    "sphinx-click",
 ]
 
 

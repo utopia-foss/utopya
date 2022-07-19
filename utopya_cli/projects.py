@@ -134,7 +134,7 @@ def remove(
         "A file that contains all additional project information like "
         "the project name, relevant paths, or other metadata. "
         "If not given, will search for some candidate files relative to "
-        "BASE_DIR, e.g. `project_info.yml`."
+        "``BASE_DIR``, e.g. ``.utopya-project.yml``."
     ),
 )
 @click.option(
@@ -150,8 +150,8 @@ def remove(
     "--require-matching-names",
     is_flag=True,
     help=(
-        "If set, requires that an optionally given --custom-name and the name "
-        "set in the project info file match exactly."
+        "If set, requires that an optionally given ``--custom-name`` and the "
+        "name set in the project info file match exactly."
     ),
 )
 @click.option(

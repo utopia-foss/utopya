@@ -13,7 +13,7 @@ from .run import run
 
 cli = click.Group(
     help=(
-        "utopya: a versatile simulation runner and manager\n\n"
+        "**utopya**: a versatile simulation runner and manager\n\n"
         "utopya's main feature is to configure, run, and evaluate computer "
         "simulations. "
         "In the minimalistic use case, utopya is a simple runner for an "

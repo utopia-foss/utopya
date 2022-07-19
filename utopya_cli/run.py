@@ -10,10 +10,10 @@ from ._utils import Echo
     help=(
         "Perform a simulation run and evaluate its outputs.\n"
         "\n"
-        "Starts a simulation of the MODEL_NAME model, allowing to pass "
-        "a custom RUN_CFG and otherwise manipulating the meta configuration. "
-        "Subsequently, the simulation output is fed into the evaluation "
-        "pipeline."
+        "Starts a simulation of the ``MODEL_NAME`` model, allowing to pass "
+        "a custom ``RUN_CFG`` and otherwise manipulating the meta "
+        "configuration. Subsequently, the simulation output is fed into the "
+        "evaluation pipeline."
     ),
 )
 @click.argument("model_name")
@@ -60,9 +60,9 @@ from ._utils import Echo
     type=str,
     help=(
         "Sets the number of simulation steps. Needs to be an integer. Metric "
-        "suffixes (k, M, G, T) can be used to denote large numbers, e.g "
-        "`1.23M` translating to `1230000`, and scientific notation is also "
-        "supported (applying integer rounding)."
+        "suffixes ``(k, M, G, T)`` can be used to denote large numbers, e.g "
+        "``1.23M`` translating to ``1230000``, and scientific notation is "
+        "also supported (applying integer rounding)."
     ),
 )
 @click.option(
@@ -71,9 +71,9 @@ from ._utils import Echo
     default=None,
     type=str,
     help=(
-        "Sets the `write_every` parameter, controlling how frequently model "
+        "Sets the ``write_every`` parameter, controlling how frequently model "
         "data is written. "
-        "Can be given in the same formats as --num-steps."
+        "Can be given in the same formats as ``--num-steps``."
     ),
 )
 @click.option(
@@ -82,10 +82,10 @@ from ._utils import Echo
     default=None,
     type=str,
     help=(
-        "Sets the `write_start` parameter, specifying the first time step "
+        "Sets the ``write_start`` parameter, specifying the first time step "
         "at which data is written. After that step, data is written every "
-        "`write_every`th step."
-        "Can be given in the same formats as --num-steps."
+        "``write_every`` th step."
+        "Can be given in the same formats as ``--num-steps``."
     ),
 )
 @click.option(
@@ -94,7 +94,7 @@ from ._utils import Echo
     type=click.IntRange(min=1),
     help=(
         "Creates a parameter dimension for the seeds with the given number "
-        "of seed values. This also sets the `perform_sweep` parameter to "
+        "of seed values. This also sets the ``perform_sweep`` parameter to "
         "True, such that a sweep is invoked."
     ),
 )
@@ -105,10 +105,10 @@ from ._utils import Echo
     callback=default_none,
     help=(
         "Sets entries in the model configuration, i.e. inside of the "
-        "`parameter_space.<model_name>` entry of the meta configuration. "
-        "Example: --mp some.param=42 sets the 'param' entry in 'some' to 42. "
-        "Specify DELETE as value to remove an entry. "
-        "Repeat the --mp option to set multiple values."
+        "``parameter_space.<model_name>`` entry of the meta configuration. "
+        "Example: ``--mp some.param=42`` sets the ``param`` entry in ``some`` "
+        "to ``42``. Specify ``DELETE`` as value to remove an entry. "
+        "Repeat the ``--mp`` option to set multiple values."
     ),
 )
 @click.option(
@@ -117,11 +117,11 @@ from ._utils import Echo
     multiple=True,
     callback=default_none,
     help=(
-        "Like --set-model-params but attaching to the `parameter_space` entry "
-        "of the meta configuration. "
-        "Repeat the --pp option to set multiple values."
-        "These arguments are parsed after --set-pspace-params and "
-        "--set-model-params such that they can overwrite any of the "
+        "Like ``--set-model-params`` but attaching to the ``parameter_space`` "
+        "entry of the meta configuration. "
+        "Repeat the ``--pp`` option to set multiple values."
+        "These arguments are parsed after ``--set-pspace-params`` and "
+        "``--set-model-params`` such that they can overwrite any of the "
         "previously defined arguments."
     ),
 )
@@ -131,10 +131,10 @@ from ._utils import Echo
     multiple=True,
     callback=default_none,
     help=(
-        "Like --set-model-params but attaching to the root level of the meta "
-        "configuration. "
-        "These arguments are parsed after --set-pspace-params and "
-        "--set-model-params such that they can overwrite any of the "
+        "Like ``--set-model-params`` but attaching to the root level of the "
+        "meta configuration. "
+        "These arguments are parsed after ``--set-pspace-params`` and "
+        "``--set-model-params`` such that they can overwrite any of the "
         "previously defined arguments."
     ),
 )
