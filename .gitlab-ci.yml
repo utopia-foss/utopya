@@ -41,10 +41,11 @@ workflow:
   coverage: '/TOTAL.*?(\d+\.?\d*)%\s*/'  # https://regex101.com/r/vW26X0/1
   artifacts:
     when: always
-    expire_in: 6 months
+    expire_in: 3 months
     paths:
       - coverage.xml
       - report.xml
+      - tests/_output
     reports:
       coverage_report:
         coverage_format: cobertura
@@ -99,6 +100,8 @@ test:py38:
   extends:
     - .reports
   needs: []
+  variables:
+    UTOPYA_USE_TEST_OUTPUT_DIR: "yes"
   before_script:
     - pip3 install .[dev]
   script:

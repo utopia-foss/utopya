@@ -75,7 +75,7 @@ _log.debug("Logging configured.")
 
 # .. The most important part of the utopya interface ..........................
 
-from .eval import DataManager, MultiverseGroup, UniverseGroup
+from .eval import DataManager, MultiverseGroup, PlotManager, UniverseGroup
 from .model import Model
 from .model_registry import MODELS
 from .multiverse import FrozenMultiverse, Multiverse

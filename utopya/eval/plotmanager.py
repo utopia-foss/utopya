@@ -58,13 +58,23 @@ class PlotManager(dantro.plot_mngr.PlotManager):
     ):
         """Sets up a PlotManager.
 
-        This additionally stores some Utopia-specific metadata about the
-        model this PlotManager is used with. That information is then used to
-        load some additional model-specific information once a creator is
-        invoked.
+        This specialization of the :py:class:`dantro.plot_mngr.PlotManager`
+        additionally stores some utopya-specific metadata in form of a
+        :py:class:`~utopya.model_registry.info_bundle.ModelInfoBundle` that
+        describes the model this PlotManager is used with.
+        That information is then used to load some additional model-specific
+        information once a creator is invoked.
 
         Furthermore, the :py:meth:`._preload_modules` method takes care to make
         model-, project-, or framework-specific plot functions available.
+
+        Args:
+            *args: Positional arguments passed to
+                :py:class:`~dantro.plot_mngr.PlotManager`.
+            _model_info_bundle (ModelInfoBundle, optional): The internally-used
+                argument to pass model information to the plot manager.
+            **kwargs: Keyword arguments passed on to
+                :py:class:`~dantro.plot_mngr.PlotManager`.
         """
         super().__init__(*args, **kwargs)
 

@@ -13,12 +13,14 @@ import utopya.cfg as ucfg
 import utopya.model_registry as umr
 
 from . import (
+    ABBREVIATE_TEST_OUTPUT_DIR,
     ADVANCED_MODEL,
     DEMO_DIR,
     DUMMY_MODEL,
     TEST_LABEL,
     TEST_OUTPUT_DIR,
     TEST_PROJECT_NAME,
+    TEST_VERBOSITY,
     USE_TEST_OUTPUT_DIR,
 )
 
@@ -48,6 +50,7 @@ testing the CLI
 
 
 # -----------------------------------------------------------------------------
+# Output Directory
 
 
 @pytest.fixture
@@ -59,13 +62,30 @@ def tmpdir_or_local_dir(tmpdir, request) -> pathlib.Path:
     if not USE_TEST_OUTPUT_DIR:
         return tmpdir
 
-    test_dir = os.path.join(
-        TEST_OUTPUT_DIR,
-        request.node.module.__name__,
-        request.node.originalname,
-    )
+    if not ABBREVIATE_TEST_OUTPUT_DIR:
+        # include the module and don't do any string replacements
+        test_dir = os.path.join(
+            TEST_OUTPUT_DIR,
+            request.node.module.__name__,
+            request.node.originalname,
+        )
+    else:
+        # generate a shorter version without the module and with the test
+        # prefixes dropped
+        test_dir = os.path.join(
+            TEST_OUTPUT_DIR,
+            request.node.originalname.replace("test_", ""),
+        )
+
+    print(f"Using local test output directory:\n  {test_dir}")
     os.makedirs(test_dir, exist_ok=True)
     return pathlib.Path(test_dir)
+
+
+out_dir = tmpdir_or_local_dir
+"""Alias for ``tmpdir_or_local_dir`` fixture"""
+
+# -----------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -243,3 +263,16 @@ def tmp_output_dir():
 
     else:
         os.remove(user_cfg_path)
+
+
+# -- Generated test data ------------------------------------------------------
+
+
+@pytest.fixture
+def dm(tmpdir) -> utopya.DataManager:
+    """Constructs a utopya DataManager and fills it with data"""
+    dm = utopya.DataManager(tmpdir)
+
+    # TODO Add test data here
+
+    return dm
