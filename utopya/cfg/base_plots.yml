@@ -167,6 +167,13 @@ _:
 
 
 
+# -- A (non-faceting) time series plot ----------------------------------------
+# NOTE Use .plot.facet_grid.line for a more general implementation
+.plot.time_series:
+  module: !add [*utopya_plots, .time_series]
+  plot_func: time_series
+
+
 
 # -- Bifurcation diagrams -----------------------------------------------------
 # NOTE This is not a DAG-based plot
@@ -182,6 +189,7 @@ _:
   # Disable grid
   style:
     axes.grid: false
+
 
 
 

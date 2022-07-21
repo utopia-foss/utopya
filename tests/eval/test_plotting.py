@@ -184,19 +184,13 @@ def test_plot_func_resolver_extensions():
     # Can do the default plots
     mv.pm.plot_from_cfg()
 
-    # Can specify custom plots within utopya ... but will receive an error
-    # because the data dimensionality does not match
-    with pytest.raises(PlotCreatorError, match="Apply dimensionality red"):
-        mv.pm.plot(
-            "test",
-            out_dir=mv.dirs["eval"],
-            creator="universe",
-            universes="all",
-            module=".basic_uni",
-            plot_func="lineplot",
-            model_name=ADVANCED_MODEL,
-            path_to_data="state",
-        )
+    # Can specify custom plots within utopya ...
+    mv.pm.plot(
+        "test",
+        out_dir=mv.dirs["eval"],
+        based_on=[".creator.universe", ".plot.time_series"],
+        select=dict(data=dict(path="state", transform=[".data"])),
+    )
 
     # Cannot do a custom plot with a bad relative module import
     with pytest.raises(ModuleNotFoundError, match="Could not import"):
