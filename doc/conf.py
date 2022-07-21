@@ -77,6 +77,9 @@ extensions = [
     #
     # -- Additional extensions...
     #
+    #   ... to allow toggling content
+    "sphinx_togglebutton",
+    #
     #   ... to allow Markdown syntax
     "myst_parser",
     #

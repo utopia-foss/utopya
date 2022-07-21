@@ -33,6 +33,7 @@ TEST_DEPS = [
 DOC_DEPS = [
     "sphinx>=4.5,<5",
     "sphinx-book-theme",
+    "sphinx-togglebutton",
     "ipython>=7.0",
     "myst-parser[linkify]",
     "sphinx-click",
