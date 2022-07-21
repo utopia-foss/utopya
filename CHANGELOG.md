@@ -40,6 +40,7 @@
     - Plot modules are now imported at the time of `PlotManager` initialization.
     - Plot modules specified in the project and framework can be pre-loaded as well; this can disabled via the project `settings`.
 - !18 expands the `ColorManager`, now allowing to specify continuous colormaps (using [`LinearSegmentedColormap`](https://matplotlib.org/stable/api/_as_gen/matplotlib.colors.LinearSegmentedColormap.html)).
+- !21 updates and cleans up the base plots configuration, making use of the newly implemented dantro base plots config pool.
 
 ### Internal
 - !10 outsources `utopya._import_tools` to `dantro._import_tools`
