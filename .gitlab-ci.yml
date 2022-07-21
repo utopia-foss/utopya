@@ -18,6 +18,10 @@ workflow:
     # Run pipelines on branches
     - if: $CI_COMMIT_BRANCH
 
+variables:
+  # The GitLab Pages URL at which build artifacts can be made available
+  PAGES_URL: https://utopia-project.gitlab.io/-/utopya
+
 
 # -- Hidden Jobs --------------------------------------------------------------
 # ... to be integrated in other jobs via "extends"
@@ -41,10 +45,11 @@ workflow:
   coverage: '/TOTAL.*?(\d+\.?\d*)%\s*/'  # https://regex101.com/r/vW26X0/1
   artifacts:
     when: always
-    expire_in: 6 months
+    expire_in: 3 months
     paths:
       - coverage.xml
       - report.xml
+      - tests/_output
     reports:
       coverage_report:
         coverage_format: cobertura
@@ -63,6 +68,7 @@ check:hooks:
     - pre-commit run --all-files --verbose --show-diff-on-failure
 
 
+
 # -- Build Stage --------------------------------------------------------------
 # ... for building the documentation (and potentially more jobs)
 
@@ -70,6 +76,8 @@ build:docs:
   stage: build
   allow_failure: true
   needs: []
+  variables:
+    UTOPYA_DOC_GENERATE_FIGURES: "yes"
   before_script:
     - pip3 install .[doc]
   script:
@@ -89,6 +97,11 @@ build:docs:
       - doc/_build/html
       - doc/build_errors.log
 
+  environment:
+    name: review/docs/$CI_COMMIT_REF_NAME
+    auto_stop_in: 2 months
+    url: $PAGES_URL/-/jobs/$CI_JOB_ID/artifacts/doc/_build/html/index.html
+
 
 # -- Test Stage ---------------------------------------------------------------
 # ... for testing with different python environments
@@ -99,6 +112,8 @@ test:py38:
   extends:
     - .reports
   needs: []
+  variables:
+    UTOPYA_USE_TEST_OUTPUT_DIR: "yes"   # have output in tests/_output
   before_script:
     - pip3 install .[dev]
   script:

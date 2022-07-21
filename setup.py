@@ -17,25 +17,27 @@ INSTALL_DEPS = [
     #
     # related to utopya:
     "paramspace>=2.5.9",
-    "dantro>=0.18.0b1",
+    "dantro>=0.18.0b4",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
 
-# Dependencies for running tests and general development of dantro
+# Dependencies for running tests and general development of utopya
 TEST_DEPS = [
     "pytest>=6.2",
     "pytest-cov>=2.10",
     "pre-commit>=2.16",
 ]
 
-# Dependencies for building the dantro documentation
+# Dependencies for building the utopya documentation
 DOC_DEPS = [
     "sphinx>=4.5,<5",
     "sphinx-book-theme",
+    "sphinx-togglebutton",
     "ipython>=7.0",
     "myst-parser[linkify]",
     "sphinx-click",
+    "pytest",
 ]
 
 

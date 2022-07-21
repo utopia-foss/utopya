@@ -1,414 +1,116 @@
-# This file provides the base plot configurations for utopya plot functions
+# This file provides the base plot configuration pool for utopya
 #
-# The names of the configuration entries should follow a module path naming
-# scheme, i.e. what is specified for the `module` and `plot_func` keys.
+# It assumes that the dantro base plot configuration pool is available:
+#     https://dantro.readthedocs.io/en/latest/plotting/base_plots.html
 #
-# TODO Needs cleanup:
-#   - Whatever can be defined upstream (in dantro) *should* be defined there
-#   - Reduce duplicates
-#   - Improve and simplify naming scheme
+# Many base plot config entries here inherit from existing dantro base plot
+# config entries of the same name. This is to allow overwriting of some of the
+# default values, e.g. for the `.creator.<name>` entries.
 #
+# For the plot functions defined here in utopya, additional entries of the form
+# `.plot.<name>` are added.
+#
+# There is room to add more configurations here; they should be sorted into the
+# respective sections and adhere to the naming conventions (see dantro docs).
 ---
-# -- Defaults -----------------------------------------------------------------
-# .. A config with defaults styles and helpers ................................
-# This can be used then creating a model plot and desiring default styles that
-# are consistent with the utopya plot functions' styles
-.default_style_and_helpers:
-  helpers: &default_helpers
-    save_figure:
-      bbox_inches: tight
+# YAML variable definitions that are used below to avoid repetition
+_:
+  variables:
+    dantro_plots:       &dantro_plots           dantro.plot.funcs
+    plots_module:       &utopya_plots           utopya.eval.plots
 
-  style: &default_style
-    axes.grid: true
-    grid.linewidth: .4
-    grid.alpha: .5
-    legend.fontsize: small
+  aesthetics:
+    hvline: &style_hvline
+      linestyle: solid
+      color: grey
+      alpha: .4
+      linewidth: 2.
+      zorder: -42
 
-# .. Save as PNG for use in documentation .....................................
-.png4docs:
-  file_ext: png
-  helpers:
-    save_figure:
-      dpi: 254
+    # Defaults for a colorbar
+    # https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html
+    cbar_kwargs: &cbar_kwargs
+      shrink: .65
+      aspect: 30
+      orientation: vertical
+      pad: 0.05
 
 
-# .. Default parameters for creators ..........................................
+
+# =============================================================================
+#  ╔╦╗╔═╗╔═╗╔═╗╦ ╦╦ ╔╦╗╔═╗
+#   ║║║╣ ╠╣ ╠═╣║ ║║  ║ ╚═╗
+#  ═╩╝╚═╝╚  ╩ ╩╚═╝╩═╝╩ ╚═╝
+# =============================================================================
+# start: .defaults
+# This section defines defaults that are (meant to be) used in all plots.
+# These find their way into the plot configuration via the `.creator` configs.
+
+# .. Aggregated defaults ......................................................
+.defaults:
+  based_on:
+    - .defaults  # dantro .defaults
+    - .defaults.style
+    - .defaults.file_ext
+
+
+# .. Individual defaults ......................................................
+.defaults.style:
+  based_on: .defaults.style
+
+.defaults.file_ext:
+  file_ext: pdf
+
+
+
+
+
+
+
+# =============================================================================
+#  ╔═╗╦  ╔═╗╔╦╗  ╔═╗╦═╗╔═╗╔═╗╔╦╗╔═╗╦═╗╔═╗
+#  ╠═╝║  ║ ║ ║   ║  ╠╦╝║╣ ╠═╣ ║ ║ ║╠╦╝╚═╗
+#  ╩  ╩═╝╚═╝ ╩   ╚═╝╩╚═╚═╝╩ ╩ ╩ ╚═╝╩╚═╚═╝
+# =============================================================================
+# start: .creator
+.creator.base:
+  based_on:
+    - .creator.base
+    - .defaults
+
+.creator.pyplot:
+  based_on:
+    - .creator.pyplot
+    - .defaults
+
 .creator.universe:
-  creator: universe
-  universes: all
+  based_on:
+    - .creator.universe
+    - .defaults
 
 .creator.multiverse:
-  creator: multiverse
+  based_on:
+    - .creator.multiverse
+    - .defaults
 
 
-# .. Default parameters for animations ........................................
-.animation.disabled:
-  file_ext: pdf
-  animation:
-    enabled: false
 
-.animation.frames:
-  file_ext: pdf
-  animation:
-    enabled: true
-    writer: frames
 
-    writer_kwargs: &default_writer_kwargs
-      frames:
-        saving:
-          dpi: 254
-      ffmpeg:
-        init:
-          fps: 10
-        saving:
-          dpi: 254
 
-.animation.ffmpeg:
-  file_ext: mp4
-  animation:
-    enabled: true
-    writer: ffmpeg
-    writer_kwargs: *default_writer_kwargs
-
-
-# -----------------------------------------------------------------------------
-# -- Basic plots --------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# .. Basic lineplot from universe data ........................................
-.basic_uni.lineplot:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .basic_uni
-  plot_func: lineplot
-
-
-# .. Multiple lineplots from universe data ....................................
-.basic_uni.lineplots:  # FIXME No longer exists
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .basic_uni
-  plot_func: lineplots
-
-
-# .. Basic errorbar plot from universe data ...................................
-# NOTE Preferably, use the .dag.generic.errorbar function instead! See below.
-.basic_uni.errorbar:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .basic_uni
-  plot_func: errorbar
-
-  # Passed to plt.errorbar or plt.fill_between
-  elinewidth: .5
-  fill_between_kwargs:
-    linewidth: 0.
-
-
-# .. Distance map from Universe data .......................................
-.basic_uni.distance_map:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .basic_uni
-  plot_func: distance_map
-
-
-# .. Errorbar plot from Multiverse data .......................................
-# NOTE Preferably, use the .dag.generic.errorbar function instead! See below.
-.basic_mv.errorbar:
-  based_on: .default_style_and_helpers
-
-  creator: multiverse
-
-  module: .basic_mv
-  plot_func: errorbar
-
-  # Passed to plt.errorbar
-  elinewidth: .5
-  fill_between_kwargs:
-    linewidth: 0.
-
-
-# .. Asymptotic average from Multiverse data ..................................
-.basic_mv.asymptotic_average:
-  based_on: .default_style_and_helpers
-
-  creator: multiverse
-
-  module: .basic_mv
-  plot_func: asymptotic_average
-
-  # Passed to plt.errorbar
-  linestyle: ''
-  elinewidth: .5
-  marker: o
-
-
-# -- CA Plots -----------------------------------------------------------------
-# .. A spatial CA plot of a state .............................................
-
-# Supports PlotHelper and animation
-# NOTE This is the legacy plot function, should be removed
-.ca.state: &ca_state
-  creator: universe
-  universes: all
-
-  module: .ca
-  plot_func: state
-
-  file_ext: pdf
-
-  default_imshow_kwargs:
-    interpolation: 'none'
-
-  # Can use constrained layout, because axis labels don't change
-  style:
-    figure.constrained_layout.use: true
-
-  helpers:
-    <<: *default_helpers
-    # NOTE As the PlotHelper.save_figure method is _not_ invoked during
-    #      animation, there is no issue with bbox_inches tight
-
-  # All animation configuration for this plot
-  animation: &ca_state_animation
-    enabled: false  # has to be manually enabled
-    writer: frames  # assuming ffmpeg is not installed
-
-    # Configuration for each writer
-    writer_kwargs:
-      frames:
-        saving:
-          dpi: 96
-
-      ffmpeg:
-        init:
-          fps: 10
-        saving:
-          dpi: 96
-
-
-# .. .ca.state specializations for different animation writers ................
-.ca.state.anim_frames:
-  <<: *ca_state
-
-  file_ext: pdf
-
-  time_idx: 0  # value is ignored in animation, but needs be specified
-
-  # Use a different figure size as most animation plots are square
-  style: &ca_state_anim_style
-    figure.figsize: [6., 5.]
-
-  animation:
-    <<: *ca_state_animation
-    enabled: true
-    writer: frames
-
-
-.ca.state.anim_ffmpeg:
-  <<: *ca_state
-
-  file_ext: mp4
-
-  time_idx: 0  # value is ignored in animation, but needs be specified
-
-  style:
-    <<: *ca_state_anim_style
-
-  animation:
-    <<: *ca_state_animation
-    enabled: true
-    writer: ffmpeg
-
-
-# -- Distributions ------------------------------------------------------------
-# .. A histogram plot .........................................................
-.distribution.histogram:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .distribution
-  plot_func: histogram
-
-
-# .. Plot of a complementary cumulative distribution ..........................
-# Based on histogram, but with normalization and complementary cumulation
-.distribution.histogram.complementary_cumulative:
-  based_on: .distribution.histogram
-
-  use_unique: true
-  mask_repeated: true
-  postprocess:
-    - normalize_to_sum
-    - cumulate_complementary
-
-  # Do a line plot (instead of the default bar plot)
-  pyplot_func_name: plot
-
-  # Arguments passed to plt.plot
-  linestyle: 'None'
-  marker: '.'
-
-
-# -- Time Series --------------------------------------------------------------
-# TODO Check which ones make sense to keep
-
-# .. Phase space with colour-coded time .......................................
-.time_series.phase_space:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .time_series
-  plot_func: phase_space
-
-
-# -- Bifurcation diagrams -----------------------------------------------------
-.attractor.bifurcation_diagram_1d:
-  based_on: .default_style_and_helpers
-
-  creator: multiverse
-  module: .attractor
-  plot_func: bifurcation_diagram
-
-  analysis_kwargs: ~
-
-  # Disable grid
-  style:
-    axes.grid: false
-
-.attractor.bifurcation_diagram_2d:
-  based_on: .default_style_and_helpers
-
-  creator: multiverse
-  module: .attractor
-  plot_func: bifurcation_diagram
-
-  analysis_kwargs: ~
-
-  # Disable grid
-  style:
-    axes.grid: false
-
-
-# -----------------------------------------------------------------------------
-# -- DAG-based plots ----------------------------------------------------------
-# -----------------------------------------------------------------------------
-# TODO These should be renamed!
-
-# -- Generic Multiverse or Universe plots -------------------------------------
-# .. Facet Grid ...............................................................
-# For conveniently plotting high-dimensional data, using dantro.
-#    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
-.dag.generic.facet_grid:
-  based_on: .default_style_and_helpers
-
-  module: &dantro_plots dantro.plot.funcs.generic
-  plot_func: facet_grid
-
-
-# .. Errorbar and Errorbands ..................................................
-# For visualizing confidence intervals using error bars or bands (shaded area)
-#    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
-.dag.generic.errorbar:
-  based_on: .default_style_and_helpers
-
-  module: *dantro_plots
-  plot_func: errorbar
-
-
-.dag.generic.errorbands:
-  based_on: .default_style_and_helpers
-
-  module: *dantro_plots
-  plot_func: errorbands
-
-
-# .. Distributions ............................................................
-# A histogram plot that supports stacking
-.dag.generic.histogram:
-  based_on: .default_style_and_helpers
-
-  creator: universe
-  universes: all
-
-  module: .generic
-  plot_func: histogram
-
-
-# .. Multiplot ................................................................
-# Plot one or multiple overlaying functions, also supporting seaborn
-#    Docs: https://dantro.readthedocs.io/en/latest/plotting/plot_functions.html
-.dag.multiplot:
-  based_on: .default_style_and_helpers
-
-  module: dantro.plot.funcs.multiplot
-  plot_func: multiplot
-
-# .. Seaborn plots ............................................................
-# Invoke seaborn plotting functions
-.dag.snsplot:
-  based_on: .default_style_and_helpers
-
-  module: .snsplot
-  plot_func: snsplot
-
-
-# .. Graph plots ..............................................................
-.dag.graph:
-  creator: universe
-  universes: all
-
-  module: .graph
-  plot_func: draw_graph
-
-  graph_drawing:
-    nodes:
-      colorbar:
-        fraction: 0.05
-        pad: 0.02
-    edges:
-      colorbar:
-        fraction: 0.05
-        pad: 0.02
-
-  helpers:
-    <<: *default_helpers
-
-
-# #############################################################################
-# #############################################################################
-# #############################################################################
-# New-style plot functions below this line
-
-
-# -----------------------------------------------------------------------------
-# -- Plot functions and specializations ---------------------------------------
-# -----------------------------------------------------------------------------
-# These should follow the .plot.<name> pattern!
-
-# .. CA plot ..................................................................
+# =============================================================================
+#  ╔═╗╦  ╔═╗╔╦╗  ╔═╗╦ ╦╔╗╔╔═╗╔╦╗╦╔═╗╔╗╔╔═╗
+#  ╠═╝║  ║ ║ ║   ╠╣ ║ ║║║║║   ║ ║║ ║║║║╚═╗
+#  ╩  ╩═╝╚═╝ ╩   ╚  ╚═╝╝╚╝╚═╝ ╩ ╩╚═╝╝╚╝╚═╝
+# =============================================================================
+# start: .plot
+# -- Cellular Automaton plots -------------------------------------------------
 # A plot function specialized for Cellular Automata snapshots or animations.
 # Unlike its predecessor, it supports the data transformation framework.
 .plot.ca:
-  based_on: .default_style_and_helpers
+  based_on:
+    - .animation.defaults
 
-  module: .ca
+  module: !add [*utopya_plots, .ca]
   plot_func: caplot
 
   compute_only: all
@@ -431,64 +133,217 @@
 
   frames_isel: -1
 
-# .. Facet grid ...............................................................
-.plot.facet_grid:
-  based_on:
-    - .default_style_and_helpers
-    - .dag.generic.facet_grid  # TODO Move that definition here
-
-# .. Mixins
-.plot.facet_grid.with_auto_encoding:
-  based_on: .plot.facet_grid
-  auto_encoding: true
-  col_wrap: auto
-
-# .. Specializations: working on xr.DataArray
-.plot.facet_grid.line:
-  based_on: .plot.facet_grid
-  kind: line
-
-.plot.facet_grid.hist:
-  based_on: .plot.facet_grid
-  kind: hist
-
-.plot.facet_grid.errorbars:
-  based_on: .plot.facet_grid
-  kind: errorbars
-
-.plot.facet_grid.errorbands:
-  based_on: .plot.facet_grid
-  kind: errorbars
-  use_bands: true
-
-# .. Specializations: working on xr.Dataset
-.plot.facet_grid.scatter:
-  based_on: .plot.facet_grid
-  kind: scatter
-
-.plot.facet_grid.scatter3d:
-  based_on: .plot.facet_grid
-  kind: scatter3d
-  subplot_kws:
-    projection: '3d'
-  cbar_kwargs:
-    pad: 0.1
-  sharex: False
-  sharey: False
-  helpers:
-    setup_figure:
-      subplot_kw:
-        projection: '3d'
-    subplots_adjust:
-      wspace: 0.1
-      hspace: 0.1
 
 
-# .. Seaborn plots ............................................................
+# -- Seaborn plots ------------------------------------------------------------
 .plot.snsplot:
-  based_on: .dag.snsplot
+  module: !add [*utopya_plots, .snsplot]
+  plot_func: snsplot
 
 
-# .. Graph plot ...............................................................
+
+# -- Graph plots --------------------------------------------------------------
 .plot.graph:
-  based_on: .dag.graph
+  module: !add [*utopya_plots, .graph]
+  plot_func: draw_graph
+
+  graph_drawing:
+    nodes:
+      colorbar:
+        fraction: 0.05
+        pad: 0.02
+    edges:
+      colorbar:
+        fraction: 0.05
+        pad: 0.02
+
+
+
+# -- Distributions ------------------------------------------------------------
+.plot.histogram:
+  module: !add [*utopya_plots, .distributions]
+  plot_func: histogram
+
+
+
+
+# -- A (non-faceting) time series plot ----------------------------------------
+# NOTE Use .plot.facet_grid.line for a more general implementation
+.plot.time_series:
+  module: !add [*utopya_plots, .time_series]
+  plot_func: time_series
+
+
+
+# -- Bifurcation diagrams -----------------------------------------------------
+# NOTE This is not a DAG-based plot
+.plot.bifurcation_diagram:
+  based_on:
+    - .creator.multiverse
+
+  module: !add [*utopya_plots, .attractor]
+  plot_func: bifurcation_diagram
+
+  analysis_kwargs: ~
+
+  # Disable grid
+  style:
+    axes.grid: false
+
+
+
+
+# -- DEPRECATED PLOTS ---------------------------------------------------------
+# NOTE This is the legacy plot function, will be removed; use .plot.ca instead!
+.ca.state:
+  based_on:
+    - .creator.universe  # does not work with anything else
+    - .animation.disabled
+
+  module: !add [*utopya_plots, .ca]
+  plot_func: state
+
+  file_ext: pdf
+
+  default_imshow_kwargs:
+    interpolation: 'none'
+
+  # Can use constrained layout, because axis labels don't change
+  style:
+    figure.constrained_layout.use: true
+
+
+
+# .. .ca.state specializations for different animation writers ................
+.ca.state.anim_frames:
+  based_on:
+    - .ca.state
+    - .animation.frames
+
+  time_idx: 0  # ignored in animations, but required
+
+.ca.state.anim_ffmpeg:
+  based_on:
+    - .ca.state
+    - .animation.ffmpeg
+
+  time_idx: 0  # ignored in animations, but required
+
+
+
+
+
+
+
+# =============================================================================
+#  ╔═╗╔╦╗╦ ╦╦  ╔═╗
+#  ╚═╗ ║ ╚╦╝║  ║╣
+#  ╚═╝ ╩  ╩ ╩═╝╚═╝
+# =============================================================================
+# start: .style
+# More information:
+#   https://matplotlib.org/gallery/style_sheets/style_sheets_reference.html
+#   https://matplotlib.org/stable/tutorials/introductory/customizing.html
+
+
+
+
+
+
+# =============================================================================
+#  ╔═╗╦  ╔═╗╔╦╗  ╦ ╦╔═╗╦  ╔═╗╔═╗╦═╗╔═╗
+#  ╠═╝║  ║ ║ ║   ╠═╣║╣ ║  ╠═╝║╣ ╠╦╝╚═╗
+#  ╩  ╩═╝╚═╝ ╩   ╩ ╩╚═╝╩═╝╩  ╚═╝╩╚═╚═╝
+# =============================================================================
+# start: .hlpr
+
+
+
+
+
+
+# =============================================================================
+#  ╔═╗╔╗╔╦╔╦╗╔═╗╔╦╗╦╔═╗╔╗╔
+#  ╠═╣║║║║║║║╠═╣ ║ ║║ ║║║║
+#  ╩ ╩╝╚╝╩╩ ╩╩ ╩ ╩ ╩╚═╝╝╚╝
+# =============================================================================
+# start: .animation
+
+.animation.defaults:
+  based_on:
+    - .animation.defaults  # from dantro
+    - .animation.high_dpi  # from dantro
+
+
+# Aliases (with slightly different names) for setting the animation writer
+# and enabling animation. Unlike those in dantro, these *include* the defaults.
+.animation.ffmpeg:
+  based_on:
+    - .animation.defaults
+    - .animation.enabled
+    - .animation.use_ffmpeg
+
+.animation.frames:
+  based_on:
+    - .animation.defaults
+    - .animation.enabled
+    - .animation.use_frames
+
+
+
+
+
+
+# =============================================================================
+#  ╔╦╗╔═╗╔═╗  ╔═╗╦═╗╔═╗╔╦╗╔═╗╦ ╦╔═╗╦═╗╦╔═
+#   ║║╠═╣║ ╦  ╠╣ ╠╦╝╠═╣║║║║╣ ║║║║ ║╠╦╝╠╩╗
+#  ═╩╝╩ ╩╚═╝  ╚  ╩╚═╩ ╩╩ ╩╚═╝╚╩╝╚═╝╩╚═╩ ╩
+# =============================================================================
+# start: .dag
+# -- Options ------------------------------------------------------------------
+# .. Aggregated DAG default options ...........................................
+.dag.defaults:
+  based_on: .dag.defaults
+
+
+
+# -- Visualization ------------------------------------------------------------
+# Parameters controlling DAG visualization
+.dag.vis.defaults:
+  based_on: .dag.vis.defaults
+
+
+
+# -- Definitions --------------------------------------------------------------
+# The entries below set certain tags using the `dag_options.define` argument.
+# This should not be confused with the .dag.meta_ops defined below.
+
+.dag.define.defaults:
+  based_on: .dag.define.defaults
+
+
+
+
+
+
+
+
+# =============================================================================
+#  ╔╦╗╔═╗╔═╗  ╔╦╗╔═╗╔╦╗╔═╗  ╔═╗╔═╗╔═╗╦═╗╔═╗╔╦╗╦╔═╗╔╗╔╔═╗
+#   ║║╠═╣║ ╦  ║║║║╣  ║ ╠═╣  ║ ║╠═╝║╣ ╠╦╝╠═╣ ║ ║║ ║║║║╚═╗
+#  ═╩╝╩ ╩╚═╝  ╩ ╩╚═╝ ╩ ╩ ╩  ╚═╝╩  ╚═╝╩╚═╩ ╩ ╩ ╩╚═╝╝╚╝╚═╝
+# =============================================================================
+# start: .dag.meta_ops
+# The following entries can be included into a plot configuration to make
+# certain meta-operations available for the data transformation framework.
+
+
+
+
+
+# =============================================================================
+# end of utopya base plots
+# -----------------------------------------------------------------------------
+# Maintenance remark: ASCII headings were created using the Calvin S font at
+#   https://patorjk.com/software/taag/#p=display&c=bash&f=Calvin%20S
+#

@@ -61,7 +61,7 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
 .. toctree::
     :hidden:
 
-    _to_do
+    To Do List <_to_do>
 
 .. TODO add how-to-cite
 
@@ -73,5 +73,8 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
 
     cli/index
     API Reference <api/utopya>
+    Base Plot Configuration Pool <ref/base_plots>
+    dantro <https://gitlab.com/utopia-project/dantro>
+    dantro docs <https://dantro.readthedocs.io/>
     LGPLv3 License <https://www.gnu.org/licenses/lgpl-3.0.html>
     index_pages

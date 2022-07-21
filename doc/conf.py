@@ -16,6 +16,9 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../"))
 
+DOC_DIR = os.path.abspath(os.path.dirname(__file__))
+"""This directory"""
+
 
 # -- Function definitions -----------------------------------------------------
 
@@ -38,36 +41,6 @@ def find_version(*file_paths) -> str:
     if match:
         return match.group(1)
     raise RuntimeError("Unable to find version string in " + str(file_paths))
-
-
-def run_apidoc(_):
-    """A function to run apidoc, creating the API documentation"""
-    ignore_paths = []
-
-    # Get the required directory paths
-    cur_dir = os.path.abspath(os.path.dirname(__file__))
-    out_dir = os.path.join(cur_dir, "api")
-    module = os.path.join(cur_dir, "..", "utopya")
-
-    argv = [
-        "--force",
-        # "--separate",
-        "--private",
-        "--module-first",
-        "--no-toc",
-        "-o",
-        out_dir,
-        module,
-    ] + ignore_paths
-
-    from sphinx.ext import apidoc
-
-    apidoc.main(argv)
-
-
-def setup(app):
-    """A custom sphinx setup function, attaching to sphinx hooks"""
-    app.connect("builder-inited", run_apidoc)
 
 
 # -- Project information ------------------------------------------------------
@@ -103,6 +76,9 @@ extensions = [
     "sphinx.ext.viewcode",
     #
     # -- Additional extensions...
+    #
+    #   ... to allow toggling content
+    "sphinx_togglebutton",
     #
     #   ... to allow Markdown syntax
     "myst_parser",
@@ -419,3 +395,116 @@ for line in open(".nitpick-ignore"):
     else:
         reftype, target = line.split(" ", 1)
         nitpick_ignore.append((reftype, target.strip()))
+
+
+# -----------------------------------------------------------------------------
+# -- Functions used in sphinx setup function ----------------------------------
+# -----------------------------------------------------------------------------
+
+
+def run_apidoc(_):
+    """A function to run apidoc, creating the API documentation"""
+    ignore_paths = []
+
+    # Get the required directory paths
+    cur_dir = os.path.abspath(os.path.dirname(__file__))
+    out_dir = os.path.join(cur_dir, "api")
+    module = os.path.join(cur_dir, "..", "utopya")
+
+    argv = [
+        "--force",
+        # "--separate",
+        "--private",
+        "--module-first",
+        "--no-toc",
+        "-o",
+        out_dir,
+        module,
+    ] + ignore_paths
+
+    from sphinx.ext import apidoc
+
+    apidoc.main(argv)
+
+
+# .. Figure generation ........................................................
+
+
+def _str2bool(val: str):
+    """Copy of strtobool from deprecated distutils package"""
+    val = val.lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    elif val in ("n", "no", "f", "false", "off", "0"):
+        return False
+    raise ValueError(f"Invalid truth value {repr(val)}!")
+
+
+def generate_figures():
+    """Generates output from scripts in a certain module"""
+
+    # Check environment variable
+    TOGGLE_ENVVAR = "UTOPYA_DOC_GENERATE_FIGURES"
+    print(
+        f"Checking {TOGGLE_ENVVAR} environment variable for "
+        "whether figures should be generated ..."
+    )
+    if not os.environ.get(TOGGLE_ENVVAR) or not _str2bool(
+        os.environ.get(TOGGLE_ENVVAR, "False")
+    ):
+        print(
+            f"Not generating figures. Set the {TOGGLE_ENVVAR} "
+            "environment variable to control this behavior.\n\n"
+        )
+        return
+
+    # Generate paths
+    gen_fig_dir = os.path.join(DOC_DIR, "..", "tests", "_gen_figures")
+    out_dir = os.path.join(DOC_DIR, "_static", "_gen")
+
+    # Set environment variables such that test output ends up in the desired
+    # output directory. The abbreviated path means that not the full module
+    # string of the test module is included into the path but only the name of
+    # the test function (with the `test_` prefix dropped).
+    os.environ["UTOPYA_USE_TEST_OUTPUT_DIR"] = "yes"
+    os.environ["UTOPYA_TEST_OUTPUT_DIR"] = str(out_dir)
+    os.environ["UTOPYA_ABBREVIATE_TEST_OUTPUT_DIR"] = "yes"
+    os.environ["UTOPYA_TEST_VERBOSITY"] = "1"  # to not be overly verbose
+
+    # Let pytest do the rest
+    print("Now invoking (pytest-based) figure generation module ...\n")
+
+    import pytest
+
+    rv = pytest.main(["-v", gen_fig_dir])
+    if rv != 0:
+        raise RuntimeError(
+            "Figure generation failed! See error log above for more info."
+        )
+    print("\nFigure generation finished successfully. Yay :)\n")
+
+    # Give some stats
+    num_files = 0
+    all_files = []
+    for dirpath, dirnames, filenames in os.walk(out_dir):
+        rel_dir = os.path.relpath(dirpath, out_dir)
+        files = [
+            os.path.join(rel_dir, f)
+            for f in filenames
+            if not f.startswith(".")
+        ]
+        num_files += len(files)
+        all_files += files
+
+    _files = "\n".join(f"  {f}" for f in all_files)
+    print(
+        f"Output directory\n  {out_dir}\ncontains {num_files} files:\n"
+        f"{_files}\n\n"
+    )
+
+
+def setup(app):
+    """A custom sphinx setup function, attaching to sphinx hooks"""
+    generate_figures()
+
+    app.connect("builder-inited", run_apidoc)

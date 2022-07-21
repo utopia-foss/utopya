@@ -35,7 +35,7 @@ utopya as its frontend.
 Also visit :ref:`the user manual front page <welcome>` for more information.
 """
 
-__version__ = "1.0.0b0"
+__version__ = "1.0.0b1"
 """The :py:mod:`utopya` package version"""
 
 # .. Logging ..................................................................
@@ -75,7 +75,7 @@ _log.debug("Logging configured.")
 
 # .. The most important part of the utopya interface ..........................
 
-from .eval import DataManager, MultiverseGroup, UniverseGroup
+from .eval import DataManager, MultiverseGroup, PlotManager, UniverseGroup
 from .model import Model
 from .model_registry import MODELS
 from .multiverse import FrozenMultiverse, Multiverse

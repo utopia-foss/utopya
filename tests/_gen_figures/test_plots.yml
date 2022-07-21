@@ -1,0 +1,18 @@
+# Plots that are carried out for figure generation in the utopya docs
+---
+simple_plot:
+  based_on:
+    - .creator.pyplot
+    - .plot.facet_grid.with_auto_kind
+    - .plot.facet_grid.with_auto_encoding
+
+  # Create some mock data with the DAG framework
+  transform:
+    - xr.DataArray: [[.5, 1, 2, 4, 8, 16, 32, 64]]
+      kwargs:
+        dims: [x]
+        coords:
+          x: !range [8]
+      tag: data
+
+  # ... let the facet grid do all the rest
