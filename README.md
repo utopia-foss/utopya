@@ -52,8 +52,9 @@ utopya --help
 # Basic Usage
 🚧
 
-See the [demo project](demo/) for an implementation example.
+See the [demo project](demo/) for a small implementation example.
 
+For a larger example of how utopya can be used, have a look at [Utopia][Utopia].
 
 
 

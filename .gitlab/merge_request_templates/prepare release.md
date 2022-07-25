@@ -15,7 +15,6 @@ This MR prepares the vX.Y.Z release of utopya.
    - Removed "WIP" in section heading
    - If necessary, re-ordered and cleaned-up the corresponding section
 - [ ] Pipeline passes without warnings
-   - If the `test` stage creates warnings for the `*_min` jobs, inspect the output log and, if necessary, adjust the lower bounds of the dependencies in [`setup.py`](setup.py).
 - [ ] Approved by @  <!-- only necessary if there are substantial changes -->
 
 <!-- 3 - If you are not allowed to merge, assign a maintainer now. -->
