@@ -101,6 +101,82 @@ class Project(RegistryEntry):
 
         return PROJECTS[self.framework_name]
 
+    def get_git_info(self, *, include_patch_info: bool = False) -> dict:
+        """Returns information about the state of this project's git repository
+        using the ``python-git-info`` package.
+
+        If no git information is retrievable, e.g. because the project's
+        ``base_dir`` does not contain a git repository, will still return a
+        dict but with ``have_git_info`` entry set to False.
+
+        Otherwise the git information will be in the ``latest_commit`` entry.
+
+        Args:
+            include_patch_info (bool, optional): If True, will attempt a
+                subprocess call to ``git`` and store patch information
+                alongside in the ``diff`` entry. In that case, the ``dirty``
+                entry will denote whether there were uncommitted changes.
+
+        Returns:
+            dict: A dict containing information about the associated git repo.
+        """
+        import subprocess
+
+        import gitinfo  # PyPI package `python-git-info`
+
+        base_dir = str(self.paths.base_dir)
+        sp_kws = dict(cwd=base_dir, capture_output=True, text=True)
+
+        d = dict(
+            project_name=self.project_name,
+            project_base_dir=base_dir,
+            have_git_repo=False,
+            latest_commit=None,
+            dirty="unknown",
+            git_status=[],
+            git_diff="",
+        )
+
+        # Get git information (without requiring git)
+        info = gitinfo.get_git_info(base_dir)
+        if info:
+            d["have_git_repo"] = True
+            d["latest_commit"] = info
+
+        if info and include_patch_info:
+            # Attempt subprocess git calls to find out more.
+            # Make sure these commands work in the first place.
+            try:
+                git_status = subprocess.run(
+                    ["git", "status", "--short"], **sp_kws, check=True
+                )
+
+            except Exception as exc:
+                log.caution(
+                    "Failed retrieving git patch information for "
+                    f"{self.project_name} because git invocation via a python "
+                    f"subprocess failed:\n\n{type(exc).__name__}: {exc}"
+                )
+
+            else:
+                # git command works, can store information
+                # git status
+                git_status_stdout = git_status.stdout.strip()
+                if git_status_stdout:
+                    d["git_status"] = [
+                        f.split(" ", 1) for f in git_status_stdout.split("\n")
+                    ]
+
+                # git diff
+                git_diff_p = subprocess.run(["git", "diff", "-p"], **sp_kws)
+                d["git_diff"] = git_diff_p.stdout.strip()
+
+                # ... whether the repo has uncommitted changes
+                git_diff = subprocess.run(["git", "diff", "--quiet"], **sp_kws)
+                d["dirty"] = git_diff.returncode != 0
+
+        return d
+
 
 # -- ProjectRegistry ----------------------------------------------------------
 
