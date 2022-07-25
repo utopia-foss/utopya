@@ -41,6 +41,7 @@
     - Plot modules specified in the project and framework can be pre-loaded as well; this can disabled via the project `settings`.
 - !18 expands the `ColorManager`, now allowing to specify continuous colormaps (using [`LinearSegmentedColormap`](https://matplotlib.org/stable/api/_as_gen/matplotlib.colors.LinearSegmentedColormap.html)).
 - !21 updates and cleans up the base plots configuration, making use of the newly implemented dantro base plots config pool.
+- !23 allows to store a model's project and framework repository states alongside the `Multiverse`'s backup for config files; this can help to reconstruct the state in which a model was run.
 
 ### Internal
 - !10 outsources `utopya._import_tools` to `dantro._import_tools`
