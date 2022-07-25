@@ -10,15 +10,16 @@ from itertools import chain
 from typing import Dict
 
 import dantro.utils
+from dantro.logging import CAUTION as _CAUTION
 
 from .._yaml import load_yml, write_yml
 from ..cfg import UTOPYA_CFG_DIR
-from ..exceptions import BundleExistsError
+from ..exceptions import BundleExistsError, MissingModelError
 from ..tools import make_columns, pformat, recursive_update
 from .entry import ModelRegistryEntry
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.WARNING)
+log.setLevel(_CAUTION)
 
 # -----------------------------------------------------------------------------
 
@@ -75,6 +76,7 @@ class ModelRegistry:
         #   Keys:    model names
         #   Values:  ModelRegistryEntry objects
         self._registry = KeyOrderedDict()
+        self._load_errors = dict()
         self._load_from_registry_dir()
 
         log.info(
@@ -175,11 +177,21 @@ class ModelRegistry:
             return self._registry[model_name]
 
         except KeyError as err:
-            raise ValueError(
-                f"No model with name '{model_name}' found! Did you forget "
-                f"to register it?\nAvailable models:\n"
-                f"{make_columns(self.keys())}"
-            ) from err
+            if model_name not in self._load_errors:
+                raise MissingModelError(
+                    f"No model with name '{model_name}' found! Did you forget "
+                    f"to register it?\nAvailable models:\n"
+                    f"{make_columns(self.keys())}"
+                ) from err
+
+            load_err = self._load_errors[model_name]["exc"]
+            raise MissingModelError(
+                f"No model with name '{model_name}' available in model "
+                "registry because there was an error loading it:\n\n"
+                f"{type(load_err).__name__}: {load_err}\n\n"
+                "Either fix the associated registry file manually or remove "
+                "the entry for this model completely."
+            )
 
     def register_model_info(
         self, model_name: str, **bundle_kwargs
@@ -220,11 +232,24 @@ class ModelRegistry:
             entry = self._registry.pop(model_name)
 
         except KeyError as err:
-            raise ValueError(
-                f"Could not remove entry for model '{model_name}', because "
-                "no such model is registered.\nAvailable models:\n"
-                f"{make_columns(self.keys())}"
-            ) from err
+            if model_name not in self._load_errors:
+                raise ValueError(
+                    f"Could not remove entry for model '{model_name}', "
+                    "because no such model is registered.\nAvailable models:\n"
+                    f"{make_columns(self.keys())}"
+                ) from err
+
+            # Don't have an entry, but can still remove the file
+            log.caution(
+                "Removing (potentially corrupt) registry file "
+                "for model '%s' ...",
+                model_name,
+            )
+            fpath = os.path.join(self.registry_dir, f"{model_name}.yml")
+            os.remove(fpath)
+            log.info("Removed associated registry file:  %s", fpath)
+            return
+
         else:
             log.info(
                 "Removed entry for model '%s' from model registry.", model_name
@@ -281,14 +306,38 @@ class ModelRegistry:
         )
 
         new_entries = []
-        for fname in os.listdir(self.registry_dir):
-            model_name, ext = os.path.splitext(fname)
+        for fpath in os.listdir(self.registry_dir):
+            model_name, ext = os.path.splitext(fpath)
 
             if not ext.lower() in (".yml", ".yaml") or model_name in self:
                 continue
 
-            self._add_entry(model_name)
-            new_entries.append(model_name)
+            # Try loading ...
+            try:
+                self._add_entry(model_name)
+
+            except Exception as exc:
+                self._load_errors[model_name] = dict(fpath=fpath, exc=exc)
+
+            else:
+                new_entries.append(model_name)
+
+        # Inform about errors
+        if self._load_errors:
+            err_info = "\n\n".join(
+                f"- {name}:  {d['exc']}"
+                for name, d in self._load_errors.items()
+            )
+            log.error(
+                "There were errors during loading of %d model(s):\n\n%s\n",
+                len(self._load_errors),
+                err_info,
+            )
+            log.caution(
+                "These missing models may cause errors later on; it is "
+                "best to address them, e.g. by editing the model registry "
+                "or by removing and re-registering the model.\n"
+            )
 
         log.debug(
             "Loaded %s new entr%s: %s",

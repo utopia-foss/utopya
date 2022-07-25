@@ -55,6 +55,7 @@ class YAMLRegistry:
         self._EntryCls = EntryCls
 
         self._registry = KeyOrderedDict()
+        self._load_errors = dict()
         self.reload()
 
     @property
@@ -86,9 +87,32 @@ class YAMLRegistry:
             if name in self or ext != self._EntryCls.FILE_EXTENSION:
                 continue
 
-            entry = self._EntryCls(name=name, registry=self)
-            self._registry[entry.name] = entry
-            new_entries.append(name)
+            # Try to load it
+            try:
+                entry = self._EntryCls(name=name, registry=self)
+
+            except Exception as exc:
+                self._load_errors[name] = exc
+
+            else:
+                self._registry[entry.name] = entry
+                new_entries.append(name)
+
+        # Inform about errors
+        if self._load_errors:
+            err_info = "\n\n".join(
+                f"- {name}:  {exc}" for name, exc in self._load_errors.items()
+            )
+            log.error(
+                "There were errors during loading of %d project(s):\n\n%s\n",
+                len(self._load_errors),
+                err_info,
+            )
+            log.caution(
+                "These missing projects may cause errors later on; it is "
+                "best to address them, e.g. by editing the project registry "
+                "or by removing and re-registering a project.\n"
+            )
 
         log.debug(
             "Loaded %s entr%s: %s",
@@ -243,11 +267,26 @@ class YAMLRegistry:
             entry = self._registry.pop(name)
 
         except KeyError as err:
-            raise MissingEntryError(
-                f"Could not remove registry entry '{name}', because "
-                "no such entry is present.\nAvailable entries:\n"
-                f"{make_columns(self.keys())}"
-            ) from err
+            if name not in self._load_errors:
+                raise MissingEntryError(
+                    f"Could not remove registry entry '{name}', because "
+                    "no such entry is present.\nAvailable entries:\n"
+                    f"{make_columns(self.keys())}"
+                ) from err
+
+            # Don't have entry, but can still remove the file
+            log.caution(
+                "Removing (potentially corrupt) registry file "
+                "for entry '%s' ...",
+                name,
+            )
+            fpath = os.path.join(
+                self._registry_dir, f"{name}{self._EntryCls.FILE_EXTENSION}"
+            )
+            os.remove(fpath)
+            log.debug("Removed registry file:  %s", fpath)
+            return
+
         else:
             log.debug("Removed entry '%s' from %s.", name, self)
 
