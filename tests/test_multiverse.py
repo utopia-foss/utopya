@@ -16,7 +16,7 @@ from utopya import FrozenMultiverse, Multiverse
 from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
 
-from . import DUMMY_MODEL, get_cfg_fpath
+from . import ADVANCED_MODEL, DUMMY_MODEL, TEST_PROJECT_NAME, get_cfg_fpath
 from ._fixtures import *
 
 # Get the test resources
@@ -182,12 +182,36 @@ def test_backup(mv_kwargs):
     assert os.path.isfile(os.path.join(cfg_path, "run_cfg.yml"))
     assert os.path.isfile(os.path.join(cfg_path, "update_cfg.yml"))
 
+    # Git information was not stored, because the dummy model has no project
+    # associated with it
+    assert not os.path.isfile(os.path.join(cfg_path, "git_info_project.yml"))
+    assert not os.path.isfile(os.path.join(cfg_path, "git_info_framework.yml"))
+
     # And once more, now including the executable
     mv_kwargs["backups"] = dict(backup_executable=True)
     mv_kwargs["paths"]["model_note"] = "with-exec-backup"
     mv = Multiverse(**mv_kwargs)
 
     assert os.path.isfile(os.path.join(mv.dirs["run"], "backup", DUMMY_MODEL))
+
+    # Now use the ADVANCED_MODEL, which has project information
+    mv_kwargs["model_name"] = ADVANCED_MODEL
+    mv_kwargs["paths"]["model_note"] = "with-git-info"
+    mv_kwargs["backups"] = dict()  # use defaults
+    mv = Multiverse(**mv_kwargs)
+    cfg_path = mv.dirs["config"]
+
+    assert os.path.isfile(os.path.join(cfg_path, "git_info_project.yml"))
+    assert not os.path.isfile(os.path.join(cfg_path, "git_info_framework.yml"))
+
+    # Can also turn that off
+    mv_kwargs["paths"]["model_note"] = "without-git-info"
+    mv_kwargs["backups"] = dict(include_git_info=False)
+    mv = Multiverse(**mv_kwargs)
+    cfg_path = mv.dirs["config"]
+
+    assert not os.path.isfile(os.path.join(cfg_path, "git_info_project.yml"))
+    assert not os.path.isfile(os.path.join(cfg_path, "git_info_framework.yml"))
 
 
 def test_create_run_dir(default_mv):

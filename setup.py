@@ -14,10 +14,11 @@ INSTALL_DEPS = [
     "colorama>=0.4.4",
     "click>=8.0",
     "pydantic>=1.9",
+    "python-git-info>=0.7",
     #
     # related to utopya:
     "paramspace>=2.5.9",
-    "dantro>=0.18.0b4",
+    "dantro>=0.18.0",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.

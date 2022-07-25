@@ -101,6 +101,39 @@ class Project(RegistryEntry):
 
         return PROJECTS[self.framework_name]
 
+    def get_git_info(self) -> dict:
+        """Returns information about the state of this project's git repository
+        using the ``python-git-info`` package.
+
+        If no git information is retrievable, e.g. because the project's
+        ``base_dir`` does not contain a git repository, will still return a
+        dict but with ``have_git_info`` entry set to False.
+
+        Otherwise the git information will be in the ``latest_commit`` entry.
+
+        .. warning::
+
+            This does *not* (yet) represent whether the git repository is
+            dirty at the time this function is called.
+        """
+        import gitinfo  # PyPI package `python-git-info`
+
+        d = dict(
+            project_name=self.project_name,
+            project_base_dir=str(self.paths.base_dir),
+            have_git_info=False,
+            dirty="unknown",
+            latest_commit=None,
+        )
+        info = gitinfo.get_git_info(str(self.paths.base_dir))
+        if info:
+            d["have_git_info"] = True
+            d["latest_commit"] = info
+
+        # TODO Attempt subprocess git calls to find out more
+
+        return d
+
 
 # -- ProjectRegistry ----------------------------------------------------------
 

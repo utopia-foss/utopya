@@ -35,6 +35,9 @@ backups:
   # Whether to save the executable
   backup_executable: false
 
+  # Whether to store git information of the project (and framework)
+  include_git_info: true
+
 # Control of the model executable
 executable_control:
   # Whether to copy the executable to a temporary directory at the
