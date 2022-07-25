@@ -345,6 +345,8 @@ data_manager:
         - config/parameter_space_info.yml
         - config/full_parameter_space.yml
         - config/full_parameter_space_info.yml
+        - config/git_info_project.yml
+        - config/git_info_framework.yml
       required: true                        # Whether these files are required
       path_regex: config/(\w+)_cfg.yml      # Extract info from the file path
       target_path: cfg/{match:}             # ...and use in target path

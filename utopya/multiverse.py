@@ -925,17 +925,41 @@ class Multiverse:
         if include_git_info:
             prj = self.info_bundle.project
             if prj is not None:
-                prj_info = prj.get_git_info()
+                prj_info = prj.get_git_info(include_patch_info=True)
+
+                patch = prj_info.pop("git_diff")
+                _patch_path = os.path.join(cfg_dir, "git_diff_project.patch")
+                prj_info["git_diff"] = _patch_path
+
+                # write info
                 _path = os.path.join(cfg_dir, "git_info_project.yml")
                 write_yml(prj_info, path=_path)
-                log.note("  Stored project's git info.")
+
+                # write patch file
+                with open(_patch_path, "w") as f:
+                    f.write(patch)
+
+                log.note("  Stored project's git info and patch.")
 
                 fw = prj.framework_project
                 if fw is not None:
-                    fw_info = fw.get_git_info()
+                    fw_info = fw.get_git_info(include_patch_info=True)
+
+                    patch = fw_info.pop("git_diff")
+                    _patch_path = os.path.join(
+                        cfg_dir, "git_diff_framework.patch"
+                    )
+                    fw_info["git_diff"] = _patch_path
+
+                    # write info
                     _path = os.path.join(cfg_dir, "git_info_framework.yml")
                     write_yml(fw_info, path=_path)
-                    log.note("  Stored framework's git info.")
+
+                    # write patch file
+                    with open(_patch_path, "w") as f:
+                        f.write(patch)
+
+                    log.note("  Stored framework's git info and patch.")
 
     def _perform_pspace_backup(
         self,
