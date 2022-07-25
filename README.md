@@ -111,7 +111,7 @@ The copyright holders of the utopya software package are collectively referred t
 [LGPL]: https://www.gnu.org/licenses/lgpl-3.0.en.html
 [utopya-repo]: https://gitlab.com/utopia-project/utopya
 [utopya-pypi]: https://pypi.org/project/utopya/
-[Utopia]: https://gitlab.org/utopia-project/utopia
-[dantro]: https://gitlab.org/utopia-project/dantro
+[Utopia]: https://gitlab.com/utopia-project/utopia
+[dantro]: https://gitlab.com/utopia-project/dantro
 [paramspace]: https://gitlab.com/blsqr/paramspace
 [Utopia-Project]: https://utopia-project.org/
