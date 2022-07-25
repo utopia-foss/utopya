@@ -68,7 +68,7 @@ def test_remove(tmp_projects):
     assert "missingProjectName" not in PROJECTS
     res = invoke_cli(("projects", "rm", "missingProjectName", "-y"))
     assert res.exit_code != 0
-    assert "no project named 'missingProjectName'" in res.output
+    assert "no such entry is present" in res.output
     assert "missingProjectName" not in PROJECTS
 
     # Now remove it

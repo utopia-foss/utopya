@@ -29,7 +29,7 @@ projects = click.Group(
 )
 def list_projects(long_mode: bool):
     """Lists available projects"""
-    Echo.info("Loading utopya project list ...")
+    Echo.progress("Loading utopya project list ...")
 
     from utopya import PROJECTS
     from utopya.tools import pformat
@@ -41,7 +41,12 @@ def list_projects(long_mode: bool):
             continue
 
         for k, v in project.data.dict().items():
-            Echo.remark(f"  {k:15s}: {v}")  # TODO make dict-compatible
+            if isinstance(v, dict):
+                Echo.remark(f"  {k:15s}")
+                for sk, sv in v.items():
+                    Echo.remark(f"    .{sk:12s} : {sv}")
+            else:
+                Echo.remark(f"  {k:15s} : {v}")
         Echo.info("")
 
 
@@ -52,20 +57,37 @@ def list_projects(long_mode: bool):
 @click.argument("project_name")
 def edit(project_name: str):
     """Edits a project registry file"""
-    Echo.info(f"Editing registry file for project '{project_name}' ...")
-    Echo.warning("Take care not to corrupt the file!")
+    import utopya
+    from utopya.exceptions import MissingEntryError
+
+    Echo.progress(
+        f"Opening '{project_name}' project's registry file for editing ..."
+    )
+    Echo.caution("Take care not to corrupt the file!")
 
     if not click.confirm("Open file for editing?"):
         Echo.info("Not opening.")
         sys.exit(0)
 
+    # Try to get the file path, which may fail if the project is not loadable
     try:
-        from utopya import PROJECTS
+        filename = utopya.PROJECTS[project_name].registry_file_path
 
-        click.edit(
-            filename=PROJECTS[project_name].registry_file_path,
-            extension=".yml",
+    except MissingEntryError as err:
+        if project_name not in utopya.PROJECTS._load_errors:
+            Echo.error(err)
+            sys.exit(1)
+
+        # Use a different approach to determine the file name
+        from utopya.cfg import UTOPYA_CFG_SUBDIRS
+
+        filename = os.path.join(
+            UTOPYA_CFG_SUBDIRS["projects"], f"{project_name}.yml"
         )
+
+    # Now open for editing
+    try:
+        click.edit(filename=filename, extension=".yml")
 
     except Exception as exc:
         Echo.error("Editing project registry file failed!", error=exc)
@@ -95,19 +117,20 @@ def remove(
 ):
     """Removes an entry from the project registry file"""
     from utopya import PROJECTS
+    from utopya.exceptions import MissingEntryError
 
-    Echo.info(f"Removing project registry entry '{project_name}' ...")
+    Echo.progress(f"Removing project registry entry '{project_name}' ...")
 
     if not skip_confirmation and not click.confirm("Are you sure?"):
         Echo.info("Not removing.")
         sys.exit(0)
 
-    if project_name not in PROJECTS:
-        Echo.error(f"There is no project named '{project_name}' registered!")
-        Echo.info(f"Registered projects:  {', '.join(projects)}")
+    try:
+        PROJECTS.remove_entry(project_name)
+    except MissingEntryError as err:
+        Echo.error(err)
         sys.exit(1)
 
-    PROJECTS.remove_entry(project_name)
     Echo.success(f"Successfully removed project entry '{project_name}'.")
 
 

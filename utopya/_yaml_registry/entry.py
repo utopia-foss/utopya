@@ -62,12 +62,12 @@ class RegistryEntry:
     SCHEMA = BaseSchema
     """The data schema that is used for validation"""
 
-    FILE_EXTENSION = ".yml"
+    FILE_EXTENSION: str = ".yml"
     """The file extension that is used for the yaml files -- case-sensitive
     and *with* leading dot.
     """
 
-    _NO_FORWARDING_ATTRS = (
+    _NO_FORWARDING_ATTRS: tuple = (
         "_name",
         "_data",
         "_registry",

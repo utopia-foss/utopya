@@ -1,5 +1,6 @@
 """Implements the `utopya models` subcommand tree of the CLI"""
 
+import os
 import sys
 from typing import Sequence, Tuple
 
@@ -90,7 +91,13 @@ def remove_model_or_bundle(
         Echo.info(
             f"Removing info bundle '{label}' for model '{model_name}'..."
         )
-        utopya.MODELS[model_name].pop(label)
+        try:
+            utopya.MODELS[model_name].pop(label)
+
+        except Exception as exc:
+            Echo.error(exc)
+            Echo.exit(1)
+
         Echo.success(
             f"Info bundle labelled '{label}' removed "
             f"from registry entry of model '{model_name}'."
@@ -102,7 +109,13 @@ def remove_model_or_bundle(
             Echo.info("Not removing anything.")
             sys.exit(0)
 
-        utopya.MODELS.remove_entry(model_name)
+        try:
+            utopya.MODELS.remove_entry(model_name)
+
+        except Exception as exc:
+            Echo.error(exc)
+            Echo.exit(1)
+
         Echo.success(f"Registry entry for model '{model_name}' removed.")
 
 
@@ -113,19 +126,28 @@ def remove_model_or_bundle(
 @click.argument("model_name")
 def edit(*, model_name: str):
     """Edits the model registry entry of the given model"""
-    Echo.info(f"Opening '{model_name}' model's registry file for editing ...")
     import utopya
 
-    Echo.warning("Take care not to corrupt the file!")
+    Echo.progress(
+        f"Opening '{model_name}' model's registry file for editing ..."
+    )
+    Echo.caution("Take care not to corrupt the file!")
     if not click.confirm("Open file for editing?"):
         Echo.info("Not opening.")
         sys.exit(0)
 
+    # Get the filename
     try:
-        click.edit(
-            filename=utopya.MODELS[model_name].registry_file_path,
-            extension=".yml",
+        filename = utopya.MODELS[model_name].registry_file_path
+
+    except:
+        filename = os.path.join(
+            utopya.MODELS.registry_dir, f"{model_name}.yml"
         )
+
+    # Now edit
+    try:
+        click.edit(filename=filename, extension=".yml")
 
     except Exception as exc:
         Echo.error("Editing model registry file failed!", error=exc)
@@ -142,7 +164,7 @@ def edit(*, model_name: str):
 @click.argument("label")
 def set_default(*, model_name: str, label: str):
     """Sets the default info bundle to use for a certain model"""
-    Echo.info(
+    Echo.progress(
         f"Setting the info bundle labelled '{label}' as the default "
         f"for '{model_name}' ..."
     )
@@ -174,7 +196,7 @@ def info(*, model_name: str, label: str):
 
     model = utopya.Model(name=model_name, bundle_label=label)
 
-    _log.info("Fetching available config sets ...")
+    _log.progress("Fetching available config sets ...\n")
     cfg_sets = model.default_config_sets
     if cfg_sets:
         _log.note(

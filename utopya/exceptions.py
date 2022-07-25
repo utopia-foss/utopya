@@ -96,6 +96,10 @@ class ModelRegistryError(UtopyaException, ValueError):
     """Raised on errors with model registry"""
 
 
+class MissingModelError(ModelRegistryError):
+    """Raised when a model is missing"""
+
+
 class BundleExistsError(ModelRegistryError):
     """Raised when a bundle that compared equal already exists"""
 
