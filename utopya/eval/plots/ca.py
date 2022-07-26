@@ -636,7 +636,7 @@ def caplot(
 # -----------------------------------------------------------------------------
 
 
-@is_plot_func(creator_type=UniversePlotCreator, supports_animation=True)
+@is_plot_func(creator="universe", supports_animation=True)
 def state(
     dm: DataManager,
     *,

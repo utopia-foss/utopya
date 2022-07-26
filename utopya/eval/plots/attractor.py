@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 
-@is_plot_func(creator_type=MultiversePlotCreator)
+@is_plot_func(creator="multiverse")
 def bifurcation_diagram(
     dm: DataManager,
     *,
