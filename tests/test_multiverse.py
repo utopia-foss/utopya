@@ -293,12 +293,14 @@ def test_prepare_executable(mv_kwargs):
     # With the executable in a temporary location, we can change its access
     # rights to test the PermissionError
     os.chmod(tmp_executable, 0o600)
-    with pytest.raises(PermissionError, match="is not executable"):
+    with pytest.raises(
+        PermissionError, match="does not point to an executable file"
+    ):
         mv._prepare_executable()
 
     # Finally, remove that (temporary) file, to test the FileNotFound error
     os.remove(tmp_executable)
-    with pytest.raises(FileNotFoundError, match="Did you build it?"):
+    with pytest.raises(FileNotFoundError, match="did you build it?"):
         mv._prepare_executable()
 
 
