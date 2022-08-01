@@ -1028,18 +1028,18 @@ class Multiverse:
         # Make sure it exists and is executable
         if not os.path.isfile(execpath):
             raise FileNotFoundError(
-                "No file found at the specified binary "
-                "path for model '{}'! Did you build it?\n"
-                "Expected file at:  {}"
-                "".format(self.model_name, execpath)
+                "No file found at the specified executable "
+                f"path for model '{self.model_name}'! "
+                "If your model needs building, did you build it?\n"
+                f"Expected file at:  {execpath}"
             )
 
         elif not os.access(execpath, os.X_OK):
             raise PermissionError(
-                "The specified binary for model '{}' is not "
-                "executable. Did you set the correct access "
-                "rights?\nBinary path:  {}"
-                "".format(self.model_name, execpath)
+                f"The specified executable path for model '{self.model_name}' "
+                "does not point to an executable file. Did you set the "
+                f"correct access rights? Use chmod to adjust access rights.\n"
+                "Executable path:  {execpath}"
             )
 
         if run_from_tmpdir:
