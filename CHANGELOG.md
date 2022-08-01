@@ -3,6 +3,12 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
 
+## v1.0.1 *(Work in progress)*
+
+### Bug fixes
+- !28 improves error messages upon missing model executable.
+
+
 ## v1.0.0
 This is the first *standalone* release of utopya.
 With the standalone version, utopya can be used in more general contexts: Whenever you need to perform simulation runs from some executable and evaluate its outputs.

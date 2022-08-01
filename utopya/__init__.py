@@ -35,7 +35,7 @@ utopya as its frontend.
 Also visit :ref:`the user manual front page <welcome>` for more information.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1b0"
 """The :py:mod:`utopya` package version"""
 
 # .. Logging ..................................................................
