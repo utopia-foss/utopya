@@ -1,7 +1,14 @@
 # The model default configuration for the MinimalModel
+#
+# This uses the parameter validation feature
 ---
-state_size: 100
+# The size of the state vector
+state_size: !is-positive-int 100
+
+# Shape of the grid to work on
 grid_shape: [24, 32]
+
+# Parameters that initialize the distribution
 distribution_params:
   low: -1.
   high: +1.

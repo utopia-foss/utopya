@@ -249,22 +249,27 @@ def test_detect_doubled_folders(mv_kwargs):
         #      so that the latest the second call should raise such an error
 
 
-@pytest.mark.skip("Needs advanced model implementation")
 def test_parameter_validation(mv_kwargs):
     """Tests integration of the parameter validation feature"""
+    mv_kwargs["model_name"] = ADVANCED_MODEL
+
     # Works
     mv_kwargs["run_cfg_path"] = RUN_CFG_PATH_VALID
-    mv_kwargs["model_name"] = ADVANCED_MODEL
     mv_kwargs["paths"]["model_note"] = "valid"
     mv = Multiverse(**mv_kwargs)
-    mv.run_single()
+    mv.run()
 
-    # Fails
+    # Fails already during initialization
     mv_kwargs["run_cfg_path"] = RUN_CFG_PATH_INVALID
-    mv_kwargs["model_name"] = ADVANCED_MODEL
     mv_kwargs["paths"]["model_note"] = "invalid"
-    with pytest.raises(ValidationError, match="Validation failed for 3 para"):
-        mv = Multiverse(**mv_kwargs)
+    with pytest.raises(ValidationError, match="Validation failed for 1 para"):
+        Multiverse(**mv_kwargs)
+
+    # But not if validation is deactivated, then it will fail during run
+    mv_kwargs["paths"]["model_note"] = "failing_during_run"
+    mv = Multiverse(**mv_kwargs, perform_validation=False)
+    with pytest.raises(SystemExit):
+        mv.run()
 
 
 def test_prepare_executable(mv_kwargs):
@@ -565,7 +570,9 @@ def test_cluster_mode_run(mv_kwargs, cluster_env_specific):
     assert [t.name for t in mv.wm.tasks] == ["uni05", "uni10"]
 
 
-@pytest.mark.skip("Feature not implemented in the model")
+@pytest.mark.skip(
+    "utopya cannot yet communicate to the model whether it should run parallel"
+)
 def test_parallel_init(mv_kwargs):
     """Test enabling parallel execution through the config"""
     # NOTE Ensure that information on parallel execution is logged
@@ -585,36 +592,6 @@ def test_parallel_init(mv_kwargs):
     mv.run()
     log = mv.wm.tasks[0].streams["out"]["log"]
     assert any("Parallel execution enabled" in line for line in log)
-
-
-@pytest.mark.skip("Feature not implemented in the model")
-def test_prolog_and_epilog_is_run(mv_kwargs):
-    """Test that the prolog and epilog are always run"""
-    # NOTE Ensure that information on parallel execution is logged
-    mv_kwargs["parameter_space"] = dict(log_levels=dict(model="debug"))
-
-    # Run with default settings and check log message
-    mv = Multiverse(**mv_kwargs)
-    mv.run()
-    log = mv.wm.tasks[0].streams["out"]["log"]
-    assert any("Prolog finished." in line for line in log)
-    assert any("Epilog finished." in line for line in log)
-
-    # The "Invoking epilog ..." message should _not_ be there in *this* case,
-    # because it denotes that the simulation stopped after receiving a signal
-    assert not any("Invoking epilog ..." in line for line in log)
-
-    # Now perform a longer simulation with a timeout
-    mv_kwargs["parameter_space"]["num_steps"] = int(1e9)
-    mv_kwargs["parameter_space"]["write_every"] = int(1e6)
-    mv_kwargs["run_kwargs"] = dict(timeout=1.0)
-    mv_kwargs["paths"]["model_note"] = "with_timeout"
-    mv = Multiverse(**mv_kwargs)
-    mv.run()
-    log = mv.wm.tasks[0].streams["out"]["log"]
-    assert any("Prolog finished." in line for line in log)
-    assert any("Invoking epilog ..." in line for line in log)
-    assert any("Epilog finished." in line for line in log)
 
 
 def test_shared_worker_manager(mv_kwargs):
