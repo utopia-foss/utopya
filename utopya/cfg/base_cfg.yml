@@ -506,9 +506,7 @@ parameter_space:
   #      universe is to be simulated, the <#> is set.
 
   # Below here, the model configuration starts, i.e. the config that is used by
-  # a model instance. To add it
-  # <model_name>: !model
-    # model_name: <model_name>  # which model's default config to add here
-    # ... will be added here
-  # NOTE This entry is added to the parameter space, if no run configuration is
-  #      made available to the Multiverse.
+  # a model instance. It's meant to be nested under the model name itself and
+  # a node of that name will always be added.
+  # <model_name>:
+    # ... more parameters ...

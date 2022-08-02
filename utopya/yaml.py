@@ -94,33 +94,6 @@ def _expr_constructor(loader, node):
     return eval(expr_str)
 
 
-def _model_cfg_constructor(loader, node) -> dict:
-    """Custom yaml constructor for loading a model configuration file.
-
-    This extracts the `model_name` key, loads the corresponding model config
-    and then recursively updates the loaded config with the remaining keys
-    from that part of the configuration.
-    """
-    # Get a mapping from the node
-    d = loader.construct_mapping(node, deep=True)
-    # NOTE using the deep flag here to allow nested calls to this constructor
-
-    # Extract the model name and a potentially existing bundle key
-    model_name = d.pop("model_name")
-    bundle_label = d.pop("bundle_label", None)
-
-    # Load the corresponding model configuration
-    mcfg, _, _ = load_model_cfg(
-        model_name=model_name, bundle_label=bundle_label
-    )
-
-    # Update the loaded config with the remaining keys
-    mcfg = _recursive_update(mcfg, d)
-
-    # Return the updated dictionary
-    return mcfg
-
-
 def _func_on_sequence_constructor(loader, node, *, func: Callable):
     """Custom yaml constructor that constructs a sequence, passes it to the
     given function, and returns the result of that call.
@@ -167,9 +140,6 @@ yaml.constructor.add_constructor(
 yaml.constructor.add_constructor(
     "!all", functools.partial(_func_on_sequence_constructor, func=all)
 )
-
-# Load a model configuration
-yaml.constructor.add_constructor("!model", _model_cfg_constructor)
 
 
 # Add aliases for the (coupled) parameter dimensions

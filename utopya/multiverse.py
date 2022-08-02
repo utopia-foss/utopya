@@ -362,31 +362,13 @@ class Multiverse:
     ) -> dict:
         """Create the meta configuration from several parts and store it.
 
-        The final configuration dict is built from up to four components,
-        where one is always recursively updating the previous level:
-
-            1. ``base``: the default configuration, which is always present
-            2. ``project`` (optional): used if the selected model is
-               associated with a project and that project has a project
-               configuration file available
-            3. ``user`` (optional): configuration of user- and machine-related
-               parameters
-            4. ``run`` (optional): the configuration for the current Multiverse
-               instance
-            5. ``update`` (optional): can be used for a last update step
-
+        The final configuration dict is built from multiple components,
+        where one is always recursively updating the previous level.
         The resulting configuration is the meta configuration and is stored
         to the ``meta_cfg`` attribute.
 
         The parts are recorded in the ``cfg_parts`` dict and returned such that
         a backup can be created.
-
-        .. note::
-
-            All model configurations can be loaded into the meta config
-            via the yaml ``!model`` tag; this will already have occurred during
-            loading of that file and does not depend on the model chosen in
-            this Multiverse object.
 
         Args:
             run_cfg_path (str): path to the run configuration

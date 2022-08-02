@@ -76,46 +76,6 @@ def test_any_and_all_constructor():
     assert not d["all2"]
 
 
-@pytest.mark.skip(reason="The !model tag needs to be fixed.")
-def test_model_cfg_constructor():
-    """Tests the expression constructor"""
-    tstr = """
-        model: !model
-          model_name: dummy
-          foo: baz
-          lvl: 0
-
-        sub:
-          model1: !model
-            model_name: dummy
-            spam: 2.34
-            lvl: 1
-            num: 1
-
-          model2: !model
-            model_name: dummy
-            lvl: 1
-            num: 2
-    """
-    # TODO once there are more models, add nesting here
-
-    # Load the string using the tools module, where the constructor was added
-    d = t.yaml.load(tstr)
-
-    # Assert correctness
-    assert d["model"] == dict(foo="baz", spam=1.23, lvl=0)
-    assert d["sub"]["model1"] == dict(foo="bar", spam=2.34, lvl=1, num=1)
-    assert d["sub"]["model2"] == dict(foo="bar", spam=1.23, lvl=1, num=2)
-
-    # It should fail without a model name
-    with pytest.raises(KeyError, match="model_name"):
-        t.yaml.load("model: !model {}")
-
-    # ... or with an invalid model name
-    with pytest.raises(KeyError, match="No model with name 'invalid' found"):
-        t.yaml.load("model: !model {model_name: invalid}")
-
-
 # Function tests --------------------------------------------------------------
 
 
