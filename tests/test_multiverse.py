@@ -304,22 +304,22 @@ def test_prepare_executable(mv_kwargs):
         mv._prepare_executable()
 
 
-@pytest.mark.skip("Needs an advanced model with base_plots and default_plots")
 def test_base_cfg_pools(mv_kwargs):
     """Tests the generation of valid base config pools"""
+    mv_kwargs["model_name"] = ADVANCED_MODEL
     mv = Multiverse(**mv_kwargs)
     parse = mv._parse_base_cfg_pools
 
     # Check special keywords get replaced
     assert parse(["utopya_base"]) == [("utopya", mv.UTOPYA_BASE_PLOTS_PATH)]
     assert parse(["model_base"]) == [
-        (DUMMY_MODEL + "_base", mv.info_bundle.paths.get("base_plots", {}))
+        (ADVANCED_MODEL + "_base", mv.info_bundle.paths.get("base_plots", {}))
     ]
 
     # Check additional paths get resolved
     assert parse(
         [("{model_name}_foo", "{paths[source_dir]}/{model_name}_plots.yml")]
-    ) == [("dummy_foo", mv.info_bundle.paths["default_plots"])]
+    ) == [(f"{ADVANCED_MODEL}_foo", mv.info_bundle.paths["default_plots"])]
     assert parse([("foo", "some_invalid_path")]) == [("foo", {})]  # empty pool
 
     # Error messages
@@ -379,6 +379,26 @@ def test_multiple_runs_not_allowed(mv_kwargs):
     # Another run should not be possible
     with pytest.raises(RuntimeError, match="Could not add simulation task"):
         mv.run_single()
+
+
+def test_run_from_meta_cfg_backup(mv_kwargs):
+    """Tests that the resulting meta config backup file can be used to start
+    a new run"""
+    # Run a sweep
+    mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
+    mv = Multiverse(**mv_kwargs)
+    mv.run()
+
+    assert len(os.listdir(mv.dirs["data"])) == 4
+
+    # Set up a new Multiverse from the previous Multiverse's meta config backup
+    mv_kwargs["run_cfg_path"] = os.path.join(mv.dirs["config"], "meta_cfg.yml")
+    mv_kwargs["paths"]["model_note"] = "run_from_meta_cfg_backup"
+
+    mv2 = Multiverse(**mv_kwargs)
+    mv2.run()
+
+    assert len(os.listdir(mv2.dirs["data"])) == 4
 
 
 @pytest.mark.skip("Simulations do not end with the expected signal")
