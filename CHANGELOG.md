@@ -6,6 +6,7 @@
 ## v1.0.1 *(Work in progress)*
 - !28 improves error messages upon missing model executable.
 - !29 removes the (dysfunctional) `!model` YAML constructor; to be re-added at a later point (see #51).
+- !30 fixes a bug that prevented re-running a `Multiverse` from the backed-up `meta_cfg.yml` file of a previous run.
 
 
 ## v1.0.0

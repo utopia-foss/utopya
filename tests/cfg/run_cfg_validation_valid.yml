@@ -1,16 +1,13 @@
-# Tests the parameter validation feature integration using the ForestFire model
+# Tests the parameter validation feature using a demo model
 ---
 perform_sweep: true
 
 parameter_space:
   seed: 1337
-  num_steps: 10
-  write_every: 2
 
-  ForestFire:
+  ExtendedModel:
+    state_size: !sweep
+      default: 100
+      values: [100, 200, 300]
 
-    p_lightning: 0.5
-    p_growth: 0
-    p_immunity: !sweep
-      default: 0.5
-      values: [0, 0.1, 1]
+    grid_shape: [23, 42]

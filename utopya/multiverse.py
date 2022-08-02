@@ -454,13 +454,24 @@ class Multiverse:
         # Read in the run configuration
         run_cfg = None
         if run_cfg_path:
+            log.note("Run configuration:\n  %s", run_cfg_path)
             try:
                 run_cfg = load_yml(run_cfg_path)
             except FileNotFoundError as err:
                 raise FileNotFoundError(
                     f"No run config could be found at {run_cfg_path}!"
                 ) from err
-            log.note("Run configuration:\n  %s", run_cfg_path)
+
+            # Make sure its parameter_space entry is a true dict and not a
+            # ParamSpace object, which needs to be resolved to a dict.
+            if isinstance(run_cfg.get("parameter_space"), psp.ParamSpace):
+                run_cfg["parameter_space"] = run_cfg["parameter_space"]._dict
+                # FIXME Should not be using the private interface here. This is
+                #       only necessary in the first place because ParamSpace
+                #       does not behave like a dict as much as it should...
+                #       Once recursive_update works within ParamSpace, this
+                #       can be removed again.
+
         else:
             log.note(
                 "Using default run configuration:\n  %s\n", model_cfg_path
@@ -472,8 +483,7 @@ class Multiverse:
         # Start with the base configuration
         meta_tmp = base_cfg
         log.debug(
-            "Performing recursive updates to arrive at meta "
-            "configuration ..."
+            "Performing recursive updates to arrive at meta configuration ..."
         )
 
         # Update with framework and project config, if available
