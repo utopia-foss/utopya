@@ -39,13 +39,13 @@ To register your project, follow these steps:
     - `metadata`: Adjust (or delete) the entries.
 1. Enter your project directory and *from that directory* invoke the utopya CLI to register the project:
 
-    ```
+    ```bash
     utopya projects register .
     ```
 
 You should get a positive response from the utopya CLI and your project should appear in the project list when calling:
 
-```
+```bash
 utopya projects ls
 ```
 
@@ -66,7 +66,7 @@ As an example, let's register the `MinimalModel`:
 1. Enter the `demo/models/MinimalModel` directory
 1. Call the registration command:
 
-    ```
+    ```bash
     utopya models register from-manifest *_info.yml
     ```
 
@@ -74,6 +74,27 @@ After successful registration, you should be able to run the model:
 
 ```
 utopya run MinimalModel
+```
+
+### The `ExtendedModel`
+The `ExtendedModel` is a demo for a more complex model implementation.
+Additionally, it also uses more features of utopya.
+Key differences are:
+
+- The implementation is split up into an `impl` *package* and a `run_model.py`, that invokes the implementation.
+- It includes a `BaseModel` class that takes care to implement all the simulation infrastructure:
+    - Shared PRNG and logger instances.
+    - Logic to evaluate the `write_every` and `write_start` parameters that can be set via the utopya CLI.
+    - A `monitor` method that communicates simulation progress to the frontend.
+- The `model_plots` and `model_tests` are in use.
+- The `cfgs` directory contains so-called *config sets*  which can be used to define certain sets of default run and evaluation configurations.
+
+To register and run it, we can again use its manifest file (and an extended glob pattern that actually matches all manifest files):
+
+```bash
+cd demo/
+utopya models register from-manifest **/*_info.yml --exists-action overwrite
+utopya run ExtendedModel
 ```
 
 
@@ -87,7 +108,7 @@ For your own model, do the following:
     - `metadata`: update or delete the entries in there.
 1. Make sure you are in the correct directory and call the registration command:
 
-    ```
+    ```bash
     utopya models register from-manifest *_info.yml
     ```
 

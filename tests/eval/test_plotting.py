@@ -79,6 +79,12 @@ def without_cached_model_plots_modules():
 # -----------------------------------------------------------------------------
 
 
+def test_utopya_plotting_deprecation():
+    """Makes sure that importing utopya.plotting raises a warning"""
+    with pytest.warns(DeprecationWarning, match="use the utopya.eval module"):
+        import utopya.plotting
+
+
 def test_dag_custom_operations(without_cached_model_plots_modules):
     """Tests if custom dantro data operations can be registered via the
     extensions made to PlotManager.
@@ -331,35 +337,6 @@ def test_generic_dag_plots(tmpdir):
     )
 
 
-@pytest.mark.skip("Plot function no longer included")  # TODO
-def test_time_series_plots():
-    """Tests the plot_funcs.time_series module"""
-    mv, _ = ModelTest("SandPile").create_run_load()
-
-    # Plot specific plots from the default plot configuration, which are using
-    # the time_series plots
-    mv.pm.plot_from_cfg(plot_only=["area_fraction"])
-
-    # Again, with PredatorPrey
-    mv, _ = ModelTest("PredatorPrey").create_run_load()
-
-    # Plot specific plots from the default plot configuration, which are using
-    # the time_series plots
-    mv.pm.plot_from_cfg(plot_only=["species_densities", "phase_space"])
-
-
-@pytest.mark.skip("Plot function no longer included")  # TODO
-def test_distribution_plots():
-    """Tests the plot_funcs.distribution module"""
-    mv, _ = ModelTest("SandPile").create_run_load()
-
-    # Plot specific plots from the default plot configuration, which are using
-    # the distribution plots
-    mv.pm.plot_from_cfg(
-        plot_only=["compl_cum_prob_dist", "cluster_size_distribution"]
-    )
-
-
 # -----------------------------------------------------------------------------
 # -- Graph plots --------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -491,7 +468,7 @@ def test_GraphPlot_class():
         plt.close(fig)
 
 
-@pytest.mark.skip("No graph model available")  # TODO
+@pytest.mark.skip("No graph model available")  # TODO need simple graph model
 def test_graph_plots(tmpdir):
     """Tests the plot_funcs.dag.graph module"""
     # Create and run simulation
@@ -572,7 +549,7 @@ def test_graph_plots(tmpdir):
 # -----------------------------------------------------------------------------
 # -- Bifurcation diagram plots ------------------------------------------------
 # -----------------------------------------------------------------------------
-# TODO Need alternative way of testing this
+# TODO Need alternative way of testing these ...
 
 
 @pytest.mark.skip("Need alternative way of testing this")

@@ -184,14 +184,19 @@ class Project(RegistryEntry):
 class ProjectRegistry(YAMLRegistry):
     """The project registry"""
 
-    def __init__(self):
+    def __init__(self, registry_dir: str = None):
         """Initializes the project registry, loading available entries from
         the registry directory in the utopya config directory.
 
         This also creates the ``projects`` directory, if not created yet.
+
+        Args:
+            registry_dir (str, optional): A custom projects
         """
 
-        registry_dir = UTOPYA_CFG_SUBDIRS["projects"]
+        if registry_dir is None:
+            registry_dir = UTOPYA_CFG_SUBDIRS["projects"]
+
         if not os.path.exists(registry_dir):
             os.makedirs(registry_dir)
 

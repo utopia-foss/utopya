@@ -4,11 +4,8 @@
 import os
 import sys
 
-import h5py as h5
-import numpy as np
-import ruamel.yaml as yaml
-
 # FIXME Should not import from private module!
+# TODO Move into utopya backend package
 from utopya._import_tools import import_module_from_path
 
 # Instead of a relative import (which is not available in the __main__ module
@@ -25,8 +22,6 @@ impl = import_module_from_path(
 Model = impl.Model
 
 if __name__ == "__main__":
-    print("Preparing simulation run ...")
-
     model = Model(cfg_file_path=sys.argv[1])
     model.run()
     del model

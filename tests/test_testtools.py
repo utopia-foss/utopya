@@ -8,13 +8,13 @@ the advantage of already working on temporary directories.
 import os
 import time
 
+import pydantic
 import pytest
 
 import utopya
-from utopya.cfg import load_from_cfg_dir, write_to_cfg_dir
 from utopya.testtools import ModelTest
 
-from . import ADVANCED_MODEL, DUMMY_MODEL
+from . import ADVANCED_MODEL, DUMMY_MODEL, TEST_PROJECT_NAME
 from ._fixtures import *
 
 # Fixtures --------------------------------------------------------------------
@@ -24,18 +24,6 @@ from ._fixtures import *
 def with_models(with_test_models):
     """Use on all tests in this module"""
     pass
-
-
-@pytest.fixture
-def tmp_utopya_cfg():
-    """Removes the current utopya_cfg.yml and puts it back upon teardown. This
-    fixture allows putting custom content in that place without persistently
-    changing the test-executing user's local configuration.
-    """
-    previous_state = load_from_cfg_dir("utopya")
-    write_to_cfg_dir("utopya", dict())
-    yield
-    write_to_cfg_dir("utopya", previous_state)
 
 
 # Tests -----------------------------------------------------------------------
@@ -68,10 +56,9 @@ def test_ModelTest_init():
         ModelTest(DUMMY_MODEL, test_file="/some/imaginary/path/to/a/testfile")
 
 
-@pytest.mark.skip("Needs advanced model implementation")
 def test_ModelTest_create_mv():
     """Tests the creation of Multiverses using the ModelTest class"""
-    mtc = ModelTest(DUMMY_MODEL, test_file=__file__)
+    mtc = ModelTest(ADVANCED_MODEL, test_file=__file__)
 
     # Basic initialization
     mv1 = mtc.create_mv(from_cfg="cfg/run_cfg.yml")
@@ -90,7 +77,7 @@ def test_ModelTest_create_mv():
 
     # Can also use a model's config sets
     mtc = ModelTest(ADVANCED_MODEL, test_file=__file__)
-    mv3 = mtc.create_mv(from_cfg_set="universe_example")
+    mv3 = mtc.create_mv(from_cfg_set="state_size_sweep")
     assert isinstance(mv3, utopya.Multiverse)
     assert mv3.meta_cfg["parameter_space"].default["write_every"] == 5
 
@@ -142,7 +129,7 @@ def test_ModelTest_create_frozen_mv():
 
 
 def test_ModelTest_tmpdir_is_tmp():
-    """This test is to assert that the temporary directory is really temporary"""
+    """Assert that the temporary directory is really temporary"""
     mtc = ModelTest(DUMMY_MODEL, test_file=__file__)
     mv = mtc.create_mv(from_cfg="cfg/run_cfg.yml")
 
@@ -158,7 +145,6 @@ def test_ModelTest_tmpdir_is_tmp():
     assert not os.path.exists(tmpdir_path)
 
 
-@pytest.mark.skip("Needs advanced model implementation")
 def test_ModelTest_default_config_sets():
     """Tests the default config sets"""
     # The dummy model has no config sets specified
@@ -167,35 +153,35 @@ def test_ModelTest_default_config_sets():
     assert not dummy_cfgs
     assert isinstance(dummy_cfgs, dict)
 
-    # The advance model has
+    # The larger demo model has some config sets though
     adv_mtc = ModelTest(ADVANCED_MODEL)
     adv_cfgs = adv_mtc.default_config_sets
     assert adv_cfgs
-    assert "multiverse_example" in adv_cfgs
-    assert "universe_example" in adv_cfgs
-    assert os.path.isdir(adv_cfgs["multiverse_example"]["dir"])
-    assert os.path.isfile(adv_cfgs["multiverse_example"]["run"])
-    assert os.path.isfile(adv_cfgs["multiverse_example"]["eval"])
+    assert "state_size_sweep" in adv_cfgs
+    assert os.path.isdir(adv_cfgs["state_size_sweep"]["dir"])
+    assert os.path.isfile(adv_cfgs["state_size_sweep"]["run"])
+    assert os.path.isfile(adv_cfgs["state_size_sweep"]["eval"])
 
-    mv_set = adv_mtc.get_config_set("multiverse_example")
-    assert mv_set == adv_cfgs["multiverse_example"]
+    mv_set = adv_mtc.get_config_set("state_size_sweep")
+    assert mv_set == adv_cfgs["state_size_sweep"]
 
 
-@pytest.mark.skip("Needs advanced model implementation")
-def test_ModelTest_config_sets_custom_search_dirs(tmp_utopya_cfg, tmpdir):
-    """Tests that users can specify a custom search directory via the utopya
-    configuration file. The ``tmp_utopya_cfg`` fixture removes the current
-    user's config file for the duration of the test.
+def test_ModelTest_config_sets_custom_search_dirs(tmpdir):
+    """Tests that users can specify a custom search directory via the project
+    configuration.
     """
     adv_mtc = ModelTest(ADVANCED_MODEL)
+    prj = adv_mtc.info_bundle.project
+    assert prj.project_name == TEST_PROJECT_NAME
 
     # With the user-specified file removed, there should definitely be no
     # _custom_ search directories, only the one in the model source directory
     sdirs = adv_mtc.default_config_set_search_dirs
-    assert len(sdirs) == 1
-    assert sdirs[0].endswith("src/utopia/models/ForestFire/cfgs")  # FIXME
+    assert len(sdirs) == len(ModelTest.CONFIG_SET_MODEL_SOURCE_SUBDIRS)
+    assert sdirs[0].endswith(f"models/{ADVANCED_MODEL}/cfgs")
 
     # Now add some paths to the utopya config file
+    _original_search_dirs = prj.cfg_set_abs_search_dirs
     custom_search_dirs = [
         "/some/absolute/path",
         "some/relative/path",
@@ -203,24 +189,23 @@ def test_ModelTest_config_sets_custom_search_dirs(tmp_utopya_cfg, tmpdir):
         str(tmpdir.join("foo")),
         str(tmpdir.join("bar/{model_name:}/spam")),
     ]
-    write_to_cfg_dir("utopya", dict(config_set_search_dirs=custom_search_dirs))
+    try:
+        prj.cfg_set_abs_search_dirs = custom_search_dirs
 
-    # These should all appear in the default config set search directories
-    sdirs = adv_mtc.default_config_set_search_dirs
+        # These should all appear in the default config set search directories
+        sdirs = adv_mtc.default_config_set_search_dirs
 
-    assert "/some/absolute/path" in sdirs
-    assert "some/relative/path" in sdirs
-    assert "~/foo/bar" in sdirs
-    assert str(tmpdir.join("foo")) in sdirs
-    assert str(tmpdir.join("bar/ForestFire/spam")) in sdirs
+        assert "/some/absolute/path" in sdirs
+        assert "some/relative/path" in sdirs
+        assert "~/foo/bar" in sdirs
+        assert str(tmpdir.join("foo")) in sdirs
+        assert str(tmpdir.join(f"bar/{ADVANCED_MODEL}/spam")) in sdirs
 
-    # Try again with bad type
-    write_to_cfg_dir("utopya", dict(config_set_search_dirs="not a list"))
-    with pytest.raises(TypeError, match="needs to be a list!"):
-        adv_mtc.default_config_set_search_dirs
+    finally:
+        prj.cfg_set_abs_search_dirs = _original_search_dirs
 
 
-def test_ModelTest_get_config_set_extra_dir(tmp_utopya_cfg, tmpdir):
+def test_ModelTest_get_config_set_extra_dir(tmpdir):
     """Tests config set retrieval (except for custom search directories, which
     are already tested separately above.
     """

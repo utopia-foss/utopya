@@ -31,6 +31,10 @@ def test_cfg(tmp_cfg_dir):
     ucfg.write_to_cfg_dir("user", dict(spam="spam"))
     assert ucfg.load_from_cfg_dir("user") == dict(spam="spam")
 
+    # May also be None, in which case an empty dict is returned as well
+    ucfg.write_to_cfg_dir("user", None)
+    assert ucfg.load_from_cfg_dir("user") == dict()
+
     # Error messages
     with pytest.raises(ValueError, match="invalid"):
         ucfg.load_from_cfg_dir("invalid")
