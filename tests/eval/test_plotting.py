@@ -12,13 +12,12 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import paramspace as psp
 import pytest
-from dantro._import_tools import remove_from_sys_modules
+from dantro._import_tools import added_sys_path, remove_from_sys_modules
+from dantro._import_tools import temporary_sys_modules as tmp_sys_modules
 from dantro.data_ops import available_operations
 from dantro.plot_mngr import PlotCreatorError
 
 from utopya import Multiverse
-from utopya._import_tools import added_sys_path
-from utopya._import_tools import temporary_sys_modules as tmp_sys_modules
 from utopya.eval.plots._graph import GraphPlot
 from utopya.testtools import ModelTest
 from utopya.yaml import load_yml

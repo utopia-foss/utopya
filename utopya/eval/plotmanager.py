@@ -4,6 +4,7 @@ In order to make the plotting framework specific to Utopia, this module derives
 both from the dantro PlotManager and some PlotCreator classes.
 """
 
+import contextlib
 import copy
 import importlib
 import logging
@@ -12,6 +13,7 @@ import sys
 from typing import Dict, Union
 
 import dantro
+import dantro._import_tools
 import dantro.plot.creators
 import dantro.plot.utils
 import dantro.plot_mngr
@@ -147,11 +149,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
 
         Uses :py:func:`dantro._import_tools.import_module_from_path`
         """
-
-        import contextlib
-
-        from .._import_tools import import_module_from_path
-
+        import_module_from_path = dantro._import_tools.import_module_from_path
         # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
         # A simple exception handling context
 
@@ -207,7 +205,7 @@ class PlotManager(dantro.plot_mngr.PlotManager):
             ):
                 with exception_handling(ImportError, "project"):
                     log.debug("  Loading project-specific plot module ...")
-                    import_module_from_path(
+                    dantro._import_tools.import_module_from_path(
                         mod_path=project.paths.py_plots_dir,
                         mod_str=f"{self.MODEL_PLOTS_MODULE_NAME}",
                     )

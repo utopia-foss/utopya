@@ -24,6 +24,15 @@ def testdict():
     )
 
 
+# Deprecations ----------------------------------------------------------------
+
+
+def test_utopya_import_tools_deprecation():
+    """Makes sure that importing utopya._import_tools raises a warning"""
+    with pytest.warns(DeprecationWarning, match="use dantro.* instead"):
+        import utopya._import_tools
+
+
 # Test YAML constructors ------------------------------------------------------
 # NOTE These are actually defined in the yaml module ... but available in tools
 
