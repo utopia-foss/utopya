@@ -1,13 +1,15 @@
-"""This module implements the actual model, making use of the BaseModel"""
+"""This module implements the actual model, making use of the base model class
+implemented in :py:class:`~utopya_backend.base_model.BaseModel`.
+"""
 
 from typing import Tuple
 
 import numpy as np
 
-from .base_model import BaseModel
+from utopya_backend import BaseModel
 
 
-class Model(BaseModel):
+class ExtendedModel(BaseModel):
     """The actual model implementation"""
 
     def setup(

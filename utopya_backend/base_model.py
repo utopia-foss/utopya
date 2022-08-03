@@ -1,29 +1,14 @@
-"""This module implements the BaseModel class"""
+"""This module implements the :py:class:`.BaseModel` class which can be
+inherited from for implementing a utopya-controlled model."""
 
-import logging
+import os
 import time
-from typing import Dict
 
 import h5py as h5
 import numpy as np
-import ruamel.yaml as yaml
 
-# -----------------------------------------------------------------------------
-
-LOG_LEVELS: Dict[str, int] = {
-    "trace": 5,
-    "debug": logging.DEBUG,
-    "info": logging.INFO,
-    "warn": logging.WARN,
-    "warning": logging.WARNING,
-    "error": logging.ERROR,
-    "critical": logging.CRITICAL,
-    "fatal": logging.FATAL,
-    "not_set": logging.NOTSET,
-    "notset": logging.NOTSET,
-    "none": logging.NOTSET,
-}
-"""A map of log level names to actual level values"""
+from .logging import backend_logger as _backend_logger
+from .tools import load_cfg_file as _load_cfg_file
 
 # -----------------------------------------------------------------------------
 
@@ -41,7 +26,7 @@ class BaseModel:
       about simulation progress
     """
 
-    def __init__(self, *, cfg_file_path: str):
+    def __init__(self, *, cfg_file_path: str, _log: "logging.Logger" = None):
         """Initialize the model instance, constructing an RNG and HDF5 group
         to write the output data to.
 
@@ -53,37 +38,35 @@ class BaseModel:
 
         Args:
             cfg_file_path (str): The path to the config file.
+            _log (logging.Logger, optional): The logger instance from which to
+                create a child logger for this model. If not given, will use
+                the backend logger instance.
         """
-        try:
-            with open(cfg_file_path, "r") as cfg_file:
-                self._cfg = yaml.load(cfg_file, Loader=yaml.Loader)
-        except:
-            print(f"Failed loading config file:\n  {cfg_file_path}")
-            raise
+        if _log is None:
+            _log = _backend_logger
+
+        _log.info("Loading configuration file ...\n  %s", cfg_file_path)
+        self._cfg = _load_cfg_file(cfg_file_path)
 
         # Carry over the name
         self._name = self._cfg["root_model_name"]
+        _log.info("Setting up model infrastructure ...")
+        _log.info("  Class name:       %s", type(self).__name__)
+        _log.info("  Instance name:    %s", self.name)
 
-        # First thing: setup the logger
-        # TODO Log formatting
-        log_level = self._cfg["log_levels"]["model"].lower().replace(" ", "_")
-
-        self._log = logging.getLogger(self.name)
-        self._log.setLevel(LOG_LEVELS[log_level])
-        self.log.info("Logger initialized with level '%s'.", log_level)
-
-        self.log.info("Setting up %s ...", self.name)
-        self.log.info("  Configuration file:\n  %s", cfg_file_path)
+        # Can now set up the loggers
+        self._log = None
+        self._setup_loggers(_log)
 
         # Time step information
-        self.log.info("Extracting time step information ...")
+        self.log.info("Extracting time step parameters ...")
         self._time = 0
         self._num_steps = self._cfg["num_steps"]
         self._write_every = self._cfg["write_every"]
         self._write_start = self._cfg["write_start"]
 
         # Monitoring
-        self.log.info("Extracting monitoring information ...")
+        self.log.info("Extracting monitoring settings ...")
         self._last_emit = 0
         self._monitor_info = dict()
         self._monitor_emit_interval = self._cfg["monitor_emit_interval"]
@@ -95,27 +78,30 @@ class BaseModel:
 
         # HDF5 file
         self.log.info(
-            f"Creating output file at:\n    {self._cfg['output_path']}"
+            "Creating HDF5 output file at:\n  %s\n", self._cfg["output_path"]
         )
-        self._h5file = h5.File(self._cfg["output_path"], mode="w")
+        self._h5file = h5.File(self._cfg["output_path"], mode="x")
         self._h5group = self._h5file.create_group(self._name)
 
         # Actual model initialization
-        self.log.info("\nInitializing model ...")
+        self.log.info("Invoking model setup ...")
         self._model_cfg = self._cfg[self._name]
         self.setup(**self._model_cfg)
+        self.log.info("Model setup finished.\n")
 
+        # May want to write initial state
         if self._write_start <= 0:
             self.log.info("Writing initial state ...")
             self.write_data()
 
-        self.log.info(
-            f"Initialized {type(self).__name__} named '{self._name}'."
-        )
-
         # First monitoring
         self.monitor()
         self._last_emit = time.time()
+
+        # Done.
+        self.log.info(
+            "Initialized %s named '%s'.\n", type(self).__name__, self.name
+        )
 
     def __del__(self):
         """Takes care of tearing down the model"""
@@ -125,6 +111,31 @@ class BaseModel:
 
         self.log.debug("Teardown complete.")
 
+    # .. Setup helpers ........................................................
+
+    def _setup_loggers(self, _log: "logging.Logger"):
+        """Sets up the model logger and configures"""
+        from .logging import get_level
+
+        _log.info("Setting up loggers ...")
+
+        # TODO Allow changing log formatters globally
+
+        # Model logger and its level
+        self._log = _log.getChild(self.name)
+
+        log_level = self._cfg["log_levels"]["model"]
+        self._log.setLevel(get_level(log_level))
+        self.log.info("  Model logger initialized with '%s' level.", log_level)
+
+        # May want to adjust the backend logger
+        backend_log_level = self._cfg["log_levels"].get("backend")
+        if backend_log_level is not None:
+            _backend_logger.setLevel(get_level(backend_log_level))
+            self.log.info(
+                "  Set backend logger's level to '%s'.", backend_log_level
+            )
+
     # .. Properties ...........................................................
 
     @property
@@ -133,9 +144,24 @@ class BaseModel:
         return self._name
 
     @property
-    def log(self) -> logging.Logger:
-        """Returns the logger instance"""
+    def log(self) -> "logging.Logger":
+        """Returns the model's logger instance"""
         return self._log
+
+    @property
+    def time(self) -> int:
+        """Returns the current time"""
+        return self._time
+
+    @property
+    def write_start(self) -> int:
+        """Returns the ``write_start`` parameter of this model instance"""
+        return self._write_start
+
+    @property
+    def write_every(self) -> int:
+        """Returns the ``write_every`` parameter of this model instance"""
+        return self._write_every
 
     # .. Simulation control ...................................................
 
@@ -144,14 +170,14 @@ class BaseModel:
         method until the number of desired steps has been carried out.
         """
         self.log.info(
-            f"\nCommencing model run with {self._num_steps} iterations ..."
+            "Commencing model run with %s iterations ...", self._num_steps
         )
 
         while self._time < self._num_steps:
             self.iterate()
             # TODO Interrupt handling
 
-            self.log.info(
+            self.log.debug(
                 f"Finished iteration {self._time} / {self._num_steps}."
             )
 
@@ -188,14 +214,15 @@ class BaseModel:
         """Emits monitoring information to STDOUT"""
         # TODO Use YAML for creating the monitor string
         progress = str(self._time / self._num_steps)
-        self.log.info(
+        print(
             "!!map { progress: "
             + progress
             + ", "
             + self.name
             + ": "
             + repr(self._monitor_info)
-            + "}"
+            + "}",
+            flush=True,
         )
 
     # .. Abstract (to-be-subclassed) methods ..................................

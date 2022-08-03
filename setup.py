@@ -90,9 +90,9 @@ The ``utopya`` package is **open source software** released under the
 `LGPLv3+ <https://www.gnu.org/licenses/lgpl-3.0.html>`_ license.
 
 Visit the `utopya project website <https://gitlab.com/utopia-project/utopya>`_
-for more information and documentation of this package.
+or the `documentation page <https://utopya.readthedocs.io/>`_ for more
+information about utopya.
 """
-# TODO Mention docs
 
 
 # .............................................................................
@@ -145,7 +145,9 @@ setup(
     ],
     #
     # Package content and dependencies
-    packages=find_packages(exclude=("demo", "tests")),
+    packages=find_packages(
+        exclude=("demo", "tests"), include=("utopya", "utopya_*")
+    ),
     package_data=dict(utopya=["cfg/*.yml"]),
     install_requires=INSTALL_DEPS,
     extras_require=dict(
