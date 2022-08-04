@@ -404,14 +404,16 @@ for line in open(".nitpick-ignore"):
 
 def run_apidoc(_):
     """A function to run apidoc, creating the API documentation"""
-    ignore_paths = []
+    from sphinx.ext import apidoc
 
     # Get the required directory paths
     cur_dir = os.path.abspath(os.path.dirname(__file__))
     out_dir = os.path.join(cur_dir, "api")
-    module = os.path.join(cur_dir, "..", "utopya")
-
-    argv = [
+    modules = [
+        os.path.join(cur_dir, "..", "utopya"),
+        os.path.join(cur_dir, "..", "utopya_backend"),
+    ]
+    shared_argv = [
         "--force",
         # "--separate",
         "--private",
@@ -419,12 +421,10 @@ def run_apidoc(_):
         "--no-toc",
         "-o",
         out_dir,
-        module,
-    ] + ignore_paths
+    ]
 
-    from sphinx.ext import apidoc
-
-    apidoc.main(argv)
+    for module in modules:
+        apidoc.main(shared_argv + [module])
 
 
 # .. Figure generation ........................................................

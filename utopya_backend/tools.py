@@ -92,7 +92,7 @@ def import_package_from_dir(
             from utopya_backend import import_package_from_dir
 
             impl = import_package_from_dir(
-                os.path.join(os.path.dirname(__file__), "impl"),
+                os.path.join(os.path.dirname(__file__), "impl")
             )
             Model = impl.Model
 

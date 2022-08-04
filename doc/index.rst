@@ -30,7 +30,8 @@ framework with the following feature set:
 - Model, project, and framework registration and handling
 - Managing data output directories
 - Tools to simplify model test implementations or working without a CLI
-- ... and more
+- A backend library, :py:mod:`utopya_backend` that can be used for model implementations.
+- ... and more.
 
 The :py:mod:`utopya` package evolved as part of the
 `Utopia Project <https://utopia-project.org>`_ and provides the frontend of
@@ -72,7 +73,8 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     :hidden:
 
     cli/index
-    API Reference <api/utopya>
+    utopya API <api/utopya>
+    utopya backend API <api/utopya_backend>
     Base Plot Configuration Pool <ref/base_plots>
     dantro <https://gitlab.com/utopia-project/dantro>
     dantro docs <https://dantro.readthedocs.io/>
