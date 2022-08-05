@@ -23,7 +23,7 @@ tasks:
   run: {}
     # NOTE Not implemented! But this could be the possible syntax.
     # my_run_task:  # task name is used for paths.model_note
-    #   model_name: MinimalModel
+    #   model_name: ExtendedModel
 
     #   # A few special keys
     #   run_only: true
@@ -34,7 +34,7 @@ tasks:
     #   # adjust the meta configuration
     #   parameter_space:
     #     num_steps: 123M
-    #     MinimalModel: {}
+    #     ExtendedModel: {}
 
 
   # Evaluating simulations
@@ -44,11 +44,13 @@ tasks:
       # Values below update those from task_defaults.eval
 
       # Model name and run directory to load data from
-      model_name: MinimalModel
+      model_name: ExtendedModel
       # run_dir: ~
 
       # Arguments to PlotManager.plot_from_cfg
-      plot_only: [state_mean]
+      plot_only:
+        - overview
+        - time_series/mean_state
       update_plots_cfg: {}
 
       # All other arguments are passed to `Model.create_frozen_mv` and can for
@@ -56,6 +58,6 @@ tasks:
       # ...
 
     no_plots:
-      model_name: MinimalModel
+      model_name: ExtendedModel
       print_tree: True
       plot_only: []

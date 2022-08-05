@@ -52,6 +52,10 @@ def test_import_package_from_dir(tmpdir):
     mod3 = t.import_package_from_dir(mod_path, mod_str="tests.backend")
     assert mod3.__file__.endswith("backend/__init__.py")
 
+    # Is robust against trailing slash
+    mod4 = t.import_package_from_dir(mod_path + "/", mod_str="tests.backend")
+    assert mod4.__file__.endswith("backend/__init__.py")
+
     # Path needs to be absolute
     with pytest.raises(ValueError, match="Need an absolute path"):
         t.import_package_from_dir("some/relative/path")

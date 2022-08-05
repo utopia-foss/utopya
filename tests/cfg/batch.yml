@@ -18,6 +18,17 @@ not_implemented_cluster_mode:
 
   cluster_mode: true
 
+# .............................................................................
+# Evaluation tasks
+
+simple_task:
+  tasks:
+    eval:
+      my_task:
+        model_name: ExtendedModel
+        plot_only:
+          - overview
+          - custom_plot
 
 # .............................................................................
 # Options on the level of the BatchTaskManager
@@ -33,9 +44,11 @@ with_tree_cache_1: &with_tree_cache
   tasks:
     eval:
       my_task:
-        model_name: dummy
+        model_name: ExtendedModel
         use_data_tree_cache: true
-        plot_only: [state_mean]
+        plot_only:
+          - overview
+          - time_series/mean_state
 
 with_tree_cache_2:
   <<: *with_tree_cache
@@ -72,6 +85,11 @@ bad_model_name:
 # .. Documentation Examples ...................................................
 
 doc_example_basic:
+  _raises: SystemExit  # ... because there is no such model in utopya
+
+  # NOTE This example is embedded downstream in the Utopia docs, so it should
+  #      only be removed once it has been replaced there.
+
   # START --- example_basic
   task_defaults:
     # Default values that are used in all `eval` tasks and may be overwritten

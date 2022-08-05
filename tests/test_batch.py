@@ -3,6 +3,8 @@
 import builtins
 import contextlib
 import copy
+import os
+import platform
 
 import pytest
 
@@ -25,6 +27,15 @@ def with_models(with_test_models):
     pass
 
 
+skip_if_on_macOS = pytest.mark.skipif(
+    (
+        platform.system() == "Darwin"
+        and not os.environ.get("OBJC_DISABLE_INITIALIZE_FORK_SAFETY")
+    ),
+    reason="Fails on macOS without OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES",
+)
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -44,11 +55,11 @@ def test_BatchTaskManager_basics(tmp_projects):
     # ...
 
 
-@pytest.mark.skip("Missing plot functions; missing advanced model")
+@skip_if_on_macOS
 def test_BatchTaskManager(tmpdir):
     """Tests BatchTaskManager"""
     # Make sure the required models have some output generated
-    for model_name in (DUMMY_MODEL, ADVANCED_MODEL):
+    for model_name in (ADVANCED_MODEL,):
         Model(name=model_name).create_mv(paths=dict(model_note="btm")).run()
 
     # Test multiple scenarios
@@ -80,11 +91,11 @@ def test_BatchTaskManager(tmpdir):
             btm.perform_tasks()
 
 
-@pytest.mark.skip("Missing plots for dummy model")
+@skip_if_on_macOS
 def test_batch_file():
     """Tests the BatchTaskManager via a batch file"""
     # Make sure the required models have some output generated
-    for model_name in (DUMMY_MODEL,):
+    for model_name in (ADVANCED_MODEL,):
         Model(name=model_name).create_mv(
             paths=dict(model_note="batch-file")
         ).run()
