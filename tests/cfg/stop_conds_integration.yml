@@ -25,12 +25,12 @@ worker_kwargs:
 parameter_space:
   # Use many steps to ensure that the simulation runs long enough; also, do not
   # want to write data that frequently ...
-  num_steps: 1M
-  write_every: 50k
+  num_steps: 10M
+  write_every: 100k
 
   # Use a small monitor emit interval such that the information is quickly
   # available.
-  monitor_emit_interval: 0.5
+  monitor_emit_interval: 0.3
 
   log_levels:
     model: info
