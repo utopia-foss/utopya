@@ -97,6 +97,12 @@ class ExtendedModel(BaseModel):
         )
         self._ca[rand_midx] += 1
 
+    def update_monitor_info(self):
+        """Provides information about the current state of the model to the
+        monitor, which is then emitted to the frontend."""
+        self.monitor_info["state_mean"] = self._state.mean()
+        self.monitor_info["ca_max"] = self._ca.max()
+
     def write_data(self):
         """Write the current state into the state dataset.
 

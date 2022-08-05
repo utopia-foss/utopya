@@ -22,7 +22,7 @@ LOG_LEVELS: Dict[str, int] = {
 
 # TODO add trace level and other intermediate levels?
 
-DEFAULT_LOG_FORMAT = "%(levelname)-6s  %(message)s"
+DEFAULT_LOG_FORMAT = "%(levelname)-7s %(message)s"
 """The default logging format to use; can also include ``%(name)-14s`` here to
 show the logger's name."""
 

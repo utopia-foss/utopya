@@ -406,9 +406,9 @@ def test_run_from_meta_cfg_backup(mv_kwargs):
     assert len(os.listdir(mv2.dirs["data"])) == 4
 
 
-@pytest.mark.skip("Simulations do not end with the expected signal")
 def test_stop_conditions(mv_kwargs):
     """An integration test for stop conditions"""
+    mv_kwargs["model_name"] = ADVANCED_MODEL
     mv_kwargs["run_cfg_path"] = STOP_COND_CFG_PATH
     mv = Multiverse(**mv_kwargs)
     mv.run_sweep()

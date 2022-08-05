@@ -525,10 +525,16 @@ class WorkerManager:
                 actions during a the polling loop.
 
         Raises:
-            NotImplementedError: for `detach` True
+            NotImplementedError: if ``detach`` was set
             ValueError: For invalid (i.e., negative) timeout value
             WorkerManagerTotalTimeout: Upon a total timeout
         """
+        if detach:
+            raise NotImplementedError(
+                "It is currently not possible to detach the WorkerManager "
+                "from the main thread."
+            )
+
         self._invoke_report("before_working")
 
         log.progress("Preparing to work ...")
@@ -548,16 +554,16 @@ class WorkerManager:
         # fulfilled, this will be None
         timeout_time = self.times["timeout"]
 
-        # Determine whether to detach the whole working loop
-        if detach:
-            raise NotImplementedError(
-                "It is currently not possible to detach the WorkerManager "
-                "from the main thread."
-            )
-
         # Set some variables needed during the run
         poll_no = 0
         self.times["start_working"] = dt.now()
+
+        # Prepare stop conditions, creating objects if needed
+        if stop_conditions:
+            stop_conditions = [
+                sc if isinstance(sc, StopCondition) else StopCondition(**sc)
+                for sc in stop_conditions
+            ]
 
         # Inform about timeout and stop conditions
         if timeout:

@@ -2,12 +2,15 @@
 inherited from for implementing a utopya-controlled model."""
 
 import os
+import signal
+import sys
 import time
 
 import h5py as h5
 import numpy as np
 
 from .logging import backend_logger as _backend_logger
+from .signal import SIG_STOPCOND, SIGNAL_INFO, attach_signal_handlers
 from .tools import load_cfg_file as _load_cfg_file
 
 # -----------------------------------------------------------------------------
@@ -58,6 +61,10 @@ class BaseModel:
         self._log = None
         self._setup_loggers(_log)
 
+        # Attach signal handlers for stop conditions and interrupts
+        self.log.info("Attaching signal handlers ...")
+        attach_signal_handlers()
+
         # Time step information
         self.log.info("Extracting time step parameters ...")
         self._time = 0
@@ -68,7 +75,7 @@ class BaseModel:
         # Monitoring
         self.log.info("Extracting monitoring settings ...")
         self._last_emit = 0
-        self._monitor_info = dict()
+        self.monitor_info = dict()
         self._monitor_emit_interval = self._cfg["monitor_emit_interval"]
 
         # RNG
@@ -154,6 +161,11 @@ class BaseModel:
         return self._time
 
     @property
+    def num_steps(self) -> int:
+        """Returns the ``num_steps`` parameter of this model instance"""
+        return self._num_steps
+
+    @property
     def write_start(self) -> int:
         """Returns the ``write_start`` parameter of this model instance"""
         return self._write_start
@@ -170,47 +182,88 @@ class BaseModel:
         method until the number of desired steps has been carried out.
         """
         self.log.info(
-            "Commencing model run with %s iterations ...", self._num_steps
+            "Commencing model run with %s iterations ...", self.num_steps
         )
 
         while self._time < self._num_steps:
             self.iterate()
-            # TODO Interrupt handling
 
             self.log.debug(
-                f"Finished iteration {self._time} / {self._num_steps}."
+                "Finished iteration %d / %d.", self.time, self.num_steps
             )
+
+            # Handle signals, which may lead to a sys.exit
+            self._handle_signal(SIGNAL_INFO)
 
         self.log.info("Simulation run finished.\n")
 
     def iterate(self):
         """Performs a single iteration: a simulation step, monitoring, and
         writing data"""
+        # Step iteration
         self.perform_step()
         self._time += 1
 
-        if self._monitor_should_emit():
-            self.monitor()
+        # Monitoring
+        self.monitor()
 
+        # Writing data
         if (
             self._time > self._write_start
             and self._time % (self._write_every - self._write_start) == 0
         ):
             self.write_data()
 
-    # .. Monitoring ...........................................................
+        # TODO Prolog and Epilog
 
-    def _monitor_should_emit(self) -> bool:
+    # .. Signalling and Monitoring ............................................
+
+    def _handle_signal(self, signal_info: dict):
+        """Evaluates whether the iteration should stop due to an (expected)
+        signal, e.g. from a stop condition or an interrupt. This will lead to
+        a graceful shutdown of the simulation run but a :py:func:`sys.exit`
+        with an exit code of ``128 + abs(signum)``, as is convention.
+        """
+        if not signal_info["got_signal"]:
+            return
+
+        # Received a signal
+        signum = signal_info["signum"]
+        if signum == SIG_STOPCOND:
+            self.log.warning("A stop condition was fulfilled.")
+
+        elif signum in (signal.SIGINT, signal.SIGTERM):
+            self.log.warning("Was told to stop.")
+
+        else:
+            self.log.warning(
+                "Got an unexpected signal: %d. Stopping ...", signum
+            )
+
+        self.log.info(
+            "Now exiting after iteration %d / %d ...",
+            self.time,
+            self.num_steps,
+        )
+        sys.exit(128 + abs(signum))
+
+    def _monitor_should_emit(self, *, force: bool = False) -> bool:
         """Evaluates whether the monitor should emit. This method will only
         return True once after a monitor emit interval has passed.
+
+        Args:
+            force (bool, optional): If True, will update time and return True.
+
+        Returns:
+            bool: Whether to emit or not.
         """
         t = time.time()
-        if t > self._last_emit + self._monitor_emit_interval:
+        if force or t > self._last_emit + self._monitor_emit_interval:
             self._last_emit = t
             return True
         return False
 
-    def monitor(self):
+    def _emit_monitor(self):
         """Emits monitoring information to STDOUT"""
         # TODO Use YAML for creating the monitor string
         progress = str(self._time / self._num_steps)
@@ -220,18 +273,42 @@ class BaseModel:
             + ", "
             + self.name
             + ": "
-            + repr(self._monitor_info)
+            + repr(self.monitor_info)
             + "}",
             flush=True,
         )
 
-    # .. Abstract (to-be-subclassed) methods ..................................
+    def monitor(self, *, force: bool = False):
+        """Invokes monitoring:
+
+        Checks whether it's time to emit. If so, updates monitor information
+        and then calls :py:meth:`._emit_monitor`.
+        """
+        if self._monitor_should_emit(force=force):
+            self.update_monitor_info()
+            self._emit_monitor()
+
+    # .. To-be-subclassed methods .............................................
 
     def setup(self):
-        raise NotImplementedError("setup")
+        """Called upon initialization of the model"""
+        raise NotImplementedError(
+            "Your derived class needs to implement a `setup` method."
+        )
 
     def perform_step(self):
-        raise NotImplementedError("perform_step")
+        """Called upon each iteration"""
+        raise NotImplementedError(
+            "Your derived class needs to implement a `perform_step` method."
+        )
+
+    def update_monitor_info(self):
+        """Called when a monitor emission is imminent; should be used to
+        update the model-specific ``monitor_info`` attribute."""
+        pass
 
     def write_data(self):
-        raise NotImplementedError("write_data")
+        """Called for periodically writing data"""
+        raise NotImplementedError(
+            "Your derived class needs to implement a `write_data` method."
+        )

@@ -276,7 +276,7 @@ def test_interrupt_handling(wm, sleep_task, tmpdir):
     # does not quit immediately
     sh_script = tmpdir.join("deep_sleep.sh")
     with sh_script.open("w") as f:
-        f.write("#!/bin/sh\n" "trap 'sleep 42' SIGINT\n" "sleep 42\n")
+        f.write("#!/bin/sh\ntrap 'sleep 5' SIGINT\nsleep 5\n")
     sh_script.chmod(888)  # full permission needed
     # NOTE The actual sleep time is not important; it just needs to be long
     #      enough such that the script does not exit before the signal can be
@@ -344,9 +344,9 @@ def test_signal_workers(wm, longer_sleep_task):
     wm._signal_workers("all", signal="SIGTERM")
 
 
-@pytest.mark.skip("Feature not yet implemented.")
 def test_detach(wm):
-    pass
+    with pytest.raises(NotImplementedError):
+        wm.start_working(detach=True)
 
 
 def test_empty_task_queue(wm):
