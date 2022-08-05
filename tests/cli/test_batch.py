@@ -10,10 +10,12 @@ import utopya
 from .. import get_cfg_fpath
 from . import invoke_cli
 
-BATCH_FILE = get_cfg_fpath("batch_file.yml")
+BATCH_FILE: str = get_cfg_fpath("batch_file.yml")
+"""Path to a test batch file"""
 
-# Fixtures --------------------------------------------------------------------
+# -- Fixtures -----------------------------------------------------------------
 from .._fixtures import *
+from ..test_batch import skip_if_on_macOS
 
 
 @pytest.fixture(autouse=True)
@@ -25,11 +27,11 @@ def register_test_project(tmp_projects):
 # -----------------------------------------------------------------------------
 
 
+@skip_if_on_macOS
 def test_batch(with_test_models):  # FIXME creates test artifacts in output dir
     """Tests the `utopya batch` subcommand"""
     res = invoke_cli(("batch", "-d", "-s", "--note", "some_note", BATCH_FILE))
     print(res.output)
 
-    # Currently, this will fail:
-    assert res.exit_code != 0
-    assert "Nothing to plot" in res.output
+    assert res.exit_code == 0
+    assert "time_series/mean_state" in res.output

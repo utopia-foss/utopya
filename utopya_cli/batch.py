@@ -2,6 +2,10 @@
 
 import click
 
+from ._utils import Echo
+
+# -----------------------------------------------------------------------------
+
 
 @click.command(
     help=(
