@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import time
+from typing import Union
 
 import h5py as h5
 import numpy as np
@@ -181,6 +182,8 @@ class BaseModel:
         """Performs a simulation run for this model, calling the iterate
         method until the number of desired steps has been carried out.
         """
+        self._invoke_prolog()
+
         self.log.info(
             "Commencing model run with %s iterations ...", self.num_steps
         )
@@ -193,8 +196,16 @@ class BaseModel:
             )
 
             # Handle signals, which may lead to a sys.exit
-            self._handle_signal(SIGNAL_INFO)
+            if (exit_code := self._handle_signal(SIGNAL_INFO)) is not None:
+                self._invoke_epilog(finished_run=False)
+                self.log.info(
+                    "Now exiting after iteration %d / %d ...",
+                    self.time,
+                    self.num_steps,
+                )
+                sys.exit(exit_code)
 
+        self._invoke_epilog(finished_run=True)
         self.log.info("Simulation run finished.\n")
 
     def iterate(self):
@@ -216,16 +227,41 @@ class BaseModel:
 
         # TODO Prolog and Epilog
 
-    # .. Signalling and Monitoring ............................................
+    # .. Helpers, Signalling, Monitoring ......................................
 
-    def _handle_signal(self, signal_info: dict):
+    def _invoke_prolog(self):
+        """Helps invoking the :py:meth:`.prolog`"""
+        self.log.debug("Invoking prolog ...")
+        self.prolog()
+        self.log.debug("Prolog finished.\n")
+
+    def _invoke_epilog(self, **kwargs):
+        """Helps invoking the :py:meth:`.epilog`"""
+        self.log.debug("Invoking epilog ...")
+        self.epilog(**kwargs)
+        self.log.debug("Epilog finished.\n")
+
+    def _handle_signal(self, signal_info: dict) -> Union[None, int]:
         """Evaluates whether the iteration should stop due to an (expected)
-        signal, e.g. from a stop condition or an interrupt. This will lead to
-        a graceful shutdown of the simulation run but a :py:func:`sys.exit`
-        with an exit code of ``128 + abs(signum)``, as is convention.
+        signal, e.g. from a stop condition or an interrupt.
+        If it should stop, will return an integer, which can then be passed
+        into :py:func:`sys.exit`.
+
+        Exit codes will be ``128 + abs(signum)``, as is convention. This is
+        also expected by :py:class:`~utopya.workermanager.WorkerManager` and is
+        used to behave differently on a stop-condition-related signal than on
+        an interrupt signal.
+
+        Args:
+            signal_info (dict): The signal info dict, containing the keys
+                ``got_signal`` and ``signum``.
+
+        Returns:
+            Union[None, int]: An integer if the signal denoted that there
+                should be a system exit; None otherwise.
         """
         if not signal_info["got_signal"]:
-            return
+            return None
 
         # Received a signal
         signum = signal_info["signum"]
@@ -240,12 +276,7 @@ class BaseModel:
                 "Got an unexpected signal: %d. Stopping ...", signum
             )
 
-        self.log.info(
-            "Now exiting after iteration %d / %d ...",
-            self.time,
-            self.num_steps,
-        )
-        sys.exit(128 + abs(signum))
+        return 128 + abs(signum)
 
     def _monitor_should_emit(self, *, force: bool = False) -> bool:
         """Evaluates whether the monitor should emit. This method will only
@@ -264,7 +295,7 @@ class BaseModel:
         return False
 
     def _emit_monitor(self):
-        """Emits monitoring information to STDOUT"""
+        """Actually emits the monitoring information to STDOUT"""
         # TODO Use YAML for creating the monitor string
         progress = str(self._time / self._num_steps)
         print(
@@ -302,13 +333,29 @@ class BaseModel:
             "Your derived class needs to implement a `perform_step` method."
         )
 
-    def update_monitor_info(self):
-        """Called when a monitor emission is imminent; should be used to
-        update the model-specific ``monitor_info`` attribute."""
-        pass
-
     def write_data(self):
         """Called for periodically writing data"""
         raise NotImplementedError(
             "Your derived class needs to implement a `write_data` method."
         )
+
+    # .. Optionally subclassable methods ......................................
+
+    def update_monitor_info(self):
+        """Called when a monitor emission is imminent; should be used to
+        update the model-specific ``monitor_info`` attribute."""
+        pass
+
+    def prolog(self):
+        """Always invoked after :py:meth:`.setup` and before the first
+        iteration."""
+        pass
+
+    def epilog(self, *, finished_run: bool):
+        """Always invoked after iteration has finished.
+
+        This may happen either after the pre-defined ``num_steps`` have been
+        iterated, or any time before that, e.g. due to an interrupt signal or
+        a stop condition. In the latter case, ``finished_run`` will be False.
+        """
+        pass
