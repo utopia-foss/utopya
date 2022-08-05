@@ -78,24 +78,22 @@ def snsplot(
     **plot_kwargs,
 ) -> None:
     """Interface to seaborn's figure-level plot functions.
+    Plot functions are selected via the ``sns_kind`` argument:
 
-    Plots on a facet grid:
-        * ``relplot``:      seaborn.pydata.org/generated/seaborn.relplot.html
-        * ``displot``:      seaborn.pydata.org/generated/seaborn.displot.html
-        * ``catplot``:      seaborn.pydata.org/generated/seaborn.catplot.html
-        * ``lmplot``:       seaborn.pydata.org/generated/seaborn.lmplot.html
-
-    Other plots:
-        * ``clustermap``:   seaborn.pydata.org/generated/seaborn.clustermap.html
-        * ``pairplot``:     seaborn.pydata.org/generated/seaborn.pairplot.html
-        * ``jointplot``:    seaborn.pydata.org/generated/seaborn.jointplot.html
+    - ``relplot``:      :py:func:`seaborn.relplot`
+    - ``displot``:      :py:func:`seaborn.displot`
+    - ``catplot``:      :py:func:`seaborn.catplot`
+    - ``lmplot``:       :py:func:`seaborn.lmplot`
+    - ``clustermap``:   :py:func:`seaborn.clustermap` *(not faceting)*
+    - ``pairplot``:     :py:func:`seaborn.pairplot`   *(not faceting)*
+    - ``jointplot``:    :py:func:`seaborn.jointplot`  *(not faceting)*
 
     Args:
         data (dict): The data transformation framework results, expecting a
-            single entry ``data`` which can be a pandas.DataFrame or an
-            xarray data type.
+            single entry ``data`` which can be a :py:class:`pandas.DataFrame`
+            or an :py:class:`xarray.DataArray` or :py:class:`xarray.Dataset`.
         hlpr (PlotHelper): The plot helper instance
-        sns_kind (str): Which seaborn plot to use
+        sns_kind (str): Which seaborn plot to use, see list above.
         free_indices (Tuple[str]): Which index names *not* to associate with a
             layout encoding; seaborn uses these to calculate the distribution
             statistics.
@@ -110,7 +108,8 @@ def snsplot(
             used to convert the given data into a pandas.DataFrame.
         sample (bool, optional): If True, will sample a subset from the final
             dataframe, controlled by ``sample_kwargs``
-        sample_kwargs (dict, optional): Passed to ``pd.DataFrame.sample``.
+        sample_kwargs (dict, optional): Passed to
+            :py:meth:`pandas.DataFrame.sample`.
         **plot_kwargs: Passed on to the selected plotting function.
     """
     df = data["data"]
