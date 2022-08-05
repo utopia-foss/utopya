@@ -9,7 +9,6 @@ import io
 import logging
 import multiprocessing
 import os
-import platform
 import queue
 import re
 import signal
@@ -1158,7 +1157,6 @@ class PopenMPProcess:
         stderr=None,
         bufsize: int = -1,
         encoding: str = "utf8",
-        start_method: str = "auto",
     ):
         """Creates a :py:class:`multiprocessing.Process` and starts it.
 
@@ -1181,6 +1179,10 @@ class PopenMPProcess:
         stream specifier that is *not* ``subprocess.DEVNULL``, a new
         ``multiprocessing.Pipe`` and a reader thread will be established.
 
+        .. warning::
+
+            This will *always* use ``spawn`` as a start method for the process!
+
         Args:
             args (tuple): The ``target`` callable (``args[0]``) and subsequent
                 positional arguments.
@@ -1192,11 +1194,6 @@ class PopenMPProcess:
             encoding (str, optional): The encoding to use for the streams;
                 should typically remain ``utf8``, using other values is not
                 encouraged!
-            start_method (str, optional): Which start method to use. If auto,
-                will determine the one best suited for the platform and this
-                use case: ``spawn`` on macOS with Intel, ``fork`` on macOS with
-                Apple Silicon, ``None`` on all other platforms (thus using the
-                default for that platform).
         """
         self._args = args
         self._kwargs = copy.deepcopy(kwargs)
@@ -1206,21 +1203,12 @@ class PopenMPProcess:
         self._stdout = None
         self._stderr = None
 
-        # Determine start method
-        if start_method == "auto":
-            if platform.system() == "Darwin":
-                start_method = "fork"
-                if not os.environ.get("OBJC_DISABLE_INITIALIZE_FORK_SAFETY"):
-                    log.warning(
-                        "Forking Python processes on macOS only works with "
-                        "`OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` set as "
-                        "environment variable, reducing safety measures. This "
-                        "is a hacky workaround!\nSee "
-                        "https://gitlab.com/utopia-project/utopya/-/issues/53 "
-                        "for more information."
-                    )
-            else:
-                start_method = None
+        # Always use spawn as a start method, will not be able to properly
+        # read the streams otherwise.
+        # FIXME On macOS, this causes issues downstream depending on args; but
+        #       so does forking.
+        #       See https://gitlab.com/utopia-project/utopya/-/issues/53
+        start_method = "spawn"
 
         # Prepare target and positional arguments, then spawn the process in a
         # custom context that uses an OS-independent start method.
