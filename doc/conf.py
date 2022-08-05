@@ -23,6 +23,16 @@ DOC_DIR = os.path.abspath(os.path.dirname(__file__))
 # -- Function definitions -----------------------------------------------------
 
 
+def _str2bool(val: str):
+    """Copy of strtobool from deprecated distutils package"""
+    val = val.lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    elif val in ("n", "no", "f", "false", "off", "0"):
+        return False
+    raise ValueError(f"Invalid truth value {repr(val)}!")
+
+
 def find_version(*file_paths) -> str:
     """Tries to extract a version from the given path sequence"""
     import codecs
@@ -363,6 +373,12 @@ intersphinx_mapping = {
 }
 # fmt: on
 
+# Allow deactivating TLS verification because some intersphinx servers have
+# certificate issues, even temporary ones, which make the build process less
+# robust in CI.
+tls_verify = _str2bool(os.environ.get("SPHINX_TLS_VERIFY", "yes"))
+
+
 # -- Nitpicky Configuration ---------------------------------------------------
 
 # Be nitpicky about warnings, to show all references where the target could
@@ -428,16 +444,6 @@ def run_apidoc(_):
 
 
 # .. Figure generation ........................................................
-
-
-def _str2bool(val: str):
-    """Copy of strtobool from deprecated distutils package"""
-    val = val.lower()
-    if val in ("y", "yes", "t", "true", "on", "1"):
-        return True
-    elif val in ("n", "no", "f", "false", "off", "0"):
-        return False
-    raise ValueError(f"Invalid truth value {repr(val)}!")
 
 
 def generate_figures():
