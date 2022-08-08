@@ -82,10 +82,11 @@ Additionally, it also uses more features of utopya.
 Key differences are:
 
 - The implementation is split up into an `impl` *package* and a `run_model.py`, that invokes the implementation.
-- It implements the `ExtendedModel` class by inheriting from `utopya_backend.BaseModel` which takes care to implement all the simulation infrastructure:
+- It implements the `ExtendedModel` class by inheriting from `utopya_backend.StepwiseModel` which takes care to implement all the simulation infrastructure:
     - Shared PRNG and logger instances.
     - Logic to evaluate the `write_every` and `write_start` parameters that can be set via the utopya CLI.
     - A `monitor` method that communicates simulation progress to the frontend.
+    - Abstractions for a modelling paradigm with stepwise iterations of constant time deltas.
 - The `model_plots` and `model_tests` are in use.
 - The `cfgs` directory contains so-called *config sets*  which can be used to define certain sets of default run and evaluation configurations.
 

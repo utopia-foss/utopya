@@ -5,5 +5,5 @@ simulation management frontend."""
 # isort: skip_file
 
 from .logging import *
-from .base_model import BaseModel
+from .model import BaseModel, StepwiseModel
 from .tools import import_package_from_dir, load_cfg_file

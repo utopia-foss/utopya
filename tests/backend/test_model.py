@@ -7,7 +7,7 @@ import pytest
 
 from utopya.testtools import ModelTest
 from utopya.tools import load_yml, write_yml
-from utopya_backend.base_model import BaseModel
+from utopya_backend.model import BaseModel, StepwiseModel
 
 from .. import DUMMY_MODEL
 from .._fixtures import *
@@ -50,11 +50,11 @@ def minimal_pspace_cfg(with_test_models) -> dict:
     # Can do cleanup here, if necessary
 
 
-# -----------------------------------------------------------------------------
+# -- Implementations ----------------------------------------------------------
 
 
-class MinimalTestModel(BaseModel):
-    """A test model that tests BaseModel internals"""
+class MinimalTestModel(StepwiseModel):
+    """A model that tests StepwiseModel internals"""
 
     def setup(self, *, sleep_time: float):
         self._num_monitor_emits = 0
@@ -67,15 +67,23 @@ class MinimalTestModel(BaseModel):
     def write_data(self):
         self._num_writes += 1
 
-    def monitor(self):
-        super().monitor()
+    def trigger_monitor(self):
+        super().trigger_monitor()
         self._num_monitor_emits += 1
 
 
 # -----------------------------------------------------------------------------
 
 
-def test_BaseModel_basic(minimal_pspace_cfg, tmpdir):
+@pytest.mark.skip(reason="Needs to be implemented")  # TODO
+def test_BaseModel():
+    pass
+
+
+# -----------------------------------------------------------------------------
+
+
+def test_StepwiseModel_basic(minimal_pspace_cfg, tmpdir):
     """Tests instantiation of a base model"""
     # Create the configuration file, filling it with model-specific info
     cfg = minimal_pspace_cfg
@@ -111,39 +119,32 @@ def test_BaseModel_basic(minimal_pspace_cfg, tmpdir):
     assert not h5file
 
 
-def test_BaseModel_missing_methods(minimal_pspace_cfg, tmpdir):
+def test_StepwiseModel_missing_methods(minimal_pspace_cfg, tmpdir):
     """Tests incomplete model definition"""
-
-    class IncompleteModel(BaseModel):
-        pass
-
     # Create the configuration file, filling it with model-specific info
     cfg = minimal_pspace_cfg
-    cfg["root_model_name"] = "IncompleteModel"
-    cfg["IncompleteModel"] = dict()
+    cfg["root_model_name"] = "my_model"
+    cfg["my_model"] = dict()
     cfg_path = tmpdir.join("cfg.yml")
     write_yml(cfg, path=cfg_path)
 
-    # Cannot even instantiate without setup method
-    with pytest.raises(NotImplementedError, match="setup"):
+    # Remains abstract and cannot be instantiated directly
+    class IncompleteModel(StepwiseModel):
+        pass
+
+    with pytest.raises(TypeError, match="perform_step, setup, write_data"):
         IncompleteModel(cfg_file_path=cfg_path)
 
-    # Cannot setup without write_data, because will want to write initial state
-    IncompleteModel.setup = lambda self: print("setup")
-    os.remove(cfg["output_path"])
+    # Can instantiate with those three methods implemented
+    class NotIncompleteModel(StepwiseModel):
+        def setup(self):
+            pass
 
-    with pytest.raises(NotImplementedError, match="write_data"):
-        IncompleteModel(cfg_file_path=cfg_path)
+        def perform_step(self):
+            pass
 
-    # Or without perform_step
-    IncompleteModel.write_data = lambda self: print("write_data")
-    os.remove(cfg["output_path"])
-    model = IncompleteModel(cfg_file_path=cfg_path)
-    with pytest.raises(NotImplementedError, match="perform_step"):
-        model.run()
+        def write_data(self):
+            pass
 
-    # But with all three methods implemented, it works
-    IncompleteModel.perform_step = lambda self: print("perform_step")
-    os.remove(cfg["output_path"])
-    model = IncompleteModel(cfg_file_path=cfg_path)
+    model = NotIncompleteModel(cfg_file_path=cfg_path)
     model.run()

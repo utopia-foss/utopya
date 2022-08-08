@@ -36,7 +36,7 @@ backend_logger = _logging.getLogger()
 
 .. note::
 
-    The :py:class:`~utopya_backend.base_model.BaseModel` may adjust the level
+    The :py:class:`~utopya_backend.model.base.BaseModel` may adjust the level
     of this logger.
 """
 
