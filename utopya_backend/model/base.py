@@ -89,6 +89,7 @@ class BaseModel(abc.ABC):
 
         # Optionally attach signal handlers for stop conditions and interrupts
         if self.ATTACH_SIGNAL_HANDLERS:
+            self._signal_info = SIGNAL_INFO
             self._attach_signal_handlers()
 
         # Monitoring
@@ -144,7 +145,7 @@ class BaseModel(abc.ABC):
         try:
             self._h5file.close()
         except Exception as exc:
-            log.error(
+            self.log.error(
                 "Closing HDF5 file failed, got %s: %s", type(exc).__name__, exc
             )
 
@@ -225,13 +226,9 @@ class BaseModel(abc.ABC):
             self.show_iteration_info()
 
             # Handle signals, which may lead to a sys.exit
-            if (exit_code := self._check_signals(SIGNAL_INFO)) is not None:
+            if (exit_code := self._check_signals()) is not None:
                 self._invoke_epilog(finished_run=False)
-                self.log.info(
-                    "Now exiting after iteration %d / %d ...",
-                    self.time,
-                    self.num_steps,
-                )
+                self.log.info("Now exiting ...")
                 sys.exit(exit_code)
 
         self._invoke_epilog(finished_run=True)
@@ -334,7 +331,7 @@ class BaseModel(abc.ABC):
         self.log.info("Attaching signal handlers ...")
         attach_signal_handlers()
 
-    def _check_signals(self, signal_info: dict) -> Union[None, int]:
+    def _check_signals(self) -> Union[None, int]:
         """Evaluates whether the iteration should stop due to an (expected)
         signal, e.g. from a stop condition or an interrupt.
         If it should stop, will return an integer, which can then be passed
@@ -345,14 +342,12 @@ class BaseModel(abc.ABC):
         used to behave differently on a stop-condition-related signal than on
         an interrupt signal.
 
-        Args:
-            signal_info (dict): The signal info dict, containing the keys
-                ``got_signal`` and ``signum``.
-
         Returns:
             Union[None, int]: An integer if the signal denoted that there
                 should be a system exit; None otherwise.
         """
+        signal_info = self._signal_info
+
         if not signal_info["got_signal"]:
             return None
 

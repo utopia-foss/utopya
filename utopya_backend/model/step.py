@@ -86,6 +86,16 @@ class StepwiseModel(BaseModel):
         """Informs about the state of the iteration"""
         self.log.debug("Finished step %d / %d.", self.time, self.num_steps)
 
+    def _invoke_epilog(self, *, finished_run: bool, **kwargs):
+        """Overwrites the parent method and logs some information in case that
+        the epilog is invoked with ``not finished_run``."""
+        if not finished_run:
+            self.log.info(
+                "Last iteration step was: %d / %d.", self.time, self.num_steps
+            )
+
+        super()._invoke_epilog(finished_run=finished_run, **kwargs)
+
     # .. Additional properties ................................................
 
     @property
