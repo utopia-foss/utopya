@@ -1,7 +1,9 @@
-"""DEPRECATED module that provides backwards-compatibility for the old utopya
-module structure.
+"""**DEPRECATED** module that provides backwards-compatibility for the old
+utopya module structure.
 
 .. deprecated:: 1.0.0
+
+    This module will be removed soon, please use :py:mod:`utopya.eval` instead.
 """
 import warnings
 

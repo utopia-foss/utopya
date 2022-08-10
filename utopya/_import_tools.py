@@ -4,8 +4,8 @@ These are not implemented here but in :py:mod:`dantro._import_tools`.
 
 .. deprecated:: 1.0.1
 
-    This module is deprecated. Use :py:mod:`dantro._import_tools` instead.
-
+    This module is deprecated. Use :py:mod:`dantro._import_tools` or
+    :py:func:`utopya_backend.tools.import_package_from_dir` instead.
 """
 
 import warnings
@@ -14,7 +14,8 @@ from dantro._import_tools import *
 
 warnings.warn(
     "The utopya._import_tools module has been deprecated and will be removed. "
-    "If you really need to, use dantro._import_tools instead.",
+    "Have a look at `dantro._import_tools` for alternatives. You can also use "
+    "the `utopya_backend.tools.import_package_from_dir` function to import "
+    "a locally accessible package.",
     DeprecationWarning,
 )
-# TODO Update this and docstring in case utopya_backend includes a tool

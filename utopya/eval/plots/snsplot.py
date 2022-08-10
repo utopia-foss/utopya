@@ -14,7 +14,7 @@ from dantro.plot.funcs.generic import (
     make_facet_grid_plot,
 )
 
-from utopya.plotting import PlotHelper, is_plot_func
+from .. import PlotHelper, is_plot_func
 
 log = logging.getLogger(__name__)
 
