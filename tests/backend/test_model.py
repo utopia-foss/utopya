@@ -248,3 +248,80 @@ def test_StepwiseModel_missing_methods(minimal_pspace_cfg, tmpdir):
 
     model = NotIncompleteModel(cfg_file_path=cfg_path)
     model.run()
+
+
+def test_StepwiseModel_create_dset(minimal_pspace_cfg, tmpdir):
+    """Tests creation of datasets"""
+    cfg = minimal_pspace_cfg
+    cfg["root_model_name"] = "MyStepwiseModel"
+    cfg["MyStepwiseModel"] = dict(sleep_time=0.01)
+    cfg["monitor_emit_interval"] = 0.1
+    cfg["num_steps"] = 42
+    cfg["write_start"] = 10
+    cfg["write_every"] = 3
+
+    # from which follows:
+    num_writes = 11
+
+    cfg_path = tmpdir.join("cfg.yml")
+    write_yml(cfg, path=cfg_path)
+
+    model = MyStepwiseModel(cfg_file_path=cfg_path)
+
+    dset_one = model.create_ts_dset("one")
+    assert dset_one.size == 0
+    assert dset_one.shape == (0,)
+    assert dset_one.maxshape == (num_writes,)
+
+    dset_two = model.create_ts_dset("two", extra_dims=("x",), sizes=dict(x=10))
+    assert dset_two.size == 0
+    assert dset_two.shape == (0, 10)
+    assert dset_two.maxshape == (num_writes, 10)
+
+    dset_three = model.create_ts_dset(
+        "three",
+        extra_dims=(
+            "x",
+            "y",
+        ),
+        sizes=dict(x=2, y=3),
+    )
+    assert dset_three.size == 0
+    assert dset_three.shape == (0, 2, 3)
+    assert dset_three.maxshape == (num_writes, 2, 3)
+
+    dset_four = model.create_ts_dset(
+        "four", extra_dims=("x",), sizes=dict(x=10), coords=dict(x=range(10))
+    )
+    assert dset_four.size == 0
+    assert dset_four.shape == (0, 10)
+    assert dset_four.maxshape == (num_writes, 10)
+    assert dset_four.attrs["coords_mode__x"] == "values"
+
+    dset_five = model.create_ts_dset(
+        "five",
+        extra_dims=("x",),
+        sizes=dict(x=10),
+        coords=dict(x=dict(mode="trivial")),
+    )
+    assert dset_five.size == 0
+    assert dset_five.shape == (0, 10)
+    assert dset_five.maxshape == (num_writes, 10)
+    assert dset_five.attrs["coords_mode__x"] == "trivial"
+
+    # Errors
+    with pytest.raises(ValueError, match="was not part of the list of"):
+        model.create_ts_dset(
+            "error1",
+            extra_dims=("x",),
+            sizes=dict(x=10),
+            coords=dict(y="foo"),
+        )
+
+    with pytest.raises(ValueError, match="does not match"):
+        model.create_ts_dset(
+            "error2",
+            extra_dims=("x",),
+            sizes=dict(x=10),
+            coords=dict(x=range(11)),
+        )

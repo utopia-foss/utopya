@@ -106,13 +106,8 @@ class BaseModel(abc.ABC):
         self.log.info("Creating shared RNG (seed: %s) ...", seed)
         self._rng = np.random.default_rng(seed)
 
-        # HDF5 file
-        self.log.info(
-            "Creating HDF5 output file at:\n  %s\n",
-            self.root_cfg["output_path"],
-        )
-        self._h5file = h5.File(self.root_cfg["output_path"], mode="x")
-        self._h5group = self._h5file.create_group(self.name)
+        # Create the output file
+        self._setup_output_file()
 
         # Allow subclasses to parse root config parameters, potentiaally adding
         # more attributes
@@ -470,6 +465,23 @@ class BaseModel(abc.ABC):
             self.log.info(
                 "  Set backend logger's level to '%s'.", backend_log_level
             )
+
+    def _setup_output_file(self):
+        """Creates the output file for this model; by default, it is a HDF5
+        file that is managed by a :py:class:`h5py.File` object.
+
+        .. note::
+
+            This method can be subclassed to implement different output file
+            formats. In that case, consider not using the ``_h5file`` and
+            ``_h5group`` attributes but something else.
+        """
+        self.log.info(
+            "Creating HDF5 output file at:\n  %s\n",
+            self.root_cfg["output_path"],
+        )
+        self._h5file = h5.File(self.root_cfg["output_path"], mode="x")
+        self._h5group = self._h5file.create_group(self.name)
 
     def _invoke_prolog(self):
         """Helps invoking the :py:meth:`.prolog`"""

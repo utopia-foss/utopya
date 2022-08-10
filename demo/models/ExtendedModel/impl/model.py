@@ -41,47 +41,31 @@ class ExtendedModel(StepwiseModel):
         self.log.info("Setting up datasets ...")
 
         self._dsets = dict()
-        dataset_kwargs = dict(
-            chunks=True,
-            **(dataset_kwargs if dataset_kwargs else {}),
-        )
-        start_and_step = [self.write_start, self.write_every]
 
         # The full state vector over time
-        self._dsets["state"] = self.h5group.create_dataset(
+        self._dsets["state"] = self.create_ts_dset(
             "state",
-            (0, state_size),
-            maxshape=(None, state_size),
+            extra_dims=("state_idx",),
+            sizes=dict(state_idx=state_size),
+            coords=dict(state_idx=dict(mode="trivial")),
             **dataset_kwargs,
         )
-        self._dsets["state"].attrs["dim_names"] = ["time", "state_idx"]
-        self._dsets["state"].attrs["coords_mode__time"] = "start_and_step"
-        self._dsets["state"].attrs["coords__time"] = start_and_step
-        self._dsets["state"].attrs["coords_mode__state_idx"] = "trivial"
 
         # The mean state over time
-        self._dsets["mean_state"] = self.h5group.create_dataset(
+        self._dsets["mean_state"] = self.create_ts_dset(
             "mean_state",
-            (0,),
-            maxshape=(None,),
             **dataset_kwargs,
         )
-        self._dsets["mean_state"].attrs["dim_name__0"] = "time"
-        self._dsets["mean_state"].attrs["coords_mode__time"] = "start_and_step"
-        self._dsets["mean_state"].attrs["coords__time"] = start_and_step
 
         # A 2D grid, written as flattened array
-        self._dsets["ca"] = self.h5group.create_dataset(
+        # This needs additional attributes to be reshapeable by dantro.
+        self._dsets["ca"] = self.create_ts_dset(
             "ca",
-            (0, self._ca.size),
-            maxshape=(None, self._ca.size),
+            extra_dims=("cell_ids",),
+            sizes=dict(cell_ids=self._ca.size),
+            coords=dict(cell_ids=dict(mode="trivial")),
             **dataset_kwargs,
         )
-        self._dsets["ca"].attrs["dim_name__0"] = "time"
-        self._dsets["ca"].attrs["dim_name__1"] = "cell_ids"
-        self._dsets["ca"].attrs["coords_mode__time"] = "start_and_step"
-        self._dsets["ca"].attrs["coords__time"] = start_and_step
-        self._dsets["ca"].attrs["coords_mode__cell_ids"] = "trivial"
         self._dsets["ca"].attrs["content"] = "grid"
         self._dsets["ca"].attrs["grid_shape"] = self._ca.shape
         self._dsets["ca"].attrs["grid_structure"] = "square"
