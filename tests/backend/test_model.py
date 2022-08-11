@@ -108,8 +108,8 @@ class MyStepwiseModel(StepwiseModel):
         self.h5group["some_dset"][self._num_writes] = self._num_writes
         self._num_writes += 1
 
-    def trigger_monitor(self):
-        super().trigger_monitor()
+    def trigger_monitor(self, **kwargs):
+        super().trigger_monitor(**kwargs)
         self._num_monitor_emits += 1
 
     def monitor(self, monitor_info: dict) -> dict:

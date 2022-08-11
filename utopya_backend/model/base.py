@@ -102,12 +102,11 @@ class BaseModel(abc.ABC):
         self._n_iterations = 0
 
         # RNG
-        seed = self.root_cfg["seed"]
-        self.log.info("Creating shared RNG (seed: %s) ...", seed)
-        self._rng = np.random.default_rng(seed)
+        self._rng = self._setup_rng(seed=self.root_cfg["seed"])
 
         # Create the output file
-        self._setup_output_file()
+        self._h5file = self._setup_output_file()
+        self._h5group = self._setup_output_group()
 
         # Allow subclasses to parse root config parameters, potentiaally adding
         # more attributes
@@ -123,8 +122,7 @@ class BaseModel(abc.ABC):
         self._setup_finished()
 
         # First monitoring
-        self.trigger_monitor()
-        self._last_emit = time.time()
+        self.trigger_monitor(force=True)
 
         # Done.
         self.log.info(
@@ -363,25 +361,26 @@ class BaseModel(abc.ABC):
 
     # .. Monitoring ...........................................................
 
-    def _monitor_should_emit(self, *, force: bool = False) -> bool:
+    def _monitor_should_emit(self, *, t: float = None) -> bool:
         """Evaluates whether the monitor should emit. This method will only
         return True once a monitor emit interval has passed since the last
         time the monitor was emitted.
 
         Args:
-            force (bool, optional): If True, will update time and return True.
+            t (None, optional): If given, uses this time, otherwise calls
+                :py:func:`time.time`.
 
         Returns:
             bool: Whether to emit or not.
         """
-        t = time.time()
-        if force or t > self._last_emit + self._monitor_emit_interval:
-            self._last_emit = t
+        t = t if t is not None else time.time()
+
+        if t > self._last_emit + self._monitor_emit_interval:
             return True
         return False
 
     def _emit_monitor(self):
-        """Actually emits the monitoring information to STDOUT"""
+        """Actually emits the monitoring information using :py:func:`print`."""
         # TODO Consider using YAML for creating the monitor string
         def parse_val(v) -> str:
             if isinstance(v, float):
@@ -392,19 +391,18 @@ class BaseModel(abc.ABC):
         monitor_info = ", ".join(
             f"{k}: {parse_val(v)}" for k, v in self._monitor_info.items()
         )
+
+        # Now emit ...
+        # fmt: off
         print(
-            "!!map { progress: "
-            + progress
-            + ", "
-            + "n_iter: "
-            + str(self.n_iterations)
-            + ", "
-            + self.name
-            + ": {"
-            + monitor_info
-            + "}}",
+            "!!map { "
+            + "progress: " + progress + ", "
+            + "n_iter: " + str(self.n_iterations) + ", "
+            + self.name + ": {" + monitor_info + "}"
+            + "}",
             flush=True,
         )
+        # fmt: on
 
     def trigger_monitor(self, *, force: bool = False):
         """Invokes the monitoring procedure:
@@ -420,9 +418,11 @@ class BaseModel(abc.ABC):
             This method should not be subclassed, but it can be invoked from
             within the subclass at any desired point.
         """
-        if self._monitor_should_emit(force=force):
+        t = time.time()
+        if force or self._monitor_should_emit(t=t):
             self._monitor_info = self.monitor(self._monitor_info)
             self._emit_monitor()
+            self._last_emit = t
 
     # .. Other helpers ........................................................
 
@@ -466,7 +466,12 @@ class BaseModel(abc.ABC):
                 "  Set backend logger's level to '%s'.", backend_log_level
             )
 
-    def _setup_output_file(self):
+    def _setup_rng(self, *, seed: int, **kwargs) -> "numpy.random.Generator":
+        """Sets up the shared RNG"""
+        self.log.info("Creating shared RNG (seed: %s) ...", seed)
+        return np.random.default_rng(seed, **kwargs)
+
+    def _setup_output_file(self) -> "h5py.File":
         """Creates the output file for this model; by default, it is a HDF5
         file that is managed by a :py:class:`h5py.File` object.
 
@@ -480,8 +485,13 @@ class BaseModel(abc.ABC):
             "Creating HDF5 output file at:\n  %s\n",
             self.root_cfg["output_path"],
         )
-        self._h5file = h5.File(self.root_cfg["output_path"], mode="x")
-        self._h5group = self._h5file.create_group(self.name)
+        return h5.File(self.root_cfg["output_path"], mode="x")
+
+    def _setup_output_group(self, h5file: "h5py.File" = None) -> "h5py.Group":
+        """Creates the group that this model's output is written to"""
+        if h5file is None:
+            h5file = self._h5file
+        return h5file.create_group(self.name)
 
     def _invoke_prolog(self):
         """Helps invoking the :py:meth:`.prolog`"""
