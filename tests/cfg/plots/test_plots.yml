@@ -63,6 +63,87 @@ uni_custom_operation:
         - getattr: [!dag_prev , data]
 
 
+
+
+# -- Distribution -------------------------------------------------------------
+
+histogram_simple: &histogram_simple
+  based_on:
+    - .creator.universe
+    - .plot.histogram
+    - .animation.frames
+    - .animation.disabled
+
+  select:
+    hist:
+      path: state
+      transform:
+        - .data
+        - np.histogram
+
+  dag_options:
+    meta_operations:
+      xrDataArray_from_counts_and_edges:
+        - define: !arg 0
+          tag: counts_and_edges
+
+        - getitem: [!dag_tag counts_and_edges, 0]
+          tag: counts
+        - getitem: [!dag_tag counts_and_edges, 1]
+          tag: bin_edges
+        - getitem: [!dag_tag bin_edges, !slice [~, -1]]
+          tag: bin_edges_left
+
+        - xr.DataArray: [!dag_tag counts]
+          kwargs:
+            dims: [bin_edges_left]
+            coords:
+              bin_edges_left: !dag_tag bin_edges_left
+
+  transform:
+    - xrDataArray_from_counts_and_edges: !dag_tag hist
+    - .expand_dims: [!dag_prev , dummy_dim]
+      tag: counts
+
+  x: bin_edges_left
+  hue: dummy_dim
+
+histogram_with_bin_widths: &histogram_with_bin_widths
+  <<: *histogram_simple
+
+  transform:
+    - xrDataArray_from_counts_and_edges: !dag_tag hist
+    - .expand_dims: [!dag_prev , dummy_dim]
+      tag: counts
+
+    - getitem: [!dag_tag hist, 1]
+      tag: bin_edges
+    - np.diff: !dag_prev
+      tag: bin_widths
+
+  bin_widths: bin_widths
+  compute_only: [counts, bin_widths]
+
+histogram_with_bin_widths_failing:
+  <<: *histogram_with_bin_widths
+
+  bin_widths: some_bad_tag
+
+  _raises: PlotCreatorError
+  _match: No DAG result 'some_bad_tag' available
+
+histogram_animation:
+  <<: *histogram_simple
+  based_on:
+    - .creator.universe
+    - .plot.histogram
+    - .animation.frames
+
+  hue: ~
+  frames: dummy_dim
+
+
+
 # -- CA plot ------------------------------------------------------------------
 # ... the old one needs tests as well
 
