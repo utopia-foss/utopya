@@ -1,0 +1,212 @@
+# All plot configurations in this file are tested.
+#
+# Supports `_raises` and `_match` keys but not `based_on` entries that refer to
+# entries within this file!
+---
+# NOTE These need to be passed via YAML anchors (instead of based_on) because
+#      in the test context not all information may be available in the pool.
+.uni_defaults: &uni_defaults
+  based_on:
+    - .creator.universe
+    - .plot.facet_grid
+
+  x: time
+
+.mv_defaults: &mv_defaults
+  based_on:
+    - .creator.multiverse
+    - .plot.facet_grid
+
+  x: time
+
+.sns_shared: &sns_shared
+  based_on:
+    - .creator.universe
+    - .plot.snsplot
+
+  select:
+    data:
+      path: mean_state
+      transform:
+        - .data
+        - print
+
+# -- Basics -------------------------------------------------------------------
+
+uni_ts:
+  <<: *uni_defaults
+  select:
+    data:
+      path: state
+      with_previous_result: true
+      transform:
+        - .mean: {dim: state_idx}
+
+mv_ts:
+  <<: *mv_defaults
+  select_and_combine:
+    base_path: data/ExtendedModel
+    fields:
+      data:
+        path: state
+        with_previous_result: true
+        transform:
+          - .mean: {dim: state_idx}
+
+uni_custom_operation:
+  <<: *uni_defaults
+  select:
+    data:
+      path: state
+      transform:
+        - my_custom_data_operation: [!dag_prev ]
+        - getattr: [!dag_prev , data]
+
+
+
+
+# -- Distribution -------------------------------------------------------------
+
+histogram_simple: &histogram_simple
+  based_on:
+    - .creator.universe
+    - .plot.histogram
+    - .animation.frames
+    - .animation.disabled
+
+  select:
+    hist:
+      path: state
+      transform:
+        - .data
+        - np.histogram
+
+  dag_options:
+    meta_operations:
+      xrDataArray_from_counts_and_edges:
+        - define: !arg 0
+          tag: counts_and_edges
+
+        - getitem: [!dag_tag counts_and_edges, 0]
+          tag: counts
+        - getitem: [!dag_tag counts_and_edges, 1]
+          tag: bin_edges
+        - getitem: [!dag_tag bin_edges, !slice [~, -1]]
+          tag: bin_edges_left
+
+        - xr.DataArray: [!dag_tag counts]
+          kwargs:
+            dims: [bin_edges_left]
+            coords:
+              bin_edges_left: !dag_tag bin_edges_left
+
+  transform:
+    - xrDataArray_from_counts_and_edges: !dag_tag hist
+    - .expand_dims: [!dag_prev , dummy_dim]
+      tag: counts
+
+  x: bin_edges_left
+  hue: dummy_dim
+
+histogram_with_bin_widths: &histogram_with_bin_widths
+  <<: *histogram_simple
+
+  transform:
+    - xrDataArray_from_counts_and_edges: !dag_tag hist
+    - .expand_dims: [!dag_prev , dummy_dim]
+      tag: counts
+
+    - getitem: [!dag_tag hist, 1]
+      tag: bin_edges
+    - np.diff: !dag_prev
+      tag: bin_widths
+
+  bin_widths: bin_widths
+  compute_only: [counts, bin_widths]
+
+histogram_with_bin_widths_failing:
+  <<: *histogram_with_bin_widths
+
+  bin_widths: some_bad_tag
+
+  _raises: PlotCreatorError
+  _match: No DAG result 'some_bad_tag' available
+
+histogram_animation:
+  <<: *histogram_simple
+  based_on:
+    - .creator.universe
+    - .plot.histogram
+    - .animation.frames
+
+  hue: ~
+  frames: dummy_dim
+
+
+
+# -- CA plot ------------------------------------------------------------------
+# ... the old one needs tests as well
+
+ca_legacy:
+  based_on:
+    - .ca.state.anim_frames
+
+  model_name: ExtendedModel
+
+  to_plot:
+    ca:
+      title: CA state
+
+
+
+# -- seaborn plots ------------------------------------------------------------
+
+sns_kinds:
+  <<: *sns_shared
+
+  from_pspace:
+    sns_kind: !sweep
+      default: relplot
+      values:
+        - relplot
+        - displot
+        - catplot
+        - lmplot
+        - pairplot
+        - jointplot
+        # - clustermap  # not possible with the available data
+
+  free_indices: [mean_state]
+
+sns_dropna_sample:
+  <<: *sns_shared
+
+  select:
+    data:
+      path: state
+      transform:
+        - .data
+        - print
+
+  sns_kind: relplot
+  free_indices: [state_idx]
+  reset_index: true
+  dropna: true
+  sample: 1000
+
+
+sns_fail:
+  <<: *sns_shared
+
+  _raises: PlotCreatorError
+
+  select:
+    data:
+      path: state
+      transform:
+        - .data
+
+  sns_kind: relplot
+  free_indices: [state_idx]
+  dropna: true
+  sample: 1000

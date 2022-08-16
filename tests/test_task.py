@@ -440,6 +440,7 @@ def test_MPProcessTask():
     # because the worker has already finished
     print("out stream metadata:", t.streams["out"])
     captured_stdout = "\n".join(t.streams["out"]["log_raw"])
+    print("captured stdout:", captured_stdout)
     assert "Now sleeping 5 times ..." in captured_stdout
     assert "All done! :)" in captured_stdout
 

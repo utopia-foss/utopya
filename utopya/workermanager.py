@@ -21,6 +21,18 @@ from .tools import format_time
 
 log = logging.getLogger(__name__)
 
+STOPCOND_EXIT_CODES: Sequence[int] = (
+    -SIGMAP[SIG_STOPCOND],
+    SIGMAP[SIG_STOPCOND],
+    128 + abs(SIGMAP[SIG_STOPCOND]),
+)
+"""Exit codes of a :py:class:`~utopya.task.WorkerTask` that will be interpreted
+as stemming from a stop condition. This depends on the signal used for stop
+conditions (:py:data:`utopya.stop_conditions.SIG_STOPCOND`).
+This sequence of possible exit codes takes into account that the sign may be
+switched (depending on whether a signed or unsigned integer convention is
+used) or where a convention is used such that a *handled* signal is turned into
+an exit code of ``128 + abs(signum)``."""
 
 # -----------------------------------------------------------------------------
 
@@ -447,7 +459,7 @@ class WorkerManager:
         def task_finished(task):
             """Performs actions after a task has finished.
 
-            - invokes the 'task_finished' report specification
+            - invokes the ``task_finished`` report specification
             - registers the task with the reporter, which extracts information
               on the run time of the task and its exit status
             - in debug mode, performs an action upon non-zero task exit status
@@ -462,7 +474,7 @@ class WorkerManager:
             # pending exceptions. Handle exit codes that result from a stop
             # condition being fulfilled separately.
             if self.nonzero_exit_handling != "ignore" and task.worker_status:
-                if task.worker_status == 128 + abs(SIGMAP[SIG_STOPCOND]):
+                if task.worker_status in STOPCOND_EXIT_CODES:
                     exc = WorkerTaskStopConditionFulfilled(task)
                 else:
                     exc = WorkerTaskNonZeroExit(task)
@@ -525,10 +537,16 @@ class WorkerManager:
                 actions during a the polling loop.
 
         Raises:
-            NotImplementedError: for `detach` True
+            NotImplementedError: if ``detach`` was set
             ValueError: For invalid (i.e., negative) timeout value
             WorkerManagerTotalTimeout: Upon a total timeout
         """
+        if detach:
+            raise NotImplementedError(
+                "It is currently not possible to detach the WorkerManager "
+                "from the main thread."
+            )
+
         self._invoke_report("before_working")
 
         log.progress("Preparing to work ...")
@@ -548,16 +566,16 @@ class WorkerManager:
         # fulfilled, this will be None
         timeout_time = self.times["timeout"]
 
-        # Determine whether to detach the whole working loop
-        if detach:
-            raise NotImplementedError(
-                "It is currently not possible to detach the WorkerManager "
-                "from the main thread."
-            )
-
         # Set some variables needed during the run
         poll_no = 0
         self.times["start_working"] = dt.now()
+
+        # Prepare stop conditions, creating objects if needed
+        if stop_conditions:
+            stop_conditions = [
+                sc if isinstance(sc, StopCondition) else StopCondition(**sc)
+                for sc in stop_conditions
+            ]
 
         # Inform about timeout and stop conditions
         if timeout:

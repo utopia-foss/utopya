@@ -211,6 +211,24 @@ class BatchTaskManager:
         log.note("  Parallelization level:     %s", self.parallelization_level)
         log.note("  Debug mode?                %s", self.debug)
 
+        # Register tasks
+        log.progress("Adding tasks ...")
+        self._n_run = self._add_tasks(
+            tasks=self._cfg["tasks"]["run"],
+            defaults=self.run_defaults,
+            add_task=self._add_run_task,
+        )
+        self._n_eval = self._add_tasks(
+            tasks=self._cfg["tasks"]["eval"],
+            defaults=self.eval_defaults,
+            add_task=self._add_eval_task,
+        )
+        log.success(
+            "Added %d run and %d evaluation tasks ...",
+            self._n_run,
+            self._n_eval,
+        )
+
     def __str__(self) -> str:
         return f"<BatchTaskManager '{self._name}'>"
 
@@ -244,20 +262,12 @@ class BatchTaskManager:
 
     def perform_tasks(self):
         """Perform all run and eval tasks."""
-        n_run = self._add_tasks(
-            tasks=self._cfg["tasks"]["run"],
-            defaults=self.run_defaults,
-            add_task=self._add_run_task,
-        )
-        n_eval = self._add_tasks(
-            tasks=self._cfg["tasks"]["eval"],
-            defaults=self.eval_defaults,
-            add_task=self._add_eval_task,
-        )
-
+        log.progress("Performing tasks ...")
         self._wm.start_working()
         log.success(
-            "Finished %d run tasks and %d evaluation tasks.", n_run, n_eval
+            "Finished %d run tasks and %d evaluation tasks.",
+            self._n_run,
+            self._n_eval,
         )
 
     # .........................................................................

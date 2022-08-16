@@ -1,0 +1,8 @@
+# Evaluation for config set
+#
+# NOTE Ideally, avoid large definitions here. Instead:
+#   - Specify them in ExtendedModel_base_plots.yml
+#   - Use based_on: ... to inherit from them here
+---
+overview:
+  based_on: overview

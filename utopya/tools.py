@@ -1,4 +1,5 @@
-"""Implements generally useful functions, partly by importing from dantro"""
+"""Implements generally useful functions, partly by importing from
+:py:mod:`dantro.tools`"""
 
 import io
 import logging

@@ -11,14 +11,12 @@ run_kwargs:
   # one is fulfilled for the corresponding worker to be stopped.
   stop_conditions:
     # First condition (using the shortest possible syntax)
-    - !stop-condition
-      func: timeout_wall
+    - func: timeout_wall
       seconds: 0.4
       # further arguments to utopya.stopcond_funcs.timeout_wall
 
     # Second condition (for showcasing the long syntax)
-    - !stop-condition
-      name: single simulation timeout (in long syntax)
+    - name: single simulation timeout (in long syntax)
       description: terminates a worker if it ran for too long
       enabled: true
       to_check:
@@ -30,8 +28,7 @@ run_kwargs:
           # further arguments to utopya.stopcond_funcs.timeout_wall
 
     # Third condition: Terminating depending on a monitor entry
-    - !stop-condition
-      name: extinction
+    - name: extinction
       description: terminates a simulation if entity density goes to zero
       to_check:
         - func: check_monitor_entry

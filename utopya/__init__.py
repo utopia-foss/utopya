@@ -31,11 +31,12 @@ evaluation framework with the following components:
 For a real-world example of how utopya can be integrated, have a look at the
 `Utopia modelling framework <https://utopia-project.org>`_ which uses
 utopya as its frontend.
+For model implementations, the :py:mod:`utopya_backend` package can assist in building Python-based models that use :py:mod:`utopya` as a frontend.
 
 Also visit :ref:`the user manual front page <welcome>` for more information.
 """
 
-__version__ = "1.0.1b2"
+__version__ = "1.1.0b0"
 """The :py:mod:`utopya` package version"""
 
 # .. Logging ..................................................................

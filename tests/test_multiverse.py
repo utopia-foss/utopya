@@ -406,10 +406,23 @@ def test_run_from_meta_cfg_backup(mv_kwargs):
     assert len(os.listdir(mv2.dirs["data"])) == 4
 
 
-@pytest.mark.skip("Simulations do not end with the expected signal")
 def test_stop_conditions(mv_kwargs):
     """An integration test for stop conditions"""
+    # Can stop models that do have a signal handler attached
+    mv_kwargs["model_name"] = ADVANCED_MODEL
     mv_kwargs["run_cfg_path"] = STOP_COND_CFG_PATH
+    mv = Multiverse(**mv_kwargs)
+    mv.run_sweep()
+    time.sleep(2)
+    assert len(mv.wm.tasks) == 13
+    assert len(mv.wm.stopped_tasks) == 13  # all stopped
+
+    # Can also stop models that do not
+    mv_kwargs["model_name"] = DUMMY_MODEL
+    mv_kwargs["run_kwargs"] = dict(
+        stop_conditions=[dict(func="timeout_wall", seconds=1)]
+    )
+
     mv = Multiverse(**mv_kwargs)
     mv.run_sweep()
     time.sleep(2)

@@ -2,6 +2,10 @@
 
 import click
 
+from ._utils import Echo
+
+# -----------------------------------------------------------------------------
+
 
 @click.command(
     help=(
@@ -37,8 +41,8 @@ import click
     default=None,
     type=str,
     help=(
-        "Overwrites the ``paths.model_note`` entry which is used in creation "
-        "of the batch run directory path."
+        "Overwrites the ``paths.note`` entry which is used in creation of the "
+        "batch run directory path."
     ),
 )
 def batch(
@@ -63,4 +67,3 @@ def batch(
     btm.perform_tasks()
 
     Echo.success("Batch work all finished now, yay! :)\n")
-    sys.exit()

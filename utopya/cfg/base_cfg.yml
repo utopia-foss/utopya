@@ -428,9 +428,14 @@ plot_manager:
   # Save all plot configurations alongside the plots
   save_plot_cfg: true
 
+  # Include dantro's base plot configuration pool
+  use_dantro_base_cfg_pool: true
+
   # Base plot configuration pools
   # These specify the base plot configurations that are made available for each
-  # model run, updated and extended in the order specified here.
+  # model run, updated and extended in the order specified here and themselves
+  # based on the dantro base config pool.
+  #
   # In some cases, defining additional pools can be useful, e.g. to generate
   # publication-ready output without redundantly defining plots or styles.
   #
@@ -450,15 +455,16 @@ plot_manager:
     - project_base
     - model_base
 
-  # Can set creator initialization arguments here
-  creator_init_kwargs:
-    universe:
-      style: &default_style
-        figure.figsize: [8., 5.]  # 16:10
+  # Initialization arguments for all creators
+  shared_creator_init_kwargs:
+    style:
+      figure.figsize: [8., 5.]  # 16:10
 
-    multiverse:
-      style:
-        <<: *default_style
+  # Can set creator-specific initialization arguments here
+  creator_init_kwargs:
+    pyplot: {}
+    universe: {}
+    multiverse: {}
 
 
 # Parameter Space .............................................................

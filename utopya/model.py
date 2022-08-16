@@ -147,17 +147,17 @@ class Model:
         """Returns the default config set search directories for this model
         in the order of precedence:
 
-            - defined on the project-level via ``cfg_set_abs_search_dirs``;
-              these may also be format strings supporting the following set of
-              keys: ``model_name``, ``project_base_dir``, and
-              ``model_source_dir`` (if set).
-              If no project is associated, there will be no additional search
-              directories.
-            - names of subdirectories relative to the model source directory,
-              defined in ``cfg_set_model_source_subdirs``. If no model source
-              directory is known, no search directories will be added. If no
-              project is associated, a standard set of search directories is
-              used: ``cfgs``, ``cfg_sets``, ``config_sets``.
+        - defined on the project-level via ``cfg_set_abs_search_dirs``;
+          these may also be format strings supporting the following set of
+          keys: ``model_name``, ``project_base_dir``, and ``model_source_dir``
+          (if set). If no project is associated, there will be no additional
+          search directories.
+        - names of subdirectories relative to the model source directory,
+          defined in ``cfg_set_model_source_subdirs``. If no model source
+          directory is known, no search directories will be added. If no
+          project is associated, a standard set of search directories is
+          used: ``cfgs``, ``cfg_sets``, ``config_sets``, as defined in
+          :py:attr:`.CONFIG_SET_MODEL_SOURCE_SUBDIRS`.
 
         .. note::
 
@@ -187,7 +187,7 @@ class Model:
             if project and project.cfg_set_model_source_subdirs:
                 subdirs = project.cfg_set_model_source_subdirs
             else:
-                subdirs = ("cfgs", "cfg_sets", "config_sets")
+                subdirs = self.CONFIG_SET_MODEL_SOURCE_SUBDIRS
 
             for subdir in subdirs:
                 search_dirs.append(os.path.join(model_source_dir, subdir))

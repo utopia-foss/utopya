@@ -1158,26 +1158,30 @@ class PopenMPProcess:
         bufsize: int = -1,
         encoding: str = "utf8",
     ):
-        """Creates a ``multiprocessing.Process`` and starts it.
+        """Creates a :py:class:`multiprocessing.Process` and starts it.
 
-        The interface here is a subset of ``subprocess.Popen`` that makes those
-        features available that make sense for a ``multiprocessing.Process``,
-        mainly: stream reading.
+        The interface here is a subset of :py:class:`subprocess.Popen` that
+        makes those features available that make sense for a
+        :py:class:`multiprocessing.Process`, mainly: stream reading.
 
         Subsequently, the interface is quite a bit different to that of the
-        ``multiprocessing.Process``. The most important arguments of that
-        interface are ``target``, ``args``, and ``kwargs``, which can be set
-        as follows:
+        :py:class:`multiprocessing.Process`. The most important arguments of
+        that interface are ``target``, ``args``, and ``kwargs``, which can be
+        set as follows:
 
-            - ``target`` will be ``args[0]``
-            - ``args`` will be ``args[1:]``
-            - ``kwargs`` is an additional keyword argument that is not part of
-                the ``subprocess.Popen`` interface typically.
+        - ``target`` will be ``args[0]``
+        - ``args`` will be ``args[1:]``
+        - ``kwargs`` is an additional keyword argument that is not part of the
+          :py:class:`subprocess.Popen` interface typically.
 
         Regarding the stream arguments, the following steps are done to attach
         custom pipes: If any argument is a ``subprocess.PIPE`` or another
         stream specifier that is *not* ``subprocess.DEVNULL``, a new
         ``multiprocessing.Pipe`` and a reader thread will be established.
+
+        .. warning::
+
+            This will *always* use ``spawn`` as a start method for the process!
 
         Args:
             args (tuple): The ``target`` callable (``args[0]``) and subsequent
@@ -1199,15 +1203,22 @@ class PopenMPProcess:
         self._stdout = None
         self._stderr = None
 
+        # Always use spawn as a start method, will not be able to properly
+        # read the streams otherwise.
+        # FIXME On macOS, this causes issues downstream depending on args; but
+        #       so does forking.
+        #       See https://gitlab.com/utopia-project/utopya/-/issues/53
+        start_method = "spawn"
+
         # Prepare target and positional arguments, then spawn the process in a
-        # custom context that always uses `spawn` (instead of `fork` on Linux).
+        # custom context that uses an OS-independent start method.
         target, args = self._prepare_target_args(
             args,
             stdin=stdin,
             stdout=stdout,
             stderr=stderr,
         )
-        _ctx = multiprocessing.get_context("spawn")
+        _ctx = multiprocessing.get_context(start_method)
         self._proc = _ctx.Process(
             target=_target_wrapper, args=args, kwargs=self.kwargs, daemon=True
         )

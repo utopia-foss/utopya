@@ -1,6 +1,7 @@
 """Test the plotting module"""
 
 import builtins
+import contextlib
 import copy
 import logging
 import os
@@ -12,28 +13,33 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import paramspace as psp
 import pytest
-from dantro._import_tools import remove_from_sys_modules
+from dantro._import_tools import added_sys_path, remove_from_sys_modules
+from dantro._import_tools import temporary_sys_modules as tmp_sys_modules
 from dantro.data_ops import available_operations
+from dantro.exceptions import *
 from dantro.plot_mngr import PlotCreatorError
 
+import utopya.eval.plots.attractor
+import utopya.eval.plots.ca
+import utopya.eval.plots.distributions
+import utopya.eval.plots.graph
+import utopya.eval.plots.snsplot
+import utopya.eval.plots.time_series
 from utopya import Multiverse
-from utopya._import_tools import added_sys_path
-from utopya._import_tools import temporary_sys_modules as tmp_sys_modules
 from utopya.eval.plots._graph import GraphPlot
+from utopya.exceptions import *
 from utopya.testtools import ModelTest
 from utopya.yaml import load_yml
 
 from .. import ADVANCED_MODEL, DUMMY_MODEL, get_cfg_fpath
+from .._fixtures import *
 
-# Get the test resources ......................................................
 # Mute the matplotlib logger
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
-# Basic universe plots
-BASIC_UNI_PLOTS = get_cfg_fpath("plots/basic_uni.yml")
-
-# DAG-based plots
-DAG_PLOTS = get_cfg_fpath("plots/dag.yml")
+# .. Test resources ...........................................................
+# General test plots
+TEST_PLOTS = get_cfg_fpath("plots/test_plots.yml")
 
 # Bifurcation diagram plots, 1D and 2D
 BIFURCATION_DIAGRAM_RUN = get_cfg_fpath("plots/bifurcation_diagram/run.yml")
@@ -53,11 +59,7 @@ GRAPH_PLOTS = get_cfg_fpath("plots/graph_plot_cfg.yml")
 GRAPH_PLOT_CLS = get_cfg_fpath("graphplot_class_cfg.yml")
 
 
-# -----------------------------------------------------------------------------
-
-
-# Fixtures --------------------------------------------------------------------
-from .._fixtures import *
+# -- Fixtures -----------------------------------------------------------------
 
 
 @pytest.fixture(autouse=True)
@@ -96,7 +98,6 @@ def test_dag_custom_operations(without_cached_model_plots_modules):
     model = ModelTest(ADVANCED_MODEL)
     mv, dm = model.create_run_load()
     mv.pm.raise_exc = True
-    plot_cfgs = load_yml(DAG_PLOTS)
 
     # Should now (after PlotManager initialization) be available
     assert "my_custom_data_operation" in available_operations()
@@ -247,12 +248,48 @@ def test_advanced_model_plotting():
 
 
 # -----------------------------------------------------------------------------
+# -- Test from config ---------------------------------------------------------
+# -----------------------------------------------------------------------------
+# These tests cover a lot of different plots ...
+
+
+def test_plotting(out_dir):
+    """Runs several test functions from a configuration file"""
+    model = ModelTest(ADVANCED_MODEL)
+    mv, dm = model.create_run_load(parameter_space=dict(num_steps=42))
+    mv.pm.raise_exc = True
+    print(dm.tree)
+
+    # Load some configuration arguments
+    shared_kwargs = dict(out_dir=out_dir)
+    plot_cfgs = load_yml(TEST_PLOTS)
+
+    # Can do a simple DAG-based universe and multiverse plot
+    for cfg_name, plot_cfg in plot_cfgs.items():
+        if cfg_name.startswith("."):
+            continue
+
+        _raises = plot_cfg.pop("_raises", None)
+        _match = plot_cfg.pop("_match", None)
+
+        if _raises is not None:
+            ctx = pytest.raises(globals()[_raises], match=_match)
+        else:
+            ctx = contextlib.nullcontext()
+
+        # The actual plotting
+        print(f"\n\n--- Test case '{cfg_name}' ---")
+        with ctx:
+            mv.pm.plot(cfg_name, **shared_kwargs, **plot_cfg)
+
+
+# -----------------------------------------------------------------------------
 # -- CA Plots -----------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
 
 def test_caplot():
-    """Tests the plot_funcs.ca module"""
+    """Tests the utopya.eval.plots.ca module"""
     mv, _ = ModelTest(ADVANCED_MODEL).create_run_load()
 
     # Run the CA plots (initial frame + animation)
@@ -262,7 +299,7 @@ def test_caplot():
 
 @pytest.mark.skip("No hexagonal grid model available")
 def test_caplot_hexagonal():
-    """Tests the plot_funcs.ca module with hexagonal lattice"""
+    """Tests the utopya.eval.plots.ca module with hexagonal lattice"""
     update_meta_cfg = {
         "parameter_space": {
             "CopyMeGrid": {
@@ -287,77 +324,6 @@ def test_caplot_hexagonal():
 
     # To explicitly plot with the frames writer, select the disabled config
     mv.pm.plot_from_cfg(plot_only=["strategy_and_payoff_frames"])
-
-
-# -----------------------------------------------------------------------------
-# -- DAG Plots ----------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# TODO Decide which ones need to be tested here at all
-
-
-def test_dag_plotting():
-    """Makes sure that DAG plotting works as expected"""
-    # Now, set up the model
-    model = ModelTest(ADVANCED_MODEL)
-    mv, dm = model.create_run_load()
-    mv.pm.raise_exc = True
-    print(dm.tree)
-
-    # Load some configuration arguments
-    shared_kwargs = dict(out_dir=mv.dirs["eval"])
-    plot_cfgs = load_yml(DAG_PLOTS)
-
-    # Can do a simple DAG-based universe and multiverse plot
-    for cfg_name, plot_cfg in plot_cfgs.items():
-        if cfg_name.startswith("."):
-            continue
-
-        # The actual plotting
-        print(f"Plotting '{cfg_name}' ...")
-        mv.pm.plot(cfg_name, **shared_kwargs, **plot_cfg)
-        print(f"Successfully plotted '{cfg_name}'!\n\n")
-
-
-@pytest.mark.skip("No model with DAG based plots available")  # TODO
-def test_generic_dag_plots(tmpdir):
-    """Tests the plot_funcs.dag.generic module"""
-    mv, _ = ModelTest("SEIRD").create_run_load()
-    mv.pm.plot_from_cfg(
-        plot_only=[
-            "age_distribution/final",
-            "age_distribution/time_series",
-            "age_distribution/deceased",
-        ]
-    )
-
-
-@pytest.mark.skip("Plot function no longer included")  # TODO
-def test_time_series_plots():
-    """Tests the plot_funcs.time_series module"""
-    mv, _ = ModelTest("SandPile").create_run_load()
-
-    # Plot specific plots from the default plot configuration, which are using
-    # the time_series plots
-    mv.pm.plot_from_cfg(plot_only=["area_fraction"])
-
-    # Again, with PredatorPrey
-    mv, _ = ModelTest("PredatorPrey").create_run_load()
-
-    # Plot specific plots from the default plot configuration, which are using
-    # the time_series plots
-    mv.pm.plot_from_cfg(plot_only=["species_densities", "phase_space"])
-
-
-@pytest.mark.skip("Plot function no longer included")  # TODO
-def test_distribution_plots():
-    """Tests the plot_funcs.distribution module"""
-    mv, _ = ModelTest("SandPile").create_run_load()
-
-    # Plot specific plots from the default plot configuration, which are using
-    # the distribution plots
-    mv.pm.plot_from_cfg(
-        plot_only=["compl_cum_prob_dist", "cluster_size_distribution"]
-    )
 
 
 # -----------------------------------------------------------------------------
@@ -491,7 +457,7 @@ def test_GraphPlot_class():
         plt.close(fig)
 
 
-@pytest.mark.skip("No graph model available")  # TODO
+@pytest.mark.skip("No graph model available")  # TODO need simple graph model
 def test_graph_plots(tmpdir):
     """Tests the plot_funcs.dag.graph module"""
     # Create and run simulation
@@ -572,7 +538,7 @@ def test_graph_plots(tmpdir):
 # -----------------------------------------------------------------------------
 # -- Bifurcation diagram plots ------------------------------------------------
 # -----------------------------------------------------------------------------
-# TODO Need alternative way of testing this
+# TODO Need alternative way of testing these ...
 
 
 @pytest.mark.skip("Need alternative way of testing this")

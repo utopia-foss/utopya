@@ -1,26 +1,48 @@
+# Configuration file for the Sphinx documentation builder
+# -------------------------------------------------------
 #
-# Configuration file for the Sphinx documentation builder.
-#
-# This file does only contain a selection of the most common options. For a
-# full list see the documentation:
-# http://www.sphinx-doc.org/en/master/config
+# This file does only contain a selection of the most common options.
+# More info:  http://www.sphinx-doc.org/en/master/config
 
-# -- Path setup ---------------------------------------------------------------
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
 import os
+import shutil
 import sys
 
-sys.path.insert(0, os.path.abspath("../"))
+# -- Variables ----------------------------------------------------------------
 
 DOC_DIR = os.path.abspath(os.path.dirname(__file__))
 """This directory"""
 
+PROJECT_DIR = os.path.dirname(DOC_DIR)
+"""The root project directory"""
+
+COPY_FILES: list = [
+    ("README.md", "doc/install.md"),
+]
+"""Files to copy in format (source, target) relative to PROJECT_DIR.
+
+NOTE If adding files here, make sure to add them to .gitignore as well!"""
+
+
+# -- Path setup ---------------------------------------------------------------
+# Insert the project directory into the system PATH such that utopya and all
+# other packages become accessible and importable for sphinx.
+# This is important for autodoc etc.
+sys.path.insert(0, PROJECT_DIR)
+
 
 # -- Function definitions -----------------------------------------------------
+
+
+def _str2bool(val: str):
+    """Copy of strtobool from deprecated distutils package"""
+    val = val.lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    elif val in ("n", "no", "f", "false", "off", "0"):
+        return False
+    raise ValueError(f"Invalid truth value {repr(val)}!")
 
 
 def find_version(*file_paths) -> str:
@@ -363,6 +385,12 @@ intersphinx_mapping = {
 }
 # fmt: on
 
+# Allow deactivating TLS verification because some intersphinx servers have
+# certificate issues, even temporary ones, which make the build process less
+# robust in CI.
+tls_verify = _str2bool(os.environ.get("SPHINX_TLS_VERIFY", "yes"))
+
+
 # -- Nitpicky Configuration ---------------------------------------------------
 
 # Be nitpicky about warnings, to show all references where the target could
@@ -404,14 +432,16 @@ for line in open(".nitpick-ignore"):
 
 def run_apidoc(_):
     """A function to run apidoc, creating the API documentation"""
-    ignore_paths = []
+    from sphinx.ext import apidoc
 
     # Get the required directory paths
     cur_dir = os.path.abspath(os.path.dirname(__file__))
     out_dir = os.path.join(cur_dir, "api")
-    module = os.path.join(cur_dir, "..", "utopya")
-
-    argv = [
+    modules = [
+        os.path.join(cur_dir, "..", "utopya"),
+        os.path.join(cur_dir, "..", "utopya_backend"),
+    ]
+    shared_argv = [
         "--force",
         # "--separate",
         "--private",
@@ -419,25 +449,60 @@ def run_apidoc(_):
         "--no-toc",
         "-o",
         out_dir,
-        module,
-    ] + ignore_paths
+    ]
 
-    from sphinx.ext import apidoc
+    for module in modules:
+        apidoc.main(shared_argv + [module])
 
-    apidoc.main(argv)
+
+# .. Copying files ............................................................
+
+
+def copy_files(files: list = COPY_FILES):
+    """Copies files relative to the PROJECT_DIR"""
+    for src, dest in files:
+        shutil.copy2(
+            os.path.join(PROJECT_DIR, src),
+            os.path.join(PROJECT_DIR, dest),
+        )
+
+
+# .. Manipulating source ......................................................
+
+
+def manipulate_source_read(app, docname: str, source: list):
+    """Manipulates individual files according to some rules.
+
+    - Cut out the relevant sections from the main readme file in order to
+      reduce duplicated content.
+
+    .. note::
+
+        ``source`` contains a *single* entry that is the full page source as a
+        string, including all line break characters. Manipulation of the
+        source can be done by *mutably* changing that single entry in the
+        ``source`` object (a list).
+    """
+    if docname == "install":
+        # This file is the copied readme file; but we only want the
+        # installation instructions.
+        # We need a few markers to get the relevant parts ...
+        marker_start = "<!-- start: installation -->"
+        marker_end = "<!-- end: installation -->"
+        marker_links = "<!-- start: links -->"
+
+        new_start = source[0].find(marker_start) + len(marker_start)
+        new_end = source[0].find(marker_end)
+        links_start = source[0].find(marker_links) + len(marker_links)
+        print(new_start, new_end, links_start)
+
+        source[0] = source[0][new_start:new_end] + source[0][links_start:]
+        return
+
+    # NOTE Can add more here
 
 
 # .. Figure generation ........................................................
-
-
-def _str2bool(val: str):
-    """Copy of strtobool from deprecated distutils package"""
-    val = val.lower()
-    if val in ("y", "yes", "t", "true", "on", "1"):
-        return True
-    elif val in ("n", "no", "f", "false", "off", "0"):
-        return False
-    raise ValueError(f"Invalid truth value {repr(val)}!")
 
 
 def generate_figures():
@@ -503,8 +568,13 @@ def generate_figures():
     )
 
 
+# -----------------------------------------------------------------------------
+
+
 def setup(app):
     """A custom sphinx setup function, attaching to sphinx hooks"""
+    copy_files()
     generate_figures()
 
+    app.connect("source-read", manipulate_source_read)
     app.connect("builder-inited", run_apidoc)

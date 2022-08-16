@@ -4,31 +4,26 @@
 import os
 import sys
 
-import h5py as h5
-import numpy as np
-import ruamel.yaml as yaml
-
-# FIXME Should not import from private module!
-from utopya._import_tools import import_module_from_path
+from utopya_backend import backend_logger, import_package_from_dir
 
 # Instead of a relative import (which is not available in the __main__ module
 # that this executable represents), use an absolute import from a path.
 # This makes the model implementation available as a module without requiring
 # installation.
-# NOTE The `executable_control.run_from_tmpdir` key needs to be set to False
-#      in the run config in order for the `__file__` variable to be used for
-#      selecting the path to the `impl` module.
-impl = import_module_from_path(
-    mod_path=os.path.dirname(__file__),
-    mod_str="impl",
+# NOTE The `executable_control.run_from_tmpdir` key in the Multiverse config
+#      needs to be set to False (default). Otherwise, this file will be
+#      executed from a *temporary* directory, not allowing to perform this
+#      relative import.
+# NOTE If your local model implementation package has a different name than
+#      `impl`, adjust the following lines accordingly.
+impl = import_package_from_dir(
+    os.path.join(os.path.dirname(__file__), "impl"),
 )
 Model = impl.Model
 
 if __name__ == "__main__":
-    print("Preparing simulation run ...")
-
     model = Model(cfg_file_path=sys.argv[1])
     model.run()
     del model
 
-    print("\nAll done.")
+    backend_logger.info("All done.")

@@ -1,0 +1,10 @@
+# A sweep over the state size of the model
+---
+parameter_space:
+  num_steps: 100
+  write_every: 5
+
+  ExtendedModel:
+    state_size: !sweep
+      default: 100
+      values: [10, 30, 100, 300]
