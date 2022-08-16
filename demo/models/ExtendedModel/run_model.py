@@ -10,9 +10,12 @@ from utopya_backend import backend_logger, import_package_from_dir
 # that this executable represents), use an absolute import from a path.
 # This makes the model implementation available as a module without requiring
 # installation.
-# NOTE The `executable_control.run_from_tmpdir` key needs to be set to False
-#      in the meta configuration (default). Otherwise, this file will be
-#      executed from a temporary directory, not allowing to perform this import
+# NOTE The `executable_control.run_from_tmpdir` key in the Multiverse config
+#      needs to be set to False (default). Otherwise, this file will be
+#      executed from a *temporary* directory, not allowing to perform this
+#      relative import.
+# NOTE If your local model implementation package has a different name than
+#      `impl`, adjust the following lines accordingly.
 impl = import_package_from_dir(
     os.path.join(os.path.dirname(__file__), "impl"),
 )

@@ -14,6 +14,9 @@ doc/_build
 doc/api
 doc/**/*.log
 
+# Also need to ignore files that are copied to the doc directory
+doc/install.md
+
 # Dynamically generated docs figures should not be included either
 doc/_static/_gen
 

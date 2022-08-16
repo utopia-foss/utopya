@@ -4,7 +4,7 @@
 
 # To Write or Migrate
 
-```{note}
+```{todo}
 This is not a proper docs page but more of a to do list.
 ```
 

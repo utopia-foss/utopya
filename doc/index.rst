@@ -4,7 +4,7 @@ Welcome to utopya's documentation!
 ==================================
 
 The :py:mod:`utopya` package provides a simulation management and evaluation
-framework with the following feature set:
+framework with the following features:
 
 - **Run model simulations** in parallel and on cluster architectures
 
@@ -43,9 +43,9 @@ With more compliance to the utopya interface, more features become available.
 
 The :py:mod:`utopya` package is **open source software** released under the `LGPLv3+ <https://www.gnu.org/licenses/lgpl-3.0.html>`_ license.
 
-.. warning::
+.. admonition:: This documentation is **WORK IN PROGRESS**.
 
-    This documentation is **WORK IN PROGRESS**.
+    In the meantime, take a look at `the Utopia documentation <https://docs.utopia-project.org/>`_ which indirectly documents many of utopya's features.
 
 .. note::
 
@@ -59,12 +59,33 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     Repository <https://gitlab.com/utopia-project/utopya>
     Utopia Project <https://utopia-project.org/>
 
+    install
+
+.. TODO add about
+.. TODO add how-to-cite
+
 .. toctree::
     :hidden:
 
     To Do List <_to_do>
 
-.. TODO add how-to-cite
+.. TODO add getting started
+.. TODO add running models
+.. TODO add evaluation
+.. TODO add project & model registry
+.. TODO add "use utopya for your existing models"
+
+
+.. toctree::
+    :caption: Model implementation
+    :maxdepth: 2
+    :hidden:
+
+    backend/overview
+    backend/model
+    backend/io
+    backend/how-to-implement
+    demo
 
 
 .. toctree::
@@ -72,9 +93,9 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     :maxdepth: 2
     :hidden:
 
-    cli/index
     utopya API <api/utopya>
     utopya backend API <api/utopya_backend>
+    cli/index
     Base Plot Configuration Pool <ref/base_plots>
     dantro <https://gitlab.com/utopia-project/dantro>
     dantro docs <https://dantro.readthedocs.io/>

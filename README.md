@@ -1,24 +1,25 @@
 [![utopya logo](doc/_static/img/logo_green.svg)][utopya-repo]
 
-The `utopya` package provides a simulation management and evaluation framework with the following feature set:
+The `utopya` package provides a simulation management and evaluation framework with the following features:
 
-- **Run model simulations** in parallel and on cluster architectures
+- **Run model simulations** in parallel and on cluster architectures:
     - Conveniently perform parameter sweeps of arbitrary parameters with the help of the [paramspace][paramspace] package.
 - A **powerful CLI** to run and evaluate models, including interactive plotting
 - Integrates the [dantro][dantro] **data processing pipeline**:
-    - Loads data into a hierarchical data tree, supplying a uniform interface
-    - Gives access to a configuration-based **data transformation framework**, separating data preprocessing from visualization for increased generality
-    - Easy extensibility of plot creators via model-specific plot implementations
+    - Loads data into a hierarchical data tree, supplying a uniform interface.
+    - Gives access to a configuration-based **data transformation framework**, separating data preprocessing from visualization for increased generality.
+    - Easy extensibility of plot creators via model-specific plot implementations.
 - A **versatile configuration interface** for both simulation and evaluation:
-    - Assembling multi-level model configurations, including several default levels
-    - Assembling plot configurations with multiple inheritance, reducing redundant definitions
-- Model, project, and framework registration and handling
-- Managing data output directories
-- Tools to simplify model test implementations or working without a CLI
+    - Assembling multi-level model configurations, including several default levels.
+    - Assembling plot configurations with multiple inheritance, reducing redundant definitions.
+- The `utopya_backend` package, which assists in implementing models.
+- Registration and management of models, projects, and frameworks.
+- Managing data output directories.
+- Tools to simplify implementation of model tests and working without a CLI.
 - ... and more
 
-The `utopya` package evolved as part of the [Utopia Project][Utopia-Project] and provides the frontend of the [Utopia modelling framework][Utopia].
-Having been outsourced from that project, it can be used with arbitrary model implementations with a very low barrier for entry: in the simplest case, only the path to an executable is required to run simulations.
+`utopya` evolved as part of the [Utopia Project][Utopia-Project] and provides the frontend of the [Utopia modelling framework][Utopia].
+Having been outsourced from that project, it can be used with arbitrary model implementations and with a very low barrier for entry: in the simplest case, only the path to an executable is required to run simulations.
 With more compliance to the utopya interface, more features become available.
 
 The `utopya` package is **open source software** released under the [LGPLv3+][LGPL] license; see [below](#license-copyright).
@@ -26,35 +27,37 @@ The `utopya` package is **open source software** released under the [LGPLv3+][LG
 [[_TOC_]]
 
 
-
+<!-- start: installation -->
 
 # Installation
 To install utopya, first enter the virtual environment of your choice.
 The utopya package is available on [PyPI][utopya-pypi]:
 
-```
-pip install --pre utopya
+```bash
+pip install utopya
 ```
 
 Alternatively, use the following command to install from a certain branch:
 
-```
+```bash
 pip install git+https://gitlab.com/utopia-project/utopya.git@<branch-name>
 ```
 
-The above commands will install utopya and the utopya CLI, pulling in all requirements.
+The above commands will install `utopya`, the `utopya_backend` and the utopya CLI, pulling in all requirements.
 You should now be able to invoke the utopya CLI:
 
-```
+```bash
 utopya --help
 ```
 
-# Basic Usage
-🚧
+<!-- end: installation -->
 
-See the [demo project](demo/) for a small implementation example.
 
-For a larger example of how utopya can be used, have a look at [Utopia][Utopia].
+# Getting started
+* For a simple example, see the [demo project](demo/).
+* For a larger example of how utopya can be used, have a look at [Utopia][Utopia].
+* For more information, refer to the [utopya documentation](https://utopya.readthedocs.io/).
+
 
 
 
@@ -106,6 +109,8 @@ The copyright holders of the utopya software package are collectively referred t
 * Jeremias Traub (@jeremiastraub)
 * Julian Weninger (@JulianWeninger)
 * Josephine Westermann
+
+<!-- start: links -->
 
 [GPL]: https://www.gnu.org/licenses/gpl-3.0.en.html
 [LGPL]: https://www.gnu.org/licenses/lgpl-3.0.en.html
