@@ -1,6 +1,7 @@
 """Tests the utopya test <...> subcommand of the CLI"""
 
 import os
+import sys
 
 import pytest
 
@@ -9,7 +10,10 @@ from . import invoke_cli
 
 # -----------------------------------------------------------------------------
 
-
+# FIXME for whatever strange reason, this creates side effects in
+#       eval/test_plotting.py::test_preloading
+#       Removing "model_plots" from sys.modules here does not resolve it.
+@pytest.mark.order("last")
 def test_test(with_test_models):
     """Tests `utopya test`"""
     # No tests available for dummy model

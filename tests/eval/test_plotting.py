@@ -104,7 +104,12 @@ def test_dag_custom_operations(without_cached_model_plots_modules):
 
 
 def test_preloading(tmpdir, without_cached_model_plots_modules):
-    """Tests the preloading feature of the utopya.PlotManager"""
+    """Tests the preloading feature of the utopya.PlotManager
+
+    NOTE If this test fails, it may be due to side effects of a CLI-related
+         test (cli/test_test.py) that seems to change the behavior of the
+         sys.modules cache ... in a very weird way.
+    """
     model_plot_modstr = f"model_plots.{ADVANCED_MODEL}"
     model_plot_name = "custom_plot"
     assert model_plot_modstr not in sys.modules

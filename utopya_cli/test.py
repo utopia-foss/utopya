@@ -77,7 +77,6 @@ def run_test(
     _log.remark("Full test command:\n\n  pytest %s\n\n", " ".join(pytest_args))
     try:
         sys.exit(pytest.main(list(pytest_args)))
-        # NOTE Can use __file__ here because click runs in __main__
 
     finally:
         # Change back to previous working directory to not have side effects
