@@ -6,6 +6,8 @@ import uuid
 
 from pkg_resources import resource_filename
 
+import utopya
+
 # Set default log level to DEBUG
 logging.basicConfig(level=logging.DEBUG)
 
