@@ -18,16 +18,17 @@ INSTALL_DEPS = [
     #
     # related to utopya:
     "paramspace>=2.5.9",
-    "dantro>=0.18.0",
+    "dantro>=0.18.2",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
 
 # Dependencies for running tests and general development of utopya
 TEST_DEPS = [
-    "pytest>=6.2",
-    "pytest-cov>=2.10",
-    "pre-commit>=2.16",
+    "pytest",
+    "pytest-cov",
+    "pytest-order",
+    "pre-commit",
 ]
 
 # Dependencies for building the utopya documentation

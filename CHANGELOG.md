@@ -11,6 +11,7 @@
     - `BaseModel` provides shared simulation infrastructure like an RNG, signal handling, loggers, and a general scaffolding for running the model.
     - `StepwiseModel` specializes `BaseModel` for models that make an "integer time" abstraction, with the `perform_step` method describing how to iterate the state.
 - !31 improves handling of `WorkerTask`'s that were terminated due to a `StopCondition` signal.
+- !32 adds the `utopya test MODEL_NAME` command to the CLI, making it easier to run associated Python model tests.
 
 
 

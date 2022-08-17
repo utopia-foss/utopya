@@ -1,7 +1,5 @@
 """Defines the utopya CLI"""
 
-import sys
-
 import click
 
 from .batch import batch
@@ -10,6 +8,17 @@ from .eval import evaluate
 from .models import models
 from .projects import projects
 from .run import run
+from .test import run_test as test
+
+SUBCOMMANDS = [
+    run,
+    evaluate,
+    test,
+    batch,
+    config,
+    models,
+    projects,
+]
 
 cli = click.Group(
     help=(
@@ -33,9 +42,5 @@ cli = click.Group(
     ),
 )
 
-cli.add_command(run)
-cli.add_command(evaluate)
-cli.add_command(batch)
-cli.add_command(config)
-cli.add_command(models)
-cli.add_command(projects)
+for subcommand in SUBCOMMANDS:
+    cli.add_command(subcommand)
