@@ -266,7 +266,7 @@ def test_plotting(out_dir):
     print(dm.tree)
 
     # Load some configuration arguments
-    shared_kwargs = dict(out_dir=out_dir)
+    shared_kwargs = dict(out_dir=str(out_dir))
     plot_cfgs = load_yml(TEST_PLOTS)
 
     # Can do a simple DAG-based universe and multiverse plot
