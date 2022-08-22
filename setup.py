@@ -5,20 +5,20 @@ from setuptools import find_packages, setup
 # .. Dependency lists .........................................................
 
 INSTALL_DEPS = [
-    "numpy>=1.21",
-    "scipy>=1.7.3",
-    "matplotlib>=3.3",
-    "seaborn>=0.11.2",
-    "ruamel.yaml>=0.16.5",
-    "coloredlogs>=15.0",
-    "colorama>=0.4.4",
-    "click>=8.0",
-    "pydantic>=1.9",
-    "python-git-info>=0.7",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "ruamel.yaml",
+    "coloredlogs",
+    "colorama",
+    "click",
+    "pydantic",
+    "python-git-info",
     #
     # related to utopya:
     "paramspace>=2.5.9",
-    "dantro>=0.18.2",
+    "dantro>=0.18.4",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
