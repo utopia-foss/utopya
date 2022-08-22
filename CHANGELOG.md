@@ -3,16 +3,21 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
 
-## v1.1.0 *(Work in progress)*
+## v1.1.0
+### Features and enhancements
 - !28 improves error messages upon missing model executable.
-- !29 removes the (dysfunctional) `!model` YAML constructor; to be re-added at a later point (see #51).
-- !30 fixes a bug that prevented re-running a `Multiverse` from the backed-up `meta_cfg.yml` file of a previous run.
 - !31 implements the `utopya_backend` package which bundles classes and function that can be used to implement models.
     - `BaseModel` provides shared simulation infrastructure like an RNG, signal handling, loggers, and a general scaffolding for running the model.
     - `StepwiseModel` specializes `BaseModel` for models that make an "integer time" abstraction, with the `perform_step` method describing how to iterate the state.
 - !31 improves handling of `WorkerTask`'s that were terminated due to a `StopCondition` signal.
 - !32 adds the `utopya test MODEL_NAME` command to the CLI, making it easier to run associated Python model tests.
 - !34 expands tests for drawing graphs using `.plot.graph`.
+
+### Bug fixes
+- !30 fixes a bug that prevented re-running a `Multiverse` from the backed-up `meta_cfg.yml` file of a previous run.
+
+### Removals and deprecations
+- !29 removes the (dysfunctional) `!model` YAML constructor; potentially to be re-added at a later point (discussed in #51).
 
 
 
