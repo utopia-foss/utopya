@@ -140,16 +140,22 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Intended Audience :: Science/Research",
+        #
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        #
         "Topic :: Utilities",
+        "Topic :: Scientific/Engineering",
     ],
     #
-    # Package content and dependencies
-    packages=find_packages(
-        exclude=("demo", "tests"), include=("utopya", "utopya_*")
-    ),
+    # Package content
+    packages=find_packages(exclude=("demo", "tests")),
     package_data=dict(utopya=["cfg/*.yml"]),
+    data_files=[("", ["COPYING", "COPYING.LESSER", "README.md"])],
+    #
+    # Dependencies
     install_requires=INSTALL_DEPS,
     extras_require=dict(
         test=TEST_DEPS,
