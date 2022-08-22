@@ -11,13 +11,16 @@ import dantro
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import paramspace as psp
 import pytest
+import xarray as xr
 from dantro._import_tools import added_sys_path, remove_from_sys_modules
 from dantro._import_tools import temporary_sys_modules as tmp_sys_modules
 from dantro.data_ops import available_operations
 from dantro.exceptions import *
 from dantro.plot_mngr import PlotCreatorError
+from pkg_resources import resource_filename
 
 import utopya.eval.plots.attractor
 import utopya.eval.plots.ca
@@ -25,7 +28,9 @@ import utopya.eval.plots.distributions
 import utopya.eval.plots.graph
 import utopya.eval.plots.snsplot
 import utopya.eval.plots.time_series
-from utopya import Multiverse
+from utopya import MODELS, DataManager, Multiverse, PlotManager
+from utopya.eval.containers import XarrayDC
+from utopya.eval.groups import GraphGroup, TimeSeriesGroup
 from utopya.eval.plots._graph import GraphPlot
 from utopya.exceptions import *
 from utopya.testtools import ModelTest
@@ -54,9 +59,13 @@ BIFURCATION_DIAGRAM_2D_PLOTS = get_cfg_fpath(
 )
 
 # Graph plots
+# .. model-based
 GRAPH_RUN = get_cfg_fpath("graphgroup_cfg.yml")
 GRAPH_PLOTS = get_cfg_fpath("plots/graph_plot_cfg.yml")
 GRAPH_PLOT_CLS = get_cfg_fpath("graphplot_class_cfg.yml")
+
+# .. standalone
+GRAPH_PLOTS_STANDALONE = get_cfg_fpath("plots/graph_plots_standalone.yml")
 
 
 # -- Fixtures -----------------------------------------------------------------
@@ -74,6 +83,123 @@ def without_cached_model_plots_modules():
 
     assert "model_plots" not in sys.modules
     assert not any([ms.startswith("model_plots") for ms in sys.modules])
+
+
+@pytest.fixture
+def graph_dm(tmpdir) -> DataManager:
+    """Populates a DataManager with graph data"""
+    dm = DataManager(tmpdir)
+
+    # .. Static graph .........................................................
+    gg = dm.new_group("static", Cls=GraphGroup)
+    gg.attrs["is_directed"] = True
+    gg.attrs["allows_parallel"] = False
+
+    time_steps = 7
+    num_nodes = 20
+    num_edges = num_nodes
+    _e = np.array(range(num_edges))
+    _edges = np.vstack([_e, np.roll(_e, -1)])  # circular
+
+    gg.new_container(
+        "_vertices",
+        Cls=XarrayDC,
+        data=xr.DataArray(
+            np.array(range(num_nodes)),
+            dims=("vertex_idx",),
+            coords=dict(vertex_idx=range(num_nodes)),
+        ),
+    )
+    gg.new_container(
+        "_edges",
+        Cls=XarrayDC,
+        data=xr.DataArray(
+            _edges,
+            dims=("label", "edge_idx"),
+            coords=dict(edge_idx=range(num_edges), label=["source", "target"]),
+        ),
+    )
+    gg.new_container(
+        "some_node_prop",
+        Cls=XarrayDC,
+        data=xr.DataArray(
+            np.random.uniform(size=(num_nodes, time_steps)),
+            dims=("vertex_idx", "time"),
+            coords=dict(vertex_idx=range(num_nodes), time=range(time_steps)),
+        ),
+    )
+    gg.new_container(
+        "weight",
+        Cls=XarrayDC,
+        data=xr.DataArray(
+            np.random.uniform(size=(num_edges, time_steps)),
+            dims=("edge_idx", "time"),
+            coords=dict(edge_idx=range(num_edges), time=range(time_steps)),
+        ),
+    )
+
+    # .. Dynamic graph ........................................................
+    # A dynamic graph with changing node and edge properties
+    gg = dm.new_group("dynamic", Cls=GraphGroup)
+    gg.attrs["is_directed"] = True
+    gg.attrs["allows_parallel"] = False
+
+    gg.new_group("_vertices", Cls=TimeSeriesGroup)
+    gg.new_group("_edges", Cls=TimeSeriesGroup)
+    gg.new_group("some_node_prop", Cls=TimeSeriesGroup)
+    gg.new_group("weight", Cls=TimeSeriesGroup)
+
+    for time in range(10):
+        num_nodes = np.random.randint(10, 15)
+        gg["_vertices"].new_container(
+            str(time),
+            Cls=XarrayDC,
+            data=xr.DataArray(
+                np.array(range(num_nodes)),
+                dims=("vertex_idx",),
+                coords=dict(vertex_idx=range(num_nodes)),
+            ),
+        )
+
+        num_edges = num_nodes
+        _e = np.array(range(num_edges))
+        gg["_edges"].new_container(
+            str(time),
+            Cls=XarrayDC,
+            data=xr.DataArray(
+                np.vstack([_e, np.roll(_e, -1)]),
+                dims=("label", "edge_idx"),
+                coords=dict(
+                    edge_idx=range(num_edges), label=["source", "target"]
+                ),
+            ),
+        )
+
+        gg["some_node_prop"].new_container(
+            str(time),
+            Cls=XarrayDC,
+            data=xr.DataArray(
+                np.random.uniform(size=(num_nodes,)),
+                dims=("vertex_idx",),
+                coords=dict(vertex_idx=range(num_nodes)),
+            ),
+        )
+
+        gg["weight"].new_container(
+            str(time),
+            Cls=XarrayDC,
+            data=xr.DataArray(
+                np.random.uniform(size=(num_edges,)),
+                dims=("edge_idx",),
+                coords=dict(edge_idx=range(num_edges)),
+            ),
+        )
+
+    # .........................................................................
+
+    print(dm.tree)
+
+    return dm
 
 
 # -----------------------------------------------------------------------------
@@ -462,15 +588,44 @@ def test_GraphPlot_class():
         plt.close(fig)
 
 
+def test_draw_graph(out_dir, graph_dm, with_test_models):
+    """Tests the graph plotting function (without a model)"""
+    dm = graph_dm
+
+    # Construct the PlotManager, passing a dummy ModelInfoBundle
+    pm = PlotManager(
+        dm=dm,
+        out_dir=out_dir,
+        raise_exc=True,
+        _model_info_bundle=MODELS[ADVANCED_MODEL].item(),
+        base_cfg_pools=[
+            ("utopya_base", resource_filename("utopya", "cfg/base_plots.yml")),
+        ],
+    )
+
+    # Now plot
+    pm.plot_from_cfg(plots_cfg=GRAPH_PLOTS_STANDALONE)
+
+    # ... and now plot the cases that are expected to raise -- ensure they do
+    plots_cfg = load_yml(GRAPH_PLOTS_STANDALONE)
+
+    for name, cfg in plots_cfg.items():
+        if not name.startswith(".err_"):
+            continue
+
+        with pytest.raises(PlotCreatorError, match=cfg.pop("_match", None)):
+            pm.plot(name.replace(".", ""), **cfg)
+
+
 @pytest.mark.skip("No graph model available")  # TODO need simple graph model
-def test_graph_plots(tmpdir):
+def test_graph_plots_via_model(out_dir):
     """Tests the plot_funcs.dag.graph module"""
     # Create and run simulation
     raise_exc = {"plot_manager": {"raise_exc": True}}
-    mv = Multiverse(
+    mv = Multiverse(  # TODO Use ModelTest class instead, better error handling
         model_name="CopyMeGraph",
         run_cfg_path=GRAPH_RUN,
-        paths=dict(out_dir=str(tmpdir)),
+        paths=dict(out_dir=str(out_dir)),
         **raise_exc,
     )
 

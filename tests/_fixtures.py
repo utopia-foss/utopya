@@ -78,6 +78,8 @@ def tmpdir_or_local_dir(tmpdir, request) -> pathlib.Path:
         )
 
     print(f"Using local test output directory:\n  {test_dir}")
+    if os.path.isdir(test_dir):
+        shutil.rmtree(test_dir)
     os.makedirs(test_dir, exist_ok=True)
     return pathlib.Path(test_dir)
 
