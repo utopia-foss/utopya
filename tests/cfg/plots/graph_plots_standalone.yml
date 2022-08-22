@@ -1,0 +1,481 @@
+# Test cases for graph plots that are not model-based but use the data
+# generated in the pytest fixture, see test_plotting.py::test_draw_graph
+#
+# NOTE Using YAML anchors instead of inheritance to avoid duplicate keys.
+#      Plot config inheritance is only used to separate out some test cases.
+#
+# NOTE Cases with a leading .err are tested separately because they raise
+---
+simple: &base
+  based_on:
+    - .creator.pyplot
+    - .plot.graph
+    - .animation.defaults
+
+  select:
+    graph_group: dynamic
+
+  graph_creation: &graph_creation
+    at_time_idx: -1
+    node_props: [some_node_prop]
+    edge_props: [weight]
+    directed: False
+    parallel_edges: False
+
+  graph_drawing: &graph_drawing
+    positions:
+      model: random
+    nodes:
+      node_color:
+        from_property: some_node_prop
+      node_size:
+        from_property: some_node_prop
+        scale_to_interval: [200, 400]
+      alpha:
+        from_property: some_node_prop
+      cmap: inferno
+      cmap_norm: ~
+      linewidths: 2
+    edges:
+      edge_color: [0.5, 0.5, 0.5]
+      width:
+        from_property: weight
+    mark_nodes:
+      nodelist: [0, 1, 2, 3]
+      color: red
+    mark_edges:
+      edgelist: [[0, 1], [1, 2]]
+      color: blue
+
+
+directed:
+  <<: *base
+  graph_creation:
+    <<: *graph_creation
+    directed: True
+    parallel_edges: False
+
+  graph_drawing:
+    positions:
+      model: spring
+      seed: 42
+    nodes:
+      node_size: 200
+      node_color:
+        from_property: some_node_prop
+      ### Start -- graph_coloring_discrete
+      cmap:
+        from_values:
+          0: red
+          1: green
+          2: blue
+      colorbar:
+        enabled: true  # enabled by default, if property mapping was done for the node colors
+        labels:
+          0: foo
+          1: bar
+          2: baz
+        # additional colorbar styling arguments:
+        shrink: .2
+        aspect: 10
+        orientation: horizontal
+      ### End ---- graph_coloring_discrete
+      vmin: 0.42
+      vmax: 42.
+    edges:
+      arrows: True
+    node_labels:
+      enabled: True
+      show_only: [0, 1, 2]
+      labels:
+        0: label0
+        1: label1
+    edge_labels:
+      enabled: True
+      edge_labels:
+        [0, 1]: foo
+        [0, 2]: bar
+      show_only: [[0, 1], [0, 2], [1, 2]]
+    mark_edges:
+      colors:
+        [0, 1]: r
+        [1, 2]: g
+
+
+selected_nodes:
+  based_on: directed
+
+  graph_drawing:
+    select:
+      nodelist: !listgen [0, 6]
+      drop: False
+      open_edges: True
+
+
+select_radial:
+  based_on: simple
+
+  select:
+    graph_group: static
+
+  graph_drawing:
+    select:
+      center: 0        # Do radial node selection
+      radius: 3
+
+
+MultiDiGraph:  # FIXME fails
+  debug: false
+  <<: *base
+  graph_creation:
+    <<: *graph_creation
+    directed: True
+    parallel_edges: True
+  graph_drawing:
+    <<: *graph_drawing
+    select:
+      drop: False
+      center: 0
+      radius: 1
+    nodes:
+      node_size:
+        from_property: in_degree
+      edgecolors: r
+    node_labels:
+      enabled: True
+      labels:
+        0: label0
+    edge_labels:
+      enabled: True
+
+
+# .............................................................................
+
+custom_node_positioning_model:
+  <<: *base
+
+  transform:
+    - lambda: "lambda g: {n: (i, i) for i, n in enumerate(g.nodes)}"
+      tag: node_positioning_model
+
+  graph_drawing:
+    <<: *graph_drawing
+    positions:
+      model: !dag_result node_positioning_model
+
+
+explicit_node_positions:
+  <<: *base
+  transform:
+    - call_lambda: "lambda num_nodes: {i: (i, i) for i in range(num_nodes)}"
+      kwargs:
+        num_nodes: 20   # larger than maximum number of nodes
+      tag: pos_from_dict
+
+  graph_drawing:
+    <<: *graph_drawing
+    positions:
+      from_dict: !dag_result pos_from_dict
+
+
+custom_graph_creation:
+  <<: *base
+  transform:
+    - nx.: complete_graph
+      kwargs:
+        n: 3
+      tag: graph
+
+  graph: !dag_result graph
+  graph_drawing:
+    positions:
+      model: random
+
+
+custom_graph_arr_creation:
+  <<: *base
+  transform:
+    - nx.: complete_graph
+      kwargs:
+        n: 3
+      tag: graph
+    - operation: build_object_array
+      kwargs:
+        objs:
+          [1, 16]: !dag_tag graph
+          [2, 16]: !dag_tag graph
+        dims: [foo, bar]
+      tag: graphs
+  graph: !dag_result graphs
+  graph_drawing: {}
+
+
+external_properties: &ext_prop
+  <<: *base
+  select:
+    graph_group: static
+    some_transformed_node_prop:
+      path: static/some_node_prop
+      transform:
+        - squared
+  dag_options:
+    define:
+      labels:
+        - np.array:
+            - - "00"
+              - "01"
+              - "02"
+              - "03"
+              - "04"
+              - "05"
+              - "06"
+              - "07"
+              - "08"
+              - "09"
+              - "10"
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "16"
+              - "17"
+              - "18"
+              - "19"
+          kwargs:
+            dtype: object
+  register_property_maps:
+    - some_transformed_node_prop
+    - labels
+  graph_creation:
+    at_time_idx: -1
+    node_props:
+      - some_node_prop
+      - some_transformed_node_prop
+      - labels
+    edge_props:
+      - weight
+      - labels
+  graph_drawing:
+    nodes:
+      node_color:
+        from_property: some_transformed_node_prop
+      colorbar:
+        enabled: true
+    node_labels:
+      enabled: true
+      labels:
+        from_property: labels
+    edge_labels:
+      enabled: true
+      edge_labels:
+        from_property: labels
+
+
+.err_invalid_ext_prop:
+  <<: *ext_prop
+  compute_only: [graph_group]
+  _match: No tag
+
+
+
+# -- Animation ----------------------------------------------------------------
+
+graph_anim1: &graph_anim
+  <<: *base
+  select:
+    graph_group: static
+  animation:
+    enabled: True
+    writer: frames
+  suptitle_kwargs:
+    title: 'time: {time:d}'
+  graph_animation:
+    times:
+      from_property: weight
+
+
+graph_anim2:
+  <<: *graph_anim
+
+  graph_drawing:
+    <<: *graph_drawing
+    nodes:
+      node_color:
+        from_property: some_node_prop
+      vmin: 0
+    edges:
+      edge_color:
+        from_property: weight
+      edge_vmin: 0
+  animation:
+    enabled: True
+    writer: frames
+  graph_animation:
+    times:
+      isel: [-1]
+    update_colormapping: True
+
+
+graph_anim3:
+  <<: *graph_anim
+
+  graph_drawing:
+    <<: *graph_drawing
+    node_labels:
+      enabled: True
+    edge_labels:
+      enabled: True
+  graph_animation:
+    times:
+      sel: [0, 1]
+    update_colormapping: False
+
+
+graph_anim4:
+  <<: *graph_anim
+
+  animation:
+    enabled: True
+    writer: frames
+  graph_animation:
+    sel:
+      time:
+        from_property: weight
+    update_positions: True
+
+
+graph_anim_external:
+  <<: [*ext_prop, *graph_anim]
+  graph_animation:
+    times:
+      from_property: some_transformed_node_prop
+
+
+graph_anim_custom_graph_creation:
+  <<: *graph_anim
+
+  transform:
+    - nx.: complete_graph
+      kwargs:
+        n: 5
+      tag: graph
+    - import: [numpy, nan]
+      tag: nan
+    - operation: build_object_array
+      kwargs:
+        objs:
+          [1, 16]: !dag_tag graph
+          [2, 16]: !dag_tag nan
+          [3, 16]: !dag_tag graph
+          [4, 16]: !dag_tag nan
+        dims: [foo, bar]
+      tag: graphs
+
+  graph: !dag_result graphs
+
+  graph_drawing:
+    positions:
+      model: random
+  graph_animation:
+    sel:
+      foo: [2, 3, 4]
+    isel:
+      bar: -1
+    skip_empty_frames: True
+  suptitle_kwargs:
+    title: ""
+
+
+.err_anim_amgiguous_time_spec:
+  <<: *graph_anim
+  graph_animation:
+    times:
+      sel: [0]
+      isel: [0]
+
+.err_anim_not_dataarray:
+  <<: *base
+  transform:
+    - nx.: complete_graph
+      kwargs:
+        n: 10
+      tag: graph
+
+  graph: !dag_result graph
+  graph_drawing:
+    positions:
+      model: random
+  animation:
+    enabled: True
+    writer: frames
+
+
+
+
+# -- Documentation example ----------------------------------------------------
+### Start -- graph_plot_cfg
+example_graph_plot:
+  based_on:
+    - .creator.pyplot
+    - .plot.graph
+
+  select:
+    graph_group: dynamic
+
+  # The `graph_creation` configuration is passed to  `GraphGroup.create_graph`
+  graph_creation:
+    at_time_idx: -1
+    node_props:
+      - some_node_prop
+    edge_props:
+      - weight
+
+  # `graph_drawing` contains all the layout configurations
+  graph_drawing:
+    positions:
+      model: spring     # Specify the node positioning model to be used. The
+                        # spring model reduces overall edge lengths.
+      k: 1              # The spring model can mainly be tweaked by changing
+      iterations: 100   # the optimal edge length `k'` and the maximum number
+                        # of iterations that are done.
+
+    # The four entries below configure the layout of nodes, edges, node-labels,
+    # and edge-labels. After property mapping is applied, they are passed to
+    # the respective networkx plot functions.
+    # Have a look at the networkx documentation for a list of additional
+    # arguments:
+    # https://networkx.github.io/documentation/stable/reference/drawing.html
+    nodes:
+      node_size:
+        from_property: some_node_prop # Map the 'some_node_prop' property to
+                                      # the node size.
+        scale_to_interval: [30, 250]  # Linearly rescale the node sizes (the
+                                      # default node size is 300).
+    edges:
+      edge_color:
+        from_property: weight         # The 'weight' values are mapped to the
+                                      # edge color.
+      edge_cmap: magma
+    node_labels:
+      enabled: True                   # Labels have to be enabled explicitly.
+      labels:                         # Provide a dict of custom node labels.
+        0: label0
+        1: label1
+        2: label2
+      show_only: [0, 1]
+    edge_labels:
+      enabled: True
+      edge_labels:
+        [0, 1]: label01
+        [3, 4]: label34
+
+    # Highlight some nodes and edges
+    mark_nodes:
+      nodelist: [1, 4, 2]
+      color: red
+    mark_edges:
+      colors:
+        [0, 1]: red
+        [1, 2]: green
+### End ---- graph_plot_cfg
