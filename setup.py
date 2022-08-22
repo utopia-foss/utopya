@@ -5,20 +5,20 @@ from setuptools import find_packages, setup
 # .. Dependency lists .........................................................
 
 INSTALL_DEPS = [
-    "numpy>=1.21",
-    "scipy>=1.7.3",
-    "matplotlib>=3.3",
-    "seaborn>=0.11.2",
-    "ruamel.yaml>=0.16.5",
-    "coloredlogs>=15.0",
-    "colorama>=0.4.4",
-    "click>=8.0",
-    "pydantic>=1.9",
-    "python-git-info>=0.7",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "ruamel.yaml",
+    "coloredlogs",
+    "colorama",
+    "click",
+    "pydantic",
+    "python-git-info",
     #
     # related to utopya:
     "paramspace>=2.5.9",
-    "dantro>=0.18.2",
+    "dantro>=0.18.4",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
@@ -140,16 +140,22 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Intended Audience :: Science/Research",
+        #
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        #
         "Topic :: Utilities",
+        "Topic :: Scientific/Engineering",
     ],
     #
-    # Package content and dependencies
-    packages=find_packages(
-        exclude=("demo", "tests"), include=("utopya", "utopya_*")
-    ),
+    # Package content
+    packages=find_packages(exclude=("demo", "tests")),
     package_data=dict(utopya=["cfg/*.yml"]),
+    data_files=[("", ["COPYING", "COPYING.LESSER", "README.md"])],
+    #
+    # Dependencies
     install_requires=INSTALL_DEPS,
     extras_require=dict(
         test=TEST_DEPS,

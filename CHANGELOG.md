@@ -3,6 +3,11 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
 
+## v1.1.1
+- !36 fixes a critical bug that prevented installing utopya from PyPI.
+- !36 removes minimum versions from requirements, making dependency resolution simpler.
+
+
 ## v1.1.0
 ### Features and enhancements
 - !28 improves error messages upon missing model executable.
