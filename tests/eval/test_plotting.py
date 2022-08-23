@@ -6,6 +6,7 @@ import copy
 import logging
 import os
 import sys
+from typing import Dict
 
 import dantro
 import matplotlib as mpl
@@ -29,6 +30,7 @@ import utopya.eval.plots.graph
 import utopya.eval.plots.snsplot
 import utopya.eval.plots.time_series
 from utopya import MODELS, DataManager, Multiverse, PlotManager
+from utopya.eval import PlotHelper
 from utopya.eval.containers import XarrayDC
 from utopya.eval.groups import GraphGroup, TimeSeriesGroup
 from utopya.eval.plots._graph import GraphPlot
@@ -57,6 +59,10 @@ BIFURCATION_DIAGRAM_2D_RUN = get_cfg_fpath(
 BIFURCATION_DIAGRAM_2D_PLOTS = get_cfg_fpath(
     "plots/bifurcation_diagram_2d/plots.yml"
 )
+
+# Hexagonal grid plots
+# ... using the data created in the hexgrid_data fixture
+HEXGRID_PLOTS_CFG = get_cfg_fpath("plots/hexgrid_plots.yml")
 
 # Graph plots
 # .. model-based
@@ -200,6 +206,220 @@ def graph_dm(tmpdir) -> DataManager:
     print(dm.tree)
 
     return dm
+
+
+@pytest.fixture
+def hexgrid_data() -> Dict[str, xr.DataArray]:
+    """Returns a bunch of generated hexgrid data"""
+    d = dict()
+    default_grid_props = dict(
+        grid_structure="hexagonal",
+        coordinate_mode="offset",
+        pointy_top=True,
+        offset_mode="even",
+    )
+    dims_xyt = ("x", "y", "time")
+    nt = 3
+    coords_t = dict(time=range(nt))
+
+    def grid_props(as_ndarray: bool = False, **kwargs) -> dict:
+        gp = copy.deepcopy(default_grid_props)
+        gp.update(**kwargs)
+        if as_ndarray:
+            # ... which is sometimes the output of loaded HDF5 data
+            gp = {k: np.array([v], dtype=object) for k, v in gp.items()}
+        return gp
+
+    def gen_array(size: tuple, *, mark_boundary: bool = True):
+        a = np.random.uniform(size=size)
+        a[0, :, ...] += -2
+        a[-1, :, ...] += -2
+        a[:, 0, ...] += -2
+        a[:, -1, ...] += -2
+
+        # draw a "vertical" line in the third column, if it exists
+        if size[0] > 2:
+            a[2, slice(1, -1), ...] += 2
+
+        return a
+
+    # .........................................................................
+
+    d["single"] = xr.DataArray(
+        gen_array((1, 1, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["one_by_two"] = xr.DataArray(
+        gen_array((1, 2, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["two_by_one"] = xr.DataArray(
+        gen_array((2, 1, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["two_by_two"] = xr.DataArray(
+        gen_array((2, 2, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["tiny"] = xr.DataArray(
+        gen_array((7, 11, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["tiny_even"] = xr.DataArray(
+        gen_array((6, 10, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["small"] = xr.DataArray(
+        gen_array((21, 24, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["rectangle"] = xr.DataArray(
+        gen_array((21, 12, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["rectangle_yx"] = xr.DataArray(
+        gen_array((21, 12, nt)),
+        dims=("y", "x", "time"),
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    d["large"] = xr.DataArray(
+        gen_array((71, 92, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(),
+    )
+
+    # .. with space ...........................................................
+
+    d["single_with_space"] = xr.DataArray(
+        gen_array((1, 1, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(1.0, 2 / np.sqrt(3))),  # 1:1.1547005
+    )
+
+    d["two_by_one_with_space"] = xr.DataArray(
+        gen_array((2, 1, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(2.0, 1.0)),
+    )
+
+    d["one_by_two_with_space"] = xr.DataArray(
+        gen_array((1, 2, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(1.0, 2.0)),
+    )
+
+    d["two_by_two_with_space"] = xr.DataArray(
+        gen_array((2, 2, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(1.0, 1.0)),
+    )
+
+    d["tiny_with_space"] = xr.DataArray(
+        gen_array((7, 11, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(1.0, 1.0)),
+    )
+
+    d["tiny_with_space_and_offset"] = xr.DataArray(
+        gen_array((7, 11, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(1.0, 1.0), space_offset=(100.0, 100.0)),
+    )
+
+    d["tiny_T_with_space"] = xr.DataArray(
+        gen_array((11, 7, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(1.0, 1.0)),
+    )
+
+    d["small_with_space"] = xr.DataArray(
+        gen_array((21, 24, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(1.0, 1.0)),
+    )
+
+    d["rectangle_with_space"] = xr.DataArray(
+        gen_array((21, 12, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(2.0, 1.0)),
+    )
+
+    d["distorted_with_space"] = xr.DataArray(
+        gen_array((10, 41, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(space_size=(2.0, 1.0)),
+    )
+
+    # .. with different offset mode ...........................................
+
+    d["tiny_offset_odd"] = xr.DataArray(
+        gen_array((7, 11, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(offset_mode="odd"),
+    )
+
+    d["tiny_even_offset_odd"] = xr.DataArray(
+        gen_array((6, 10, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(offset_mode="odd"),
+    )
+
+    d["tiny_even_offset_odd_with_space"] = xr.DataArray(
+        gen_array((6, 10, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(offset_mode="odd", space_size=(1.0, 1.0)),
+    )
+
+    # .. ignored by default ...................................................
+
+    d["_ndarray_attrs"] = xr.DataArray(
+        gen_array((21, 24, nt)),
+        dims=dims_xyt,
+        coords=coords_t,
+        attrs=grid_props(as_ndarray=True),
+    )
+
+    return d
 
 
 # -----------------------------------------------------------------------------
@@ -428,33 +648,203 @@ def test_caplot():
     mv.pm.plot_from_cfg(plot_only=["ca/snapshot"])
 
 
-@pytest.mark.skip("No hexagonal grid model available")
-def test_caplot_hexagonal():
-    """Tests the utopya.eval.plots.ca module with hexagonal lattice"""
-    update_meta_cfg = {
-        "parameter_space": {
-            "CopyMeGrid": {
-                "cell_manager": {
-                    "grid": {"structure": "hexagonal"},
-                    "neighborhood": {"mode": "hexagonal"},
-                }
-            }
-        }
-    }
-    mv, _ = ModelTest("CopyMeGrid").create_run_load(**update_meta_cfg)
+def test_imshow_hexagonal(hexgrid_data, out_dir):
+    """Separately tests the imshow_hexagonal function"""
+    from utopya.eval.plots.ca import imshow_hexagonal as imshow_hex
 
-    # Run the CA plots (initial frame + animation)
-    mv.pm.plot_from_cfg(plot_only=["initial_state_and_trait"])
-    mv.pm.plot_from_cfg(plot_only=["state_and_trait_anim"])
+    def new_helper(name: str, *, ext: str = "pdf", **kws):
+        out_path = os.path.join(out_dir, f"{name}.{ext}")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        ph = PlotHelper(out_path=out_path, **kws)
+        ph.setup_figure()
+        return ph
 
-    # Same again with SimpleEG . . . . . . . . . . . . . . . . . . . . . . . .
-    mv, _ = ModelTest("SimpleEG").create_run_load(**update_meta_cfg)
+    # .........................................................................
 
-    # Plot the default configuration, which already includes some CA plotting
-    mv.pm.plot_from_cfg()
+    # ONLY = ("single_with_space",)
+    ONLY = None
 
-    # To explicitly plot with the frames writer, select the disabled config
-    mv.pm.plot_from_cfg(plot_only=["strategy_and_payoff_frames"])
+    for name, data in hexgrid_data.items():
+        if ONLY and name not in ONLY:
+            continue
+        elif name.startswith("_"):
+            if not ONLY or (ONLY and name not in ONLY):
+                continue
+
+        print(f"\n\n\n{'-'*25}  Dataset:  {name}  {'-'*25}")
+
+        if min(data.sizes.values()) < 2:
+            ctx = pytest.warns(UserWarning, match="fewer than two")
+        else:
+            ctx = contextlib.nullcontext()
+
+        hlpr = new_helper(f"nparray_data/{name}")
+        with ctx:
+            im = imshow_hex(
+                data.sel(time=0, drop=True).data,
+                ax=hlpr.ax,
+                update_grid_properties=data.attrs,
+            )
+        hlpr.save_figure()
+
+        hlpr = new_helper(f"snapshots/inner/pointy_top/{name}")
+        with ctx:
+            im = imshow_hex(
+                data.sel(time=0, drop=True),
+                ax=hlpr.ax,
+                x="x",
+                y="y",
+                update_grid_properties=dict(space_boundary="inner"),
+            )
+        hlpr.save_figure()
+
+        hlpr = new_helper(f"snapshots/outer/pointy_top/{name}")
+        with ctx:
+            im = imshow_hex(
+                data.sel(time=0, drop=True),
+                ax=hlpr.ax,
+                x="x",
+                y="y",
+                update_grid_properties=dict(space_boundary="outer"),
+            )
+        hlpr.save_figure()
+
+        hlpr = new_helper(f"snapshots/inner/flat_top/{name}")
+        with ctx:
+            im = imshow_hex(
+                data.sel(time=0, drop=True),
+                ax=hlpr.ax,
+                x="x",
+                y="y",
+                update_grid_properties=dict(
+                    space_boundary="inner", pointy_top=False
+                ),
+            )
+        hlpr.save_figure()
+
+        hlpr = new_helper(f"snapshots/outer/flat_top/{name}")
+        with ctx:
+            im = imshow_hex(
+                data.sel(time=0, drop=True),
+                ax=hlpr.ax,
+                x="x",
+                y="y",
+                update_grid_properties=dict(
+                    space_boundary="outer", pointy_top=False
+                ),
+            )
+        hlpr.save_figure()
+
+    # .. Individual features ..................................................
+    hlpr = new_helper(f"custom_extent/outer")
+    imshow_hex(
+        hexgrid_data["small_with_space"].isel(time=0, drop=True),
+        ax=hlpr.ax,
+        extent=(-10, 10, -20, 20),
+    )
+    hlpr.save_figure()
+
+    hlpr = new_helper(f"custom_extent/inner")
+    imshow_hex(
+        hexgrid_data["small_with_space"].isel(time=0, drop=True),
+        ax=hlpr.ax,
+        extent=(-10, 10, -20, 20),
+        update_grid_properties=dict(space_boundary="inner"),
+    )
+    hlpr.save_figure()
+
+    hlpr = new_helper(f"ticks_hidden")  # not the default with space given
+    imshow_hex(
+        hexgrid_data["small_with_space"].isel(time=0, drop=True),
+        ax=hlpr.ax,
+        hide_ticks=True,
+    )
+    hlpr.save_figure()
+
+    hlpr = new_helper(f"ticks_shown")  # would be hidden by default w/o space
+    imshow_hex(
+        hexgrid_data["small"].isel(time=0, drop=True),
+        ax=hlpr.ax,
+        hide_ticks=False,
+    )
+    hlpr.save_figure()
+
+    hlpr = new_helper(f"custom_gp_keys")
+    imshow_hex(
+        hexgrid_data["small"].isel(time=0, drop=True),
+        ax=hlpr.ax,
+        grid_properties_keys=dict(space_size="SPACE_SIZE"),
+        update_grid_properties=dict(SPACE_SIZE=(42, 42)),
+    )
+    hlpr.save_figure()
+
+    # .. Error messages .......................................................
+    hlpr = new_helper(f"failing")
+    data_3d = hexgrid_data["small"]
+    data_2d = hexgrid_data["small"].isel(time=0, drop=True)
+
+    # Bad data dimensionality
+    with pytest.raises(ValueError, match="Need 2-dimensional data"):
+        imshow_hex(data_3d, ax=hlpr.ax)
+
+    # Bad x and y arguments
+    with pytest.raises(ValueError, match="Need either both `x` and `y`"):
+        imshow_hex(data_2d, ax=hlpr.ax, x="something", y=None)
+
+    with pytest.raises(ValueError, match="need to be different"):
+        imshow_hex(data_2d, ax=hlpr.ax, x="same", y="same")
+
+    # Bad grid properties
+    with pytest.raises(ValueError, match="Invalid coordinate mode 'foo'"):
+        imshow_hex(
+            data_2d,
+            ax=hlpr.ax,
+            update_grid_properties=dict(coordinate_mode="foo"),
+        )
+
+    with pytest.raises(ValueError, match="Invalid offset mode 'bar'"):
+        imshow_hex(
+            data_2d, ax=hlpr.ax, update_grid_properties=dict(offset_mode="bar")
+        )
+
+    with pytest.raises(ValueError, match="Invalid space boundary 'spam'"):
+        imshow_hex(
+            data_2d,
+            ax=hlpr.ax,
+            update_grid_properties=dict(space_boundary="spam"),
+        )
+
+    with pytest.raises(ValueError, match="Could not determine grid propert"):
+        imshow_hex(data_2d.data, ax=hlpr.ax)
+
+
+def test_caplot_hexagonal(hexgrid_data, out_dir):
+    """Emulate a model holding the hexgrid data and then let it create some
+    plots with the hexagonal grid."""
+    # Add the data to the data tree
+    mv, _ = ModelTest(ADVANCED_MODEL).create_run_load()
+
+    for _, uni in mv.dm["multiverse"].items():
+        hexdata = uni[("data", ADVANCED_MODEL)].new_group("hexgrid")
+        for name, data in hexgrid_data.items():
+            hexdata.new_container(name, data=data, Cls=XarrayDC)
+
+    # Configure PlotManager
+    mv.pm.raise_exc = True
+    mv.pm._out_dir = out_dir
+
+    # Plot
+    for name, plot_cfg in load_yml(HEXGRID_PLOTS_CFG).items():
+        _raises = plot_cfg.pop("_raises", None)
+        _match = plot_cfg.pop("_match", None)
+
+        if _raises is not None:
+            ctx = pytest.raises(globals()[_raises], match=_match)
+        else:
+            ctx = contextlib.nullcontext()
+
+        with ctx:
+            mv.pm.plot(name, **plot_cfg)
 
 
 # -----------------------------------------------------------------------------

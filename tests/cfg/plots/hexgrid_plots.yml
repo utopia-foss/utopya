@@ -1,0 +1,251 @@
+# Test configuration for hexgrid CA plots using hexgrid_data fixture
+#
+# NOTE Can use `based_on`, but not *within* this file.
+#      Can use `_raises` and `_match` for testing failures and error messages
+---
+simple_hex: &base
+  based_on:
+    - .creator.universe
+    - .plot.ca
+
+  dag_options:
+    select_path_prefix: data/ExtendedModel/hexgrid
+
+  select:
+    small: small
+
+  to_plot:
+    small:
+      cmap: inferno
+
+
+simple_square:  # .. for comparison: square grid
+  <<: *base
+  select:
+    small:
+      path: small
+      transform:
+        - increment  # -> will lead to dropping of attributes => square grid
+
+
+multiple: &multiple
+  <<: *base
+
+  select:
+    one: small
+    two: small
+    three:
+      path: small
+      transform:
+        - neg
+    four: small_with_space
+    five: small_with_space
+    six:
+      path: small
+      transform:
+        - .astype: [!dag_prev , int]
+    seven: small
+    eight: small
+
+
+  to_plot:
+    one: {}
+    two:
+      cmap: PiYG
+      limits: [-4, +4]
+    three:
+      cmap: inferno
+      title: THREE (with centers)
+      limits: [min, max]
+      label: values
+      imshow_kwargs:
+        draw_centers: true  # does this work?
+        draw_center_radius: 0.234
+        draw_center_kwargs:
+          linewidths: 0.1
+          color: black
+    four:
+      title: with space
+      cmap: cividis
+      set_axis_off: false
+      imshow_kwargs: {}
+    five:
+      title: with space & inner boundary
+      cmap: cividis_r
+      set_axis_off: false
+      no_cbar_markings: true
+      imshow_kwargs:
+        update_grid_properties:
+          space_boundary: inner
+    six:
+      title: integers
+      limits: [0, +3]  # FIXME breaks for non-zero lower limit
+      cmap:
+        foo: tab:green
+        bar: tab:blue
+        baz: tab:red
+        spam: tab:orange
+    seven:
+      title: inner boundary, no space, no cbar
+      draw_cbar: false
+      imshow_kwargs:
+        update_grid_properties:
+          space_boundary: inner
+    eight:
+      title: horizontal cbar
+      draw_cbar: true
+      pad: 0
+      fraction: 0.03
+      aspect: 5
+      orientation: horizontal
+      label: custom label
+
+
+multiple_snapshot:
+  <<: *multiple
+  based_on:
+    - .creator.universe
+    - .plot.ca
+    - .plot.ca.snapshot
+
+
+# -- Special features ---------------------------------------------------------
+
+grid_props/explicit_square:
+  <<: *base
+  grid_structure: square
+
+
+grid_props/explicit_hex:
+  <<: *base
+  grid_structure: hexagonal
+
+
+grid_props/array_like_attrs:
+  <<: *base
+  select:
+    small: _ndarray_attrs
+
+
+no_suptitle_fstr:
+  <<: *base
+  suptitle_fstr: ~
+
+
+from_dset:
+  <<: *base
+
+  select:
+    _data:
+      path: small
+      transform: [.data]
+
+  transform:
+    - xr.Dataset:
+        - one: !dag_tag _data
+          two: !dag_tag _data
+      tag: data
+
+  from_dataset: !dag_result data
+
+  to_plot:
+    one: {}
+    two: {}
+
+
+rescued_attrs:
+  <<: *base
+  select:
+    da_with_attrs: small
+    _small:
+      path: small
+      transform:
+        - increment  # -> will lead to dropping of attributes
+  transform:
+    - update_with_attrs_from: [!dag_tag _small, !dag_tag da_with_attrs]
+      tag: small
+
+
+
+# -- Errors -------------------------------------------------------------------
+
+err_bad_dimensionality:
+  <<: *base
+
+  select:
+    foo: small
+  transform:
+    - .expand_dims: [!dag_tag foo, [one_more]]
+      tag: data
+
+  to_plot:
+    data: {}
+
+  _raises: PlotCreatorError
+  _match: shape needs to be 3-dimensional
+
+
+err_bad_frames_dim:
+  <<: *base
+  frames: i do not exist
+
+  _raises: PlotCreatorError
+  _match: Invalid `frames` coordinate dimension
+
+
+err_bad_frames_dim2:
+  <<: *base
+  frames: ~
+
+  _raises: PlotCreatorError
+  _match: Invalid `frames` coordinate dimension
+
+
+err_grid_structure_mismatch:
+  <<: *base
+
+  select:
+    one: small
+    two:
+      path: small
+      transform:
+        - increment  # removes attributes
+
+  to_plot:
+    one: {}
+    two: {}
+
+  _raises: PlotCreatorError
+  _match: Mismatch in grid structure
+
+
+err_cmap_dict_but_no_limits:
+  <<: *base
+
+  to_plot:
+    small:
+      cmap:
+        foo: bar
+
+  _raises: PlotCreatorError
+  _match: need to also provide the `limits` argument
+
+
+err_cmap_type_error:
+  <<: *base
+
+  to_plot:
+    small:
+      cmap: []
+
+  _raises: PlotCreatorError
+  _match: TypeError.*needs to be either a string with name of the
+
+
+err_unsupported_grid_structure:
+  <<: *base
+
+  grid_structure: foobar
+
+  _raises: PlotCreatorError
+  _match: Unsupported grid structure
