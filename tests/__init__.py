@@ -2,6 +2,7 @@
 
 import logging
 import os
+import shutil
 import uuid
 
 from pkg_resources import resource_filename
@@ -23,6 +24,11 @@ logging.getLogger("utopya.reporter").setLevel(logging.INFO)
 
 get_cfg_fpath = lambda filename: resource_filename("tests", f"cfg/{filename}")
 """Simplifies importing config files used in tests"""
+
+
+def have_tool(prog) -> bool:
+    """Checks whether ``prog`` is in the PATH and executable"""
+    return shutil.which(prog) is not None
 
 
 def _str2bool(val: str) -> bool:
@@ -90,3 +96,7 @@ if os.environ.get("UTOPYA_TEST_OUTPUT_DIR"):
         "Using test output directory set from environment variable:\n"
         f"  {TEST_OUTPUT_DIR}\n"
     )
+
+# .. Whether certain tools are available ......................................
+
+HAVE_FFMPEG = have_tool("ffmpeg")

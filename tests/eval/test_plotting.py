@@ -220,6 +220,7 @@ def hexgrid_data() -> Dict[str, xr.DataArray]:
     )
     dims_xyt = ("x", "y", "time")
     nt = 3
+    nt_long = 101
     coords_t = dict(time=range(nt))
 
     def grid_props(as_ndarray: bool = False, **kwargs) -> dict:
@@ -411,6 +412,13 @@ def hexgrid_data() -> Dict[str, xr.DataArray]:
     )
 
     # .. ignored by default ...................................................
+
+    d["_small_long_ts"] = xr.DataArray(
+        gen_array((21, 24, nt_long)),
+        dims=dims_xyt,
+        coords=dict(time=range(nt_long)),
+        attrs=grid_props(),
+    )
 
     d["_ndarray_attrs"] = xr.DataArray(
         gen_array((21, 24, nt)),
@@ -821,7 +829,7 @@ def test_imshow_hexagonal(hexgrid_data, out_dir):
 def test_caplot_hexagonal(hexgrid_data, out_dir):
     """Emulate a model holding the hexgrid data and then let it create some
     plots with the hexagonal grid."""
-    # Add the data to the data tree
+    # Add the hexgrid data to the data tree
     mv, _ = ModelTest(ADVANCED_MODEL).create_run_load()
 
     for _, uni in mv.dm["multiverse"].items():
@@ -833,8 +841,17 @@ def test_caplot_hexagonal(hexgrid_data, out_dir):
     mv.pm.raise_exc = True
     mv.pm._out_dir = out_dir
 
+    TO_SKIP = (
+        # because missing ffmpeg in CI jobs
+        "doc_anim_hex",
+        "doc_anim_square",
+    )
+
     # Plot
     for name, plot_cfg in load_yml(HEXGRID_PLOTS_CFG).items():
+        if name in TO_SKIP:
+            continue
+
         _raises = plot_cfg.pop("_raises", None)
         _match = plot_cfg.pop("_match", None)
 

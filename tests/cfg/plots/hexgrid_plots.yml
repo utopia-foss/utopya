@@ -249,3 +249,145 @@ err_unsupported_grid_structure:
 
   _raises: PlotCreatorError
   _match: Unsupported grid structure
+
+
+# -- Documentation examples ---------------------------------------------------
+# NOTE Need to be prefixed with `doc_`, but that prefix will be dropped for the
+#      name of the plot output.
+#      Used in eval/test_plotting.py as well as in _gen_figures/test_plots.py
+
+doc_snapshot_square: &doc_snapshot_square
+  <<: *base
+  based_on:
+    - .creator.universe
+    - .plot.ca
+    - .plot.ca.snapshot
+
+  select:
+    _data:
+      path: small
+      transform:
+        - .isel:
+          - !dag_prev
+          - y: !listgen {from_range: [0, 24], remove: [2,3,4]}
+
+  transform:
+    - np.: [random.random]
+      kwargs:
+        size: [21, 21, 3]
+      tag: rand
+
+    - add: [!dag_tag _data, !dag_tag rand]
+    - add: [!dag_prev , 2]
+      tag: one
+
+    - mul: [!dag_tag _data, !dag_tag rand]
+      tag: two
+
+  frames_isel: 0
+  suptitle_fstr: ~
+
+  to_plot: &doc_snapshot_to_plot
+    one:
+      title: some CA state
+      limits: [0, 6]
+    two:
+      title: another CA state
+      cmap: PuOr_r
+      limits: [-4, +4]
+
+
+doc_snapshot_hex: &doc_snapshot_hex
+  <<: *doc_snapshot_square
+
+  select:
+    _data: small
+
+  transform:
+    - np.: [random.random]
+      kwargs:
+        size: [21, 24, 3]
+      tag: rand
+
+    - add: [!dag_tag _data, !dag_tag rand]
+    - add: [!dag_prev , 2]
+    - update_with_attrs_from: [!dag_prev , !dag_tag _data]
+      tag: one
+
+    - mul: [!dag_tag _data, !dag_tag rand]
+    - update_with_attrs_from: [!dag_prev , !dag_tag _data]
+      tag: two
+
+
+doc_anim_hex: &doc_anim_hex
+  based_on:
+    - .creator.universe
+    - .plot.ca
+    - .animation.ffmpeg
+
+  animation:
+    writer_kwargs:
+      ffmpeg:
+        init:
+          fps: 10
+          # Need to address "not divisible by 2", many ways to do that:
+          # extra_args: [-vf,  "pad=ceil(iw/2)*2:ceil(ih/2)*2"]
+          # extra_args: [-vf, "crop=trunc(iw/2)*2:trunc(ih/2)*2"]
+          extra_args: [-vf, "scale=-2:720"]
+
+  style: ~  # FIXME Need this to avoid ffmpeg artefacts
+
+  dag_options:
+    select_path_prefix: data/ExtendedModel/hexgrid
+    define: &anim_hex_define
+      _y_size: 24
+      rand:
+        - np.: [random.random]
+          kwargs:
+            size: [21, !dag_tag _y_size, 101]
+
+      spikes:
+        - np.: [random.random]
+          kwargs:
+            size: [21, !dag_tag _y_size, 101]
+        - ">=": [!dag_prev , 0.98]
+        - mul: [!dag_prev , 10]
+
+
+  select:
+    _data: _small_long_ts
+
+  transform:
+
+    # Assemble it all
+    - add: [!dag_tag _data, !dag_tag rand]
+    - add: [!dag_prev , 2]
+    - add: [!dag_prev , !dag_tag spikes]
+    - update_with_attrs_from: [!dag_prev , !dag_tag _data]
+      tag: one
+
+    - mul: [!dag_tag _data, !dag_tag rand]
+    - add: [!dag_prev , !dag_tag spikes]
+    - update_with_attrs_from: [!dag_prev , !dag_tag _data]
+      tag: two
+
+  to_plot:
+    <<: *doc_snapshot_to_plot
+
+doc_anim_square:
+  <<: *doc_anim_hex
+  dag_options:
+    select_path_prefix: data/ExtendedModel/hexgrid
+    define:
+      <<: *anim_hex_define
+      _y_size: 21
+
+  grid_structure: square
+
+  select:
+    _data:
+      path: _small_long_ts
+      transform:
+        - .isel:
+          - !dag_prev
+          - y: !listgen {from_range: [0, 24], remove: [2,3,4]}

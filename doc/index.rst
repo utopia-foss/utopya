@@ -60,18 +60,20 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     Utopia Project <https://utopia-project.org/>
 
     install
+    To Do List <_to_do>
 
 .. TODO add about
 .. TODO add how-to-cite
 
+
 .. toctree::
     :hidden:
+    :caption: Using utopya
 
-    To Do List <_to_do>
+    eval/index
 
 .. TODO add getting started
 .. TODO add running models
-.. TODO add evaluation
 .. TODO add project & model registry
 .. TODO add "use utopya for your existing models"
 

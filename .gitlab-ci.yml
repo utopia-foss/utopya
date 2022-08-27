@@ -78,9 +78,15 @@ build:docs:
   needs: []
   variables:
     UTOPYA_DOC_GENERATE_FIGURES: "yes"
-    SPHINX_TLS_VERIFY: "no"  # ... because intersphinx is less robust with TLS
+    #
+    # Turn TLS verification off, because intersphinx is less robust with TLS
+    SPHINX_TLS_VERIFY: "no"
+
   before_script:
     - pip3 install .[doc]
+    #
+    # Install additional dependencies for generating figures
+    - apt-get update && apt-get install -y ffmpeg
   script:
     - cd doc
     - make build_and_check

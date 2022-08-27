@@ -95,7 +95,7 @@ def imshow_hexagonal(
     extent: tuple = None,
     scale: float = 1.01,
     draw_centers: bool = False,
-    draw_center_radius: float = 0.08,
+    draw_center_radius: float = 0.1,
     draw_center_kwargs: dict = {},
     hide_ticks: bool = None,
     cmap: str = None,
@@ -142,8 +142,10 @@ def imshow_hexagonal(
             If *not* given, will assume regular hexagons and use arbitrary
             units to cover the space; these hexagons will *not* be distorted.
         space_offset (Tuple[float, float], optional):
-            Offsets the space by ``(offset_x, offset_y)``.
+            Translates the space by ``(offset_x, offset_y)``.
             Also applies to the case where ``space_size`` was not given.
+            Effectively, this refers to the coordinates of the bottom left-hand
+            corner of the space.
         space_boundary (str, optional):
             Whether the space (regardless of explicitly given or deduced)
             describes the ``outer`` or ``inner`` boundary of the hexagonal
@@ -164,9 +166,47 @@ def imshow_hexagonal(
           offset_mode: even
 
           # -- Optional:
-          space_size: [10, 10]
-          space_offset: [-5, -5]
+          space_size: [8, 8]
+          space_offset: [-4, -4]
           space_boundary: outer
+
+    With some 2D dummy grid data of shape ``(21, 24)``, the corresponding
+    output would be as follows.
+    The darker cells denote the boundary and the corners; the lighter cells
+    correspond to a "vertical" line in the third column of the grid.
+
+    .. image:: ../_static/_gen/imshow_hex/small_with_space_outer.pdf
+        :target: ../_static/_gen/imshow_hex/small_with_space_outer.pdf
+        :width: 100%
+
+    By setting the space boundary parameter to ``inner``, the domain size
+    remains the same, but the boundary cells are partially cut off:
+
+    .. image:: ../_static/_gen/imshow_hex/small_with_space_inner.pdf
+        :target: ../_static/_gen/imshow_hex/small_with_space_inner.pdf
+        :width: 100%
+
+    Removing all optional parameters, specifically the ``space_size``, the
+    size of the domain is arbitrary, so no labels are drawn.
+    In addition, we can also mark the hexagon centers:
+
+    .. image:: ../_static/_gen/imshow_hex/small_centers_marked.pdf
+        :target: ../_static/_gen/imshow_hex/small_centers_marked.pdf
+        :width: 100%
+
+    Changing to flat tops and ``odd`` offset mode results in a figure with a
+    different aspect ratio, while the hexagons remain regular.
+
+    .. image:: ../_static/_gen/imshow_hex/small_flat_top_odd.pdf
+        :target: ../_static/_gen/imshow_hex/small_flat_top_odd.pdf
+        :width: 100%
+
+    When specifying the domain size again, the hexagons need to be scaled
+    non-uniformly to cover the domain:
+
+    .. image:: ../_static/_gen/imshow_hex/small_flat_top_odd_with_space.pdf
+        :target: ../_static/_gen/imshow_hex/small_flat_top_odd_with_space.pdf
+        :width: 100%
 
     .. hint::
 
@@ -812,7 +852,7 @@ def caplot(
     size: float = None,
     col_wrap: Union[int, str, bool] = "auto",
     default_imshow_kwargs: dict = None,
-    default_cbar_kwargs: dict = None,
+    default_cbar_kwargs: dict = dict(fraction=0.04, aspect=20),
     suptitle_fstr: str = "{} = {}",
     suptitle_kwargs: dict = None,
 ):
@@ -826,14 +866,43 @@ def caplot(
     The values in ``to_plot`` specify the individual subplots' properties like
     the color map that is to be used or the minimum or maximum values.
 
-    For plotting square grids, :py:meth:`matplotlib.axes.Axes.imshow` is used,
-    :py:func:`imshow_hexagonal` is used for hexagonal grids.
+    For plotting square grids, :py:meth:`matplotlib.axes.Axes.imshow` is used
+    and generates output like this:
 
-    .. note::
+    .. image:: ../_static/_gen/caplot/snapshot_square.pdf
+        :target: ../_static/_gen/caplot/snapshot_square.pdf
+        :width: 100%
 
-        Overall, there should be two spatial dataset dimensions and one that
-        goes along the ``frames`` dimension. All coordinate labels should be
-        identical, otherwise the behavior is not defined.
+    For a grid with hexagonal cells, :py:func:`imshow_hexagonal` is used; more
+    details on how the cells are mapped to the space can be found there.
+    The output (for the same dummy data as used above) may look like this:
+
+    .. image:: ../_static/_gen/caplot/snapshot_hex.pdf
+        :target: ../_static/_gen/caplot/snapshot_hex.pdf
+        :width: 100%
+
+    Finally, this plot function is specialized to generate animations along the
+    ``frames`` dimension of the data, e.g. ``time``:
+
+    .. raw:: html
+
+        <video width="720" src="../_static/_gen/caplot/anim_square.mp4" controls></video>
+
+    .. raw:: html
+
+        <video width="720" src="../_static/_gen/caplot/anim_hex.mp4" controls></video>
+
+    .. admonition:: Requirements on the CA data
+
+        The selected data (keys in ``to_plot`` that correspond to DAG results
+        in ``data``) should have two *spatial* dimensions and one data
+        dimension that goes along the ``frames`` dimension.
+
+        All coordinates should be identical, otherwise the behavior is not
+        defined or alignment might fail.
+
+        **For hexagonal grid structure**, note the requirements given in
+        :py:func:`imshow_hexagonal`.
 
     Args:
         hlpr (PlotHelper): The plot helper instance
