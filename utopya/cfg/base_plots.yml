@@ -135,6 +135,17 @@ _:
 
 
 
+# -- FacetGrid extensions -----------------------------------------------------
+
+.plot.facet_grid.imshow_hexagonal:
+  based_on: .plot.facet_grid
+  kind: imshow_hexagonal
+
+  style:
+    axes.grid: false
+
+
+
 # -- Seaborn plots ------------------------------------------------------------
 .plot.snsplot:
   module: !add [*utopya_plots, .snsplot]

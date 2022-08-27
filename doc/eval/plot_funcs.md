@@ -93,6 +93,20 @@ The output (for the same dummy data as used above) may look like this:
 <video width="720" src="../_static/_gen/caplot/anim_hex.mp4" controls></video>
 ```
 
+
+---
+
+## `.plot.facet_grid` extensions
+
+### `.plot.facet_grid.imshow_hexagonal`
+Brings faceting support to {py:func}`~utopya.eval.plots.ca.imshow_hexagonal`:
+
+```{image} ../_static/_gen/plots/imshow_hexagonal_fg.pdf
+:target: ../_static/_gen/plots/imshow_hexagonal_fg.pdf
+:width: 100%
+````
+
+
 ---
 
 ## `.plot.graph`: Plot graphs

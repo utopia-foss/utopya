@@ -1,6 +1,9 @@
 """Test module for example plot generation"""
 
+import contextlib
 import os
+
+import pytest
 
 from utopya.eval import PlotHelper, PlotManager
 from utopya.testtools import ModelTest
@@ -25,30 +28,35 @@ def register_demo_project(tmp_projects, with_test_models):
 # -----------------------------------------------------------------------------
 
 
-def test_plots(dm, tmpdir_or_local_dir):
+def test_plots(dm, out_dir):
     """Creates output from the (DAG-based) plotting tests and examples"""
 
-    pm = PlotManager(
-        dm=dm,
-        out_dir=tmpdir_or_local_dir,
-        raise_exc=True,
-        shared_creator_init_kwargs=dict(exist_ok=True),
-        cfg_exists_action="overwrite",
-    )
-    plots_cfg = load_yml(PLOTS_CFG)
+    model = ModelTest(ADVANCED_MODEL)
+    mv, dm = model.create_run_load(parameter_space=dict(num_steps=42))
+    mv.pm.raise_exc = True
+    print(dm.tree)
 
-    # Here we go ...
-    for name, cfg in plots_cfg.items():
-        print(f"\n\n... Plot: '{name}' ...")
-        raises = cfg.pop("_raises", False)
+    # Load some configuration arguments
+    shared_kwargs = dict(out_dir=str(out_dir))
+    plot_cfgs = load_yml(PLOTS_CFG)
 
-        try:
-            pm.plot(name=name, **cfg)
+    # Can do a simple DAG-based universe and multiverse plot
+    for cfg_name, plot_cfg in plot_cfgs.items():
+        if cfg_name.startswith("."):
+            continue
 
-        except Exception as exc:
-            if not raises:
-                raise
-            print(f"Raised an exception, as expected.")
+        _raises = plot_cfg.pop("_raises", None)
+        _match = plot_cfg.pop("_match", None)
+
+        if _raises is not None:
+            ctx = pytest.raises(globals()[_raises], match=_match)
+        else:
+            ctx = contextlib.nullcontext()
+
+        # The actual plotting
+        print(f"\n\n--- Test case '{cfg_name}' ---")
+        with ctx:
+            mv.pm.plot(cfg_name, **shared_kwargs, **plot_cfg)
 
 
 def test_imshow_hex(hexgrid_data, out_dir):

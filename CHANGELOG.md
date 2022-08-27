@@ -5,6 +5,7 @@
 
 ## v1.1.2 *(work in progress)*
 - !37 fixes `caplot` for hexagonal grid structures, now supporting different hexagon orientations, offset modes and boundary options.
+- !37 adds `imshow_hexagonal` as facet grid kind.
 
 
 ## v1.1.1

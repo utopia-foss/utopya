@@ -14,8 +14,8 @@ import matplotlib.transforms
 import numpy as np
 import xarray as xr
 from dantro.abc import AbstractDataContainer
+from dantro.plot.funcs.generic import make_facet_grid_plot
 from matplotlib.colors import ListedColormap
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from ...tools import recursive_update
 from .. import DataManager, UniverseGroup
@@ -79,8 +79,6 @@ def _flatten_hexgrid_data(data: xr.DataArray) -> np.ndarray:
 
 
 # .............................................................................
-
-# TODO Register imshow_hexagonal for facet grid
 
 
 def imshow_hexagonal(
@@ -651,6 +649,83 @@ def imshow_hexagonal(
     #     vbar.set_clim(collection.get_clim())
 
     # pcoll.callbacks.connect("changed", on_changed)
+
+    return im
+
+
+@make_facet_grid_plot(
+    map_as="dataarray",
+    register_as_kind="imshow_hexagonal",
+    encodings=("x", "y"),
+    supported_hue_styles=(),
+    parse_cmap_and_norm_kwargs=True,
+)
+def imshow_hexagonal_facet_grid(
+    data: xr.DataArray,
+    *,
+    hlpr: PlotHelper,
+    _is_facetgrid: bool,
+    x: str = None,
+    y: str = None,
+    extend: str = None,
+    levels: int = None,
+    add_labels: bool = True,
+    add_colorbar: bool = True,
+    cbar_kwargs: dict = None,
+    **kwargs,
+) -> mpl.image.AxesImage:
+    """Wrapper around :py:func:`imshow_hexagonal` that makes it work as a
+    standalone, DAG-supporting and *faceting* plotting function.
+    Uses :py:class:`~dantro.plot.funcs.generic.make_facet_grid_plot` wrapper.
+
+    For more arguments, see the respective docstrings.
+
+    Args:
+        data (xr.DataArray): The to-be-plotted data as prepared by the wrapper.
+        hlpr (PlotHelper): The plot helper
+        _is_facetgrid (bool): *Internally used variable* that denotes whether
+            the invocation is part of a facet grid plot.
+        x (str, optional): Which data dimension to represent on the x-axis
+        y (str, optional): Which data dimension to represent on the y-axis
+        extend (str, optional): Whether to extend the colorbar
+        levels (int, optional): Number of discrete colormap levels to use;
+            *currently not supported!*
+        add_labels (bool, optional): Whether to add labels to the x and y axis.
+        add_colorbar (bool, optional): Whether to add a colorbar.
+        cbar_kwargs (dict, optional): Colorbar kwargs that are *only used if
+            no facet grid* is created.
+            **Note:** This interface is subject to change, aim being that the
+            arguments can be supplied in the same way for faceting and
+            non-faceting invocations of this function.
+        **kwargs: Passed on to :py:func:`imshow_hexagonal`
+    """
+    if levels:
+        raise NotImplementedError("`levels` argument not yet supported")
+
+    im = imshow_hexagonal(
+        data,
+        ax=hlpr.ax,
+        x=x,
+        y=y,
+        **kwargs,
+    )
+
+    if not _is_facetgrid:
+        if add_labels:
+            hlpr.ax.set_xlabel(x)
+            hlpr.ax.set_ylabel(y)
+
+        if add_colorbar:
+            # TODO This should read information from the FacetGrid's
+            #      cbar_kwargs, which are also parsed there... problem being
+            #      that there is no FacetGrid object available here.
+            #      However, the arguments should be parsed in the same way!
+            cbar = hlpr.fig.colorbar(
+                im,
+                ax=hlpr.ax,
+                extend=extend,
+                **(cbar_kwargs if cbar_kwargs else {}),
+            )
 
     return im
 
