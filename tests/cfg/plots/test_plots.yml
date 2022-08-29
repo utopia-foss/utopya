@@ -159,6 +159,72 @@ ca_legacy:
 
 
 
+# -- FacetGrid extensions -----------------------------------------------------
+
+fg_imshow_hexagonal: &fg_imshow_hex
+  based_on:
+    - .creator.pyplot
+    - .plot.facet_grid.imshow_hexagonal
+    - .animation.defaults
+
+  dag_options:
+    define:
+      _data:
+        - np.: [random.random]
+          kwargs:
+            size: [21, 24, 3]
+        - mul: [!dag_prev , 10]
+        - add: [!dag_prev , -0.5]
+        - xr.DataArray: [!dag_prev ]
+          kwargs:
+            dims: [a, b, c]
+            coords:
+              c: [foo, bar, baz]
+
+  transform:
+    - pass: !dag_tag _data
+      tag: data
+
+  grid_properties:
+    coordinate_mode: offset
+    offset_mode: even
+    pointy_top: true
+    space_boundary: inner
+
+  x: a
+  y: b
+  col: c
+
+  # Have ColorManager support
+  cmap:
+    name: cividis
+    under: black
+    over: white
+    bad: red
+  vmin: 0
+  vmax: 9
+  extend: both
+
+
+fg_imshow_hexagonal_single:
+  <<: *fg_imshow_hex
+
+  transform:
+    - .isel: [!dag_tag _data, {c: 0}]
+      kwargs: {drop: true}
+      tag: data
+
+  col: ~
+
+fg_imshow_hexagonal_auto_encoding:
+  <<: *fg_imshow_hex
+
+  auto_encoding: true
+  x: ~
+  y: ~
+  col: ~
+
+
 # -- seaborn plots ------------------------------------------------------------
 
 sns_kinds:

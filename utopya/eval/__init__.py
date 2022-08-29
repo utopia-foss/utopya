@@ -2,6 +2,7 @@
 
 from dantro.plot import is_plot_func
 
+from . import data_ops
 from .containers import GridDC, NumpyDC, XarrayDC, XarrayYamlDC
 from .datamanager import DataManager
 from .groups import MultiverseGroup, UniverseGroup
