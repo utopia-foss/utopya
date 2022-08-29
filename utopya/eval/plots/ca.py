@@ -54,7 +54,7 @@ def _prepare_hexgrid_data(
     elif x == y:
         raise ValueError(
             "Dimension names `x` and `y` need to be different, "
-            f"but were '{x}' and '{y}', respectively!"
+            f"but are both '{x}'!"
         )
 
     elif (x is None) != (y is None):
@@ -106,7 +106,7 @@ def imshow_hexagonal(
     """Visualizes data using a grid of hexagons (⬢ or ⬣).
 
     Owing to the many ways in which a hexagonal grid can be visualized,
-    this function requires additional information compared to
+    this function requires more information than
     :py:meth:`~matplotlib.axes.Axes.imshow`. These so called *grid properties*
     need to be passed via the ``grid_properties`` argument or directly
     alongside the data via ``data.attrs`` (for :py:class:`~xarray.DataArray`).
@@ -116,8 +116,10 @@ def imshow_hexagonal(
         coordinate_mode (str):
             In which way the data is stored. Currently only supports
             ``offset`` mode, i.e. with offset row and column coordinates.
-            No coordinates actually need to be (or can be) given, they are
-            completely deduced from the
+            Coordinates of individual cells need not be given, nor can they
+            be given: Assuming a regular hexagonal grid, all coordinates and
+            sizes are completely deduced from the shape of the given data and
+            the other grid parameters like ``pointy_top`` and ``offset_mode``.
         pointy_top (bool):
             Whether the hexagons have a pointy top (⬢) or a flat top (⬣).
             More precisely, with a pointy top, there is only a single vertex
@@ -210,6 +212,11 @@ def imshow_hexagonal(
 
         For an excellent introduction to hexagonal grid representations, see
         `this article <https://www.redblobgames.com/grids/hexagons/>`_.
+
+    .. admonition:: See also
+
+        * :py:func:`caplot` integrates this function.
+        * :ref:`plot-funcs-ca-hex` documents usage and shows more examples.
 
     Args:
         data (Union[xarray.DataArray, numpy.ndarray]): 2D array-like data that
@@ -978,6 +985,10 @@ def caplot(
 
         **For hexagonal grid structure**, note the requirements given in
         :py:func:`imshow_hexagonal`.
+
+    .. admonition:: See also
+
+        * :ref:`plot-funcs-ca`
 
     Args:
         hlpr (PlotHelper): The plot helper instance
