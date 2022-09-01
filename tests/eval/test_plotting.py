@@ -837,7 +837,6 @@ def test_caplot_hexagonal(hexgrid_data, out_dir):
         for name, data in hexgrid_data.items():
             hexdata.new_container(name, data=data, Cls=XarrayDC)
 
-    # Configure PlotManager
     mv.pm.raise_exc = True
     mv.pm._out_dir = out_dir
 
@@ -847,10 +846,10 @@ def test_caplot_hexagonal(hexgrid_data, out_dir):
         "doc_anim_square",
     )
 
-    # Plot
     for name, plot_cfg in load_yml(HEXGRID_PLOTS_CFG).items():
         if name in TO_SKIP:
             continue
+        print(f"\n\n--- Test case: {name} ---")
 
         _raises = plot_cfg.pop("_raises", None)
         _match = plot_cfg.pop("_match", None)

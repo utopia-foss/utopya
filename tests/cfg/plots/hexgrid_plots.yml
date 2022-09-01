@@ -46,6 +46,7 @@ multiple: &multiple
         - .astype: [!dag_prev , int]
     seven: small
     eight: small
+    nine: small
 
 
   to_plot:
@@ -79,7 +80,7 @@ multiple: &multiple
           space_boundary: inner
     six:
       title: integers
-      limits: [0, +3]  # FIXME breaks for non-zero lower limit
+      limits: [-1, +2]
       cmap:
         foo: tab:green
         bar: tab:blue
@@ -98,7 +99,15 @@ multiple: &multiple
       fraction: 0.03
       aspect: 5
       orientation: horizontal
-      label: custom label
+      label: a custom label
+      cbar_label_kwargs:
+        color: gray
+    nine:
+      title: fixed limits
+      cmap: "diverging::220,30"
+      limits: [-4, +4]
+
+  col_wrap: 5
 
 
 multiple_snapshot:
@@ -166,6 +175,25 @@ rescued_attrs:
       tag: small
 
 
+limits_min_max:
+  <<: *base
+  select:
+    one: small
+    two:
+      path: small
+      transform:
+        - squared
+        - update_with_attrs_from: [!dag_prev , !dag_tag one]
+
+  to_plot:
+    one:
+      cmap: "color_palette::dark:salmon_r"
+      limits: [min, max]
+    two:
+      cmap: "color_palette::light:b"
+      limits: [0, max]
+
+
 
 # -- Errors -------------------------------------------------------------------
 
@@ -217,29 +245,6 @@ err_grid_structure_mismatch:
 
   _raises: PlotCreatorError
   _match: Mismatch in grid structure
-
-
-err_cmap_dict_but_no_limits:
-  <<: *base
-
-  to_plot:
-    small:
-      cmap:
-        foo: bar
-
-  _raises: PlotCreatorError
-  _match: need to also provide the `limits` argument
-
-
-err_cmap_type_error:
-  <<: *base
-
-  to_plot:
-    small:
-      cmap: []
-
-  _raises: PlotCreatorError
-  _match: TypeError.*needs to be either a string with name of the
 
 
 err_unsupported_grid_structure:
