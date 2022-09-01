@@ -23,11 +23,15 @@ def test_griddc():
 
     # Create a GridDC and assert that the shape is correct
     attrs_1d = dict(content="grid", grid_shape=(2, 3), index_order="F")
-    gdc_1d = GridDC(name="data_1d", data=data_1d, attrs=attrs_1d)
+    extra_attrs = dict(foo="bar")
+    gdc_1d = GridDC(
+        name="data_1d", data=data_1d, attrs=dict(**attrs_1d, **extra_attrs)
+    )
 
     assert gdc_1d.shape == (2, 3)
     assert "x" in gdc_1d.dims
     assert "y" in gdc_1d.dims
+    assert gdc_1d.attrs == dict(**attrs_1d, **extra_attrs)  # carried through
 
     for i in range(attrs_1d["grid_shape"][0]):
         assert i == gdc_1d.data.coords["x"][i]

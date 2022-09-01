@@ -46,17 +46,20 @@ multiple: &multiple
         - .astype: [!dag_prev , int]
     seven: small
     eight: small
+    nine: small
 
 
   to_plot:
     one: {}
     two:
       cmap: PiYG
-      limits: [-4, +4]
+      vmin: -4
+      vmax: +4
     three:
       cmap: inferno
       title: THREE (with centers)
-      limits: [min, max]
+      vmin: min
+      vmax: max
       label: values
       imshow_kwargs:
         draw_centers: true  # does this work?
@@ -79,7 +82,8 @@ multiple: &multiple
           space_boundary: inner
     six:
       title: integers
-      limits: [0, +3]  # FIXME breaks for non-zero lower limit
+      vmin: -1
+      vmax: +2
       cmap:
         foo: tab:green
         bar: tab:blue
@@ -87,18 +91,27 @@ multiple: &multiple
         spam: tab:orange
     seven:
       title: inner boundary, no space, no cbar
-      draw_cbar: false
+      add_colorbar: false
       imshow_kwargs:
         update_grid_properties:
           space_boundary: inner
     eight:
       title: horizontal cbar
-      draw_cbar: true
+      add_colorbar: true
       pad: 0
       fraction: 0.03
       aspect: 5
       orientation: horizontal
-      label: custom label
+      label: a custom label
+      cbar_label_kwargs:
+        color: gray
+    nine:
+      title: fixed limits
+      cmap: "diverging::220,30"
+      vmin: -4
+      vmax: +4
+
+  col_wrap: 5
 
 
 multiple_snapshot:
@@ -107,6 +120,45 @@ multiple_snapshot:
     - .creator.universe
     - .plot.ca
     - .plot.ca.snapshot
+
+
+# -- Deprecations -------------------------------------------------------------
+
+deprec_limits:
+  <<: *base
+
+  to_plot:
+    small:
+      cmap: inferno
+      limits: [min, max]
+
+  _warns: DeprecationWarning
+  _match: '`limits` argument is deprecated and will be removed. Use `vmin` and'
+
+
+err_deprec_limits_and_vmin_vmax:
+  <<: *base
+
+  to_plot:
+    small:
+      cmap: inferno
+      limits: [0, 1]
+      vmax: foo
+
+  _raises: PlotCreatorError
+  _match: Got the deprecated `limits` argument but also `vmin` and/or `vmax`!
+
+
+deprec_draw_cbar:
+  <<: *base
+
+  to_plot:
+    small:
+      cmap: inferno
+      draw_cbar: true
+
+  _warns: DeprecationWarning
+  _match: '`draw_cbar` argument is deprecated .* Use `add_colorbar` instead.'
 
 
 # -- Special features ---------------------------------------------------------
@@ -166,6 +218,27 @@ rescued_attrs:
       tag: small
 
 
+limits_min_max:
+  <<: *base
+  select:
+    one: small
+    two:
+      path: small
+      transform:
+        - squared
+        - update_with_attrs_from: [!dag_prev , !dag_tag one]
+
+  to_plot:
+    one:
+      cmap: "color_palette::dark:salmon_r"
+      vmin: min
+      vmax: max
+    two:
+      cmap: "color_palette::light:b"
+      vmin: 0
+      vmax: max
+
+
 
 # -- Errors -------------------------------------------------------------------
 
@@ -219,29 +292,6 @@ err_grid_structure_mismatch:
   _match: Mismatch in grid structure
 
 
-err_cmap_dict_but_no_limits:
-  <<: *base
-
-  to_plot:
-    small:
-      cmap:
-        foo: bar
-
-  _raises: PlotCreatorError
-  _match: need to also provide the `limits` argument
-
-
-err_cmap_type_error:
-  <<: *base
-
-  to_plot:
-    small:
-      cmap: []
-
-  _raises: PlotCreatorError
-  _match: TypeError.*needs to be either a string with name of the
-
-
 err_unsupported_grid_structure:
   <<: *base
 
@@ -290,11 +340,13 @@ doc_snapshot_square: &doc_snapshot_square
   to_plot: &doc_snapshot_to_plot
     one:
       title: some CA state
-      limits: [0, 6]
+      vmin: 0
+      vmax: 6
     two:
       title: another CA state
       cmap: PuOr_r
-      limits: [-4, +4]
+      vmin: -4
+      vmax: +4
 
 
 doc_snapshot_hex: &doc_snapshot_hex

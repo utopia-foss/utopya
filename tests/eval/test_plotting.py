@@ -1,11 +1,11 @@
 """Test the plotting module"""
 
-import builtins
 import contextlib
 import copy
 import logging
 import os
 import sys
+from builtins import *
 from typing import Dict
 
 import dantro
@@ -837,7 +837,6 @@ def test_caplot_hexagonal(hexgrid_data, out_dir):
         for name, data in hexgrid_data.items():
             hexdata.new_container(name, data=data, Cls=XarrayDC)
 
-    # Configure PlotManager
     mv.pm.raise_exc = True
     mv.pm._out_dir = out_dir
 
@@ -847,16 +846,19 @@ def test_caplot_hexagonal(hexgrid_data, out_dir):
         "doc_anim_square",
     )
 
-    # Plot
     for name, plot_cfg in load_yml(HEXGRID_PLOTS_CFG).items():
         if name in TO_SKIP:
             continue
+        print(f"\n\n--- Test case: {name} ---")
 
         _raises = plot_cfg.pop("_raises", None)
+        _warns = plot_cfg.pop("_warns", None)
         _match = plot_cfg.pop("_match", None)
 
         if _raises is not None:
             ctx = pytest.raises(globals()[_raises], match=_match)
+        elif _warns is not None:
+            ctx = pytest.warns(globals()[_warns], match=_match)
         else:
             ctx = contextlib.nullcontext()
 
@@ -949,9 +951,7 @@ def test_GraphPlot_class():
     assert gp._nodes_to_shrink == [2]
 
     # Now go through configurations and test initialization and drawing
-    configs = load_yml(GRAPH_PLOT_CLS)
-
-    for name, cfg in configs.items():
+    for name, cfg in load_yml(GRAPH_PLOT_CLS).items():
         fig = plt.figure()
 
         # Try using a graphviz node layout, which requires pydot
@@ -966,28 +966,18 @@ def test_GraphPlot_class():
 
                 continue
 
-        # Configurations for which an Error is raised
-        if "_raises" in cfg:
-            exc_type = getattr(builtins, cfg.pop("_raises"))
-            match = cfg.pop("_match")
+        _raises = cfg.pop("_raises", None)
+        _warns = cfg.pop("_warns", None)
+        _match = cfg.pop("_match", None)
 
-            with pytest.raises(exc_type, match=match):
-                gp = GraphPlot(digraph, fig=fig, **cfg)
-                gp.draw()
-                gp.clear_plot()
-
-        # Configurations that lead to a warning
-        elif "_warns" in cfg:
-            warn_type = getattr(builtins, cfg.pop("_warns"))
-            match = cfg.pop("_match")
-
-            with pytest.warns(warn_type, match=match):
-                gp = GraphPlot(digraph, fig=fig, **cfg)
-                gp.draw()
-                gp.clear_plot()
-
-        # These should work fine
+        if _raises is not None:
+            ctx = pytest.raises(globals()[_raises], match=_match)
+        elif _warns is not None:
+            ctx = pytest.warns(globals()[_warns], match=_match)
         else:
+            ctx = contextlib.nullcontext()
+
+        with ctx:
             gp = GraphPlot(digraph, fig=fig, **cfg)
             gp.draw()
             gp.clear_plot()

@@ -355,6 +355,11 @@ def parse_update_dicts(
     # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     # TODO Take into account framework-level defaults
     # TODO Make use of additional debug levels to select more verbose output
+    add_item(
+        args.debug,
+        add_to=update_dict,
+        key_path=("debug_level",),
+    )
     if args.debug >= 1:
         # Set model log level to DEBUG and let PlotManager and WorkerManager
         # raise exceptions
