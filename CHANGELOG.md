@@ -10,6 +10,10 @@
 - !22 integrates the `ColorManager` into `caplot`, offering more ways to control colormaps and norms and fixing a number of subtle visual bugs.
 - !22 fixes a bug in `GridDC` that led to data attributes being lost.
 
+### Deprecations
+- !22 deprecates the `limits` argument for individual `caplot` properties; use the more conventional `vmin` and `vmax` instead.
+- !22 deprecates the `draw_cbar` argument for individual `caplot` properties; use the more conventional `add_colorbar` instead.
+
 
 ## v1.1.1
 - !36 fixes a critical bug that prevented installing utopya from PyPI.

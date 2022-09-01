@@ -4,7 +4,7 @@ import copy
 import logging
 import warnings
 from math import ceil, sqrt
-from typing import Callable, Dict, Sequence, Tuple, Union
+from typing import Callable, Dict, Optional, Sequence, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.collections
@@ -18,7 +18,7 @@ from dantro.plot import ColorManager
 from dantro.plot.funcs.generic import make_facet_grid_plot
 from matplotlib.colors import ListedColormap
 
-from ...tools import recursive_update
+from ...tools import ensure_dict, recursive_update
 from .. import DataManager, UniverseGroup
 from . import PlotHelper, UniversePlotCreator, is_plot_func
 
@@ -85,12 +85,15 @@ def _plot_ca_property(
     hlpr: PlotHelper,
     data: xr.DataArray,
     default_imshow_kwargs: dict,
+    imshow_hexagonal_extra_kwargs: dict = None,
     default_cbar_kwargs: dict = None,
     grid_structure: str = None,
     limits: Tuple[float, float] = None,
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
     cmap: Union[str, dict] = None,
     norm: Union[str, dict] = None,
-    draw_cbar: bool = True,
+    add_colorbar: bool = True,
     set_axis_off: bool = True,
     title: str = None,
     imshow_kwargs: dict = None,
@@ -114,6 +117,10 @@ def _plot_ca_property(
         data (xarray.DataArray): The array-like data to plot as an image
         default_imshow_kwargs (dict): Default arguments for the imshow call,
             updated with individually-specified ``imshow_kwargs``.
+        imshow_hexagonal_extra_kwargs (dict): Default arguments for hexagonal
+            grids, ignored otherwise.
+            This updates the ``default_imshow_kwargs`` and is in turn updated
+            with individually-specified ``imshow_kwargs``.
         default_cbar_kwargs (dict): Default arguments for the colorbar
             creation, updated with ``cbar_kwargs``.
         grid_structure (str, optional): Can be used to explicitly set the grid
@@ -125,13 +132,16 @@ def _plot_ca_property(
             ``imshow_kwargs`` argument below.
         limits (Tuple[float, float], optional): The data limits to use in the
             form ``(vmin, vmax)``. Individual entries can also be None.
-            These will also be used in the colorbar.
+            *Deprecated!* Use ``vmin`` and ``vmax`` instead.
+        vmin (float, optional): The lower limit to use for the colorbar range.
+        vmax (float, optional): The upper limit to use for the colorbar range.
         cmap (Union[str, dict], optional): The colormap to use. If a dict is
             given, defines a (discrete) ``ListedColormap`` from the values.
             Handled by :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
         norm (Union[str, dict], optional): The normalization function to use.
             Handled by :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
-        draw_cbar (bool, optional): whether to draw a color bar (default: true)
+        add_colorbar (bool, optional): If false, will not draw a colorbar.
+            Default is true.
         set_axis_off (bool, optional): If true (default), will set the axis to
             invisible.
         title (str, optional): The subplot figure title
@@ -160,28 +170,55 @@ def _plot_ca_property(
         ValueError: on invalid grid structure; supported structures are
             ``square`` and ``hexagonal``
     """
-    # Fill imshow_kwargs, using defaults
-    imshow_kwargs = imshow_kwargs if imshow_kwargs else {}
-    imshow_kwargs = recursive_update(
-        copy.deepcopy(default_imshow_kwargs) if default_imshow_kwargs else {},
-        copy.deepcopy(imshow_kwargs),
-    )
+    # Handle deprecations
+    if "draw_cbar" in cbar_kwargs:
+        cbar_kwargs.pop("draw_cbar")
+        warnings.warn(
+            "The `draw_cbar` argument is deprecated and will be removed. "
+            "Use `add_colorbar` instead.",
+            DeprecationWarning,
+        )
 
-    # Determine vmin and vmax and set up the ColorManager
-    vmin = vmax = None
-    if limits:
-        vmin, vmax = limits
+    if limits is not None:
+        if vmin is None and vmax is None:
+            warnings.warn(
+                "The `limits` argument is deprecated and will be removed. "
+                "Use `vmin` and `vmax` instead.",
+                DeprecationWarning,
+            )
+            vmin, vmax = limits
+        else:
+            raise ValueError(
+                "Got the deprecated `limits` argument but also `vmin` and/or "
+                "`vmax`! Remove the `limits` argument and use only `vmin` and "
+                "`vmax` instead."
+            )
 
+    # Set up the ColorManager
     cm = ColorManager(
         cmap=cmap, norm=norm, vmin=vmin, vmax=vmax, labels=cbar_labels
     )
 
-    # Create imshow(-like) object on the currently selected axis
+    # Determine grid structure
     grid_structure = (
         grid_structure
         if grid_structure
         else data.attrs.get("grid_structure", "square")
     )
+
+    # Prepare imshow_kwargs, successively updating defaults.
+    # Also need to be able to pass custom arguments to imshow_hexagonal, which
+    # has a wider interface than regular imshow ...
+    _imshow_kwargs = ensure_dict(default_imshow_kwargs)
+    if grid_structure == "hexagonal":
+        _imshow_kwargs = recursive_update(
+            _imshow_kwargs, ensure_dict(imshow_hexagonal_extra_kwargs)
+        )
+    _imshow_kwargs = recursive_update(
+        _imshow_kwargs, ensure_dict(imshow_kwargs)
+    )
+
+    # Create imshow(-like) object on the currently selected axis
     if grid_structure == "square" or grid_structure is None:
         im = hlpr.ax.imshow(
             data.T,
@@ -191,7 +228,7 @@ def _plot_ca_property(
             rasterized=True,
             origin="lower",
             aspect="equal",
-            **imshow_kwargs,
+            **_imshow_kwargs,
         )
 
     elif grid_structure == "hexagonal":
@@ -202,7 +239,7 @@ def _plot_ca_property(
             norm=cm.norm,
             animated=True,
             rasterized=True,
-            **imshow_kwargs,
+            **_imshow_kwargs,
         )
 
     else:
@@ -218,7 +255,7 @@ def _plot_ca_property(
     hlpr.provide_defaults("set_title", title=(title if title else prop_name))
 
     # .. Colorbar .............................................................
-    if not draw_cbar:
+    if not add_colorbar:
         return im
     # else: draw the colorbar
 
@@ -229,7 +266,7 @@ def _plot_ca_property(
         artist = im.hexagons
 
     # Parse colorbar kwargs, setting some default values
-    default_cbar_kwargs = default_cbar_kwargs if default_cbar_kwargs else {}
+    default_cbar_kwargs = ensure_dict(default_cbar_kwargs)
     cbar_kwargs = recursive_update(
         copy.deepcopy(default_cbar_kwargs), cbar_kwargs
     )
@@ -484,11 +521,9 @@ def imshow_hexagonal(
     data, x, y = _prepare_hexgrid_data(data, x=x, y=y)
 
     # Aggregate grid properties
-    grid_properties = grid_properties if grid_properties else {}
+    grid_properties = ensure_dict(copy.deepcopy(grid_properties))
     grid_properties.update(data.attrs)
-    grid_properties.update(
-        update_grid_properties if update_grid_properties else {}
-    )
+    grid_properties.update(ensure_dict(copy.deepcopy(update_grid_properties)))
     if not grid_properties:
         raise ValueError(
             "Could not determine grid properties! "
@@ -508,14 +543,26 @@ def imshow_hexagonal(
     )
     _keys = {k: grid_properties_keys.get(k, k) for k in GRID_PROP_KEYS}
 
-    # Extract attribute values
-    coordinate_mode = grid_properties[_keys["coordinate_mode"]]
-    pointy_top = grid_properties[_keys["pointy_top"]]
-    offset_mode = grid_properties[_keys["offset_mode"]]
-    space_size = grid_properties.get(_keys["space_size"])
-    space_offset = grid_properties.get(_keys["space_offset"], (0.0, 0.0))
-    boundary = grid_properties.get(_keys["space_boundary"], "outer")
-    space_given = space_size is not None
+    # Extract attribute values and give a useful error message if that fails
+    try:
+        coordinate_mode = grid_properties[_keys["coordinate_mode"]]
+        pointy_top = grid_properties[_keys["pointy_top"]]
+        offset_mode = grid_properties[_keys["offset_mode"]]
+        space_size = grid_properties.get(_keys["space_size"])
+        space_given = space_size is not None
+        space_offset = grid_properties.get(_keys["space_offset"], (0.0, 0.0))
+        boundary = grid_properties.get(_keys["space_boundary"], "outer")
+
+    except KeyError as err:
+        _gp = "\n".join(f"  {k:18}: {v}" for k, v in grid_properties.items())
+        _km = "\n".join(f"  {k:16} -> {v}" for k, v in _keys.items())
+        raise ValueError(
+            f"Missing grid property {err} for imshow_hexagonal! Make sure the "
+            "required metadata is available and the key mapping is correct.\n"
+            f"Data attributes:\n{data.attrs}"
+            f"\n\nAggregated grid properties (after updates):\n{_gp}"
+            f"\n\nKey mapping (old -> new):\n{_km}"
+        ) from err
 
     # May have an explicitly given extent, in which case the space size and
     # offset given by the grid properties needs to be overwritten.
@@ -740,7 +787,7 @@ def imshow_hexagonal(
     #   - the appropriately transformed hexagon
     #   - x and y offsets (2D arrays, flattened and combined)
 
-    collection_kwargs = collection_kwargs if collection_kwargs else {}
+    collection_kwargs = ensure_dict(collection_kwargs)
 
     # Here we go ...
     pcoll = mpl.collections.PolyCollection(
@@ -793,7 +840,7 @@ def imshow_hexagonal(
             (0, 0),
             radius=min(cell_width, cell_height) / 2 * draw_center_radius,
         )
-        draw_center_kwargs = draw_center_kwargs if draw_center_kwargs else {}
+        draw_center_kwargs = ensure_dict(draw_center_kwargs)
         ccoll = mpl.collections.PatchCollection(
             [circle],
             offsets=np.transpose([x_offsets.flatten(), y_offsets.flatten()]),
@@ -910,7 +957,7 @@ def imshow_hexagonal_facet_grid(
                 im,
                 ax=hlpr.ax,
                 extend=extend,
-                **(cbar_kwargs if cbar_kwargs else {}),
+                **ensure_dict(cbar_kwargs),
             )
 
     return im
@@ -933,6 +980,7 @@ def caplot(
     aspect_pad: float = 0.1,
     size: float = None,
     col_wrap: Union[int, str, bool] = "auto",
+    imshow_hexagonal_extra_kwargs: dict = None,
     default_imshow_kwargs: dict = None,
     default_cbar_kwargs: dict = dict(fraction=0.04, aspect=20),
     suptitle_fstr: str = "{} = {}",
@@ -1015,14 +1063,18 @@ def caplot(
             - ``norm`` (Union[str, dict], optional):
                 The normalization function to use, also handled by the
                 :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
-            - ``limits`` (2-tuple, list):
-                The fixed limits of this property; if not given, limits will be
-                auto-scaled (which may lead to jumps in an animation).
-                Individual entries in this 2-tuple can also be ``'min'`` or
-                ``'max'``, in which case the *global* minimum or maximum,
-                respectively, will be used.
+            - ``vmin`` (float, optional):
+                The fixed lower data limit for this property; if not given,
+                uses auto-scaling, which may lead to jumps in the animation.
+                Can also be ``'min'`` in which case the *global* minimum of the
+                available data is used.
+            - ``vmax`` (float, optional):
+                Same as ``vmin``, but with the maximum and allowing ``'max'``
+                argument for choosing the global maximum.
+            - ``limits`` (Union[tuple, list], optional):
+                *Deprecated!* Use ``vmin`` and ``vmax`` instead.
             - ``label`` (str, optional):
-                A label for the colorbar
+                The *colorbar* label.
             - ``imshow_kwargs`` (dict, optional):
                 Passed on to the imshow invocation, i.e. to
                 :py:meth:`~matplotlib.axes.Axes.imshow` or
@@ -1160,6 +1212,8 @@ def caplot(
         grid_structure = next(iter(structures.values()))
 
     # Evaluate limits argument for all properties
+    # NOTE That `limits` is deprecated in _plot_ca_property. Once it is
+    #      removed from there, remove evaluation of `limits` here as well
     for prop_name, spec in to_plot.items():
         if spec.get("limits"):
             vmin, vmax = spec["limits"]
@@ -1168,6 +1222,12 @@ def caplot(
             if vmax == "max":
                 vmax = ds[prop_name].max().item()
             spec["limits"] = (vmin, vmax)
+
+        if spec.get("vmin") == "min":
+            spec["vmin"] = ds[prop_name].min().item()
+
+        if spec.get("vmax") == "max":
+            spec["vmax"] = ds[prop_name].max().item()
 
     # Inform about the data that is to be plotted
     log.note(
@@ -1243,6 +1303,7 @@ def caplot(
             data=data,
             grid_structure=grid_structure,
             default_imshow_kwargs=default_imshow_kwargs,
+            imshow_hexagonal_extra_kwargs=imshow_hexagonal_extra_kwargs,
             default_cbar_kwargs=default_cbar_kwargs,
             **props,
         )

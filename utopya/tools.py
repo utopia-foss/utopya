@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 from datetime import timedelta
-from typing import Any, Callable, Sequence, Tuple, Union
+from typing import Any, Callable, Optional, Sequence, Tuple, Union
 
 from dantro.tools import (
     IS_A_TTY,
@@ -193,6 +193,20 @@ def pformat(obj: Any) -> str:
 
 
 # misc ------------------------------------------------------------------------
+
+
+def ensure_not_None(
+    d: Optional[Any], fallback: Union[type, Callable] = dict
+) -> Any:
+    """Returns ``d`` if it is not None, otherwise creates *a new object* by
+    calling ``fallback`` without any arguments."""
+    if d is None:
+        return fallback()
+    return d
+
+
+def ensure_dict(d: Optional[dict]) -> dict:
+    return ensure_not_None(d, fallback=dict)
 
 
 def parse_si_multiplier(s: str) -> int:
