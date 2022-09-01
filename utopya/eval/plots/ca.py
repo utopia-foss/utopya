@@ -173,19 +173,21 @@ def _plot_ca_property(
     # Handle deprecations
     if "draw_cbar" in cbar_kwargs:
         cbar_kwargs.pop("draw_cbar")
-        warnings.warn(
+        _msg = (
             "The `draw_cbar` argument is deprecated and will be removed. "
-            "Use `add_colorbar` instead.",
-            DeprecationWarning,
+            "Use `add_colorbar` instead."
         )
+        warnings.warn(_msg, DeprecationWarning)
+        log.caution(_msg)
 
     if limits is not None:
         if vmin is None and vmax is None:
-            warnings.warn(
+            _msg = (
                 "The `limits` argument is deprecated and will be removed. "
-                "Use `vmin` and `vmax` instead.",
-                DeprecationWarning,
+                "Use `vmin` and `vmax` instead."
             )
+            warnings.warn(_msg, DeprecationWarning)
+            log.caution(_msg)
             vmin, vmax = limits
         else:
             raise ValueError(

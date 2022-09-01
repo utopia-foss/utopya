@@ -9,6 +9,9 @@
 - !22 replaces utopya's `ColorManager` with the updated [dantro `ColorManager`](https://dantro.readthedocs.io/en/latest/plotting/color_mngr.html).
 - !22 integrates the `ColorManager` into `caplot`, offering more ways to control colormaps and norms and fixing a number of subtle visual bugs.
 - !22 fixes a bug in `GridDC` that led to data attributes being lost.
+- !22 adds the `debug_level` option to the `Multiverse` and its meta configuration.
+    - For now, this does not do a lot, but it will be expanded to control more aspects depending on debug level.
+    - With `debug_level >= 2`, Python `DeprecationWarning`s are shown.
 
 ### Deprecations
 - !22 deprecates the `limits` argument for individual `caplot` properties; use the more conventional `vmin` and `vmax` instead.

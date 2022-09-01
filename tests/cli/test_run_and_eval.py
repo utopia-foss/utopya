@@ -36,6 +36,10 @@ def test_run(with_test_models, tmp_output_dir):
     res = invoke_cli(("run", ADVANCED_MODEL, "-d"))
     _check_result(res, expected_exit=0)
 
+    # ... and with higher debug level
+    res = invoke_cli(("run", ADVANCED_MODEL, "-dd"))
+    _check_result(res, expected_exit=0)
+
     # Adjusting some of the meta config parameters, testing if they show up
     args = ("run", DUMMY_MODEL, "--no-eval", "--note", "some_note", "-d")
     res = invoke_cli(

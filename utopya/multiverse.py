@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import time
+import warnings
 from collections import defaultdict
 from shutil import copy2
 from tempfile import TemporaryDirectory
@@ -123,6 +124,8 @@ class Multiverse:
         )
         self._meta_cfg = mcfg
         log.info("Built meta configuration.")
+        log.remark("  Debug level:  %d", self.debug_level)
+        self._apply_debug_level()
 
         # In cluster mode, need to make some adjustments via additional dicts
         dm_cluster_kwargs = dict()
@@ -217,6 +220,11 @@ class Multiverse:
         log.progress("Initialized Multiverse.\n")
 
     # Properties ..............................................................
+
+    @property
+    def debug_level(self) -> int:
+        """The debug level"""
+        return self.meta_cfg.get("debug_level", 0)
 
     @property
     def info_bundle(self) -> ModelInfoBundle:
@@ -557,6 +565,20 @@ class Multiverse:
         )
         return meta_tmp, cfg_parts
 
+    def _apply_debug_level(self, lvl: int = None):
+        """Depending on the debug level, applies certain settings to the
+        Multiverse and the runtime environment.
+
+        .. note::
+
+            This does *not* (yet) set the corresponding debug flags for the
+            ``PlotManager``, ``DataManager``, or ``WorkerManager``!
+        """
+        lvl = lvl if lvl is not None else self.debug_level
+
+        if lvl >= 2:
+            warnings.simplefilter("always", DeprecationWarning)
+
     def _create_run_dir(self, *, out_dir: str, model_note: str = None) -> None:
         """Create the folder structure for the run output.
 
@@ -704,7 +726,7 @@ class Multiverse:
 
         log.progress("Initialized PlotManager.")
         log.note(
-            "Available base configuration pools:  %s",
+            "Available base plot configuration pools:\n  %s",
             ", ".join(pm.base_cfg_pools.keys()),
         )
         log.note(
@@ -1566,6 +1588,7 @@ class FrozenMultiverse(Multiverse):
             for k, v in mcfg.items()
             if k
             in (
+                "debug_level",
                 "paths",
                 "data_manager",
                 "plot_manager",
@@ -1573,6 +1596,9 @@ class FrozenMultiverse(Multiverse):
                 "cluster_params",
             )
         }
+        log.info("Built meta configuration.")
+        log.remark("  Debug level:  %d", self.debug_level)
+        self._apply_debug_level()
 
         # Need to make some DataManager adjustments; do so via update dicts
         dm_cluster_kwargs = dict()
