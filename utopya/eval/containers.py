@@ -6,6 +6,7 @@ especially their numeric form, the
 :py:class:`~dantro.containers.xr.XrDataContainer`.
 """
 
+import copy
 import logging
 from typing import Sequence, Tuple, Union
 
@@ -318,8 +319,7 @@ class GridDC(XarrayDC):
 
         else:
             raise ValueError(
-                "Can only reshape from 1D or 2D data, got {}!"
-                "".format(data_shape)
+                f"Can only reshape from 1D or 2D data, got {data_shape}!"
             )
 
         # Determine new coordinates
@@ -345,12 +345,14 @@ class GridDC(XarrayDC):
                 new_coords[dim_name] = coord_gen(n, l)
 
         elif structure == "hexagonal":
-            if len(grid_shape) != 2:
+            if (_ndim := len(grid_shape)) != 2:
                 raise ValueError(
-                    "Unknown grid structure '{}' in {} dimensions",
-                    structure,
-                    len(grid_shape),
+                    "Grid structure 'hexagonal' does not support coordinates "
+                    f"for {_ndim}-dimensional grids!"
                 )
+            # FIXME These lack the appropriate offset -- and they make too many
+            #       assumptions on the particular form of discretization!
+            # TODO  Consider using trivial offset coordinates instead?
             new_coords["x"] = (
                 np.linspace(0.0, extent[0], grid_shape[0], False)
                 + 0.5 * extent[0] / grid_shape[0]
@@ -361,11 +363,11 @@ class GridDC(XarrayDC):
             )
 
         else:
-            raise ValueError("Unknown grid structure '{}'", structure)
+            raise ValueError(f"Unknown grid structure '{structure}'!")
 
-        # NOTE Time coordinates are not changed, thus need not be determined
+        # NOTE Time coordinates are not changed
 
-        # Store the new dimension names and coordinates
+        # Store the new dimension names and coordinates for later association
         self._new_dims = new_dims
         self._new_coords = new_coords
 
@@ -418,16 +420,7 @@ class GridDC(XarrayDC):
             data=data,
             dims=new_dims,
             coords=new_coords,
-            attrs={
-                k: v
-                for k, v in self.attrs.items()
-                if k
-                in (
-                    self._GDC_space_extent_attr,
-                    self._GDC_grid_shape_attr,
-                    self._GDC_grid_structure_attr,
-                )
-            },
+            attrs={k: copy.copy(v) for k, v in self.attrs.items()},
         )
 
         # Carry over the time coordinates

@@ -8,6 +8,7 @@
 - !37 adds `imshow_hexagonal` as facet grid kind.
 - !22 replaces utopya's `ColorManager` with the updated [dantro `ColorManager`](https://dantro.readthedocs.io/en/latest/plotting/color_mngr.html).
 - !22 integrates the `ColorManager` into `caplot`, offering more ways to control colormaps and norms and fixing a number of subtle visual bugs.
+- !22 fixes a bug in `GridDC` that led to data attributes being lost.
 
 
 ## v1.1.1
