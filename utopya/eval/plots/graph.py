@@ -220,7 +220,7 @@ def graph_animation_update(
                 (default=False).
             update_colormapping (bool, optional):
                 Whether to reconfigure the nodes' and edges'
-                :py:class:`~utopya.eval.plots._mpl.ColorManager` for
+                :py:class:`~dantro.plot.utils.color_mngr.ColorManager` for
                 each frame (default=False). If False, the colormapping (and the
                 colorbar) is configured with the first frame and then fixed.
             skip_empty_frames (bool, optional):
@@ -443,7 +443,7 @@ def draw_graph(
                 fixed.
             update_colormapping (bool, optional):
                 Whether to reconfigure the nodes' and edges'
-                :py:class:`~utopya.eval.plots._mpl.ColorManager` for
+                :py:class:`~dantro.plot.utils.color_mngr.ColorManager` for
                 each frame (default=False). If False, the colormapping (and the
                 colorbar) is configured with the first frame and then fixed.
             skip_empty_frames (bool, optional):

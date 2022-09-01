@@ -116,7 +116,13 @@ def _plot_ca_property(
             updated with individually-specified ``imshow_kwargs``.
         default_cbar_kwargs (dict): Default arguments for the colorbar
             creation, updated with ``cbar_kwargs``.
-        grid_structure (str, optional): Can be used to
+        grid_structure (str, optional): Can be used to explicitly set the grid
+            structure in cases where ``data.attrs['grid_structure']`` is not
+            available or holds an invalid entry.
+            This decides whether to use :py:meth:`matplotlib.axes.Axes.imshow`
+            or :py:func:`imshow_hexagonal`.
+            Note that the ``grid_properties`` need to be passed via the
+            ``imshow_kwargs`` argument below.
         limits (Tuple[float, float], optional): The data limits to use in the
             form ``(vmin, vmax)``. Individual entries can also be None.
             These will also be used in the colorbar.
@@ -125,8 +131,9 @@ def _plot_ca_property(
             Handled by :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
         norm (Union[str, dict], optional): The normalization function to use.
             Handled by :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
-        draw_cbar (bool, optional): whether to draw a color bar
-        set_axis_off (bool, optional): If true, will set the axis to invisible.
+        draw_cbar (bool, optional): whether to draw a color bar (default: true)
+        set_axis_off (bool, optional): If true (default), will set the axis to
+            invisible.
         title (str, optional): The subplot figure title
         imshow_kwargs (dict, optional): Depending on grid structure, is passed
             on either to :py:meth:`~matplotlib.axes.Axes.imshow` or to
@@ -134,10 +141,6 @@ def _plot_ca_property(
         cbar_labels (dict, optional): Passed to
             :py:class:`~dantro.plot.utils.color_mngr.ColorManager` to set up
             the label names alongside the given ``cmap`` and ``norm``.
-        cbar_labels (dict, optional): Passed to
-            :py:class:`~dantro.plot.utils.color_mngr.ColorManager` during
-            initialization and can be used to specify label positions (keys)
-            and labels (values).
         cbar_label_kwargs (dict, optional): Passed to
             :py:meth:`~dantro.plot.utils.color_mngr.ColorManager.create_cbar`
             for controlling the aesthetics of colorbar labels.
@@ -393,7 +396,7 @@ def imshow_hexagonal(
     .. admonition:: See also
 
         * :py:func:`caplot` integrates this function.
-        * :ref:`plot-funcs-ca-hex` documents usage and shows more examples.
+        * :ref:`plot_funcs_ca_hex` documents usage and shows more examples.
 
     Args:
         data (Union[xarray.DataArray, numpy.ndarray]): 2D array-like data that
@@ -985,7 +988,8 @@ def caplot(
 
     .. admonition:: See also
 
-        * :ref:`plot-funcs-ca`
+        * :ref:`plot_funcs_ca`
+        * :ref:`plot_funcs_ca_hex`
 
     Args:
         hlpr (PlotHelper): The plot helper instance
@@ -996,21 +1000,39 @@ def caplot(
             Each of these keys is expected to hold yet another dict,
             supporting the following configuration options (all optional):
 
-                - ``cmap`` (str or dict): The colormap to use. If it is a
-                    dict, a discrete colormap is assumed. The keys will be the
-                    labels and the values the color. Association happens in
-                    the order of entries.
-                - ``title`` (str): The title for this sub-plot
-                - ``limits`` (2-tuple, list): The fixed heat map limits of this
-                    property; if not given, limits will be auto-scaled. If
-                    they are ``min`` or ``max``, the *global* minimum or
-                    maximum, respectively, will be used.
-                    Note that specifying ``limits`` will overwrite potentially
-                    existing ``vmin`` and ``vmax`` arguments to imshow.
-                - ``label`` (str, optional): A label for the colorbar
-                - ``**kwargs``: passed on to the imshow invocation, i.e. to
-                    :py:meth:`~matplotlib.axes.Axes.imshow` or to
-                    :py:meth:`imshow_hexagonal`.
+            - ``title`` (str, optional):
+                The title for this sub-plot.
+            - ``cmap`` (Union[str, list, dict], optional):
+                Which colormap to use. This argument is handled by the
+                :py:class:`~dantro.plot.utils.color_mngr.ColorManager`,
+                providing many ways in which to define the colormap.
+                For instance, by passing mapping from labels to colors, a
+                discrete colormap is created: The keys will be the labels and
+                the values will be their colors. Association happens in the
+                order of entries, with values being inferred from ``limits``,
+                if given. For more information and examples, see the docstring
+                of the :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
+            - ``norm`` (Union[str, dict], optional):
+                The normalization function to use, also handled by the
+                :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
+            - ``limits`` (2-tuple, list):
+                The fixed limits of this property; if not given, limits will be
+                auto-scaled (which may lead to jumps in an animation).
+                Individual entries in this 2-tuple can also be ``'min'`` or
+                ``'max'``, in which case the *global* minimum or maximum,
+                respectively, will be used.
+            - ``label`` (str, optional):
+                A label for the colorbar
+            - ``imshow_kwargs`` (dict, optional):
+                Passed on to the imshow invocation, i.e. to
+                :py:meth:`~matplotlib.axes.Axes.imshow` or
+                :py:meth:`imshow_hexagonal`.
+            - ``**kwargs``:
+                Further arguments control the colorbar appearance, their
+                labels, ticks, and other plot specifics. For more detailed
+                information about available arguments, see
+                :py:func:`._plot_ca_property`, which takes care of plotting
+                the individual ``to_plot`` entries.
 
         from_dataset (xarray.Dataset, optional): If given, will use this object
             instead of assembling a dataset from ``data`` and ``to_plot`` keys.
