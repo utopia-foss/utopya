@@ -62,6 +62,9 @@ The output (for the same dummy data as used above) may look like this:
 
 :py:func:`~utopya.eval.plots.ca.imshow_hexagonal` is used for plotting if the ``grid_structure`` argument is set to ``hexagonal`` or if the given data has data attributes that specify that grid structure.
 
+.. hint::
+
+    For an excellent introduction to hexagonal grid representations, see `this article <https://www.redblobgames.com/grids/hexagons/>`_.
 
 .. admonition:: Specifying properties for hexagonal grid structure
 
@@ -77,7 +80,14 @@ The output (for the same dummy data as used above) may look like this:
     * For xarray objects, simply use assignments like ``my_data.attrs["pointy_top"] = True``.
     * If your data is loaded from HDF5 datasets into the :py:class:`~utopya.eval.datamanager.DataManager`, the dataset attributes are automatically carried over.
 
-    If you want to pass grid properties **via the plot configuration**, they need to be passed through to :py:func:`~utopya.eval.plots.ca.imshow_hexagonal`, which can happen either via the `default_imshow_kwargs` argument or individually within `to_plot`:
+    If you want to pass grid properties **via the plot configuration**, they need to be passed through to :py:func:`~utopya.eval.plots.ca.imshow_hexagonal`.
+    This can happen via multiple arguments:
+
+    - ``default_imshow_kwargs`` is passed to all ``imshow`` or ``imshow_hexagonal`` invocations.
+    - ``imshow_hexagonal_extra_kwargs`` is passed *only* to ``imshow_hexagonal`` calls, updating the above.
+    - ``imshow_kwargs`` within ``to_plot`` entries are updating the above *for the specific entry*.
+
+    If you want the plot to allow square grid representations, it's best to use the ``imshow_hexagonal_extra_kwargs``.
 
     .. toggle::
 
@@ -87,7 +97,9 @@ The output (for the same dummy data as used above) may look like this:
               # ... same as above ...
               grid_structure: hexagonal
 
-              default_imshow_kwargs:  # passed to *all* imshow_hexagonal invocations
+              default_imshow_kwargs: {}       # passed to imshow *and* imshow_hexagonal
+
+              imshow_hexagonal_extra_kwargs:  # passed *only* to imshow_hexagonal
                 grid_properties:
                   coordinate_mode: offset
                   pointy_top: true
@@ -97,13 +109,9 @@ The output (for the same dummy data as used above) may look like this:
               to_plot:
                 some_data:
                   # ...
-                  imshow_kwargs:      # passed to this specific imshow_hexagonal invocation
+                  imshow_kwargs:              # passed to this specific imshow or imshow_hexagonal call
                     grid_properties:
                       # ...
-
-.. hint::
-
-    For an excellent introduction to hexagonal grid representations, see `this article <https://www.redblobgames.com/grids/hexagons/>`_.
 
 
 
