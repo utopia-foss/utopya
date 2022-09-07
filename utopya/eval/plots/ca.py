@@ -1320,15 +1320,24 @@ def caplot(
 
     def update_data():
         """Updates the data of the imshow objects"""
+
+        def need_autoscale(
+            *, limits=None, vmin=None, vmax=None, cmap=None, **_
+        ) -> bool:
+            """Returns True if there no bounds (limits, vmin, vmax) are given
+            or if a discrete colormap is created from a dict"""
+            return (
+                vmin is None
+                and vmax is None
+                and not limits
+                and not isinstance(cmap, dict)
+            )
+
         log.note("Plotting animation with %d frames ...", num_frames)
 
         # Determine whether a autoscaling is needed for a property:
-        # If no limits are provided, need to autoscale the new limits in the
-        # case of continuous colormaps. A discrete colormap provided as a dict
-        # should never have to autoscale.
         needs_autoscale = {
-            n: (not p.get("limits") and not isinstance(p.get("cmap"), dict))
-            for n, p in to_plot.items()
+            n: need_autoscale(**spec) for n, spec in to_plot.items()
         }
 
         # Frame iteration
