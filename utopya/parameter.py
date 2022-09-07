@@ -6,7 +6,7 @@ import logging
 import operator
 from math import isinf as _isinf
 from numbers import Number
-from typing import Any, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import paramspace as psp
@@ -29,21 +29,53 @@ class Parameter:
     parameters, corresponding specializing classes are to be implemeted.
     """
 
-    SHORTHAND_MODES = (
-        "is-probability",
-        "is-positive",
-        "is-int",
-        "is-negative",
-        "is-positive-int",
-        "is-string",
-        "is-negative-int",
-        "is-bool",
-        "is-unsigned",
-    )
-    """Available modes for
-    :py:meth:`~utopya.parameter.Parameter.from_shorthand`"""
+    # fmt: off
+    SHORTHAND_MODES: Dict[str, Callable] = {
+        # .. float-like .......................................................
+        "is-probability": lambda d, **kws: dict(
+            default=d, limits=(0, 1), dtype=float, **kws
+        ),
+        "is-positive": lambda d, **kws: dict(
+            default=d, limits=(0, None), limits_mode="(]", **kws
+        ),
+        "is-positive-or-zero": lambda d, **kws: dict(
+            default=d, limits=(0, None), limits_mode="[]", **kws
+        ),
+        "is-negative": lambda d, **kws: dict(
+            default=d, limits=(None, 0), limits_mode="[)", **kws
+        ),
+        "is-negative-or-zero": lambda d, **kws: dict(
+            default=d, limits=(None, 0), limits_mode="[]", **kws
+        ),
+        #
+        # .. integer-like .....................................................
+        "is-int": lambda d, **kws: dict(
+            default=d, dtype=int, **kws
+        ),
+        "is-positive-int": lambda d, **kws: dict(
+            default=d, limits=(0, None), limits_mode="()", dtype=int, **kws
+        ),
+        "is-negative-int": lambda d, **kws: dict(
+            default=d, limits=(None, 0), limits_mode="()", dtype=int, **kws
+        ),
+        "is-unsigned": lambda d, **kws: dict(
+            default=d, limits=(0, None), limits_mode="[)", dtype="uint", **kws
+        ),
+        #
+        # .. other types ......................................................
+        "is-string": lambda d, **kws: dict(
+            default=d, dtype=str, **kws
+        ),
+        "is-bool": lambda d, **kws: dict(
+            default=d, dtype=bool, **kws
+        ),
+    }
+    """Shorthand mode factory functions.
+    These are used in :py:meth:`~utopya.parameter.Parameter.from_shorthand` to
+    generate a :py:class:`~utopya.parameter.Parameter` object more easily."""
+    # fmt: on
 
-    LIMIT_COMPS = {
+    LIMIT_COMPS: Dict[str, Callable] = {
         "[": operator.ge,
         "(": operator.gt,
         "]": operator.le,
@@ -51,10 +83,10 @@ class Parameter:
     }
     """Comparators for the ``limits`` check, depending on ``limits_mode``"""
 
-    LIMIT_MODES = ("[]", "()", "[)", "(]")
+    LIMIT_MODES: Sequence[str] = ("[]", "()", "[)", "(]")
     """Possible limit modes"""
 
-    yaml_tag = "!param"
+    yaml_tag: str = "!param"
     """Default YAML tag to use for representing"""
 
     # .........................................................................
@@ -66,7 +98,7 @@ class Parameter:
         name: str = None,
         description: str = None,
         is_any_of: Sequence[Any] = None,
-        limits: Tuple[Union[None, float], Union[None, float]] = None,
+        limits: Tuple[Optional[float], Optional[float]] = None,
         limits_mode: str = "[]",
         dtype: Union[str, type] = None,
     ):
@@ -81,7 +113,7 @@ class Parameter:
             is_any_of (Sequence[Any], optional): a sequence of possible values
                 this parameter can assume.
                 If this parameter is given, ``limits`` cannot be used.
-            limits (Tuple[Union[None, float], Union[None, float]], optional):
+            limits (Tuple[Optional[float], Optional[float]], optional):
                 the upper and lower bounds of the parameter (only applicable
                 to scalar numerals). If None, the bound is assumed to be
                 negative or positive infinity, respectively. Whether boundary
@@ -342,72 +374,27 @@ class Parameter:
     # .. Class methods ........................................................
 
     @classmethod
-    def from_shorthand(cls, value, *, mode, **kwargs):
+    def from_shorthand(cls, default: Any, *, mode: str, **kwargs):
         r"""Constructs a Parameter object from a given shorthand mode.
 
         Args:
-            value: A given value, typically the ``default`` argument.
-            mode: A valid shorthand mode, see
+            default (Any): the default value for the parameter
+            mode (str): A valid shorthand mode, see
                 :py:attr:`~utopya.parameter.Parameter.SHORTHAND_MODES`
-            \**kwargs: any further arguments for Parameter ininitialization,
+            **kwargs: any further arguments for Parameter ininitialization,
                 see :py:meth:`~utopya.parameter.Parameter.__init__`.
 
         Returns:
             a Parameter object
         """
-        if mode == "is-probability":
-            d = dict(default=value, limits=[0, 1], dtype=float, **kwargs)
+        try:
+            d = cls.SHORTHAND_MODES[mode](default, **kwargs)
 
-        elif mode == "is-positive":
-            d = dict(
-                default=value, limits=[0, None], limits_mode="(]", **kwargs
-            )
-
-        elif mode == "is-negative":
-            d = dict(
-                default=value, limits=[None, 0], limits_mode="[)", **kwargs
-            )
-
-        elif mode == "is-int":
-            d = dict(default=value, dtype=int, **kwargs)
-
-        elif mode == "is-positive-int":
-            d = dict(
-                default=value,
-                limits=[0, None],
-                limits_mode="()",
-                dtype=int,
-                **kwargs,
-            )
-
-        elif mode == "is-negative-int":
-            d = dict(
-                default=value,
-                limits=[None, 0],
-                limits_mode="()",
-                dtype=int,
-                **kwargs,
-            )
-
-        elif mode == "is-bool":
-            d = dict(default=value, dtype=bool, **kwargs)
-
-        elif mode == "is-string":
-            d = dict(default=value, dtype=str, **kwargs)
-
-        elif mode == "is-unsigned":
-            d = dict(
-                default=value,
-                limits=[0, None],
-                limits_mode="[)",
-                dtype="uint",
-                **kwargs,
-            )
-        else:
+        except KeyError as err:
             raise ValueError(
-                f"Unrecognized shorthand mode '{mode}'! Needs be "
-                f"one of: {', '.join(cls.SHORTHAND_MODES)}"
-            )
+                f"Unrecognized shorthand mode '{mode}'! "
+                f"Needs to be one of: {', '.join(cls.SHORTHAND_MODES)}"
+            ) from err
 
         return cls(**d)
 
