@@ -2,6 +2,9 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.1.3
+- !39 fixes an error where auto-scaling in animated `caplot`s was done despite `vmin` and/or `vmax` being set.
+
 
 ## v1.1.2
 - !37 fixes `caplot` for hexagonal grid structures, now supporting different hexagon orientations, offset modes and boundary options.
