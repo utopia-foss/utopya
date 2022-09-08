@@ -31,10 +31,7 @@ class Parameter:
 
     # fmt: off
     SHORTHAND_MODES: Dict[str, Callable] = {
-        # .. float-like .......................................................
-        "is-probability": lambda d, **kws: dict(
-            default=d, limits=(0, 1), dtype=float, **kws
-        ),
+        # .. numeric ..........................................................
         "is-positive": lambda d, **kws: dict(
             default=d, limits=(0, None), limits_mode="(]", **kws
         ),
@@ -47,8 +44,16 @@ class Parameter:
         "is-negative-or-zero": lambda d, **kws: dict(
             default=d, limits=(None, 0), limits_mode="[]", **kws
         ),
-        #
-        # .. integer-like .....................................................
+
+        # .. float ............................................................
+        "is-probability": lambda d, **kws: dict(
+            default=d, limits=(0, 1), dtype=float, **kws
+        ),
+        "is-in-unit-interval": lambda d, **kws: dict(
+            default=d, limits=(0, 1), dtype=float, **kws
+        ),
+
+        # .. integer ..........................................................
         "is-int": lambda d, **kws: dict(
             default=d, dtype=int, **kws
         ),
@@ -61,7 +66,7 @@ class Parameter:
         "is-unsigned": lambda d, **kws: dict(
             default=d, limits=(0, None), limits_mode="[)", dtype="uint", **kws
         ),
-        #
+
         # .. other types ......................................................
         "is-string": lambda d, **kws: dict(
             default=d, dtype=str, **kws
@@ -71,8 +76,13 @@ class Parameter:
         ),
     }
     """Shorthand mode factory functions.
-    These are used in :py:meth:`~utopya.parameter.Parameter.from_shorthand` to
-    generate a :py:class:`~utopya.parameter.Parameter` object more easily."""
+    These are used in the :py:meth:`~utopya.parameter.Parameter.from_shorthand`
+    class method to generate a :py:class:`~utopya.parameter.Parameter` object
+    more easily.
+
+    Also, :py:mod:`utopya.yaml` registers each of these shorthand modes as a
+    YAML constructor for tag ``!<mode>``.
+    """
     # fmt: on
 
     LIMIT_COMPS: Dict[str, Callable] = {
@@ -126,8 +136,8 @@ class Parameter:
                 ``'[)'``, and ``'(]'``.
             dtype (Union[str, type], optional): expected data type of this
                 parameter. Accepts all strings that are accepted by
-                `numpy.dtype <https://numpy.org/doc/stable/reference/generated/numpy.dtype.html>`_ ,
-                eg. ``int``, ``float``, ``uint16``, ``string``.
+                :py:class:`numpy.dtype`, eg. ``int``, ``float``, ``uint16``,
+                ``string``.
 
         Raises:
             TypeError: On a ``limits`` argument that was not tuple-like or if
@@ -179,13 +189,19 @@ class Parameter:
         self._limits_mode = limits_mode
         self._is_any_of = tuple(is_any_of) if is_any_of else None
         self._dtype = np.dtype(dtype) if dtype is not None else None
+        self._from_shorthand = None
 
     # .. Magic Methods ........................................................
 
     def __eq__(self, other) -> bool:
+        """Returns True for parameters with equal behavior."""
         if not isinstance(other, type(self)):
             return False
-        return self.__dict__ == other.__dict__
+        return all(
+            v == other.__dict__[k]
+            for k, v in self.__dict__.items()
+            if k not in ("_from_shorthand",)
+        )
 
     def __str__(self) -> str:
         info = {
@@ -396,7 +412,9 @@ class Parameter:
                 f"Needs to be one of: {', '.join(cls.SHORTHAND_MODES)}"
             ) from err
 
-        return cls(**d)
+        p = cls(**d)
+        p._from_shorthand = dict(default=default, mode=mode, kwargs=kwargs)
+        return p
 
     @classmethod
     def to_yaml(cls, representer, node):
@@ -409,6 +427,12 @@ class Parameter:
         Returns:
             a yaml mapping that is able to recreate this object
         """
+        if node._from_shorthand and not node._from_shorthand.get("kwargs"):
+            default = node._from_shorthand["default"]
+            mode = node._from_shorthand["mode"]
+            return representer.represent_scalar(f"!{mode}", str(default))
+
+        # Not constructed from shorthand
         d = {}
         d["default"] = node.default
         if node.limits:
