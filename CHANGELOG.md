@@ -4,6 +4,7 @@
 
 ## v1.1.3
 - !39 fixes an error where auto-scaling in animated `caplot`s was done despite `vmin` and/or `vmax` being set.
+- !40 adds `Parameter` shorthand modes `is-positive-or-zero`, `is-negative-or-zero`, and `is-in-unit-interval`.
 
 
 ## v1.1.2

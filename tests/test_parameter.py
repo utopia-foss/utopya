@@ -34,8 +34,13 @@ def valid_params() -> list:
         ),
         Parameter(default=3),
         Parameter.from_shorthand(0.3, mode="is-probability"),
+        Parameter.from_shorthand(0.4, mode="is-in-unit-interval"),
         Parameter.from_shorthand(3, mode="is-positive"),
+        Parameter.from_shorthand(0, mode="is-positive-or-zero"),
+        Parameter.from_shorthand(0.1, mode="is-positive-or-zero"),
         Parameter.from_shorthand(-2, mode="is-negative"),
+        Parameter.from_shorthand(0, mode="is-negative-or-zero"),
+        Parameter.from_shorthand(-0.1, mode="is-negative-or-zero"),
         Parameter.from_shorthand(3, mode="is-int"),
         Parameter.from_shorthand(True, mode="is-bool"),
         Parameter.from_shorthand(False, mode="is-bool"),
@@ -144,52 +149,53 @@ def test_parameter_extraction():
     """
     cfg = load_yml(PM_CFG_PATH)["to_extract"]
     model_cfg, params_to_validate = _extract(cfg, model_name="model")
+    ptv = params_to_validate
+    SHParam = Parameter.from_shorthand
 
     assert model_cfg, {} == _extract(model_cfg, model_name="model")
-    assert len(params_to_validate) == 10  # NOTE When adjusting this, add the
-    #      explicit case below!
+    assert len(ptv) == 12
+    # NOTE When adjusting this, add the explicit case below!
 
     # Check explicitly
-    assert params_to_validate[("model", "param1", "subparam1")] == Parameter(
+    assert ptv[("model", "param1", "subparam1")] == Parameter(
         default=0.3, limits=[0, 2], dtype=float
     )
 
-    assert params_to_validate[("model", "param1", "subparam3")] == Parameter(
+    assert ptv[("model", "param1", "subparam3")] == Parameter(
         default=-3, limits=[None, 0], dtype=int, limits_mode="()"
     )
 
-    assert params_to_validate[("model", "param1", "subparam4")] == Parameter(
+    assert ptv[("model", "param1", "subparam4")] == Parameter(
         default=42.2, limits=[0, None], limits_mode="(]"
     )
 
-    assert params_to_validate[
-        (
-            "model",
-            "param2",
-        )
-    ] == Parameter.from_shorthand(0.5, mode="is-probability")
+    assert ptv[("model", "param1", "subparam5")] == Parameter(
+        default=0, limits=[0, None]
+    )
 
-    assert params_to_validate[
-        ("model", "param3", "subparam2y")
-    ] == Parameter.from_shorthand(True, mode="is-bool")
+    assert ptv[("model", "param1", "subparam6")] == Parameter(
+        default=0.0, limits=[None, 0]
+    )
 
-    assert params_to_validate[
-        ("model", "param3", "subparam2n")
-    ] == Parameter.from_shorthand(False, mode="is-bool")
+    assert ptv[("model", "param2")] == SHParam(0.5, mode="is-probability")
 
-    assert params_to_validate[("model", "param3", "subparam3")] == Parameter(
+    assert ptv[("model", "param3", "subparam2y")] == SHParam(
+        True, mode="is-bool"
+    )
+
+    assert ptv[("model", "param3", "subparam2n")] == SHParam(
+        False, mode="is-bool"
+    )
+
+    assert ptv[("model", "param3", "subparam3")] == Parameter(
         default="baz", dtype=str, is_any_of=["foo", "bar", "baz", "bam"]
     )
 
-    assert params_to_validate[("model", "param4")] == Parameter.from_shorthand(
-        2, mode="is-int"
-    )
+    assert ptv[("model", "param4")] == SHParam(2, mode="is-int")
 
-    assert params_to_validate[("model", "param5")] == Parameter(default=0.4)
+    assert ptv[("model", "param5")] == Parameter(default=0.4)
 
-    assert params_to_validate[("model", "param6")] == Parameter(
-        default=None, dtype=str
-    )
+    assert ptv[("model", "param6")] == Parameter(default="", dtype=str)
 
 
 def test_yaml_roundtrip():
@@ -205,7 +211,11 @@ def test_yaml_roundtrip():
     model_cfg, params_to_validate = _extract(cfg, model_name="model")
 
     for param_key, param in params_to_validate.items():
-        assert make_roundtrip(param) == param
+        param_rt = make_roundtrip(param)
+        print("\nparam key: ", param_key)
+        print("original param:  ", param)
+        print("after roundtrip: ", param_rt)
+        assert param_rt == param
 
         # Check magic methods once more
         assert param == param
