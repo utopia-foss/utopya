@@ -135,6 +135,39 @@ _:
 
 
 
+
+# -- ABM plots ----------------------------------------------------------------
+# A plot function specialized for ABMs: snapshots or animations of agents
+# embedded in a spatial (2D) domain.
+.plot.abm:
+  based_on:
+    - .animation.defaults
+
+  module: !add [*utopya_plots, .abm]
+  plot_func: abmplot
+
+  compute_only: all
+
+  suptitle_fstr: "{dim:} = {val:>5}"
+  suptitle_kwargs:
+    fontsize: x-large
+    fontfamily: monospace
+
+  style:
+    figure.constrained_layout.use: true
+
+.plot.abm.snapshot:
+  based_on:
+    # - .plot.abm  # do not inherit again, would cause overwriting downstream
+    - .animation.disabled
+
+  frames_isel: -1
+
+
+
+
+
+
 # -- FacetGrid extensions -----------------------------------------------------
 
 .plot.facet_grid.imshow_hexagonal:
@@ -332,6 +365,29 @@ _:
 .dag.define.defaults:
   based_on: .dag.define.defaults
 
+
+# The code constants from matplotlib.path.Path, used for defining paths
+.dag.define.mpl.Path.codes:
+  dag_options:
+    define:
+      STOP:
+        - import: [matplotlib.path, Path]
+        - getattr: [!dag_prev , STOP]
+      MOVETO:
+        - import: [matplotlib.path, Path]
+        - getattr: [!dag_prev , MOVETO]
+      LINETO:
+        - import: [matplotlib.path, Path]
+        - getattr: [!dag_prev , LINETO]
+      CURVE3:
+        - import: [matplotlib.path, Path]
+        - getattr: [!dag_prev , CURVE3]
+      CURVE4:
+        - import: [matplotlib.path, Path]
+        - getattr: [!dag_prev , CURVE4]
+      CLOSEPOLY:
+        - import: [matplotlib.path, Path]
+        - getattr: [!dag_prev , CLOSEPOLY]
 
 
 

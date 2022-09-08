@@ -114,7 +114,65 @@ The output (for the same dummy data as used above) may look like this:
                       # ...
 
 
+-----
 
+.. _plot_funcs_abm:
+
+``.plot.abm``: Visualize Agent-Based Models (ABM)
+-------------------------------------------------
+The :py:func:`~utopya.eval.plots.abm.abmplot` function, accessible via the ``.plot.abm`` base configuration, is specialized to visualize time series of agent-based models (ABM), i.e. the position and certain properties of agents in their domain.
+
+To select this plot function, the following configuration can be used as a starting point:
+
+.. code-block:: yaml
+
+    my_abm_plot:
+      based_on:
+        - .creator.pyplot       # or some other creator
+        - .plot.abm             # select the ABM plotting function
+
+      select:                   # which data to select for plotting
+        some_agents:
+          path: path/to/some/agent_data
+
+      to_plot:                  # and which data to plot
+        some_agents:
+          # specify which data variables to use for position and orientation
+          x: x
+          y: y
+          orientation: orientation
+          # ... more arguments here, see docstring
+
+      # arguments on this level are shared among all entries in `to_plot`
+
+
+Example output may look like this:
+
+.. raw:: html
+
+    <video width="720" src="../_static/_gen/abmplot/fish.mp4" controls></video>
+
+.. admonition:: Corresponding plot configuration
+    :class: dropdown
+
+    The following configuration was used to generate the above example animation:
+
+    .. literalinclude:: ../../tests/cfg/plots/abm_plots.yml
+        :language: yaml
+        :start-after: ### START -- doc_fish
+        :end-before: ### END ---- doc_fish
+
+    The used dummy data (``circle_walk…``) is an :py:class:`xarray.Dataset` with data variables ``x``, ``y``, ``orientation``, each one spanning dimensions ``time`` and ``agents``.
+    Data variables do not have coordinates in this case, but it would be possible to supply some.
+
+.. admonition:: Agents in periodic space
+
+    The ``tail_max_segment_length`` parameter is useful if you plan on drawing tails of agents that move in a periodic space.
+    In such a case, agent positions may jump aprubtly when crossing a boundary.
+    Ordinarily, this would lead to the tail segment going across the whole domain.
+
+    To avoid this, set the ``tail_max_segment_length`` parameter to half the domain size; this typically suffices to detect jumps in x- or y- position and leads to these segments not being drawn.
+    (To be precise, the length refers not to that of the segment but to the differences in x- and/or y-position.)
 
 
 -----

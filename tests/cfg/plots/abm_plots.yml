@@ -1,0 +1,637 @@
+# Test configuration for ABM plots using abm_data fixture
+#
+# NOTE Can use `based_on`, but not *within* this file.
+#      Can use `_raises` and `_match` for testing failures and error messages
+---
+# -- Documentation examples ---------------------------------------------------
+
+doc_fish:
+### START -- doc_fish
+  based_on:
+    - .creator.universe
+    - .plot.abm
+    - .animation.ffmpeg
+    - .animation.high_dpi
+
+  select:
+    # Test data:
+    #   xr.Datasets with data variables `x`, `y`, `orientation`,
+    #   each with `(time, agent)` dimensions.
+    prey: abm/circle_walk_noisy
+    predator: abm/circle_walk_noisy2
+
+  x: x
+  y: y
+  domain:
+    mode: fixed  # can be: fixed, follow
+    pad: 0.1
+    aspect: 1
+
+  orientation: orientation
+  frames: time
+
+  to_plot:
+    prey:
+      marker: fish
+      size_scale: 0.0005  # fraction of the domain a single marker takes up
+
+      # Let colors encode the fish's orientation and configure the colorbar
+      hue: orientation
+      cmap: twilight
+      vmin: min
+      vmax: max
+
+      label: orientation $\theta$
+      cbar_labels:
+        0: 0
+        1.570795: $π/2$
+        3.14159: $π$
+        4.712385: $3π/2$
+        6.28318: $2π$
+
+    predator:
+      # Use a larger and more predator-like marker with a fixed color
+      marker: fish2
+      size_scale: 0.0010
+      color: black
+
+  # Draw a tail for the last 12 positions
+  tail_length: 12
+  tail_decay: 0.2
+  tail_max_segment_length: 0.5  # don't draw segments longer than this
+  tail_kwargs:
+    color: black
+    alpha: 0.6      # start value, is multiplied by (1 - tail_decay) each frame
+    linewidth: 1.5
+    capstyle: butt
+    zorder: -42
+
+  # Make the suptitle more subtle
+  suptitle_fstr: "$t = {val:3d}$"
+  suptitle_kwargs:
+    x: 0.90
+    ha: left
+    fontfamily: monospace
+    fontsize: medium
+### END ---- doc_fish
+  # Need some special adjustments for the context of the ffmpeg writer
+  adjust_figsize_to_domain: false
+  style:
+    figure.figsize: [6, 5]
+
+
+# -- General tests ------------------------------------------------------------
+base: &base
+  based_on:
+    - .creator.universe
+    - .plot.abm
+    # - .animation.ffmpeg
+
+  dag_options:
+    select_path_prefix: &select_path_prefix data/ExtendedModel/abm
+
+  select:
+    walk: circle_walk
+
+  to_plot:
+    walk: &walk_kwargs
+      label: position $\phi$
+      cbar_labels: &cbar_labels
+        0: 0
+        1.570795: $π/2$
+        3.14159: $π$
+        4.712385: $3π/2$
+        6.28318: $2π$
+
+  x: x
+  y: y
+  hue: phi
+  frames: time
+
+  cmap: twilight
+  vmin: 0
+  vmax: &twopi 6.28318
+
+  helpers:
+    set_hv_lines:
+      hlines:
+        - &hvline
+          pos: 0
+          linestyle: solid
+          color: grey
+          alpha: .4
+          linewidth: 2.
+          zorder: -42
+      vlines:
+        - *hvline
+
+
+base_short: &base_short
+  <<: *base
+  select:
+    walk: circle_walk_with_time_coords
+  frames_isel: !slice [~, 32, 4]
+
+
+base_snapshot_via_isel:
+  <<: *base
+  frames_isel: -1
+
+
+base_snapshot_no_frame_dim: &snapshot
+  <<: *base
+  select:
+    walk: circle_walk_snapshot
+  frames: ~
+
+
+auto_enable_animation:
+  <<: *base_short
+  select:
+    walk: circle_walk_with_time_coords
+
+  animation:
+    enabled: false
+
+
+large_offsets:
+  <<: *base_short
+  select:
+    walk: circle_walk_large
+
+  from_pspace:
+    domain:
+      aspect: !sweep
+        default: auto
+        values: [auto, 0.666, 1, 1.5]
+
+
+domain_follow:
+  <<: *base
+  frames_isel: !slice [~, 36]
+  domain:
+    mode: follow
+    pad: 0.1  # relative padding added on each side
+
+
+domain_follow_fixed_size:
+  <<: *base
+  frames_isel: !slice [~, 36]
+  domain:
+    mode: follow
+    aspect: 1
+    height: 1.1
+    pad: 0.1
+
+
+domain_manual:
+  <<: *base_short
+  domain:
+    extent: [-1.5, +1.5, -1.5, +1.5]
+    mode: manual
+    pad: 0.1  # relative padding added on each side
+
+
+domain_explicit_extent:
+  <<: *snapshot
+  domain:
+    extent: [-2, +2, -2, +2]
+
+
+domain_from_list_arg:
+  <<: *snapshot
+  domain: [-2, +2, -2, +2]
+
+
+domain_from_str_arg:
+  <<: *snapshot
+  domain: fixed
+
+
+domain_from_None:
+  <<: *snapshot
+  domain: ~
+
+
+position_from_coords: &xy_from_coords
+  <<: *base_short
+
+  select:
+    # use categorical data with x and y as additional coordinates
+    walk: circle_walk_kind_xy
+
+  to_plot:
+    walk:
+      <<: *walk_kwargs
+      cbar_labels: ~
+
+  # adjust colormap to categorical data
+  hue: kind
+  cmap:
+    one: tab:green
+    two: tab:orange
+    three: tab:blue
+  vmin: 1
+  vmax: 3
+
+
+position_from_coords_array:
+  <<: *xy_from_coords
+
+  select:
+    walk: circle_walk_kind_xy_array
+
+
+with_size:
+  <<: *base_short
+  size: foo
+  size_vmin: min
+  size_vmax: max
+
+
+with_size_and_custom_norm:
+  <<: *base_short
+  size: foo
+  size_norm:
+    name: LogNorm
+  size_vmin: 0.01
+  size_vmax: 1
+
+
+with_size_scalar:
+  <<: *snapshot
+  sizes: 3
+
+
+with_size_individual:
+  <<: *snapshot
+  sizes: [1, 2, 3]
+
+
+cbar_autoscaling:
+  <<: *base_short
+  to_plot:
+    walk:
+      label: circle_walk
+      vmin: 0
+      vmax: ~   # --> vmax will be auto-scaled on each data update
+
+
+with_tail:
+  <<: *base_short
+  select:
+    walk: small_random_walk
+
+  hue: foo
+  to_plot:
+    walk:
+      label: random walk
+      tail_length: 10
+      tail_kwargs: &tail_kwargs
+        color: black
+        linewidth: 2
+        alpha: 0.4
+        zorder: -10
+        capstyle: round
+        joinstyle: bevel
+      cbar_labels: *cbar_labels
+
+
+with_orientation: &oriented
+  <<: *base_short
+  orientation: rad
+  to_plot:
+    walk:
+      <<: *walk_kwargs
+      label: orientation $\theta$
+
+
+with_orientation_explicit:
+  <<: *base_short
+  orientation: 0.
+
+
+with_orientation_explicit_individual:
+  <<: *base_short
+  orientation: [0, 1.570795, 3.14159]
+
+
+with_orientation_explicit_individual_shifted_base:
+  <<: *base_short
+  orientation: [0, 1.570795, 3.14159]
+  base_orientation: 0.7853975  # π/4
+
+
+with_orientation_and_tail: &oriented_with_tail
+  <<: *oriented
+  tail_length: 4
+  tail_kwargs: *tail_kwargs
+
+
+with_orientation_and_tail_max_length:
+  <<: *oriented
+  tail_length: 4
+  tail_max_segment_length: 0.1
+  tail_kwargs: *tail_kwargs
+
+
+with_orientation_and_decaying_tail: &decaying_tail
+  <<: *oriented_with_tail
+  tail_length: 20
+  tail_decay: 0.1
+  tail_kwargs:
+    <<: *tail_kwargs
+    alpha: 0.6
+    linewidth: 1.5
+    capstyle: butt
+
+
+with_orientation_and_decaying_tail_max_length:
+  <<: *decaying_tail
+  tail_max_segment_length: 0.1
+
+
+custom_markers:
+  <<: *base_short
+  based_on:
+    - .creator.universe
+    - .plot.abm
+    - .dag.define.mpl.Path.codes
+
+  dag_options:
+    select_path_prefix: *select_path_prefix
+    define:
+      Circle:
+        - import: [matplotlib.patches, Circle]
+        - call: [!dag_prev , [0, 0]]
+      SeptagonPath:
+        - import: [matplotlib.patches, RegularPolygon]
+        - call: [!dag_prev , [1, 1], 7]
+        - callattr: [!dag_prev , get_path]
+
+  frames_isel: -1
+
+  orientation: foo
+  hue: ~
+
+  select:
+    one: random_pos_1
+    two: random_pos_2
+    three: random_pos_3
+    four: random_pos_4
+
+  to_plot:
+    one:
+      marker: !dag_result Circle  # Patch
+      size_scale: 0.1
+      color: tab:red
+    two:
+      marker: !dag_result SeptagonPath  # Path
+      color: tab:green
+    three:
+      color: tab:orange
+      marker:
+        vertices: [[0,0], [1, 0], [1, 1], [0.5, 1.5], [0, 1]]
+    four:
+      color: tab:blue
+      normalize_marker_sizes: false
+      alpha: 0.3
+      marker:
+        vertices: [[-1, 0], [+1, 0], [0, 1], [0.5, 2], [-0.5, 2]]
+        codes:
+          - !dag_result MOVETO
+          - !dag_result LINETO
+          - !dag_result LINETO
+          - !dag_result CURVE3
+          - !dag_result CURVE3
+
+
+
+
+
+# -- Multi-layer --------------------------------------------------------------
+
+fish:
+  <<: *decaying_tail
+  select:
+    prey: circle_walk_noisy
+    predator: circle_walk_noisy2
+
+  frames_isel: ~
+
+  to_plot:
+    prey:
+      marker: fish
+      label: orientation
+      size_scale: 0.0005
+      tail_kwargs:
+        alpha: ~  # ... should lead to alpha = 1.0 being used
+    predator:
+      marker: fish2
+      size_scale: 0.0012
+      hue: ~
+      color: black
+
+
+multi_layer: &multi_layer
+  <<: *decaying_tail
+
+  select:
+    one: circle_walk_noisy
+    two: circle_walk_shifted
+    three: small_random_walk
+    four: circle_walk_snapshot
+
+  hue: rad
+  frames_isel: !slice [~, 32, 4]
+
+  to_plot:
+    one:
+      <<: *walk_kwargs
+      label: one
+      marker: fish
+
+    two:
+      <<: *walk_kwargs
+      label: two
+      marker: fish2
+      cmap: twilight_shifted_r
+      vmin: min
+      vmax: max
+      cbar_labels: ~
+
+    three:
+      label: random walk (only tails)
+      orientation: ~
+      marker: ""
+      tail_kwargs:
+        color: darkblue
+        linewidth: .8
+
+    four:
+      label: ~
+      frames: ~  # --> not updated, only drawn once
+      frames_isel: ~
+      orientation: ~
+      marker: p
+      hue: ~
+      edgecolor: black
+      facecolor: none
+      linewidth: 1
+      add_colorbar: false
+      use_separate_paths: false
+
+
+
+
+
+# -- Error messages -----------------------------------------------------------
+
+err_data_not_computed:
+  <<: *snapshot
+
+  compute_only: []
+  _raises: PlotCreatorError
+  _match: Missing data named 'walk'!
+
+
+err_data_unnamed_array:
+  <<: *snapshot
+
+  select:
+    walk:
+      path: circle_walk_kind_xy_array
+      transform:
+        - .data
+        - .rename: [!dag_prev , ~]
+        - .isel: [!dag_prev , {time: -1}]
+          kwargs: {drop: true}
+
+  _raises: PlotCreatorError
+  _match: make sure to have the array's `name` attribute set
+
+
+err_failed_getting_data_var:
+  <<: *snapshot
+
+  hue: bad name
+  _raises: PlotCreatorError
+  _match: Failed retrieving agent data variable
+
+
+err_data_bad_domain_type:
+  <<: *snapshot
+
+  domain: 1.23
+  _raises: PlotCreatorError
+  _match: Got invalid type
+
+
+err_data_bad_domain_mode_value:
+  <<: *snapshot
+
+  domain:
+    mode: some bad mode
+  _raises: PlotCreatorError
+  _match: Got invalid `mode` argument with value
+
+
+err_data_bad_domain_mode_type:
+  <<: *snapshot
+
+  domain:
+    mode: 1.23
+  _raises: PlotCreatorError
+  _match: Got invalid `mode` argument of type
+
+
+err_both_size_and_sizes:
+  <<: *snapshot
+
+  size: foo
+  sizes: 5
+  _raises: PlotCreatorError
+  _match: Cannot pass both
+
+
+err_sizes_mismatch:
+  <<: *snapshot
+  sizes: [1, 2, 3, 4]
+  _raises: PlotCreatorError
+  _match: mismatch
+
+
+err_orientation_mismatch:
+  <<: *snapshot
+  orientation: [0, 1.570795, 3.14159, 0]
+  _raises: PlotCreatorError
+  _match: mismatch
+
+
+err_bad_frames_isel:
+  <<: *multi_layer
+  to_plot:
+    one: {}
+    two:
+      frames: ~
+  _raises: PlotCreatorError
+  _match: Failed applying index-selection for layer 'two'!
+
+
+err_frame_it_mismatch:
+  <<: *base
+
+  select:
+    walk: circle_walk
+    walk_short:
+      path: circle_walk_noisy
+      transform:
+        - .data
+        - .isel: [!dag_prev , {time: !slice [~, -1]}]
+
+  to_plot:
+    walk: {}
+    walk_short: {}
+
+  _raises: PlotCreatorError
+  _match: mismatch in the length of the given frame iterators
+
+
+err_bad_suptitle_fstr:
+  <<: *base_short
+
+  suptitle_fstr: "{bad_kwarg:}"
+  _raises: PlotCreatorError
+  _match: Failed setting suptitle
+
+
+
+
+# -- Misc ---------------------------------------------------------------------
+
+multiplot_integration:
+  based_on:
+    - .creator.universe
+    - .plot.multiplot
+
+  dag_options:
+    select_path_prefix: *select_path_prefix
+
+  select:
+    walk:
+      path: circle_walk_noisy
+      transform:
+        - .data
+        - .isel: [!dag_prev , {time: -1}]
+
+  to_plot:
+    - function: [utopya.eval.plots.abm, draw_agents]
+      args:
+        - !dag_result walk
+      x: x
+      y: y
+
+  helpers:
+    set_limits:
+      x: [-1.5, +1.5]
+      y: [-1.5, +1.5]  # FIXME cannot use min/max here
