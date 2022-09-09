@@ -8,10 +8,10 @@ version: 2
 sphinx:
   configuration: doc/conf.py
 
-# Optionally build your docs in additional formats such as PDF and ePub
+# Build docs in all formats
 formats: all
 
-# Optionally set the version of Python and requirements required to build your docs
+# Set the version of Python and build requirements
 python:
   version: 3.8
   install:
@@ -19,3 +19,9 @@ python:
       path: .
       extra_requirements:
         - doc  # This is relevant as it specifies the Sphinx version
+
+# Need to install additional dependencies into the container such that
+# the utopya build system can generate all the plots
+build:
+  apt_packages:
+    - ffmpeg
