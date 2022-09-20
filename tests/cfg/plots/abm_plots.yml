@@ -95,7 +95,7 @@ base: &base
 
   to_plot:
     walk: &walk_kwargs
-      label: position $\phi$
+      cbar_label: position $\phi$
       cbar_labels: &cbar_labels
         0: 0
         1.570795: $π/2$
@@ -111,6 +111,8 @@ base: &base
   cmap: twilight
   vmin: 0
   vmax: &twopi 6.28318
+
+  # frames_isel: !slice [10]  # FIXME remove
 
   helpers:
     set_hv_lines:
@@ -133,6 +135,13 @@ base_short: &base_short
   frames_isel: !slice [~, 32, 4]
 
 
+with_legend:
+  <<: *base_short
+  add_legend: true
+  marker: fish2
+  # _raises: ValueError
+
+
 base_snapshot_via_isel:
   <<: *base
   frames_isel: -1
@@ -142,6 +151,7 @@ base_snapshot_no_frame_dim: &snapshot
   <<: *base
   select:
     walk: circle_walk_snapshot
+  frames_isel: ~
   frames: ~
 
 
@@ -263,6 +273,11 @@ with_size_scalar:
   sizes: 3
 
 
+with_sizes_scalar:
+  <<: *snapshot
+  sizes: 3
+
+
 with_size_individual:
   <<: *snapshot
   sizes: [1, 2, 3]
@@ -272,9 +287,9 @@ cbar_autoscaling:
   <<: *base_short
   to_plot:
     walk:
-      label: circle_walk
       vmin: 0
       vmax: ~   # --> vmax will be auto-scaled on each data update
+      cbar_label: autoscaled cmap
 
 
 with_tail:

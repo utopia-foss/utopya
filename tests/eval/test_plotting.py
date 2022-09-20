@@ -1008,6 +1008,12 @@ def test_AgentCollection(abm_data):
     aco.set_orientations(0)
     assert list(aco.get_orientations()) == [0] * len(xy)
 
+    # Cannot draw tails if not initialized with tails
+    with pytest.raises(ValueError, match="Cannot add tails"):
+        aco.draw_tails()
+    with pytest.raises(ValueError, match="Cannot add tails"):
+        aco.update_tails()
+
     # Tails:
     act = AgentCollection(xy, tail_length=3)
 

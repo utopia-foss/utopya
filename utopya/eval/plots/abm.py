@@ -14,6 +14,8 @@ from dantro.base import BaseDataContainer
 from dantro.plot import ColorManager
 from dantro.tools import recursive_update
 from matplotlib.collections import LineCollection, PathCollection
+from matplotlib.legend import Legend
+from matplotlib.legend_handler import HandlerBase, HandlerPathCollection
 from matplotlib.markers import MarkerStyle
 from matplotlib.patches import Patch
 from matplotlib.path import Path
@@ -134,7 +136,7 @@ class AgentCollection(PathCollection):
 
     def __init__(
         self,
-        xy: Sequence[Tuple[float, float]],
+        xy: Union[np.ndarray, Sequence[Union[Path, Tuple[float, float]]]],
         *,
         marker: Union[Path, Patch, str, dict] = "auto",
         default_marker: Union[Path, Patch, str, dict] = "o",
@@ -231,6 +233,7 @@ class AgentCollection(PathCollection):
             **kwargs: Passed on to
                 :py:class:`~matplotlib.collections.PathCollection`
         """
+        xy = np.array(xy)
         if xy.ndim != 2 or xy.shape[1] != 2:
             raise ValueError(
                 "Agent positions need to be of shape `(N, 2)` but were "
@@ -263,19 +266,19 @@ class AgentCollection(PathCollection):
                 if self.has_orientation
                 else default_marker
             )
+        self._markerpath = self._prepare_marker_path(marker)
         self._has_markers = bool(marker)
 
         if use_separate_paths or self.has_orientation:
-            markerpath = self._prepare_marker_path(marker)
-            paths = [copy.deepcopy(markerpath) for _ in range(len(xy))]
+            paths = [copy.deepcopy(self.markerpath) for _ in range(len(xy))]
 
         else:
             # A bit simpler, only need a single marker
-            # FIXME This causes issues in some scenarios, e.g. by mapping the
-            #       color only to the first path or not drawing markers at all!
+            # FIXME This causes issues in some scenarios, e.g. by mapping
+            #       the color only to the first path or not drawing
+            #       markers at all!
             #       Perhaps always use separate markerpaths?!
-            markerpath = self._prepare_marker_path(marker)
-            paths = [markerpath]
+            paths = [self.markerpath]
 
         # Compute size factors to have reasonably sized markers (and not
         # markers in data units, which typically does not make a lot of sense)
@@ -350,9 +353,14 @@ class AgentCollection(PathCollection):
         """
         return self._tails
 
+    @property
+    def markerpath(self) -> Optional[Path]:
+        """Returns the used markerpath"""
+        return self._markerpath
+
     def draw_tails(self, **kwargs) -> LineCollection:
         """Draws the tails *from scratch*, removing the currently added
-        collection.
+        collection if there is one.
 
         .. note::
 
@@ -360,6 +368,11 @@ class AgentCollection(PathCollection):
             re-added to the desired axes. To update tail positions according
             to the offsets history, use :py:meth:`.update_tails`.
         """
+        if not self.tail_length:
+            raise ValueError(
+                "Cannot add tails to AgentCollection after initialization!"
+            )
+
         if kwargs:
             kwargs = recursive_update(copy.deepcopy(self._tail_kwargs), kwargs)
         else:
@@ -385,17 +398,16 @@ class AgentCollection(PathCollection):
 
         return self.tails
 
-    def update_tails(self) -> None:
+    def update_tails(self) -> LineCollection:
         """Updates the collection that holds the tails using the offsets
-        history. If no collection was created yet, will call
-        :py:meth:`.draw_tails` to do so.
+        history.
         """
-        if self._tails is None:
-            self.draw_tails()
-            return
-
-        # else: just update
+        if not self.tail_length:
+            raise ValueError(
+                "Cannot add tails to AgentCollection after initialization!"
+            )
         self.tails.set_segments(self._build_line_segments())
+        return self.tails
 
     def set_markersizes(self, sizes):
         """Sets the marker sizes, taking into account the size scaling.
@@ -597,6 +609,60 @@ class AgentCollection(PathCollection):
         path._orientation = orientation
 
 
+class HandlerAgentCollection(HandlerPathCollection):
+    """Legend handler for :py:class:`.AgentCollection` instances."""
+
+    def create_collection(
+        self, orig_handle, sizes, offsets, offset_transform
+    ) -> AgentCollection:
+        """Returns an AgentCollection from which legend artists are created."""
+        ac = AgentCollection(
+            offsets,
+            marker=orig_handle.markerpath,
+            sizes=sizes,  # FIXME too small?
+            offset_transform=offset_transform,
+        )
+        # TODO What about the colormap etc?
+        return ac
+
+    def create_artists(
+        self,
+        legend,
+        orig_handle,
+        xdescent,
+        ydescent,
+        width,
+        height,
+        fontsize,
+        trans,
+    ):
+        xdata, xdata_marker = self.get_xdata(
+            legend, xdescent, ydescent, width, height, fontsize
+        )
+
+        ydata = self.get_ydata(
+            legend, xdescent, ydescent, width, height, fontsize
+        )
+
+        sizes = self.get_sizes(
+            legend, orig_handle, xdescent, ydescent, width, height, fontsize
+        )
+
+        p = self.create_collection(
+            orig_handle,
+            sizes,
+            offsets=list(zip(xdata_marker, ydata)),
+            offset_transform=trans,
+        )
+
+        self.update_prop(p, orig_handle, legend)
+        p.set_offset_transform(trans)
+        return [p]
+
+
+Legend.update_default_handler_map({AgentCollection: HandlerAgentCollection()})
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -663,8 +729,9 @@ def _set_domain(
             used to determine the boundaries.
             In ``auto`` mode, will use a ``fixed`` domain if *no* ``extent``
             was given, otherwise ``manual`` mode is used.
-        extent (Tuple[float, float, float, float], optional): A mnually set
-            extent in form ``(left, right, bottom, top)``.
+        extent (Tuple[float, float, float, float], optional): A manually set
+            extent in form ``(left, right, bottom, top)``. Alternatively,
+            a 2-tuple will be interpreted as ``(0, right, 0, top)``.
         height (float, optional): The height of the domain in data units
         aspect (Union[float, int, str], optional): The aspect ratio of the
             domain, the width being computed via ``height * aspect``.
@@ -812,6 +879,7 @@ def draw_agents(
     norm: Union[str, dict] = None,
     vmin: Union[float, str] = None,
     vmax: Union[float, str] = None,
+    cbar_label: str = None,
     cbar_labels: dict = None,
     add_colorbar: bool = None,
     cbar_kwargs: dict = None,
@@ -977,7 +1045,7 @@ def draw_agents(
     # a homogeneous one (with a single path, copied for each agent).
     coll = AgentCollection(
         get_xy(d),
-        transOffset=AffineDeltaTransform(ax.transData),
+        offset_transform=AffineDeltaTransform(ax.transData),
         orientations=get_orientations(d) if orientation else None,
         label=label,
         cmap=cm.cmap,
@@ -1004,7 +1072,7 @@ def draw_agents(
             coll,
             fig=ax.get_figure(),
             ax=ax,
-            label=label,
+            label=cbar_label,
             **ensure_dict(cbar_kwargs),
         )
         # NOTE matplotlib already adds it as `coll.colorbar` attribute
@@ -1028,6 +1096,7 @@ def abmplot(
     figsize_aspect_offset: float = 0.2,
     suptitle_fstr: str = "{dim:} = {val:5d}",
     suptitle_kwargs: dict = dict(fontfamily="monospace"),
+    add_legend: bool = None,
     **shared_kwargs,
 ):
     """Plots agents in a domain, animated over time.
@@ -1090,8 +1159,9 @@ def abmplot(
             wrapped into a list of size one.
         domain (Union[str, dict, Tuple[float, float, float, float]], optional):
             Specification of the domain on which the agents are plotted.
-            If a 4-tuple is given, that defines the position of the *fixed*
-            left, right, bottom, and top borders of the domain.
+            If a 4-tuple is given, it defines the position of the *fixed*
+            ``(left, right, bottom, top)`` borders of the domain; a 2-tuple
+            will be interpreted as ``(0, right, 0, top)``.
             If a string is given, it determines the *mode* by which the domain
             is determined. It can be ``fixed`` (determine bounds from all
             agent positions, then keep them constant) or ``follow`` (domain
@@ -1137,6 +1207,9 @@ def abmplot(
         plot_kwargs = recursive_update(
             copy.deepcopy(shared_kwargs), copy.deepcopy(plot_kwargs)
         )
+        plot_kwargs["label"] = plot_kwargs.get("label", name)
+
+        # Store it, exposing some parameters on the upper level
         lyr["plot_kwargs"] = plot_kwargs
         lyr["x"] = plot_kwargs["x"]
         lyr["y"] = plot_kwargs["y"]
@@ -1420,4 +1493,6 @@ def abmplot(
     plot_frame(frames_iters.__next__(), frame_no=0)
 
     # Create the legend
-    # TODO
+    if add_legend:
+        log.caution("Adding a legend via abmplot will probably be buggy!")
+        hlpr.ax.legend()
