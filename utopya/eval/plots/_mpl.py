@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 def adjust_figsize_to_aspect(
     aspect: float, *, fig: "matplotlib.figure.Figure"
 ) -> Tuple[float, float]:
-    """Adjusts the given figures size, enlarging it to match the given aspect
+    """Adjusts the given figures size, *enlarging* it to match the given aspect
     ratio where ``width = height * aspect``.
 
     Args:

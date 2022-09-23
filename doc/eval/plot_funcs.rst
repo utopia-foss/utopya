@@ -166,6 +166,7 @@ Example output may look like this:
     Data variables do not have coordinates in this case, but it would be possible to supply some.
 
 .. admonition:: Agents in periodic space
+    :class: dropdown
 
     The ``tail_max_segment_length`` parameter is useful if you plan on drawing tails of agents that move in a periodic space.
     In such a case, agent positions may jump aprubtly when crossing a boundary.
@@ -173,6 +174,13 @@ Example output may look like this:
 
     To avoid this, set the ``tail_max_segment_length`` parameter to half the domain size; this typically suffices to detect jumps in x- or y- position and leads to these segments not being drawn.
     (To be precise, the length refers not to that of the segment but to the differences in x- and/or y-position.)
+
+.. admonition:: See also
+
+    - :py:func:`~utopya.eval.plots.abm.abmplot`
+    - :py:func:`~utopya.eval.plots.abm.draw_agents`
+    - :py:class:`~utopya.eval.plots.abm.AgentCollection`
+    - :py:data:`~utopya.eval.plots.abm.MARKERS`
 
 
 -----

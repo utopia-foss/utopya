@@ -3,6 +3,13 @@
 # NOTE Can use `based_on`, but not *within* this file.
 #      Can use `_raises` and `_match` for testing failures and error messages
 ---
+.variables:
+  annotate_kwargs: &annotate_kwargs
+    xycoords: data
+    ha: center
+    fontfamily: monospace
+
+
 # -- Documentation examples ---------------------------------------------------
 
 doc_fish:
@@ -80,6 +87,64 @@ doc_fish:
     figure.figsize: [6, 5]
 
 
+doc_markers:
+  based_on:
+    - .creator.universe
+    - .plot.abm
+    - .plot.abm.snapshot
+    - .style.no_spines
+    - .style.no_grid
+    - .hlpr.ticks.x.hide
+    - .hlpr.ticks.y.hide
+
+  select:
+    pos1: abm/diagonal_1
+    pos2: abm/diagonal_2
+    pos3: abm/diagonal_3
+
+  x: x
+  y: y
+
+  frames: ~
+  frames_isel: ~
+
+  orientation: orientation
+
+  hue: orientation
+  cmap: twilight
+  add_colorbar: false
+  vmin: -3.14159
+  vmax: 3.14159
+
+  adjust_figsize_to_domain: true
+  domain:
+    pad: 0.25
+  size_scale: 0.005
+
+  to_plot:
+    pos1:
+      marker: wedge
+    pos2:
+      marker: fish
+    pos3:
+      marker: fish2
+
+  helpers:
+    annotate:
+      annotations:
+        - xy: [1, 1.3]
+          text: wedge
+          <<: *annotate_kwargs
+        - xy: [2, 1.3]
+          text: fish
+          <<: *annotate_kwargs
+        - xy: [3, 1.3]
+          text: fish2
+          <<: *annotate_kwargs
+
+
+
+
 # -- General tests ------------------------------------------------------------
 base: &base
   based_on:
@@ -111,8 +176,6 @@ base: &base
   cmap: twilight
   vmin: 0
   vmax: &twopi 6.28318
-
-  # frames_isel: !slice [10]  # FIXME remove
 
   helpers:
     set_hv_lines:
@@ -168,6 +231,8 @@ large_offsets:
   <<: *base_short
   select:
     walk: circle_walk_large
+
+  adjust_figsize_to_domain: true
 
   from_pspace:
     domain:
@@ -426,7 +491,7 @@ custom_markers:
 
 # -- Multi-layer --------------------------------------------------------------
 
-fish:
+fish: &fish
   <<: *decaying_tail
   select:
     prey: circle_walk_noisy
@@ -623,6 +688,25 @@ err_bad_suptitle_fstr:
 
 
 # -- Misc ---------------------------------------------------------------------
+
+# fish_clean:
+#   <<: *fish
+#   based_on:
+#     - .creator.universe
+#     - .plot.abm
+
+#     - .hlpr.ticks.x.hide
+#     - .hlpr.ticks.y.hide
+#     - .style.no_spines
+#     - .style.no_grid
+
+#   figsize_aspect_offset: 0
+#   suptitle_fstr: false
+#   add_colorbar: false
+#   add_legend: false
+
+#   helpers: {}
+
 
 multiplot_integration:
   based_on:

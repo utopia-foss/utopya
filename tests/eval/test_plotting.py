@@ -526,6 +526,21 @@ def abm_data() -> Dict[str, xr.Dataset]:
             )
         )
 
+    # .. fixed positions ......................................................
+    for _N in range(1, 10):
+        d[f"diagonal_{_N}"] = xr.Dataset(
+            dict(
+                x=xr.DataArray(np.array([_N] * 5), dims=("agents",)),
+                y=xr.DataArray(
+                    np.array([-1, -0.5, 0, 0.5, 1]), dims=("agents",)
+                ),
+                orientation=xr.DataArray(
+                    [-np.pi / 2, -np.pi / 4, 0, +np.pi / 4, +np.pi / 2],
+                    dims=("agents",),
+                ),
+            )
+        )
+
     # .. random walk ..........................................................
     r = 0.05  # range of step
     random_walk = lambda r, T, N: np.cumsum(rng.uniform(-r, r, size=(T, N)), 0)
@@ -535,7 +550,7 @@ def abm_data() -> Dict[str, xr.Dataset]:
         dict(
             x=xr.DataArray(random_walk(r, T, N), dims=dims),
             y=xr.DataArray(random_walk(r, T, N), dims=dims),
-            rad=xr.DataArray(random_walk(np.pi / 4, T, N), dims=dims),  # FIXME
+            rad=xr.DataArray(random_walk(np.pi / 4, T, N), dims=dims),
             foo=xr.DataArray(random_walk(r, T, N), dims=dims),
             bar=xr.DataArray(random_walk(r, T, N), dims=dims),
         )

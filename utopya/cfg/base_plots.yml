@@ -156,6 +156,10 @@ _:
   style:
     figure.constrained_layout.use: true
 
+  helpers:
+    save_figure:
+      bbox_inches: ~
+
 .plot.abm.snapshot:
   based_on:
     # - .plot.abm  # do not inherit again, would cause overwriting downstream
@@ -290,6 +294,12 @@ _:
 #   https://matplotlib.org/stable/tutorials/introductory/customizing.html
 
 
+.style.no_spines:
+  style:
+    axes.spines.left: false
+    axes.spines.right: false
+    axes.spines.bottom: false
+    axes.spines.top: false
 
 
 

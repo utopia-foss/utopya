@@ -101,13 +101,18 @@ MARKERS: Dict[str, Path] = {
         ],
     ),
 }
-"""Custom markers that can be used in :py:class:`.AgentCollection`.
+"""Custom markers that can be used in :py:class:`.AgentCollection`, an
+essential part of :py:func:`.abmplot`.
 
 Available markers:
 
 - ``wedge``: A triangle that can be used to denote orientations.
 - ``fish``: A simple fish-like shape.
-- ``fish2``: A more elaborate fish that looks more predator-like.
+- ``fish2``: A more elaborate fish-like shape.
+
+.. image:: ../_static/_gen/abmplot/markers.pdf
+    :target: ../_static/_gen/abmplot/markers.pdf
+    :width: 100%
 
 .. hint::
 
@@ -121,8 +126,6 @@ Available markers:
     Suggestions for additional markers are
     `welcome <https://gitlab.com/utopia-project/utopya/-/issues/new>`_.
 """
-# TODO Show example plots here?
-# TODO Link to other relevant sections.
 # TODO add ant-like shape
 # TODO tweak shapes to consist only of a single path, not two overlapping ones
 
@@ -1145,6 +1148,11 @@ def abmplot(
           layers onto rows and columns and thus performing a dimensionality
           reduction on them.
 
+    .. admonition:: See also
+
+        - :py:func:`draw_agents`
+        - :ref:`plot_funcs_abm`
+
     Args:
         data (Dict[str, Union[xarray.Dataset, xarray.DataArray]]): A dict
             holding the data that is to be plotted.
@@ -1152,6 +1160,8 @@ def abmplot(
         to_plot (Dict[str, dict]): Individual plot specifications. Each entry
             refers to one "layer" of agents being plotted and its key needs to
             match the corresponding entry in ``data``.
+            See :py:func:`.draw_agents` for available arguments.
+            Note that the ``shared_kwargs`` also end up in the entries here.
         frames (str, optional): Which data dimension to use for the animation.
         frames_isel (Union[int, slice], optional): An index-selector that is
             applied on the ``frames`` dimension (*without* dropping empty
@@ -1183,9 +1193,12 @@ def abmplot(
             and ``frame_no`` (enumerates the frame number).
         suptitle_kwargs (dict, optional): Passed to
             :py:meth:`~matplotlib.figure.Figure.suptitle`.
+        add_legend (bool, optional): Whether to add a legend.
+            ⚠️ This is currently *experimental* and does not work as expected.
         **shared_kwargs: Shared keyword arguments for all plot specifications.
             Whatever is specified here is used as a basis for each individual
             layer in ``to_plot``, i.e. *updated* by the entries in ``to_plot``.
+            See :py:func:`.draw_agents` for available arguments.
     """
 
     def prepare_layer_specs(
@@ -1405,21 +1418,26 @@ def abmplot(
         ax=hlpr.ax, layers=layers, **parse_domain_kwargs(domain)
     )
 
-    if adjust_figsize_to_domain:
-        adjust_figsize_to_aspect(_aspect + figsize_aspect_offset, fig=hlpr.fig)
-
     # Inform about the plot ...
-    log.remark("  Data variables:       %s", ", ".join(to_plot))
+    log.remark("  Data variables:         %s", ", ".join(to_plot))
     log.remark(
-        "  Frames dimension(s):  %s",
+        "  Frames dimension(s):    %s",
         shared_frames_dim
         if shared_frames_dim
         else ", ".join(f"{f}" for f in frame_dims),
     )
     log.remark(
-        "  Number of frames:     %s",
+        "  Number of frames:       %s",
         num_frames if num_frames > 1 else "(snapshot)",
     )
+    log.remark(
+        "  Domain area:            %.4g  (aspect: %.3g)", domain_area, _aspect
+    )
+
+    if adjust_figsize_to_domain:
+        adjust_figsize_to_aspect(_aspect + figsize_aspect_offset, fig=hlpr.fig)
+        _fw, _fh = hlpr.fig.get_size_inches()
+        log.remark("  Figure size adjusted:   [%.3g, %.3g]", _fw, _fh)
 
     # .. Define single frame and animation update functions ...................
     # For simplicity, these use objects from the outer scope
