@@ -11,7 +11,14 @@ from utopya.tools import load_yml
 
 from .. import *
 from .._fixtures import *
-from ..eval.test_plotting import HEXGRID_PLOTS_CFG, XarrayDC, hexgrid_data
+from ..eval.test_plotting import (
+    ABM_PLOTS_CFG,
+    HEXGRID_PLOTS_CFG,
+    ObjectContainer,
+    XarrayDC,
+    abm_data,
+    hexgrid_data,
+)
 
 PLOTS_CFG = os.path.join(os.path.dirname(__file__), "test_plots.yml")
 """Path to the plots configuration file"""
@@ -137,6 +144,34 @@ def test_caplot(hexgrid_data, out_dir):
 
     # Plot only the documentation-related plots
     for name, plot_cfg in load_yml(HEXGRID_PLOTS_CFG).items():
+        if not name.startswith("doc_"):
+            continue
+
+        try:
+            mv.pm.plot(name[4:], **plot_cfg)
+
+        except Exception as exc:
+            # Allow to fail if it's due to ffmpeg missing
+            if "ffmpeg" in str(exc) and HAVE_FFMPEG:
+                raise
+            continue
+
+
+def test_abmplot(abm_data, out_dir):
+    """Creates output that illustrates abmplot"""
+    # Add the data to the data tree
+    mv, _ = ModelTest(ADVANCED_MODEL).create_run_load()
+
+    for _, uni in mv.dm["multiverse"].items():
+        grp = uni[("data", ADVANCED_MODEL)].new_group("abm")
+        for name, data in abm_data.items():
+            grp.new_container(name, data=data, Cls=ObjectContainer)
+
+    mv.pm.raise_exc = True
+    mv.pm._out_dir = out_dir
+
+    # Plot only the documentation-related plots
+    for name, plot_cfg in load_yml(ABM_PLOTS_CFG).items():
         if not name.startswith("doc_"):
             continue
 

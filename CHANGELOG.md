@@ -2,6 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.0
+- !41 implements `.plot.abm` which specializes on plotting output from agent-based models. Refer to the documentation for more information and examples.
+
+
 ## v1.1.3
 - !39 fixes an error where auto-scaling in animated `caplot`s was done despite `vmin` and/or `vmax` being set.
 - !40 adds `Parameter` shorthand modes `is-positive-or-zero`, `is-negative-or-zero`, and `is-in-unit-interval`.

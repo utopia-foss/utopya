@@ -18,6 +18,7 @@ import pytest
 import xarray as xr
 from dantro._import_tools import added_sys_path, remove_from_sys_modules
 from dantro._import_tools import temporary_sys_modules as tmp_sys_modules
+from dantro.containers import ObjectContainer
 from dantro.data_ops import available_operations
 from dantro.exceptions import *
 from dantro.plot_mngr import PlotCreatorError
@@ -34,6 +35,7 @@ from utopya.eval import PlotHelper
 from utopya.eval.containers import XarrayDC
 from utopya.eval.groups import GraphGroup, TimeSeriesGroup
 from utopya.eval.plots._graph import GraphPlot
+from utopya.eval.plots.abm import AgentCollection, draw_agents
 from utopya.exceptions import *
 from utopya.testtools import ModelTest
 from utopya.yaml import load_yml
@@ -59,6 +61,9 @@ BIFURCATION_DIAGRAM_2D_RUN = get_cfg_fpath(
 BIFURCATION_DIAGRAM_2D_PLOTS = get_cfg_fpath(
     "plots/bifurcation_diagram_2d/plots.yml"
 )
+
+# ABM plots
+ABM_PLOTS_CFG = get_cfg_fpath("plots/abm_plots.yml")
 
 # Hexagonal grid plots
 # ... using the data created in the hexgrid_data fixture
@@ -425,6 +430,130 @@ def hexgrid_data() -> Dict[str, xr.DataArray]:
         dims=dims_xyt,
         coords=coords_t,
         attrs=grid_props(as_ndarray=True),
+    )
+
+    return d
+
+
+@pytest.fixture
+def abm_data() -> Dict[str, xr.Dataset]:
+    """Generates data to test the ABM plot with"""
+    d = dict()
+    dims = ("time", "agent")
+    rng = np.random.default_rng(42)
+
+    # General parameters
+    T = 96
+    N = 3
+    turns = 3
+
+    # .. circle walk ..........................................................
+    R = 3 / 4  # radius
+    phase = np.linspace(0, np.pi, N)
+    phi = np.linspace(0, (turns * 2 * np.pi) - phase, T) % (2 * np.pi)
+    Rs = np.linspace(0.5 * R, 1.5 * R, N)
+    x = Rs * np.cos(phi)
+    y = Rs * np.sin(phi)
+    rad = (phi + np.pi / 2) % (2 * np.pi)  # perpendicular to phi
+    d["circle_walk"] = xr.Dataset(
+        dict(
+            x=xr.DataArray(x, dims=dims),
+            y=xr.DataArray(y, dims=dims),
+            phi=xr.DataArray(phi, dims=dims),
+            rad=xr.DataArray(rad, dims=dims),
+            orientation=xr.DataArray(rad, dims=dims),
+            foo=xr.DataArray(rng.uniform(-1, +1, size=(T, N)), dims=dims),
+            ones=xr.DataArray(np.ones((T, N)), dims=dims),
+        )
+    )
+
+    # .. same but with additive noise for the positions
+    a = 0.04
+    d["circle_walk_noisy"] = copy.deepcopy(d["circle_walk"])
+    d["circle_walk_noisy"]["x"] += rng.uniform(-a, +a, size=(T, N))
+    d["circle_walk_noisy"]["y"] += rng.uniform(-a, +a, size=(T, N))
+
+    # .. same, but more like they swim directly behind them, new noise
+    d["circle_walk_noisy2"] = copy.deepcopy(d["circle_walk"])
+    d["circle_walk_noisy2"]["x"] += rng.uniform(-a, +a, size=(T, N))
+    d["circle_walk_noisy2"]["y"] += rng.uniform(-a, +a, size=(T, N))
+    _x = d["circle_walk_noisy2"]["x"]
+    _y = d["circle_walk_noisy2"]["y"]
+    _shift = +np.pi / 4
+    d["circle_walk_noisy2"]["x"] = np.cos(_shift) * _x + np.sin(_shift) * _y
+    d["circle_walk_noisy2"]["y"] = -np.sin(_shift) * _x + np.cos(_shift) * _y
+    d["circle_walk_noisy2"]["rad"] -= _shift
+    d["circle_walk_noisy2"]["orientation"] -= _shift
+
+    # .. same, but shifted by π
+    d["circle_walk_shifted"] = -1 * d["circle_walk"]
+    d["circle_walk_shifted"]["rad"] *= -1
+    d["circle_walk_shifted"]["rad"] += np.pi
+    d["circle_walk_shifted"]["orientation"] *= -1
+    d["circle_walk_shifted"]["orientation"] += np.pi
+
+    # .. same, but with inhomogeneously scaled-up coordinates
+    d["circle_walk_large"] = copy.deepcopy(d["circle_walk"])
+    d["circle_walk_large"]["x"] *= 500
+    d["circle_walk_large"]["y"] *= 1000
+
+    # .. same, but with positions encoded in *coordinates*
+    kind = xr.DataArray(
+        np.array([[1, 2, 3] for _ in range(T)]),
+        name="kind",
+        dims=("time", "agent"),
+    )
+    kind.coords["x"] = (("time", "agent"), x)
+    kind.coords["y"] = (("time", "agent"), y)
+    d["circle_walk_kind_xy"] = xr.Dataset(dict(kind=kind))
+    d["circle_walk_kind_xy_array"] = kind
+
+    # .. same, but with time *coordinates* having been set
+    d["circle_walk_with_time_coords"] = d["circle_walk"].copy()
+    d["circle_walk_with_time_coords"].coords["time"] = range(T)
+
+    # .. same, but without time dimension
+    d["circle_walk_snapshot"] = d["circle_walk"].isel(time=-1)
+
+    # .. random positions .....................................................
+    rand = lambda _N: rng.uniform(-1, +1, size=(T, _N))
+    for _N in range(1, 10):
+        d[f"random_pos_{_N}"] = xr.Dataset(
+            dict(
+                x=xr.DataArray(rand(_N), dims=dims),
+                y=xr.DataArray(rand(_N), dims=dims),
+                foo=xr.DataArray(_N * rand(_N), dims=dims),
+            )
+        )
+
+    # .. fixed positions ......................................................
+    for _N in range(1, 10):
+        d[f"diagonal_{_N}"] = xr.Dataset(
+            dict(
+                x=xr.DataArray(np.array([_N] * 5), dims=("agents",)),
+                y=xr.DataArray(
+                    np.array([-1, -0.5, 0, 0.5, 1]), dims=("agents",)
+                ),
+                orientation=xr.DataArray(
+                    [-np.pi / 2, -np.pi / 4, 0, +np.pi / 4, +np.pi / 2],
+                    dims=("agents",),
+                ),
+            )
+        )
+
+    # .. random walk ..........................................................
+    r = 0.05  # range of step
+    random_walk = lambda r, T, N: np.cumsum(rng.uniform(-r, r, size=(T, N)), 0)
+    # TODO use correct orientation for `rad`, computed from vector between one
+    #      step and the next of the random walk
+    d["small_random_walk"] = xr.Dataset(
+        dict(
+            x=xr.DataArray(random_walk(r, T, N), dims=dims),
+            y=xr.DataArray(random_walk(r, T, N), dims=dims),
+            rad=xr.DataArray(random_walk(np.pi / 4, T, N), dims=dims),
+            foo=xr.DataArray(random_walk(r, T, N), dims=dims),
+            bar=xr.DataArray(random_walk(r, T, N), dims=dims),
+        )
     )
 
     return d
@@ -848,6 +977,102 @@ def test_caplot_hexagonal(hexgrid_data, out_dir):
 
     for name, plot_cfg in load_yml(HEXGRID_PLOTS_CFG).items():
         if name in TO_SKIP:
+            continue
+        print(f"\n\n--- Test case: {name} ---")
+
+        _raises = plot_cfg.pop("_raises", None)
+        _warns = plot_cfg.pop("_warns", None)
+        _match = plot_cfg.pop("_match", None)
+
+        if _raises is not None:
+            ctx = pytest.raises(globals()[_raises], match=_match)
+        elif _warns is not None:
+            ctx = pytest.warns(globals()[_warns], match=_match)
+        else:
+            ctx = contextlib.nullcontext()
+
+        with ctx:
+            mv.pm.plot(name, **plot_cfg)
+
+
+# -----------------------------------------------------------------------------
+# -- ABM plot -----------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
+
+def test_AgentCollection(abm_data):
+    """Tests the AgentCollection directly, without drawing. This is mostly an
+    interface test, capabilities are tested separately."""
+    d = abm_data["circle_walk"]
+    xy = np.stack([d["x"].isel(time=0), d["y"].isel(time=0)], -1)
+
+    # Bad data
+    with pytest.raises(ValueError, match="positions need to be of shape"):
+        AgentCollection(np.stack([d["x"], d["y"]], -1))
+
+    # Without orientations
+    ac = AgentCollection(xy)
+
+    with pytest.raises(ValueError, match="was not initialized with orient"):
+        ac.set_orientations(0)
+    with pytest.raises(ValueError, match="was not initialized with orient"):
+        ac.get_orientations()
+
+    # With orientations
+    aco = AgentCollection(xy, orientations=np.pi)
+    aco.set_orientations(0)
+    assert list(aco.get_orientations()) == [0] * len(xy)
+
+    # Cannot draw tails if not initialized with tails
+    with pytest.raises(ValueError, match="Cannot add tails"):
+        aco.draw_tails()
+    with pytest.raises(ValueError, match="Cannot add tails"):
+        aco.update_tails()
+
+    # Tails:
+    act = AgentCollection(xy, tail_length=3)
+
+    # Can update them without first drawing
+    act.update_tails()
+    act.update_tails()
+
+    # Can draw them and pass additional arguments
+    act.draw_tails(color="black")
+
+
+def test_draw_agents(abm_data):
+    """Tests *part* of the draw_agents plot function"""
+    d = abm_data["circle_walk"]
+    xy = np.stack([d["x"].isel(time=0), d["y"].isel(time=0)], -1)
+
+    with pytest.raises(TypeError, match="Expected xr.Dataset or xr.DataArray"):
+        draw_agents(xy.data, x="x", y="y")
+
+    oc = ObjectContainer(name="wrapped array", data=xy.data)
+    with pytest.raises(TypeError, match="Expected xr.Dataset or xr.DataArray"):
+        draw_agents(oc, x="x", y="y")
+
+
+def test_abmplot(abm_data, out_dir):
+    """Emulate a model holding ABM data and let it create some plots"""
+    # Add the data to the data tree
+    mv, _ = ModelTest(ADVANCED_MODEL).create_run_load()
+
+    for _, uni in mv.dm["multiverse"].items():
+        grp = uni[("data", ADVANCED_MODEL)].new_group("abm")
+        for name, data in abm_data.items():
+            grp.new_container(name, data=data, Cls=ObjectContainer)
+
+    mv.pm.raise_exc = True
+    mv.pm._out_dir = out_dir
+
+    TO_SKIP = (
+        # because missing ffmpeg in CI jobs
+        "doc_fish",
+    )
+
+    for name, plot_cfg in load_yml(ABM_PLOTS_CFG).items():
+        if name in TO_SKIP or name.startswith("."):
             continue
         print(f"\n\n--- Test case: {name} ---")
 
