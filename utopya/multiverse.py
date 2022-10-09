@@ -240,8 +240,21 @@ class Multiverse:
     def model_executable(self) -> str:
         """The path to the model executable"""
         if self._model_executable is not None:
+            # Use the executable from a temporary directory
             return self._model_executable
-        return self.info_bundle.executable
+
+        execpath = self.info_bundle.executable
+        if not execpath:
+            raise ValueError(
+                f"Model '{self.model_name}' does not have an executable "
+                "registered that can be used to perform a simulation run!\n"
+                "If you want to run simulations, specify an executable. "
+                "In case you only want to use utopya's evaluation routines, "
+                "no executable is needed, but only the evaluation pipeline is "
+                "available and it seems like you tried to run a simulation."
+            )
+
+        return execpath
 
     @property
     def model(self) -> "utopya.model.Model":
@@ -400,6 +413,9 @@ class Multiverse:
         project_cfg = {}
         project_cfg_path = None
 
+        model_mv_cfg = {}
+        model_mv_cfg_path = None
+
         project_name = self.info_bundle.project_name
         if project_name:
             project = self.info_bundle.project
@@ -423,6 +439,10 @@ class Multiverse:
 
                 if project_cfg_path:
                     project_cfg = load_yml(project_cfg_path)
+
+        # There might be a model-specific configuration
+        if model_mv_cfg_path := self.info_bundle.paths.get("mv_model_cfg"):
+            model_mv_cfg = load_yml(model_mv_cfg_path)
 
         # Decide whether to read in the user configuration from the default
         # search location or use a user-passed one
@@ -490,9 +510,6 @@ class Multiverse:
         # Now perform the recursive update steps
         # Start with the base configuration
         meta_tmp = base_cfg
-        log.debug(
-            "Performing recursive updates to arrive at meta configuration ..."
-        )
 
         # Update with framework and project config, if available
         if framework_cfg:
@@ -502,6 +519,10 @@ class Multiverse:
         if project_cfg:
             log.debug("Updating with project configuration ...")
             meta_tmp = recursive_update(meta_tmp, project_cfg)
+
+        if model_mv_cfg:
+            log.debug("Updating with model-specific configuration ...")
+            meta_tmp = recursive_update(meta_tmp, model_mv_cfg)
 
         # Update with user configuration, if given
         if user_cfg:
@@ -516,7 +537,7 @@ class Multiverse:
         # Adjust parameter space to include model configuration at a specified
         # key; also communicate that key explicitly.
         log.debug(
-            "Updating parameter space with model configuration for "
+            "Updating parameter space with default model configuration for "
             "model '%s' ...",
             self.model_name,
         )
@@ -558,6 +579,7 @@ class Multiverse:
             base=self.BASE_META_CFG_PATH,
             framework=framework_cfg_path,
             project=project_cfg_path,
+            model_mv=model_mv_cfg,
             user=user_cfg_path,
             model=model_cfg_path,
             run=run_cfg_path,
@@ -1659,21 +1681,37 @@ class FrozenMultiverse(Multiverse):
             IOError: No directory found to use as run directory
             TypeError: When run_dir was not a string
         """
-        # Create model directory path
+        PATTERN = r"\d{6}-\d{6}_?.*"
+
+        # Create model directory path (where the to-be-loaded data is expected)
         out_dir = os.path.expanduser(str(out_dir))
         model_dir = os.path.join(out_dir, self.model_name)
 
+        if not os.path.isdir(model_dir):
+            # Just create it, there's no harm in that ...
+            os.makedirs(model_dir)
+
         # Distinguish different types of values for the run_dir argument
         if run_dir is None:
-            log.info("Trying to identify most recent run directory ...")
+            log.info("Trying to identify the most recent run directory ...")
 
             # Create list of _directories_ matching timestamp pattern
             dirs = [
                 d
                 for d in sorted(os.listdir(model_dir))
                 if os.path.isdir(os.path.join(model_dir, d))
-                and re.match(r"\d{6}-\d{6}_?.*", os.path.basename(d))
+                and re.match(PATTERN, os.path.basename(d))
             ]
+
+            if not dirs:
+                raise FileNotFoundError(
+                    "Could not find a run directory to load for evaluation "
+                    f"of model '{self.model_name}'!\n"
+                    f"Model output directory:  {model_dir}\n\n"
+                    "Did you perform a simulation yet? If you are using this "
+                    "model only for evaluation, place your data in a new "
+                    "subdirectory in that folder (using timestamp as name)."
+                )
 
             # Use the latest to choose the run directory
             run_dir = os.path.join(model_dir, dirs[-1])
@@ -1687,7 +1725,7 @@ class FrozenMultiverse(Multiverse):
             if os.path.isabs(run_dir):
                 log.debug("Received absolute run_dir, using that one.")
 
-            elif re.match(r"\d{6}-\d{6}_?.*", run_dir):
+            elif re.match(PATTERN, run_dir):
                 # Is a timestamp, look relative to the model directory
                 log.info(
                     "Received timestamp '%s' for run_dir; trying to find "
