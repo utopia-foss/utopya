@@ -8,6 +8,7 @@ The demo project showcases the following capabilities of utopya:
 - Example implementation for a utopya model
     - `MinimalModel`: using only the minimal amount of utopya features
     - `ExtendedModel`: showcasing more utopya features, using the `utopya_backend` and its `BaseModel` classes for a scaffolding of your own model.
+    - `EvalOnlyModel`: a model that only uses the evaluation routines of utopya (and does not have an executable that generates simulation output).
 - Creating a `.utopya-project.yml` file for project registration.
 - Creating a `<model_name>_info.yml` file for model registration.
 - Adding supplementary files:

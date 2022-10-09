@@ -17,6 +17,7 @@ from . import (
     ADVANCED_MODEL,
     DEMO_DIR,
     DUMMY_MODEL,
+    EVALONLY_MODEL,
     TEST_LABEL,
     TEST_OUTPUT_DIR,
     TEST_PROJECT_NAME,
@@ -41,6 +42,10 @@ TEST_MODELS = {
     ),
     ADVANCED_MODEL: (
         os.path.dirname(ADVANCED_EXECUTABLE),
+        ("--project-name", TEST_PROJECT_NAME),
+    ),
+    EVALONLY_MODEL: (
+        os.path.join(DEMO_DIR, "models", EVALONLY_MODEL),
         ("--project-name", TEST_PROJECT_NAME),
     ),
 }

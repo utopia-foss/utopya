@@ -17,6 +17,7 @@ The articles below describe how the configuration can be used in the respective 
 .. toctree::
     :maxdepth: 2
 
+    mv_meta_cfg
     parameter
 
 

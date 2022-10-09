@@ -1,0 +1,5 @@
+# Model-specific updates to the Multiverse meta configuration
+---
+data_manager:
+  # Do not load any additional data
+  load_cfg: ~
