@@ -2,6 +2,11 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.1
+- !43 allows model-specific updates to the `Multiverse` configuration
+- !43 makes specifying a model executable optional, allowing *evaluation only* pipelines.
+
+
 ## v1.2.0
 - !41 implements `.plot.abm` which specializes on plotting output from agent-based models. Refer to the documentation for more information and examples.
 
