@@ -238,9 +238,10 @@ sns_kinds:
         - displot
         - catplot
         - lmplot
-        - pairplot
         - jointplot
-        # - clustermap  # not possible with the available data
+        # not possible with the available data:
+        # - pairplot
+        # - clustermap
 
   free_indices: [mean_state]
 

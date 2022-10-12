@@ -5,7 +5,7 @@ import copy
 import logging
 import os
 import time
-from typing import Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 from ..exceptions import MissingProjectError
 from ..tools import load_selected_keys, load_yml, pformat, recursive_update
@@ -43,7 +43,7 @@ class ModelInfoBundle:
     """
 
     PATHS_SCHEMA = (
-        ("executable", str, True),
+        ("executable", str),
         ("model_info", str),
         ("source_dir", str),
         ("default_cfg", str),
@@ -51,6 +51,7 @@ class ModelInfoBundle:
         ("base_plots", str),
         ("py_tests_dir", str),
         ("py_plots_dir", str),
+        ("mv_model_cfg", str),
     )
     """Schema to use for a bundle's ``paths`` entry"""
 
@@ -192,9 +193,9 @@ class ModelInfoBundle:
         return self._d[key]
 
     @property
-    def executable(self) -> str:
+    def executable(self) -> Optional[str]:
         """The path to the model executable"""
-        return self._d["paths"]["executable"]
+        return self._d["paths"].get("executable")
 
     @property
     def paths(self) -> dict:
@@ -256,7 +257,7 @@ class ModelInfoBundle:
         self,
         *,
         missing_path_action: str,
-        executable: str,
+        executable: str = None,
         source_dir: str = None,
         base_executable_dir: str = None,
         base_source_dir: str = None,
@@ -311,7 +312,8 @@ class ModelInfoBundle:
             paths["model_info"] = model_info
 
         # Evaluate the executable file path
-        paths["executable"] = os.path.join(base_executable_dir, executable)
+        if executable is not None:
+            paths["executable"] = os.path.join(base_executable_dir, executable)
 
         # Prepare an absolute version of the source directory path
         abs_source_dir_path = None

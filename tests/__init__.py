@@ -48,6 +48,9 @@ DUMMY_MODEL = "MinimalModel"
 ADVANCED_MODEL = "ExtendedModel"
 """Model to use for testing advanced functionality"""
 
+EVALONLY_MODEL = "EvalOnlyModel"
+"""Model to use for testing advanced functionality"""
+
 DEMO_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), "../demo"))
 """Directory the demo models are located in"""
 

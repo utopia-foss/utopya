@@ -665,6 +665,8 @@ def test_shared_worker_manager(mv_kwargs):
 
 # FrozenMultiverse tests ------------------------------------------------------
 
+from .test_demo_project import test_EvalOnlyModel as test_eval_only
+
 
 def test_FrozenMultiverse(mv_kwargs, cluster_env):
     """Test the FrozenMultiverse class"""

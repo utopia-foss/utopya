@@ -9,6 +9,7 @@ It showcases the following capabilities of utopya:
 - Example implementation for a utopya model
   - ``MinimalModel``: using only the minimal amount of utopya features
   - ``ExtendedModel``: showcasing more utopya features, using the :py:mod:`utopya_backend` and one of its ``BaseModel`` classes for a scaffolding of your own model.
+  - ``EvalOnlyModel``: a model that only uses the evaluation routines of utopya (and does not have an executable that generates simulation output).
 - Creating a ``.utopya-project.yml`` file for project registration.
 - Creating a ``<model_name>_info.yml`` file for model registration.
 - Adding supplementary files:
@@ -105,7 +106,7 @@ The ``ExtendedModel``
 ^^^^^^^^^^^^^^^^^^^^^
 The ``ExtendedModel`` is a demo for a more complex model implementation.
 Additionally, it also uses more features of utopya.
-Key differences are:
+Key differences to the ``MinimalModel`` are:
 
 - The implementation is split up into an ``impl`` *package* and a ``run_model.py``, that invokes the implementation.
 - It implements the ``ExtendedModel`` class by inheriting from :py:class:`~utopya_backend.model.step.StepwiseModel` which takes care to implement all the simulation infrastructure and a step-wise model abstraction:
@@ -114,9 +115,10 @@ Key differences are:
   - A ``monitor`` method that communicates simulation progress to the frontend.
   - Abstractions for a modelling paradigm with stepwise iterations of constant time deltas, controlled by ``num_steps``, ``write_start`` and ``write_every``.
 - The ``model_plots`` and ``model_tests`` are in use.
-- The ``cfgs`` directory contains so-called *config sets*  which can be used to define certain sets of default run and evaluation configurations.
+- The ``cfgs`` directory contains so-called *config sets* which can be used to define certain sets of default run and evaluation configurations.
+- The manifest file holds more information, e.g. on the location of the ``model_plots`` and ``model_tests`` directories.
 
-To register and run it, we can again use its manifest file (and an extended glob pattern that actually matches all manifest files):
+To register and run it, we can again use its manifest file (and an extended glob pattern that actually matches *all* manifest files):
 
 .. code-block:: bash
 
@@ -124,9 +126,50 @@ To register and run it, we can again use its manifest file (and an extended glob
     utopya models register from-manifest **/*_info.yml --exists-action overwrite
     utopya run ExtendedModel
 
+.. hint::
+
+    The ``--exists-action`` option is required because the ``MinimalModel`` was already registered and needs to be overwritten or updated.
+
+
+The ``EvalOnlyModel``
+^^^^^^^^^^^^^^^^^^^^^
+The ``EvalOnlyModel`` shows how utopya can be set up *only* with the evaluation routine being used.
+Essentially, the ``utopya run`` command is not available for this model; only ``utopya eval`` can be used.
+
+Key differences to the previous models are:
+
+- There is no executable that generates simulation data, assuming that the evaluation pipeline does not require that.
+- Effectively, the model consists only of a bunch of configuration files which define which plots are to be created.
+- The ``model_plots`` are also in use, but ``model_tests`` are not.
+- The model manifest defines an additional config file, the ``mv_updates.yml`` which can be used to update the :py:class:`~utopya.multiverse.Multiverse` :ref:`meta configuration <mv_meta_cfg>`
+  - Here, this file is used to *clear* the so-called *load configuration*, thus leading to no simulation data being expected (which is necessary, because there is no executable that would create output).
+  - The load configuration can also be adjusted to load different kinds of data, e.g. from a fixed directory path. Refer to `the dantro docs <https://dantro.readthedocs.io/en/latest/data_io/data_mngr.html#the-load-configuration>`_ for more information.
+
+Essentially, the behavior of this model is equivalent to that of a regular model, only with a few features deactivated.
+Thus, to follow the overall paradigm of utopya, some manual steps need to be taken to run the evaluation routine:
+
+- Manually create a model output directory ``~/utopya_output/<model_name>`` (or in the respective other place if you have adjusted it)
+- In that directory, create a new directory that follows the timestamp format of the regular run directory, ``YYMMDD-HHMMSS`` or ``YYMMDD-HHMMSS_some-comment``, e.g. ``230101-000000``
+- That directory *can* be empty, but it may also contain data that you would like to have loaded, e.g. in a ``data`` subdirectory.
+
+Now you can run the evaluation routine simply via:
+
+.. code-block:: bash
+
+    utopya eval EvalOnlyModel
+
+As is the case with all other models, this will create output in the ``eval/<timestamp>`` subdirectory of the selected run directory.
+
+.. admonition:: Is this really a "model"?
+    :class: dropdown
+
+    In utopya, "model" essentially denotes the name of some processing pipeline that *may* start with generating simulation data from some model implementation.
+    In a strict sense, referring to a pipeline without that model implementation as "model" can be confusing; however, as the same paradigm is followed, the pipeline is still referred to as "model" in utopya.
+
+
 
 Your own model
-^^^^^^^^^^^^^^
+--------------
 For your own model, do the following:
 
 #. Create a new directory within the ``models`` directory (or the corresponding directory defined in the project info file).
@@ -143,6 +186,15 @@ For your own model, do the following:
         utopya models register from-manifest *_info.yml
 
 Your own model should now be registered and invokable via ``utopya run``.
+
+.. hint::
+
+    **For more complex python models**, we recommended to see how ``ExtendedModel`` includes an implementation package and invokes it.
+    This will make it much easier to grow your project.
+
+.. hint::
+
+    Look at the ``ExtendedModel`` and ``EvalOnlyModel`` for other options on how to structure your project.
 
 
 Requirements for a model executable
@@ -228,9 +280,9 @@ There can also be further entries in the monitor dict which are picked up by the
 Data evaluation pipeline
 """"""""""""""""""""""""
 Being aware of where the model outputs its simulation data, utopya can initiate a data processing pipeline.
-To that end, the following configuration files need to be added or adapted: ...
+To that end, the following configuration files need to be added or adapted:
 
-🚧
+.. todo:: Work in Progress 🚧
 
 
 Remarks

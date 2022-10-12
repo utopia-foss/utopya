@@ -29,7 +29,6 @@ paths:
   py_tests_dir: ../../model_tests/ExtendedModel
 
 # -- Metadata
-# TODO Expand
 metadata:
   description: A (dummy) model illustrating the extended utopya interface
   long_description: >

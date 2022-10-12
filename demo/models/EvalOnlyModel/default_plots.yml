@@ -1,0 +1,18 @@
+---
+some_example_plot:
+  based_on:
+    - .creator.pyplot
+    - .plot.facet_grid
+    - .hlpr.limits.x.min_max
+
+  transform:
+    - np.linspace: [0, 16, 201]
+      tag: x
+
+    - np.: [sin, !dag_tag x]
+    - xr.DataArray: !dag_prev
+      kwargs:
+        dims: [x]
+        coords:
+          x: !dag_tag x
+      tag: data

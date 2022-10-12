@@ -1,0 +1,43 @@
+# An example manifest file that contains model information and can be used
+# to register a model in the utopya model registry
+#
+# NOTE Updating the information in this file does NOT automatically update the
+#      corresponding entries in the model registry! Call
+#
+#           utopya models register from-manifest [MANIFEST_FILE]...
+#
+#      for updating information in the model registry.
+---
+# -- General information and options
+model_name: EvalOnlyModel
+
+# Optionally, associate this model with the demo project, embedding the model
+# into the project's config hierarchy and making use of project-level defaults.
+project_name: utopyaDemoProject
+
+
+# -- Path information, interpreted relative to this file
+paths:
+  source_dir: ./
+  base_plots: base_plots.yml
+  default_plots: default_plots.yml
+  mv_model_cfg: mv_updates.yml
+
+  py_plots_dir: ../../model_plots/EvalOnlyModel
+
+# -- Metadata
+metadata:
+  description: A showcase of how to use utopya for evaluation only
+  long_description: >
+    This is a model only in name: There is no executable associated that would
+    perform a simulation run and generate data. Instead, this "model" serves
+    as a way to let utopya take care of the evaluation of existing data.
+  version: "0.1"
+  author: Yunus Sevinchan
+  license: LGPLv3+
+  language: python3
+  requirements:
+    - ruamel.yaml
+    - numpy
+    - h5py
+  utopya_compatibility: ">=1.2.1"

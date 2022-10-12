@@ -36,7 +36,7 @@ For model implementations, the :py:mod:`utopya_backend` package can assist in bu
 Also visit :ref:`the user manual front page <welcome>` for more information.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.2.1b0"
 """The :py:mod:`utopya` package version"""
 
 # .. Logging ..................................................................
