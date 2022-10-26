@@ -13,6 +13,8 @@ from ._shared import (
     INTERACTIVE_MODE_PROHIBITED_ARGS,
     OPTIONS,
     add_options,
+    complete_model_names,
+    complete_run_dirs,
     default_none,
 )
 from ._utils import ANSIesc, Echo, parse_run_and_plots_cfg, parse_update_dicts
@@ -33,9 +35,10 @@ log = logging.getLogger(__name__)
         "evaluate a specific simulation, the directory name can be used."
     ),
 )
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @click.argument(
     "run_dir",
+    shell_complete=complete_run_dirs,
     required=False,
 )
 @click.option(

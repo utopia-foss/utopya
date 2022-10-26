@@ -23,7 +23,7 @@ paths:
   model_note: ~
 
   # From the two above, the run directory will be created at:
-  #     <out_dir>/<model_name>/<timestamp>-<model_note>/
+  #     <out_dir>/<model_name>/<timestamp>_<model_note>/
   # Subfolders will be:  config, eval, data
 
 # Control of the backup of files that belong to a simulation

@@ -5,7 +5,7 @@ import sys
 
 import click
 
-from ._shared import OPTIONS, add_options
+from ._shared import OPTIONS, add_options, complete_model_names
 from ._utils import Echo
 
 # -----------------------------------------------------------------------------
@@ -24,7 +24,7 @@ from ._utils import Echo
 )
 #
 # Select a model
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @add_options(OPTIONS["label"])
 #
 # Pass pytest arguments through

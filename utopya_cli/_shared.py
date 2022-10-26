@@ -1,8 +1,168 @@
 """Defines arguments that are shared across various parts of the CLI"""
 
-from typing import Union
+import glob
+import os
+from typing import Dict, List, Union
 
 import click
+
+# -----------------------------------------------------------------------------
+# Variables
+#
+# NOTE Some of these are duplicated rather than imported to save on utopya
+#      import time...
+
+UTOPYA_CFG_DIR: str = os.path.expanduser("~/.config/utopya")
+"""Directory where utopya stores its metadata"""
+
+UTOPYA_CFG_FILE_NAMES = dict(
+    user="user_cfg.yml",
+    utopya="utopya_cfg.yml",
+    batch="batch_cfg.yml",
+)
+"""Names and paths of valid configuration entries"""
+
+UTOPYA_CFG_FILE_PATHS = {
+    k: os.path.join(UTOPYA_CFG_DIR, fname)
+    for k, fname in UTOPYA_CFG_FILE_NAMES.items()
+}
+"""Absolute configuration file paths"""
+
+UTOPYA_CFG_SUBDIR_NAMES = dict(
+    models="models",
+    projects="projects",
+)
+"""Names and paths of valid configuration subdirectories"""
+
+UTOPYA_CFG_SUBDIRS = {
+    k: os.path.join(UTOPYA_CFG_DIR, dirname)
+    for k, dirname in UTOPYA_CFG_SUBDIR_NAMES.items()
+}
+"""Absolute configuration file paths"""
+
+DEFAULT_RUN_DIR_SEARCH_PATHS: str = [
+    "~/utopya_output",
+    "~/utopia_output",
+]
+"""Default directory paths to search for model run directories in.
+
+This can be overwritten via the utopya package configuration file and its
+entry ``cli.run_dir_search_paths``.
+"""
+
+
+# .............................................................................
+
+INTERACTIVE_MODE_PROHIBITED_ARGS = (
+    "run_cfg",
+    "run_dir",
+    "label",
+    "set_params",
+    "cluster_mode",
+    "show_data_tree",
+    "use_data_tree_cache",
+    "load_parallel",
+)
+"""Argument names that may NOT be given in the interactive plotting prompt"""
+
+
+# -----------------------------------------------------------------------------
+# Shell completion
+
+
+def complete_from_cfg_dir(
+    ctx, param, incomplete: str, *, dirpath: str, glob_str: str = "*.yml"
+) -> List[str]:
+    """Reads the filenames from a directory and uses that to return a list of
+    strings that offer
+
+    This is meant for completing queries where a name is required that has an
+    equivalent representation as a registry file in a utopya config directory.
+    """
+    return sorted(
+        [
+            os.path.splitext(os.path.basename(f))[0]
+            for f in glob.glob(os.path.join(dirpath, incomplete + glob_str))
+        ],
+        key=str.casefold,
+    )
+
+
+def complete_model_names(*args) -> List[str]:
+    """Completes model names using :py:func:`.complete_from_cfg_dir`."""
+    return complete_from_cfg_dir(*args, dirpath=UTOPYA_CFG_SUBDIRS["models"])
+
+
+def complete_project_names(*args) -> List[str]:
+    """Completes project names using :py:func:`.complete_from_cfg_dir`."""
+    return complete_from_cfg_dir(*args, dirpath=UTOPYA_CFG_SUBDIRS["projects"])
+
+
+def complete_run_dirs(
+    ctx, param, incomplete: str, *, extra_search_dirs: list = []
+) -> List[str]:
+    """Completes run directories for the selected model name.
+
+    As the run directory is determined via the run configuration, there is no
+    certainty on the location of run directories. Instead, the canonical
+    locations where the simulation output is stored forms the basis for the
+    completion.
+    The search directories can be configured in the utopya package config file
+    using the ``cli.run_dir_search_paths`` key:
+
+    .. code-block:: yaml
+
+        # ~/.config/utopya/utopya_cfg.yml
+        ---
+        cli:
+          run_dir_search_paths:
+            - ~/utopya_output
+            - ~/utopia_output
+            # ... can add more here ...
+
+    .. todo::
+
+        Auto-complete local paths as well, starting from CWD.
+    """
+    from dantro.tools import load_yml
+
+    # Need the model name
+    model_name = ctx.params["model_name"]
+
+    # Get search directories from config and assemble model output directories
+    cli_cfg = {}
+    if os.path.exists(UTOPYA_CFG_FILE_PATHS["utopya"]):
+        cli_cfg = load_yml(UTOPYA_CFG_FILE_PATHS["utopya"]).get("cli", {})
+
+    search_dirs = cli_cfg.get(
+        "run_dir_search_paths", DEFAULT_RUN_DIR_SEARCH_PATHS
+    )
+    search_dirs += extra_search_dirs
+    model_out_dirs = [
+        os.path.join(os.path.expanduser(d), model_name) for d in search_dirs
+    ]
+
+    # Aggregate candidate directory names, then sort and filter them
+    candidates = []
+    for model_out_dir in model_out_dirs:
+        if not os.path.isdir(model_out_dir):
+            continue
+
+        candidates += [
+            os.path.basename(p)
+            for p in glob.glob(os.path.join(model_out_dir, "*"))
+            if os.path.isdir(p)
+        ]
+
+    # TODO Fall back to auto-completion of local paths, if possible
+
+    return [
+        p for p in reversed(sorted(candidates)) if p.startswith(incomplete)
+    ]
+
+
+# -----------------------------------------------------------------------------
+# Shared options
 
 
 def add_options(options):
@@ -24,23 +184,7 @@ def default_none(ctx, _, value) -> Union[None, tuple]:
     return value
 
 
-# -----------------------------------------------------------------------------
-
-
-INTERACTIVE_MODE_PROHIBITED_ARGS = (
-    "run_cfg",
-    "run_dir",
-    "label",
-    "set_params",
-    "cluster_mode",
-    "show_data_tree",
-    "use_data_tree_cache",
-    "load_parallel",
-)
-"""Argument names that may NOT be given in the interactive plotting prompt"""
-
-
-# -----------------------------------------------------------------------------
+# .............................................................................
 
 OPTIONS = dict()
 

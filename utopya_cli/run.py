@@ -2,7 +2,7 @@
 
 import click
 
-from ._shared import OPTIONS, add_options, default_none
+from ._shared import OPTIONS, add_options, complete_model_names, default_none
 from ._utils import Echo
 
 
@@ -16,7 +16,7 @@ from ._utils import Echo
         "evaluation pipeline."
     ),
 )
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @click.argument(
     "run_cfg",
     required=False,
