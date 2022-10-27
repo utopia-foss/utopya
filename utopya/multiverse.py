@@ -610,7 +610,7 @@ class Multiverse:
 
         ::
 
-            utopia_output
+            utopya_output
                 model_a
                     180301-125410_my_model_note
                         config

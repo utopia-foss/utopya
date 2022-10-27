@@ -8,6 +8,9 @@ from ._yaml import load_yml, write_yml
 log = logging.getLogger(__name__)
 
 # Some globally relevant variables --------------------------------------------
+#
+# NOTE For CLI support, some of these are duplicated in utopya_cli._shared
+#      When doing updates here, also update them there.
 
 UTOPYA_CFG_DIR = os.path.expanduser("~/.config/utopya")
 """Path to the persistent utopya configuration directory"""
@@ -36,7 +39,6 @@ UTOPYA_CFG_SUBDIRS = {
     for k, dirname in UTOPYA_CFG_SUBDIR_NAMES.items()
 }
 """Absolute configuration file paths"""
-"""Names and paths of valid configuration directories"""
 
 PROJECT_INFO_FILE_SEARCH_PATHS = (
     ".utopya_project.yml",

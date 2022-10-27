@@ -6,7 +6,12 @@ from typing import Sequence, Tuple
 
 import click
 
-from ._shared import OPTIONS, add_options
+from ._shared import (
+    OPTIONS,
+    add_options,
+    complete_model_names,
+    complete_project_names,
+)
 from ._utils import Echo
 
 models = click.Group(
@@ -61,7 +66,7 @@ def list_models(long_mode: bool):
     name="rm",
     help="Removes info bundles from individual models",
 )
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @add_options(OPTIONS["label"])
 @click.option(
     "-a",
@@ -123,7 +128,7 @@ def remove_model_or_bundle(
 
 
 @models.command(help="Edit the model registry entry")
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 def edit(*, model_name: str):
     """Edits the model registry entry of the given model"""
     import utopya
@@ -160,7 +165,7 @@ def edit(*, model_name: str):
 
 
 @models.command(help="Sets the default info bundle to use for a model")
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @click.argument("label")
 def set_default(*, model_name: str, label: str):
     """Sets the default info bundle to use for a certain model"""
@@ -186,7 +191,7 @@ def set_default(*, model_name: str, label: str):
         "Currently, this only shows the available configuration set names."
     )
 )
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @add_options(OPTIONS["label"])
 def info(*, model_name: str, label: str):
     import utopya
@@ -233,7 +238,7 @@ def info(*, model_name: str, label: str):
         "still has to occur separately."
     )
 )
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @add_options(OPTIONS["label"])
 @click.option(
     "--new-name",
@@ -243,6 +248,7 @@ def info(*, model_name: str, label: str):
 @click.option(
     "--target-project",
     prompt=True,
+    shell_complete=complete_project_names,
     help=(
         "Name of the utopya project to copy the new model to. If not given, "
         "will prompt for it. "
@@ -331,7 +337,7 @@ models.add_command(register)
     name="single",
     help="Register a single new model or update an existing one.",
 )
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @click.option(
     "-e",
     "--executable",

@@ -5,6 +5,7 @@ import sys
 
 import click
 
+from ._shared import complete_project_names
 from ._utils import Echo
 
 projects = click.Group(
@@ -54,7 +55,7 @@ def list_projects(long_mode: bool):
 
 
 @projects.command(help="Edit a project's registry file directly.")
-@click.argument("project_name")
+@click.argument("project_name", shell_complete=complete_project_names)
 def edit(project_name: str):
     """Edits a project registry file"""
     import utopya
@@ -103,7 +104,7 @@ def edit(project_name: str):
     name="rm",
     help="Remove a project.",
 )
-@click.argument("project_name")
+@click.argument("project_name", shell_complete=complete_project_names)
 @click.option(
     "-y",
     "skip_confirmation",

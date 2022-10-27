@@ -262,7 +262,7 @@ def tmp_output_dir():
         utopya.tools.write_yml(
             dict(paths=dict(out_dir=str(tmpdir))), path=user_cfg_path
         )
-        yield
+        yield str(tmpdir)
 
     # Restore previous state
     if have_user_cfg:

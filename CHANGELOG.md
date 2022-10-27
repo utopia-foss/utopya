@@ -5,6 +5,7 @@
 ## v1.2.1
 - !43 allows model-specific updates to the `Multiverse` configuration
 - !43 makes specifying a model executable optional, allowing *evaluation only* pipelines.
+- !45 implements shell completion for model names, project names, and run directories.
 
 
 ## v1.2.0

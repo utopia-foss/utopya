@@ -13,6 +13,8 @@ from ._shared import (
     INTERACTIVE_MODE_PROHIBITED_ARGS,
     OPTIONS,
     add_options,
+    complete_model_names,
+    complete_run_dirs,
     default_none,
 )
 from ._utils import ANSIesc, Echo, parse_run_and_plots_cfg, parse_update_dicts
@@ -29,13 +31,18 @@ log = logging.getLogger(__name__)
         "\n"
         "Loads a simulation of the given ``MODEL_NAME` model and evaluates "
         "it either using the configured defaults or with custom plots "
-        "configs. If no ``RUN_DIR`` is given, will use the latest output; to "
-        "evaluate a specific simulation, the directory name can be used."
+        "configs. If no ``RUN_DIR`` is given, will use the latest run; to "
+        "evaluate a specific simulation, specifying the directory name or "
+        "timestamp suffices.\n"
+        "\n"
+        "If enabled, shell-completion will suggest directory names from a set "
+        "of (configurable) candidate output directories."
     ),
 )
-@click.argument("model_name")
+@click.argument("model_name", shell_complete=complete_model_names)
 @click.argument(
     "run_dir",
+    shell_complete=complete_run_dirs,
     required=False,
 )
 @click.option(
