@@ -31,8 +31,12 @@ log = logging.getLogger(__name__)
         "\n"
         "Loads a simulation of the given ``MODEL_NAME` model and evaluates "
         "it either using the configured defaults or with custom plots "
-        "configs. If no ``RUN_DIR`` is given, will use the latest output; to "
-        "evaluate a specific simulation, the directory name can be used."
+        "configs. If no ``RUN_DIR`` is given, will use the latest run; to "
+        "evaluate a specific simulation, specifying the directory name or "
+        "timestamp suffices.\n"
+        "\n"
+        "If enabled, shell-completion will suggest directory names from a set "
+        "of (configurable) candidate output directories."
     ),
 )
 @click.argument("model_name", shell_complete=complete_model_names)
