@@ -968,9 +968,9 @@ def draw_agents(
         # Need a correction factor to let mapped sizes appear approximately
         # equally large as unmapped ones. With _parse_sizes returning values
         # within _MARKERSIZE_RANGE (typically [18, 72]), the correction is
-        # simply to divide by a value of approximately that magnitude.
+        # simply to divide by a value of *approximately* that magnitude.
         size_mapping = _parse_size(d, size_norm)
-        corr_factor = 1 / _MARKERSIZE_RANGE.mean()
+        corr_factor = 1 / np.array(_MARKERSIZE_RANGE).mean()
         return corr_factor * size_mapping.loc[d.values.ravel()].values
 
     def get_orientations(d: Union[xr.DataArray, xr.Dataset]):
