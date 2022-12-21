@@ -238,12 +238,14 @@ sns_kinds:
         - displot
         - catplot
         - lmplot
-        - jointplot
         # not possible with the available data:
+        # TODO add separate test for these
+        # - jointplot
         # - pairplot
         # - clustermap
 
   free_indices: [mean_state]
+
 
 sns_dropna_sample:
   <<: *sns_shared
