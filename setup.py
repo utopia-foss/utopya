@@ -134,7 +134,7 @@ setup(
     author="utopya developers",
     author_email=(
         "Benjamin Herdeanu <Benjamin.Herdeanu@iup.uni-heidelberg.de>, "
-        "Yunus Sevinchan <Yunus.Sevinchan@iup.uni-heidelberg.de>"
+        "Yunus Sevinchan <yunus.sevinchan@hu-berlin.de>"
     ),
     classifiers=[
         "Programming Language :: Python :: 3.8",
