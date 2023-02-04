@@ -33,7 +33,7 @@ cli = click.Group(
         "data processing pipeline for simulation output."
     ),
     epilog=(
-        "Copyright (C) 2018 – 2022  utopya developers\n\n"
+        "Copyright (C) 2018 – 2023  utopya developers\n\n"
         "utopya is free software and comes with absolutely no warranty. "
         "You are welcome to redistribute it under the conditions specified in "
         "the LGPLv3+ license. "
