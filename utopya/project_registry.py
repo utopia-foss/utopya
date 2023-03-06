@@ -89,7 +89,7 @@ class ProjectSchema(BaseSchema):
 class Project(RegistryEntry):
     """A registry entry that describes a project"""
 
-    SCHEMA = ProjectSchema
+    SCHEMA: type = ProjectSchema
 
     @property
     def framework_project(self) -> Optional["Project"]:
@@ -210,7 +210,7 @@ class ProjectRegistry(YAMLRegistry):
         custom_project_name: str = None,
         require_matching_names: bool = None,
         exists_action: str = "raise",
-    ) -> dict:
+    ) -> Project:
         """Register or update information of a project.
 
         Args:
@@ -228,7 +228,7 @@ class ProjectRegistry(YAMLRegistry):
             exists_action (str, optional): Action to take upon existing project
 
         Returns:
-            dict: Project information for the new or validated project
+            Project: Project information for the new or validated project
         """
         log.info("Commencing project registration ...")
 

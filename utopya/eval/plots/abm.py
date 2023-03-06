@@ -124,7 +124,7 @@ Available markers:
 .. note::
 
     Suggestions for additional markers are
-    `welcome <https://gitlab.com/utopia-project/utopya/-/issues/new>`_.
+    `welcome <https://gitlab.com/utopia-project/utopya/-/issues>`_.
 """
 # TODO add ant-like shape
 # TODO tweak shapes to consist only of a single path, not two overlapping ones
@@ -639,6 +639,10 @@ class HandlerAgentCollection(HandlerPathCollection):
         fontsize,
         trans,
     ):
+        """Creates the artists themselves.
+
+        For original docstring see
+        :py:meth:`matplotlib.legend_handler.HandlerBase.create_artists`."""
         xdata, xdata_marker = self.get_xdata(
             legend, xdescent, ydescent, width, height, fontsize
         )

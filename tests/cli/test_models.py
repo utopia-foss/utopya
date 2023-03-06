@@ -146,6 +146,11 @@ def test_register_from_list(registry):
 def test_register_from_manifest(registry):
     """Tests utopya models register from-manifest"""
 
+    # Workaround for side effects of DUMMY_MODEL persisting beyond a single
+    # invocation, thus leading to test failures for repeated test calls.
+    res = invoke_cli(("models", "rm", DUMMY_MODEL, "--all"), input="y\n")
+
+    # Get path to directory
     DUMMY_INFO = os.path.join(
         DEMO_DIR, "models", DUMMY_MODEL, f"{DUMMY_MODEL}_info.yml"
     )

@@ -2,6 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.3
+- !50 makes model registration easier by adding the `--with-models` flag to the `utopya projects register` command.
+
+
 ## v1.2.2
 - !46 fixes a bug in the ABM plot occurring with the latest xarray version.
 

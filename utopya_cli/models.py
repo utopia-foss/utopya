@@ -648,6 +648,62 @@ def register_from_list(
 # .. utopya models register from-manifest .....................................
 
 
+def _register_from_manifest(
+    manifest_file: str,
+    *,
+    exists_action: str,
+    set_as_default: bool = False,
+    custom_project_name: str = None,
+    custom_label: str = None,
+    custom_model_name: str = None,
+) -> str:
+    """Registers a single model from a manifest file"""
+    import utopya
+
+    bundle_kwargs = utopya.tools.load_yml(manifest_file)
+
+    # Handle custom model name, label, or project name
+    model_name = bundle_kwargs.pop("model_name")
+    if custom_model_name:
+        Echo.note(f"Using custom model name:     {custom_model_name}")
+        model_name = custom_model_name
+    else:
+        Echo.note(f"Model name:                  {model_name}")
+
+    label = bundle_kwargs.pop("label", "from_manifest_file")
+    if custom_label:
+        Echo.note(f"Using custom label:          {custom_label}")
+        label = custom_label
+    else:
+        Echo.note(f"Label:                       {label}")
+
+    Echo.note(f"Setting as default?          {set_as_default}")
+
+    project_name = bundle_kwargs.pop("project_name", None)
+    if custom_project_name:
+        Echo.note(f"Using custom project name:   {custom_project_name}")
+        project_name = custom_project_name
+
+    # Also add path to manifest file in the paths dict, such that the
+    # info bundle knows about it. Then register.
+    utopya.tools.add_item(
+        manifest_file,
+        add_to=bundle_kwargs,
+        key_path=("paths", "model_info"),
+    )
+    utopya.MODELS.register_model_info(
+        model_name,
+        label=label,
+        project_name=project_name,
+        exists_action=exists_action,
+        extract_model_info=False,  # already done above
+        set_as_default=set_as_default,
+        **bundle_kwargs,
+    )
+
+    return model_name, label
+
+
 @register.command(
     name="from-manifest",
     help=(
@@ -744,46 +800,14 @@ def register_from_manifest(
         )
         Echo.remark(f"File:  {manifest_file}")
 
-        bundle_kwargs = utopya.tools.load_yml(manifest_file)
-
-        # Handle custom model name, label, or project name
-        model_name = bundle_kwargs.pop("model_name")
-        if custom_model_name:
-            Echo.note(f"Using custom model name:     {custom_model_name}")
-            model_name = custom_model_name
-        else:
-            Echo.note(f"Model name:                  {model_name}")
-
-        label = bundle_kwargs.pop("label", "from_manifest_file")
-        if custom_label:
-            Echo.note(f"Using custom label:          {custom_label}")
-            label = custom_label
-        else:
-            Echo.note(f"Label:                       {label}")
-
-        Echo.note(f"Setting as default?          {set_as_default}")
-
-        project_name = bundle_kwargs.pop("project_name", None)
-        if custom_project_name:
-            Echo.note(f"Using custom project name:   {custom_project_name}")
-            project_name = custom_project_name
-
-        # Also add path to manifest file in the paths dict, such that the
-        # info bundle knows about it. Then register.
-        utopya.tools.add_item(
-            manifest_file,
-            add_to=bundle_kwargs,
-            key_path=("paths", "model_info"),
-        )
         try:
-            utopya.MODELS.register_model_info(
-                model_name,
-                label=label,
-                project_name=project_name,
-                exists_action=exists_action,
-                extract_model_info=False,  # already done above
+            model_name, label = _register_from_manifest(
+                manifest_file,
+                custom_model_name=custom_model_name,
                 set_as_default=set_as_default,
-                **bundle_kwargs,
+                custom_project_name=custom_project_name,
+                custom_label=custom_label,
+                exists_action=exists_action,
             )
 
         except Exception as exc:
@@ -791,8 +815,7 @@ def register_from_manifest(
             sys.exit(1)
 
         Echo.info(
-            f"Successfully registered model information for '{model_name}', "
-            f"labelled '{label}':"
+            f"Successfully registered model information for '{model_name}':"
         )
         Echo.remark(utopya.tools.pformat(utopya.MODELS[model_name][label]))
 

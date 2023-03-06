@@ -167,6 +167,14 @@ def test_register(tmp_projects):
     print(res.output)
     assert res.exit_code != 0
 
+    # --- Test also registering the models alongside the project
+    res = invoke_cli(
+        reg_args + ("--exists-action", "overwrite", "--with-models")
+    )
+    print(res.output)
+    assert res.exit_code == 0
+    assert "and 3 accompanying model(s)" in res.output
+
     # --- Use different files to test overwriting, updating, validating
     # Validation failure
     res = invoke_cli(

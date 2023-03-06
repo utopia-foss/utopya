@@ -169,11 +169,12 @@ html_theme = "sphinx_book_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
+# NOTE issues button and edit page buttons not working with GitLab repos yet
 html_theme_options = {
     "repository_url": "https://gitlab.com/utopia-project/utopya",
     "use_repository_button": True,
-    "use_issues_button": True,
-    "use_edit_page_button": False,  # NOTE Not working with GitLab repos yet
+    "use_issues_button": False,
+    "use_edit_page_button": False,
     "use_download_button": True,
     "use_fullscreen_button": False,
 }

@@ -18,4 +18,4 @@ simulation management frontend:
 .. admonition:: Feedback, ideas, bugs?
 
     If you have ideas how to improve or expand the :py:mod:`utopya_backend` package or in case you found a bug:
-    Please let us know by opening an issue `in the GitLab project <https://gitlab.com/utopia-project/utopya/-/issues/new>`_.
+    Please let us know by opening an issue `in the GitLab project <https://gitlab.com/utopia-project/utopya/-/issues>`_.
