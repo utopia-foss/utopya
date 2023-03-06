@@ -32,6 +32,14 @@ If all went well, you should be able to call ``utopya --help`` in your virtual e
 Afterwards download this ``demo`` directory to a place of your choice and rename it; this will be the place where your own project and model will be implemented.
 The files in this directory will be adjusted bit by bit to fit your project and model implementation.
 
+.. hint::
+
+    Instead of copying the ``demo`` directory and making manual adjustments, you can also use the `Python Model Template <https://gitlab.com/utopia-project/models_template_py>`_ to generate your demo repository, which is much easier.
+    Follow the instructions given in its README to quickly create your own utopya models repository.
+    For more information, also see :ref:`template_project`.
+
+    The text below provides additional background on the ins and outs of such a project repository.
+
 
 
 Project setup

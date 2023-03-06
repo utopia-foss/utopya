@@ -84,6 +84,7 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     :maxdepth: 2
     :hidden:
 
+    Set up a models repo <project-repo>
     backend/overview
     backend/model
     backend/io
