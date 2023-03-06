@@ -1,5 +1,6 @@
 """Implements the `utopya projects` subcommand"""
 
+import glob
 import os
 import sys
 
@@ -184,14 +185,98 @@ def remove(
     type=click.Choice(("raise", "validate", "overwrite", "update")),
     help="What to do if a project of the same name is already registered.",
 )
-def register(**kwargs):
-    """Registers a project or validates an existing one"""
-    from utopya import PROJECTS
+@click.option(
+    "--with-models",
+    "register_models",
+    is_flag=True,
+    default=False,
+    help=(
+        "If set, will additionally register all models in the project's model "
+        "directory."
+    ),
+)
+@click.option(
+    "--label",
+    "custom_label",
+    type=click.STRING,
+    default=None,
+    help=(
+        "If given, this label will be used instead of the one given in the "
+        "manifest file(s) for model registration. "
+        "If no custom label is given and the manifest file does not define "
+        "one either, the default will be ``from_manifest_file``."
+    ),
+)
+@click.option(
+    "--set-default",
+    "set_as_default",
+    is_flag=True,
+    default=None,
+    help=("Whether to set the registered model(s) as default."),
+)
+def register(
+    *,
+    register_models: bool,
+    custom_label: str,
+    set_as_default: bool,
+    exists_action: str,
+    **kwargs,
+):
+    """Registers a project or validates an existing one.
+
+    This also includes the option to additionally register all models
+    contained in the project's models directory."""
+    import utopya
+    from utopya import MODELS, PROJECTS
+
+    from .models import _register_from_manifest
 
     try:
-        PROJECTS.register(**kwargs)
+        project = PROJECTS.register(exists_action=exists_action, **kwargs)
 
     except Exception as exc:
         Echo.error("Project registration failed!", error=exc)
         raise
         sys.exit(1)
+
+    if not register_models:
+        return
+
+    # Look for model info files
+    Echo.progress("\nLooking for models to also be registered ...")
+    models_dir = project.paths.models_dir
+    Echo.remark("Models directory:\n  %s", models_dir)
+
+    manifest_files = glob.glob(os.path.join(models_dir, "*", "*_info.yml"))
+    num_files = len(manifest_files)
+    Echo.note("Found %d manifest file(s).", num_files)
+
+    # Register
+    for i, manifest_file in enumerate(manifest_files):
+        Echo.progress(
+            f"\nRegistering model from manifest file {i + 1} / {num_files} ..."
+        )
+        Echo.remark(f"File:  {manifest_file}")
+
+        try:
+            model_name, label = _register_from_manifest(
+                manifest_file,
+                set_as_default=set_as_default,
+                custom_project_name=project.project_name,
+                custom_label=custom_label,
+                exists_action=exists_action,
+            )
+
+        except Exception as exc:
+            Echo.error("Model registration failed!", error=exc)
+            sys.exit(1)
+
+        Echo.info(
+            f"Successfully registered model information for '{model_name}':"
+        )
+        Echo.remark(utopya.tools.pformat(utopya.MODELS[model_name][label]))
+
+    Echo.success(
+        f"Project '{project.project_name}' and {i+1} accompanying model(s) "
+        "registered successully."
+    )
