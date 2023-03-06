@@ -4,7 +4,7 @@
 
 ## v1.2.3
 - !50 makes model registration easier by adding the `--with-models` flag to the `utopya projects register` command.
-
+- !51 adds CI tests for Python 3.11.
 
 ## v1.2.2
 - !46 fixes a bug in the ABM plot occurring with the latest xarray version.

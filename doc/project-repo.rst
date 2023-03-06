@@ -35,5 +35,5 @@ In broad strokes, the process is as follows:
 #. Make adjustments to the newly-created repository.
 #. Start implementing your models.
 
-The most up-to-date instructions will always be in the template project's `README <https://gitlab.com/utopia-project/models_template_py#instructions>`_ itself.
+The most up-to-date instructions will always be in the template project's `README <https://gitlab.com/utopia-project/models_template_py/-/blob/main/README.md>`_ itself.
 See there for more detailed instructions.
