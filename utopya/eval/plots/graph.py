@@ -584,4 +584,4 @@ def draw_graph(
                 **graph_drawing,
             )
 
-        hlpr.register_animation_update(update)
+        hlpr.register_animation_update(update, invoke_helpers_before_grab=True)
