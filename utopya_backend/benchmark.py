@@ -13,8 +13,8 @@ log = logging.getLogger(__name__)
 DEFAULT_TIMERS_ONE_SHOT: Tuple[str, ...] = (
     "init",
     "setup",
-    "run",
     "prolog",
+    "run",
     "epilog",
     "teardown",
     "simulation",
@@ -23,9 +23,9 @@ DEFAULT_TIMERS_ONE_SHOT: Tuple[str, ...] = (
 
 DEFAULT_TIMERS_CUMULATIVE: Tuple[str, ...] = (
     "model_iteration",
-    "full_iteration",
     "monitor",
     "write_data",
+    "full_iteration",
 )
 """Names of default cumulative timers in :py:class:`.ModelBenchmarkMixin`"""
 
@@ -181,7 +181,8 @@ class ModelBenchmarkMixin:
     :py:meth:`.stop_timer` when benchmarking is completely disabled.
     """
 
-    _dset_one_shot: Optional[h5.Dataset] = None
+    _dgrp_bench: Optional[h5.Group] = None
+    _dset_total: Optional[h5.Dataset] = None
     _dset_cumulative: Optional[h5.Dataset] = None
     __dgrp_name: str
     __dset_dtype: str
@@ -218,8 +219,10 @@ class ModelBenchmarkMixin:
         )
 
         if self.__enabled:
-            self.__setup_benchmark_dsets()
-            self._write_dset_one_shot()  # later updated
+            # Create the group that benchmark data will be written to
+            if self.__write:
+                self._dgrp_bench = self.h5group.create_group(self.__dgrp_name)
+
             self.log.info("Model benchmarking set up.")
         else:
             self.log.debug("Model benchmarking disabled.")
@@ -287,56 +290,6 @@ class ModelBenchmarkMixin:
             # all of them so that they behave effectively as disabled.
             for t in self.timers.values():
                 t.reset()
-
-    def __setup_benchmark_dsets(self):
-        grp = self.h5group.create_group(self.__dgrp_name)
-
-        num_one_shot = len([t for t in self.timers.values() if t.one_shot])
-        num_cumulative = len(
-            [t for t in self.timers.values() if not t.one_shot]
-        )
-
-        # fixed-size one-shot dataset
-        dset_one_shot = grp.create_dataset(
-            "total",
-            (num_one_shot,),
-            maxshape=(num_one_shot,),
-            chunks=True,
-            compression=self.__dset_compression,
-            dtype=self.__dset_dtype,
-        )
-        dset_one_shot.attrs["dim_names"] = ["label"]
-        dset_one_shot.attrs["coords_mode__label"] = "values"
-        dset_one_shot.attrs["coords__label"] = list(self.elapsed_one_shot)
-
-        self._dset_one_shot = dset_one_shot
-
-        # updateable dataset for time series
-        dset_cumulative = grp.create_dataset(
-            "cumulative",
-            (0, num_cumulative),
-            maxshape=(None, num_cumulative),
-            chunks=True,
-            compression=self.__dset_compression,
-            dtype=self.__dset_dtype,
-        )
-        if not self._is_stepwise_model:
-            # As constantly updating write times attribute would be too costly,
-            # denote the times as trivial indices for now and later update that
-            # attribute (at the very end) using the list containing invocation
-            # times (in number of iterations) that is built up meanwhile.
-            dset_cumulative.attrs["dim_names"] = ["n_iterations", "label"]
-            dset_cumulative.attrs["coords_mode__n_iterations"] = "trivial"
-        else:
-            dset_cumulative.attrs["coords_mode__time"] = "start_and_step"
-            _sas = [self.write_start, self.write_every]
-            dset_cumulative.attrs["coords__time"] = _sas
-
-        dset_cumulative.attrs["coords_mode__label"] = "values"
-        dset_cumulative.attrs["coords__label"] = list(self.elapsed_cumulative)
-
-        self._dset_cumulative = dset_cumulative
-        self._dset_cumulative_invocation_times = []
 
     # .. Adding timers ........................................................
 
@@ -422,22 +375,78 @@ class ModelBenchmarkMixin:
 
     # .. Storing timer data ...................................................
 
-    def _write_dset_one_shot(self):
+    def _write_dset_total(self):
         if not self.__enabled or not self.__write:
             return
 
-        self._dset_one_shot[:] = list(self.elapsed_one_shot.values())
+        elapsed = self.elapsed
+        N = len(elapsed)
 
-    def _update_dset_cumulative(self):
+        # May still need to create the dataset
+        if self._dset_total is None:
+            ds = self._dgrp_bench.create_dataset(
+                "total",
+                (N,),
+                maxshape=(N,),
+                chunks=True,
+                compression=self.__dset_compression,
+                dtype=self.__dset_dtype,
+            )
+
+            ds.attrs["dim_names"] = ["label"]
+            ds.attrs["coords_mode__label"] = "values"
+            ds.attrs["coords__label"] = list(elapsed.keys())
+
+            self._dset_total = ds
+
+        # TODO check what happens if invoked repeatedly, possibly with new
+        #      timers added in between
+
+        self._dset_total[:] = list(elapsed.values())
+
+    def _write_dset_cumulative(self):
         if not self.__enabled or not self.__write:
             return
 
-        # First, need to expand size along time dimension
+        elapsed_cumulative = self.elapsed_cumulative
+        N = len(elapsed_cumulative)
+
+        # May still need to create it
+        if self._dset_cumulative is None:
+            ds = self._dgrp_bench.create_dataset(
+                "cumulative",
+                (0, N),
+                maxshape=(None, N),
+                chunks=True,
+                compression=self.__dset_compression,
+                dtype=self.__dset_dtype,
+            )
+            ds.attrs["dim_names"] = ["n_iterations", "label"]
+
+            if not self._is_stepwise_model:
+                # As constantly updating write times attribute would be too
+                # costly, denote the times as trivial indices for now and
+                # later update that attribute (at the very end) using the list
+                # containing invocation times (in number of iterations) that
+                # is built up meanwhile.
+                ds.attrs["coords_mode__n_iterations"] = "trivial"
+            else:
+                ds.attrs["coords_mode__n_iterations"] = "start_and_step"
+                _sas = [self.write_start, self.write_every]
+                ds.attrs["coords__n_iterations"] = _sas
+
+            ds.attrs["coords_mode__label"] = "values"
+            ds.attrs["coords__label"] = list(elapsed_cumulative.keys())
+
+            self._dset_cumulative = ds
+            self._dset_cumulative_invocation_times = []
+
+        # May need to expand size along time dimension
         ds = self._dset_cumulative
         ds.resize(ds.shape[0] + 1, axis=0)
 
         # Now write:
-        ds[-1, :] = list(self.elapsed_cumulative.values())
+        ds[-1, :] = list(elapsed_cumulative.values())
 
         # Extend list of write times (to be written to attribute at the end
         # of the run)
@@ -467,8 +476,15 @@ class ModelBenchmarkMixin:
                 continue
             self.stop_timer(timer.name)
 
+        # Write total values for all timers
+        self._write_dset_total()
+
         # Ensure that coordinate labels for n_iterations are stored
-        if self.__enabled and self.__write:
+        if (
+            self.__enabled
+            and self.__write
+            and self._dset_cumulative is not None
+        ):
             ds = self._dset_cumulative
             times = self._dset_cumulative_invocation_times
             ds.attrs["coords_mode__n_iterations"] = "values"
@@ -511,7 +527,7 @@ class ModelBenchmarkMixin:
     def _invoke_write_data(self):
         self.unpause_timer("write_data")
         super()._invoke_write_data()
-        self._update_dset_cumulative()
+        self._write_dset_cumulative()
         self.pause_timer("write_data")
 
     def _post_iterate(self):
@@ -521,7 +537,6 @@ class ModelBenchmarkMixin:
     def _invoke_epilog(self, **kwargs):
         self.start_timer("epilog")
         super()._invoke_epilog(**kwargs)
-        self._write_dset_one_shot()  # updated from before
         self.stop_timer("epilog")
 
     def __del__(self):

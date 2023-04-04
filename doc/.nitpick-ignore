@@ -27,6 +27,7 @@ py:class ModuleType
 py:class xarray.core.dataarray.DataArray
 py:class xarray.core.dataset.Dataset
 py:class h5py._hl.dataset.Dataset
+py:class h5py._hl.group.Group
 
 
 # -- first-party packages --
