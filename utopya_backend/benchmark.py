@@ -2,9 +2,33 @@
 
 import logging
 import time
-from typing import Callable, Dict
+from collections import OrderedDict
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import h5py as h5
+from dantro.tools import format_time as _format_time
 
 log = logging.getLogger(__name__)
+
+DEFAULT_TIMERS_ONE_SHOT: Tuple[str, ...] = (
+    "init",
+    "setup",
+    "run",
+    "prolog",
+    "epilog",
+    "teardown",
+    "simulation",
+)
+"""Names of default one-shot timers in :py:class:`.ModelBenchmarkMixin`"""
+
+DEFAULT_TIMERS_CUMULATIVE: Tuple[str, ...] = (
+    "model_iteration",
+    "full_iteration",
+    "monitor",
+    "write_data",
+)
+"""Names of default cumulative timers in :py:class:`.ModelBenchmarkMixin`"""
+
 
 # -----------------------------------------------------------------------------
 
@@ -16,10 +40,10 @@ class Timer:
     _one_shot: bool
     _time_func: Callable = time.time
 
-    _running: bool = False
-    _latest: float = None
-    _elapsed: float = 0.0
-    _finished: bool = False
+    _running: bool
+    _latest: float
+    _elapsed: float
+    _finished: bool
 
     def __init__(
         self,
@@ -31,15 +55,18 @@ class Timer:
     ):
         self._name = name
         self._one_shot = one_shot
+        self.reset()
+
         if time_func is not None:
             self._time_func = time_func
+
         if start:
             self.start()
 
     def _get_time(self) -> float:
         return self._time_func()
 
-    def _check_not_finished(self):
+    def _assert_not_finished(self):
         if self.finished:
             raise RuntimeError(
                 f"Tried to update timer '{self}' that was already marked "
@@ -50,28 +77,36 @@ class Timer:
         segments = []
         segments.append(f"Timer '{self.name}'")
         segments.append(f"{self.elapsed:.3g}s elapsed")
-        segments.append("running" if self.running else "not running")
+        if self.running:
+            segments.append("running")
         if self.finished:
             segments.append("finished")
         return f"<{', '.join(segments)}>"
 
     def start(self):
-        self._check_not_finished()
+        self._assert_not_finished()
         self._unpause()
 
     def pause(self) -> float:
-        self._check_not_finished()
+        self._assert_not_finished()
+
+        if not self.running:
+            raise RuntimeError(f"Cannot pause already paused timer {self}!")
+
         self._elapsed += self._get_time() - self._latest
         self._latest = None
         self._running = False
+
+        if self.one_shot:
+            self._finished = True
         return self.elapsed
 
     def unpause(self):
         if self.one_shot:
-            raise ValueError(
+            raise RuntimeError(
                 f"{self} is a one-shot timer and cannot be unpaused!"
             )
-        self._check_not_finished()
+        self._assert_not_finished()
         self._unpause()
 
     def _unpause(self):
@@ -79,11 +114,17 @@ class Timer:
         self._running = True
 
     def stop(self) -> float:
-        self._check_not_finished()
+        self._assert_not_finished()
         if self.running:
             self.pause()
         self._finished = True
         return self.elapsed
+
+    def reset(self):
+        self._latest = None
+        self._running = False
+        self._finished = False
+        self._elapsed = 0.0
 
     @property
     def name(self) -> str:
@@ -113,35 +154,332 @@ class Timer:
 
 class ModelBenchmarkMixin:
     """A mixin class that allows to conveniently gather information on the run
-    time that individual parts of the model iteration require."""
+    time that individual parts of the model iteration require and also store it
+    in the model's dataset.
+
+    To use this, simply inherit it into your model class definition:
+
+    .. testcode::
+
+        from utopya_backend import BaseModel, ModelBenchmarkMixin
+
+        class MyModel(ModelBenchmarkMixin, BaseModel):
+            pass
+
+    By default, this will enable the benchmarking and will both show the
+    result at the end of the run as well as write it to a separate benchmarking
+    group in the default HDF5 data group.
+    To further configure its behaviour, add a ``benchmark`` entry to your
+    model's configuration. For available parameters and default values, refer
+    to :py:meth:`._configure_benchmark`.
+    """
 
     _timers: Dict[str, Timer]
 
-    def __init__(self, *args, benchmark: dict = None, **kwargs):
-        self._setup_benchmark(**(benchmark if benchmark else {}))
+    _TIMER_FALLBACK_RV: Any = -1
+    """The fallback value that is returned by :py:meth:`.pause_timer` and
+    :py:meth:`.stop_timer` when benchmarking is completely disabled.
+    """
 
+    _dset_one_shot: Optional[h5.Dataset] = None
+    _dset_cumulative: Optional[h5.Dataset] = None
+    __dgrp_name: str
+    __dset_dtype: str
+    __dset_compression: int
+    _dset_cumulative_invocation_times: List[int]
+
+    __enabled: bool = True
+    __write: bool = None
+    _show_on_exit: bool = True
+    _add_time_elapsed_to_monitor_info: bool = False
+    _time_elapsed_info_fstr: str
+
+    # TODO consider not having default values here
+
+    # .........................................................................
+
+    def __init__(self, *args, **kwargs):
+        # Start with default values and timers
+        self._timers = OrderedDict()
+        self._add_default_timers()
+
+        self.start_timer("simulation")
         self.start_timer("init")
         super().__init__(*args, **kwargs)
         self.stop_timer("init")
 
-    def _setup_benchmark(self, *, enabled: bool = True):
-        self.__enabled = enabled
-        self._timers = dict()
+        # Have the configuration available only now, after init (running setup)
+        self._configure_benchmark(**self._bench_cfg)
 
-        self.add_one_shot_timers(
-            "init", "setup", "prolog", "epilog", "teardown", "simulation"
+        # Find out if the class this is mixed-in to has a step-based iteration
+        # scheme, in which case some procedures may run differently.
+        self._is_stepwise_model = hasattr(self, "write_start") and hasattr(
+            self, "write_every"
         )
-        self.add_cumulative_timers(
-            "model_iteration", "full_iteration", "monitor", "write_data"
+
+        if self.__enabled:
+            self.__setup_benchmark_dsets()
+            self._write_dset_one_shot()  # later updated
+            self.log.info("Model benchmarking set up.")
+        else:
+            self.log.debug("Model benchmarking disabled.")
+
+    def _add_default_timers(self):
+        self.add_one_shot_timers(*DEFAULT_TIMERS_ONE_SHOT)
+        self.add_cumulative_timers(*DEFAULT_TIMERS_CUMULATIVE)
+
+    def _configure_benchmark(
+        self,
+        *,
+        enabled: bool = True,
+        show_on_exit: bool = True,
+        add_to_monitor: bool = False,
+        write: bool = True,
+        group_name: str = "benchmark",
+        compression: int = 3,
+        dtype: str = "float32",
+        info_fstr: str = "  {name:>15s} : {time_str:s}",
+    ):
+        """Applies benchmark configuration parameters.
+
+        Args:
+            enabled (bool, optional): Whether to enable benchmarking. If False,
+                the behaviour will be exactly the same, but timer invocations
+                will simply be ignored.
+
+                .. note::
+
+                    Despite being disabled, a very minor performance hit can
+                    still be expected (a few booleans that are evaluated).
+                    Only removing the mixin altogether will alleviate that.
+
+            show_on_exit (bool, optional): Whether to print an info-level log
+                message at the end of the simulation, showing elapsed times.
+            add_to_monitor (bool, optional): Whether to add elapsed times to
+                the monitoring data.
+            write (bool, optional): Whether to write data to HDF5 dataset.
+                The cumulative timers are stored at each invocation of
+                ``write_data``, while the one-shot timers are only written at
+                the end of a simulation run.
+            group_name (str, optional): The name of the HDF5 group to nest the
+                output datasets in.
+            compression (int, optional): HDF5 compression level.
+            dtype (str, optional): HDF5 data type for timing information.
+                By default, this is reduced float precision, because the times
+                given by :py:func:`time.time` are not as precise anyway.
+            info_fstr (str, optional): The format string to use for generation
+                of :py:meth:`.elapsed_info`.
+                Available keys: ``name``, ``seconds`` (float), ``time_str``
+                (pre-formatted using :py:func:`dantro.tools.format_time`).
+        """
+        self.__enabled = enabled
+        self._add_time_elapsed_to_monitor_info = add_to_monitor
+        self._show_time_elapsed_on_exit = show_on_exit
+        self._time_elapsed_info_fstr = info_fstr
+
+        self.__write = write
+        self.__dset_compression = compression
+        self.__dset_dtype = dtype
+        self.__dgrp_name = group_name
+
+        if not self.__enabled:
+            # Some timers have already started; easiest way is to just reset
+            # all of them so that they behave effectively as disabled.
+            for t in self.timers.values():
+                t.reset()
+
+    def __setup_benchmark_dsets(self):
+        grp = self.h5group.create_group(self.__dgrp_name)
+
+        num_one_shot = len([t for t in self.timers.values() if t.one_shot])
+        num_cumulative = len(
+            [t for t in self.timers.values() if not t.one_shot]
         )
+
+        # fixed-size one-shot dataset
+        dset_one_shot = grp.create_dataset(
+            "total",
+            (num_one_shot,),
+            maxshape=(num_one_shot,),
+            chunks=True,
+            compression=self.__dset_compression,
+            dtype=self.__dset_dtype,
+        )
+        dset_one_shot.attrs["dim_names"] = ["label"]
+        dset_one_shot.attrs["coords_mode__label"] = "values"
+        dset_one_shot.attrs["coords__label"] = list(self.elapsed_one_shot)
+
+        self._dset_one_shot = dset_one_shot
+
+        # updateable dataset for time series
+        dset_cumulative = grp.create_dataset(
+            "cumulative",
+            (0, num_cumulative),
+            maxshape=(None, num_cumulative),
+            chunks=True,
+            compression=self.__dset_compression,
+            dtype=self.__dset_dtype,
+        )
+        if not self._is_stepwise_model:
+            # As constantly updating write times attribute would be too costly,
+            # denote the times as trivial indices for now and later update that
+            # attribute (at the very end) using the list containing invocation
+            # times (in number of iterations) that is built up meanwhile.
+            dset_cumulative.attrs["dim_names"] = ["n_iterations", "label"]
+            dset_cumulative.attrs["coords_mode__n_iterations"] = "trivial"
+        else:
+            dset_cumulative.attrs["coords_mode__time"] = "start_and_step"
+            _sas = [self.write_start, self.write_every]
+            dset_cumulative.attrs["coords__time"] = _sas
+
+        dset_cumulative.attrs["coords_mode__label"] = "values"
+        dset_cumulative.attrs["coords__label"] = list(self.elapsed_cumulative)
+
+        self._dset_cumulative = dset_cumulative
+        self._dset_cumulative_invocation_times = []
+
+    # .. Adding timers ........................................................
+
+    def add_one_shot_timers(self, *names, **kwargs):
+        for name in names:
+            self._add_timer(name, one_shot=True, **kwargs)
+
+    def add_cumulative_timers(self, *names, **kwargs):
+        for name in names:
+            self._add_timer(name, one_shot=False, **kwargs)
+
+    def _add_timer(self, name, *, one_shot: bool, **kwargs):
+        self.timers[name] = Timer(name, one_shot=one_shot, **kwargs)
+        return self.timers[name]
+
+    # .. Controlling timers ...................................................
+
+    @property
+    def timers(self) -> Dict[str, Timer]:
+        return self._timers
+
+    def _get_timer(self, name: str) -> Timer:
+        try:
+            return self.timers[name]
+        except KeyError as err:
+            _avail = ", ".join(sorted(self.timers))
+            raise ValueError(
+                f"No benchmark timer named '{name}' was added!\n"
+                f"Available timers:  {_avail}"
+            ) from err
+
+    def start_timer(self, name: str) -> None:
+        if not self.__enabled:
+            return
+
+        self._get_timer(name).start()
+
+    def pause_timer(self, name: str) -> Union[float, Any]:
+        if not self.__enabled:
+            return self._TIMER_FALLBACK_RV
+
+        return self._get_timer(name).pause()
+
+    def unpause_timer(self, name: str) -> None:
+        if not self.__enabled:
+            return
+
+        self._get_timer(name).unpause()
+
+    def stop_timer(self, name: str) -> Union[float, Any]:
+        if not self.__enabled:
+            return self._TIMER_FALLBACK_RV
+
+        return self._get_timer(name).stop()
+
+    # .. Retrieving timer data ................................................
+
+    @property
+    def elapsed(self) -> Dict[str, float]:
+        return {k: t.elapsed for k, t in self._timers.items()}
+
+    @property
+    def elapsed_cumulative(self) -> Dict[str, float]:
+        return {
+            k: t.elapsed for k, t in self._timers.items() if not t.one_shot
+        }
+
+    @property
+    def elapsed_one_shot(self) -> Dict[str, float]:
+        return {k: t.elapsed for k, t in self._timers.items() if t.one_shot}
+
+    @property
+    def elapsed_info(self) -> str:
+        """Prepares a formatted string with all elapsed times"""
+        return "\n".join(
+            self._time_elapsed_info_fstr.format(
+                name=name,
+                seconds=seconds,
+                time_str=_format_time(seconds, ms_precision=2),
+            )
+            for name, seconds in self.elapsed.items()
+        )
+
+    # .. Storing timer data ...................................................
+
+    def _write_dset_one_shot(self):
+        if not self.__enabled or not self.__write:
+            return
+
+        self._dset_one_shot[:] = list(self.elapsed_one_shot.values())
+
+    def _update_dset_cumulative(self):
+        if not self.__enabled or not self.__write:
+            return
+
+        # First, need to expand size along time dimension
+        ds = self._dset_cumulative
+        ds.resize(ds.shape[0] + 1, axis=0)
+
+        # Now write:
+        ds[-1, :] = list(self.elapsed_cumulative.values())
+
+        # Extend list of write times (to be written to attribute at the end
+        # of the run)
+        if not self._is_stepwise_model:
+            self._dset_cumulative_invocation_times.append(self.n_iterations)
 
     # .. Inject into simulation procedure .....................................
     # Note that __init__ also contains a timer
 
     def _invoke_setup(self):
         self.start_timer("setup")
+        self._bench_cfg = self.cfg.pop("benchmark", {})
         super()._invoke_setup()
         self.stop_timer("setup")
+
+    def _pre_run(self):
+        self.start_timer("run")
+        super()._pre_run()
+
+    def _post_run(self, *, finished_run: bool):
+        super()._post_run(finished_run=finished_run)
+
+        # Stop all remaining timers
+        self.stop_timer("run")
+        for timer in self.timers.values():
+            if timer.finished or timer.name == "teardown":
+                continue
+            self.stop_timer(timer.name)
+
+        # Ensure that coordinate labels for n_iterations are stored
+        if self.__enabled and self.__write:
+            ds = self._dset_cumulative
+            times = self._dset_cumulative_invocation_times
+            ds.attrs["coords_mode__n_iterations"] = "values"
+            ds.attrs["coords__n_iterations"] = times
+
+        # Show times
+        if self.__enabled and self._show_on_exit:
+            self.log.info(
+                "Elapsed times for parts of this simulation:\n\n%s\n",
+                self.elapsed_info,
+            )
 
     def _invoke_prolog(self):
         self.start_timer("prolog")
@@ -161,6 +499,11 @@ class ModelBenchmarkMixin:
         self.unpause_timer("monitor")
         super()._pre_monitor()
 
+    def _emit_monitor(self):
+        if self._add_time_elapsed_to_monitor_info:
+            self._monitor_info["timers"] = self.elapsed
+        super()._emit_monitor()
+
     def _post_monitor(self):
         super()._post_monitor()
         self.pause_timer("monitor")
@@ -168,6 +511,7 @@ class ModelBenchmarkMixin:
     def _invoke_write_data(self):
         self.unpause_timer("write_data")
         super()._invoke_write_data()
+        self._update_dset_cumulative()
         self.pause_timer("write_data")
 
     def _post_iterate(self):
@@ -177,83 +521,10 @@ class ModelBenchmarkMixin:
     def _invoke_epilog(self, **kwargs):
         self.start_timer("epilog")
         super()._invoke_epilog(**kwargs)
+        self._write_dset_one_shot()  # updated from before
         self.stop_timer("epilog")
 
     def __del__(self):
         self.start_timer("teardown")
         super().__del__()
         self.stop_timer("teardown")
-
-    # .. Adding timers ........................................................
-
-    def add_one_shot_timers(self, *names, **kwargs):
-        if not self.__enabled:
-            return
-
-        for name in names:
-            self._add_timer(name, one_shot=True, **kwargs)
-
-    def add_cumulative_timers(self, *names, **kwargs):
-        if not self.__enabled:
-            return
-
-        for name in names:
-            self._add_timer(name, one_shot=False, **kwargs)
-
-    def _add_timer(self, name, *, one_shot: bool, **kwargs):
-        self._timers[name] = Timer(name, one_shot=one_shot, **kwargs)
-        return self._timers[name]
-
-    # .. Controlling timers ...................................................
-
-    @property
-    def timers(self) -> Dict[str, Timer]:
-        return self._timers
-
-    def start_timer(self, name: str):
-        if not self.__enabled:
-            return
-
-        self._timers[name].start()
-
-    def pause_timer(self, name: str) -> float:
-        if not self.__enabled:
-            return
-
-        return self._timers[name].pause()
-
-    def unpause_timer(self, name: str):
-        if not self.__enabled:
-            return
-
-        self._timers[name].unpause()
-
-    def stop_timer(self, name: str) -> float:
-        if not self.__enabled:
-            return
-
-        return self._timers[name].stop()
-
-    # .. Retrieving timer data ................................................
-
-    @property
-    def elapsed(self) -> Dict[str, float]:
-        return {k: t.elapsed for k, t in self._timers.items()}
-
-    @property
-    def elapsed_cumulative(self) -> Dict[str, float]:
-        return {
-            k: t.elapsed for k, t in self._timers.items() if not t.one_shot
-        }
-
-    @property
-    def elapsed_one_shot(self) -> Dict[str, float]:
-        return {k: t.elapsed for k, t in self._timers.items() if t.one_shot}
-
-    # .. Storing timer data ...................................................
-
-    def _write_timing_data(self):
-        raise NotImplementedError("_write_timing_data")
-
-    # TODO Write timing data to a hdf5 dataset, injecting at the appropriate
-    #      place in the base class. Allow to disable writing altogether.

@@ -6,7 +6,6 @@ further assumptions about the abstraction a model makes, like the step-wise
 iteration done in :py:class:`~utopya_backend.model.step.StepwiseModel`."""
 
 import abc
-import os
 import signal
 import sys
 import time
@@ -47,6 +46,10 @@ class BaseModel(abc.ABC):
         You may want to disable this in a subclass in case you cannot handle
         a case where a signal is meant to stop your simulation gracefully.
     """
+
+    USE_SYS_EXIT: bool = True
+    """If false, will not call sys.exit upon handled signal, but just return
+    the error code."""
 
     # .. Initialization and Teardown ..........................................
 
@@ -187,14 +190,15 @@ class BaseModel(abc.ABC):
 
     # .. Simulation control ...................................................
 
-    def run(self):
+    def run(self) -> int:
         """Performs a simulation run for this model, calling the
         :py:meth:`.iterate` method while :py:meth:`.should_iterate` is true.
         In addition, it takes care to invoke data writing and monitoring.
 
-        Raises:
-            SystemExit: Upon a (handled) signal.
+        Returns:
+            int: exit code, non-zero upon handled signals
         """
+        self._pre_run()
         self._invoke_prolog()
 
         self.log.info("Commencing model run ...")
@@ -218,13 +222,20 @@ class BaseModel(abc.ABC):
             # Handle signals, which may lead to a sys.exit
             if (exit_code := self._check_signals()) is not None:
                 self._invoke_epilog(finished_run=False)
-                self.log.info("Now exiting ...")
-                sys.exit(exit_code)
+                self._post_run(finished_run=False)
+                if self.USE_SYS_EXIT:
+                    self.log.info("Now exiting (code: %d) ...", exit_code)
+                    sys.exit(exit_code)
+                else:
+                    self.log.info("Now returning (code: %d) ...", exit_code)
+                    return exit_code
 
             self._post_iterate()
 
         self._invoke_epilog(finished_run=True)
+        self._post_run(finished_run=True)
         self.log.info("Simulation run finished.\n")
+        return 0
 
     # .. Abstract methods .....................................................
 
@@ -309,12 +320,20 @@ class BaseModel(abc.ABC):
         """
         pass
 
+    def _pre_run(self):
+        """Invoked at beginning of :py:meth:`.run`"""
+        pass
+
+    def _post_run(self, *, finished_run: bool) -> None:
+        """Invoked at end of :py:meth:`.run`"""
+        pass
+
     def _pre_iterate(self):
-        """Invoked at beginning of a full iteration"""
+        """Invoked at beginning of a *full* iteration"""
         pass
 
     def _post_iterate(self):
-        """Invoked at end of a full iteration (including monitoring, data
+        """Invoked at end of a *full* iteration (including monitoring, data
         writing etc.)"""
         pass
 
