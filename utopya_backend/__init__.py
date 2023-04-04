@@ -10,3 +10,4 @@ Refer to the :ref:`the user manual <backend_overview>` for more information.
 from .logging import *
 from .model import BaseModel, StepwiseModel
 from .tools import import_package_from_dir, load_cfg_file
+from .benchmark import ModelBenchmarkMixin

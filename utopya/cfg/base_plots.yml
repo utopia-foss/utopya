@@ -240,6 +240,85 @@ _:
 
 
 
+# -- Benchmark plots ----------------------------------------------------------
+# These are ready-to-use with minimal input
+
+# A multiverse plot of total run times
+# TODO Fix barplot stuff and make it prettier
+.plot.benchmark.total:
+  based_on:
+    - .creator.multiverse
+    - .plot.snsplot
+
+  dag_options:
+    define:
+      model_name: SET_MODEL_NAME_IN_YOUR_PLOT_CONFIG
+
+      rotate_x_ticklabels:
+        - lambda: "lambda ax: ax.xaxis.set_tick_params(rotation=90)"
+
+  select_and_combine:
+    fields:
+      data:
+        path: data
+        transform:
+          - getitem: [!dag_prev , !dag_tag model_name]
+          - getitem: [!dag_prev , benchmark]
+          - getitem: [!dag_prev , total]
+
+  sns_kind: catplot
+
+  free_indices: [total]
+  optional_free_indices: [seed]
+
+  auto_encoding: true
+  x: label
+  y: total
+
+  # kind: bar  # FIXME this does not work, probably need different indexing ...
+
+  helpers:
+    set_labels:
+      x: " "
+      y: total walltime [s]
+    set_limits:
+      y: [0, ~]
+    call:
+      functions:
+        - function: !dag_result rotate_x_ticklabels
+          pass_axis_object_as: ax
+
+
+# A multiverse plot of cumulative run times
+.plot.benchmark.cumulative:
+  based_on:
+    - .creator.multiverse
+    - .plot.facet_grid.line
+    - .plot.facet_grid.with_auto_encoding
+    - .hlpr.limits.x.min_max
+    - .hlpr.limits.y.from_zero
+
+  dag_options:
+    define:
+      model_name: SET_MODEL_NAME_IN_YOUR_PLOT_CONFIG
+
+  select_and_combine:
+    fields:
+      data:
+        path: data
+        transform:
+          - getitem: [!dag_prev , !dag_tag model_name]
+          - getitem: [!dag_prev , benchmark]
+          - getitem: [!dag_prev , cumulative]
+
+  x: n_iterations
+
+  helpers:
+    set_labels:
+      x: time [#iterations]
+      y: cumulative walltime [s]
+
+
 
 # -- DEPRECATED PLOTS ---------------------------------------------------------
 # NOTE This is the legacy plot function, will be removed; use .plot.ca instead!

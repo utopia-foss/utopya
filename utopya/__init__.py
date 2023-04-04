@@ -21,7 +21,8 @@ evaluation framework with the following components:
   - A :py:class:`.eval.plotmanager.PlotManager` that takes into account
     project- or model-specific plot function definitions.
 
-- The :py:class:`.model.Model` abstraction which allows convenient interactive work with utopya and registered models.
+- The :py:class:`.model.Model` abstraction which allows convenient interactive
+  work with utopya and registered models.
 
   - The :py:class:`.testtools.ModelTest` class, containing specializations
     that make it more convenient to implement model tests using utopya.
@@ -31,12 +32,13 @@ evaluation framework with the following components:
 For a real-world example of how utopya can be integrated, have a look at the
 `Utopia modelling framework <https://utopia-project.org>`_ which uses
 utopya as its frontend.
-For model implementations, the :py:mod:`utopya_backend` package can assist in building Python-based models that use :py:mod:`utopya` as a frontend.
+For model implementations, the :py:mod:`utopya_backend` package can assist in
+building Python-based models that use :py:mod:`utopya` as a frontend.
 
 Also visit :ref:`the user manual front page <welcome>` for more information.
 """
 
-__version__ = "1.2.4b0"
+__version__ = "1.2.4"
 """The :py:mod:`utopya` package version"""
 
 # .. Logging ..................................................................

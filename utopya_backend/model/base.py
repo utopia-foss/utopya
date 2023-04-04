@@ -6,7 +6,6 @@ further assumptions about the abstraction a model makes, like the step-wise
 iteration done in :py:class:`~utopya_backend.model.step.StepwiseModel`."""
 
 import abc
-import os
 import signal
 import sys
 import time
@@ -47,6 +46,10 @@ class BaseModel(abc.ABC):
         You may want to disable this in a subclass in case you cannot handle
         a case where a signal is meant to stop your simulation gracefully.
     """
+
+    USE_SYS_EXIT: bool = True
+    """If false, will not call sys.exit upon handled signal, but just return
+    the error code."""
 
     # .. Initialization and Teardown ..........................................
 
@@ -113,13 +116,8 @@ class BaseModel(abc.ABC):
         self._parse_root_cfg(**self.root_cfg)
 
         # Actual model initialization
-        self.log.info("Invoking model setup ...")
         self._cfg = self.root_cfg[self.name]
-        self.setup(**self.cfg)
-        self.log.info("Model setup finished.\n")
-
-        # Allow subclasses to do something after setup has finished
-        self._setup_finished()
+        self._invoke_setup()
 
         # First monitoring
         self.trigger_monitor(force=True)
@@ -192,20 +190,23 @@ class BaseModel(abc.ABC):
 
     # .. Simulation control ...................................................
 
-    def run(self):
+    def run(self) -> int:
         """Performs a simulation run for this model, calling the
         :py:meth:`.iterate` method while :py:meth:`.should_iterate` is true.
         In addition, it takes care to invoke data writing and monitoring.
 
-        Raises:
-            SystemExit: Upon a (handled) signal.
+        Returns:
+            int: exit code, non-zero upon handled signals
         """
+        self._pre_run()
         self._invoke_prolog()
 
         self.log.info("Commencing model run ...")
 
         while self.should_iterate():
-            self.iterate()
+            self._pre_iterate()
+
+            self._invoke_iterate()
             self._n_iterations += 1
 
             # Allow to monitor simulation progress
@@ -213,7 +214,7 @@ class BaseModel(abc.ABC):
 
             # Allow writing data
             if self.should_write():
-                self.write_data()
+                self._invoke_write_data()
 
             # Inform about the iteration
             self.show_iteration_info()
@@ -221,11 +222,20 @@ class BaseModel(abc.ABC):
             # Handle signals, which may lead to a sys.exit
             if (exit_code := self._check_signals()) is not None:
                 self._invoke_epilog(finished_run=False)
-                self.log.info("Now exiting ...")
-                sys.exit(exit_code)
+                self._post_run(finished_run=False)
+                if self.USE_SYS_EXIT:
+                    self.log.info("Now exiting (code: %d) ...", exit_code)
+                    sys.exit(exit_code)
+                else:
+                    self.log.info("Now returning (code: %d) ...", exit_code)
+                    return exit_code
+
+            self._post_iterate()
 
         self._invoke_epilog(finished_run=True)
+        self._post_run(finished_run=True)
         self.log.info("Simulation run finished.\n")
+        return 0
 
     # .. Abstract methods .....................................................
 
@@ -308,6 +318,31 @@ class BaseModel(abc.ABC):
 
         .. hint:: This method can be specialized in a subclass.
         """
+        pass
+
+    def _pre_run(self):
+        """Invoked at beginning of :py:meth:`.run`"""
+        pass
+
+    def _post_run(self, *, finished_run: bool) -> None:
+        """Invoked at end of :py:meth:`.run`"""
+        pass
+
+    def _pre_iterate(self):
+        """Invoked at beginning of a *full* iteration"""
+        pass
+
+    def _post_iterate(self):
+        """Invoked at end of a *full* iteration (including monitoring, data
+        writing etc.)"""
+        pass
+
+    def _pre_monitor(self):
+        """Invoked before monitor emission"""
+        pass
+
+    def _post_monitor(self):
+        """Invoked after monitor emission"""
         pass
 
     # .. Signalling ...........................................................
@@ -420,9 +455,13 @@ class BaseModel(abc.ABC):
         """
         t = time.time()
         if force or self._monitor_should_emit(t=t):
+            self._pre_monitor()
+
             self._monitor_info = self.monitor(self._monitor_info)
             self._emit_monitor()
             self._last_emit = t
+
+            self._post_monitor()
 
     # .. Other helpers ........................................................
 
@@ -492,6 +531,20 @@ class BaseModel(abc.ABC):
         if h5file is None:
             h5file = self._h5file
         return h5file.create_group(self.name)
+
+    # .. Invocation wrappers ..................................................
+
+    def _invoke_iterate(self):
+        self.iterate()
+
+    def _invoke_write_data(self):
+        self.write_data()
+
+    def _invoke_setup(self):
+        self.log.info("Invoking model setup ...")
+        self.setup(**self.cfg)
+        self.log.info("Model setup finished.\n")
+        self._setup_finished()
 
     def _invoke_prolog(self):
         """Helps invoking the :py:meth:`.prolog`"""

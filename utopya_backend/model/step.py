@@ -77,6 +77,7 @@ class StepwiseModel(BaseModel):
             self.log.info("Writing initial state ...")
             self.write_data()
             self.log.info("Initial state written.\n")
+        super()._setup_finished()
 
     def compute_progress(self) -> float:
         """Computes simulation progress"""
