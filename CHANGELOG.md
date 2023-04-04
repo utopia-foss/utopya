@@ -2,8 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
-## v1.2.4 *(work in progress)*
+## v1.2.4
 - !52 fixes a bug in `GraphPlot` that prevented `PlotHelper` invocation during animations.
+- !53 implements `ModelBenchmarkMixin` which can be used to easily aggregate information about elapsed times for the different parts of a model iteration.
+- !53 allows `BaseModel` to not `sys.exit` on a signal but simply return, configurable via class variable `USE_SYS_EXIT`.
 
 
 ## v1.2.3
