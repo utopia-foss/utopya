@@ -83,7 +83,6 @@ log = logging.getLogger(__name__)
 def evaluate(ctx, **params):
     """Invokes a model simulation run and subsequent evaluation"""
     import utopya
-    from utopya.exceptions import ValidationError
     from utopya.tools import pformat
 
     _log = utopya._getLogger("utopya")  # TODO How best to do this?!
@@ -135,6 +134,8 @@ def _load_and_eval(
     **params,
 ):
     """Wrapper that takes care of loading and evaluating"""
+    from utopya.tools import pformat
+
     _log.progress(
         "Beginning evaluation: loading data and starting PlotManager ...\n"
     )
