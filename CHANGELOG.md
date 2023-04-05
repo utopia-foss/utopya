@@ -2,6 +2,9 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.5 *(work in progress)*
+- !54 fixes a bug in the CLI that prohibited applying configuration updates during interactive plotting (`utopya eval -i <model_name> --update-plots-cfg …`)
+
 ## v1.2.4
 - !52 fixes a bug in `GraphPlot` that prevented `PlotHelper` invocation during animations.
 - !53 implements `ModelBenchmarkMixin` which can be used to easily aggregate information about elapsed times for the different parts of a model iteration.
