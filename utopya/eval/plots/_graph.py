@@ -969,6 +969,7 @@ class GraphPlot:
         edge_color=None,
         edge_cmap=None,
         cmap_norm=None,
+        alpha=None,
         edge_vmin: float = None,
         edge_vmax: float = None,
         colorbar: dict = None,
@@ -1056,7 +1057,7 @@ class GraphPlot:
         elif width is not None:
             self._edge_kwargs["width"] = width
 
-        # Node colors
+        # Edge colors
         if isinstance(edge_color, dict) and "from_property" in edge_color:
             prop = edge_color["from_property"]
             interval = edge_color.get("scale_to_interval", None)
@@ -1077,6 +1078,18 @@ class GraphPlot:
 
         elif edge_color is not None:
             self._edge_kwargs["edge_color"] = edge_color
+
+        # Edge alpha
+        if isinstance(alpha, dict) and "from_property" in width:
+            prop = alpha["from_property"]
+            interval = alpha.get("scale_to_interval", None)
+
+            self._edge_kwargs["alpha"] = self._scale_to_interval(
+                [self._g.edges[n][prop] for n in self._edges_to_draw], interval
+            )
+
+        elif alpha is not None:
+            self._edge_kwargs["alpha"] = alpha
 
         # ... property mapping done.
 
