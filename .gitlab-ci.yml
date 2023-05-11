@@ -83,10 +83,11 @@ build:docs:
     SPHINX_TLS_VERIFY: "no"
 
   before_script:
-    - pip3 install .[doc]
-    #
     # Install additional dependencies for generating figures
-    - apt-get update && apt-get install -y ffmpeg
+    - apt-get update && apt-get install -y ffmpeg graphviz
+    #
+    # Install utopya itself
+    - pip3 install .[doc]
   script:
     - cd doc
     - make build_and_check
@@ -122,6 +123,12 @@ test:py38:
   variables:
     UTOPYA_USE_TEST_OUTPUT_DIR: "yes"   # have output in tests/_output
   before_script:
+    # Install additional dependencies (needed for optional dependencies)
+    - apt-get update && apt-get install -y graphviz graphviz-dev
+    #
+    # Install utopya itself, also testing if the optional dependencies can be
+    # pulled in separately
+    - pip3 install .[opt]
     - pip3 install .[dev]
   script:
     # NOTE It's paramount to ONLY add --cov=./ here: If nothing is added, there

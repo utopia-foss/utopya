@@ -37,13 +37,7 @@ The utopya package is available on [PyPI][utopya-pypi]:
 pip install utopya
 ```
 
-Alternatively, use the following command to install from a certain branch:
-
-```bash
-pip install git+https://gitlab.com/utopia-project/utopya.git@<branch-name>
-```
-
-The above commands will install `utopya`, the `utopya_backend` and the utopya CLI, pulling in all requirements.
+This will install `utopya`, the `utopya_backend` and the utopya CLI, pulling in all requirements.
 You should now be able to invoke the utopya CLI:
 
 ```bash
@@ -52,6 +46,17 @@ utopya --help
 
 *Note:* utopya does not specify minimum versions for its requirements; but it is always tested using the latest versions of its dependencies (for Python 3.8 to 3.11).
 In case you run into problems, consider upgrading the involved packages using `pip install --upgrade`.
+
+## Optional Dependencies
+To include all optional dependencies in the installation (e.g. for plotting networks), use the following command:
+
+```bash
+pip install utopya[opt]
+```
+
+This may require that you install the following packages first:
+* [graphviz][graphviz]
+    * See [the PyGraphviz docs](https://pygraphviz.github.io/documentation/stable/install.html) for further instructions.
 
 <!-- end: installation -->
 
@@ -123,3 +128,5 @@ The copyright holders of the utopya software package are collectively referred t
 [dantro]: https://gitlab.com/utopia-project/dantro
 [paramspace]: https://gitlab.com/blsqr/paramspace
 [Utopia-Project]: https://utopia-project.org/
+
+[graphviz]: https://graphviz.org
