@@ -30,6 +30,7 @@ Graph: &base
       edge_color: [1, 0, 1]
       width:
         from_property: weights
+      alpha: 0.5
     mark_nodes:
       nodelist: [0, 1]
       color: r
@@ -146,7 +147,7 @@ MultiGraph:
       edge_vmin: 0
       edge_vmax: 42
       alpha:
-        from_property: some_state
+        from_property: weights
         scale_to_interval: [ 0.1, 0.9 ]
 
     node_labels:

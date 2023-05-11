@@ -42,6 +42,9 @@ DOC_DEPS = [
     "pytest",
 ]
 
+# Optional dependencies
+OPTIONAL_DEPS = ["networkx", "pygraphviz"]
+
 
 # .. Description ..............................................................
 
@@ -161,7 +164,7 @@ setup(
     extras_require=dict(
         test=TEST_DEPS,
         doc=DOC_DEPS,
-        dev=TEST_DEPS + DOC_DEPS,
+        dev=TEST_DEPS + DOC_DEPS + OPTIONAL_DEPS,
     ),
     #
     # Command line scripts
