@@ -2,8 +2,9 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
-## v1.2.5 *(work in progress)*
+## v1.2.5
 - !54 fixes a bug in the CLI that prohibited applying configuration updates during interactive plotting (`utopya eval -i <model_name> --update-plots-cfg …`)
+- !56 improves an error message that is raised when a model executable is not executable.
 
 ## v1.2.4
 - !52 fixes a bug in `GraphPlot` that prevented `PlotHelper` invocation during animations.
