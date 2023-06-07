@@ -1074,8 +1074,9 @@ class Multiverse:
             raise PermissionError(
                 f"The specified executable path for model '{self.model_name}' "
                 "does not point to an executable file. Did you set the "
-                f"correct access rights? Use chmod to adjust access rights.\n"
-                "Executable path:  {execpath}"
+                f"correct access rights?\n"
+                "Use the chmod command to mark the file as executable:\n\n"
+                f"  chmod +x {execpath}\n"
             )
 
         if run_from_tmpdir:
