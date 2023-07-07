@@ -1511,8 +1511,11 @@ class GraphPlot:
                 patch_size = (np.sqrt(patch_size) + lw) ** 2
 
             else:
+                # Have a list of edge colors, need to evaluate individually,
+                # masking those values where no edge color is to be used.
+                mask_patch = lambda ec: isinstance(ec, str) and ec == "none"
                 patch_size = np.where(
-                    [ec == "none" for ec in edgecolors],
+                    [mask_patch(ec) for ec in edgecolors],
                     patch_size,
                     (np.sqrt(patch_size) + lw) ** 2,
                 )

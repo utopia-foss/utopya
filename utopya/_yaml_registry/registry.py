@@ -205,7 +205,7 @@ class YAMLRegistry:
                     import difflib
                     import json
 
-                    natify = lambda d: json.loads(d.json())
+                    natify = lambda d: json.loads(d.model_dump_json())
 
                     diff = "\n".join(
                         difflib.Differ().compare(

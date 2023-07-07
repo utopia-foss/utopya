@@ -2,6 +2,9 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.6
+- !57 fixes regressions from updated versions of numpy and pydantic.
+
 ## v1.2.5
 - !54 fixes a bug in the CLI that prohibited applying configuration updates during interactive plotting (`utopya eval -i <model_name> --update-plots-cfg …`)
 - !56 improves an error message that is raised when a model executable is not executable.

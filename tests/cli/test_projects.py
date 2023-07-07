@@ -223,4 +223,4 @@ def test_register(tmp_projects):
     print(res.output)
     assert res.exit_code != 0
     assert "1 validation error" in res.output
-    assert "extra fields not permitted" in res.output
+    assert "Extra inputs are not permitted" in res.output

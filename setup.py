@@ -13,7 +13,7 @@ INSTALL_DEPS = [
     "coloredlogs",
     "colorama",
     "click",
-    "pydantic",
+    "pydantic >= 2.0",
     "python-git-info",
     #
     # related to utopya:
