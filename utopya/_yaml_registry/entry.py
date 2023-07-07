@@ -37,10 +37,11 @@ class BaseSchema(pydantic.BaseModel):
         that the written data can be loaded without errors.
     """
 
-    class Config:
-        extra = "forbid"
-        validate_all = True
-        validate_assignment = True
+    model_config = dict(
+        extra="forbid",
+        validate_default=True,
+        validate_assignment=True,
+    )
 
     def __getitem__(self, name: str):
         """Retrieves an item from the underlying schema data."""
@@ -160,7 +161,7 @@ class RegistryEntry:
 
     def dict(self) -> dict:
         """The entry's data in pydantic's dict format, deep-copied."""
-        return copy.deepcopy(self._data.dict())
+        return copy.deepcopy(self._data.model_dump())
 
     # Magic methods ...........................................................
 
@@ -210,7 +211,7 @@ class RegistryEntry:
         """
         if (
             attr in type(self)._NO_FORWARDING_ATTRS
-            or attr not in self._data.schema()["properties"]
+            or attr not in self._data.model_json_schema()["properties"]
         ):
             return super().__setattr__(attr, value)
         return setattr(self._data, attr, value)
@@ -273,7 +274,7 @@ class RegistryEntry:
 
         import json
 
-        data = json.loads(self.data.json())
+        data = json.loads(self.data.model_dump_json())
         _write_yml(data, path=self.registry_file_path)
 
     def remove_registry_file(self):

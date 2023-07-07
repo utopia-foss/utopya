@@ -131,7 +131,7 @@ def test_entry_interface():
         entry.nested.get("i_do_not_exist")
 
     # dict representation
-    assert entry.dict() == entry._data.dict()
+    assert entry.model_dump() == entry._data.model_dump()
 
 
 # -----------------------------------------------------------------------------
@@ -330,7 +330,8 @@ def test_entry_manipulation_and_validation(test_registry):
     assert entry.desc == "i will be manipulated"
 
     # Change the entry and store it back to the YAML file
-    entry.desc = "I used to have a different value!"
+    original_desc = "I used to have a different value!"
+    entry.desc = original_desc
     entry.write()
 
     entry_from_file = NestedEntry("test_entry", registry=reg)
@@ -338,12 +339,13 @@ def test_entry_manipulation_and_validation(test_registry):
 
     # Change the entry to an invalid value ...
     # ... that *could* be coerced: assignment leads to type coercion
-    entry.desc = 1.23
-    assert entry.desc == "1.23"
+    with pytest.raises(pydantic.ValidationError):
+        entry.desc = 1.23
+    assert entry.desc == original_desc
     entry.write()
 
     entry_from_file = NestedEntry("test_entry", registry=reg)
-    assert entry_from_file.desc == "1.23"
+    assert entry_from_file.desc == original_desc
 
     # ... that could *not* be coerced: fails to set attribute (because of
     # config option `validate_assignment`)
@@ -351,14 +353,20 @@ def test_entry_manipulation_and_validation(test_registry):
         entry.desc = dict(foo="bar")
 
     # ... that *could* be coerced -- but without validation
-    entry.Config.validate_assignment = False
+    entry.model_config["validate_assignment"] = False
 
     entry.desc = -123
     assert entry.desc == -123
-    entry.write()
 
-    entry_from_file = NestedEntry("test_entry", registry=reg)
-    assert entry_from_file.desc == "-123"
+    # ... will have a warning upon serializing
+    with pytest.warns(
+        UserWarning, match="serialized value may not be as expected"
+    ):
+        entry.write()
+
+    # ... but cannot read it from file now
+    with pytest.raises(SchemaValidationError):
+        entry_from_file = NestedEntry("test_entry", registry=reg)
 
 
 def test_missing_registry_file(test_registry):

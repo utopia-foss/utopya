@@ -1,15 +1,14 @@
 """Implementation of the utopya project registry"""
 
-import copy
 import logging
 import os
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional
 
 from pydantic import DirectoryPath, FilePath
 
 from ._yaml_registry import BaseSchema, RegistryEntry, YAMLRegistry
 from .cfg import PROJECT_INFO_FILE_SEARCH_PATHS, UTOPYA_CFG_SUBDIRS
-from .tools import load_yml, pformat, recursive_update
+from .tools import load_yml, recursive_update
 
 log = logging.getLogger(__name__)
 
@@ -21,12 +20,12 @@ class ProjectPaths(BaseSchema):
     """Schema to use for a project's ``paths`` field"""
 
     base_dir: DirectoryPath
-    project_info: Optional[FilePath]
-    models_dir: Optional[DirectoryPath]
-    py_tests_dir: Optional[DirectoryPath]
-    py_plots_dir: Optional[DirectoryPath]
-    mv_project_cfg: Optional[FilePath]
-    project_base_plots: Optional[FilePath]
+    project_info: Optional[FilePath] = None
+    models_dir: Optional[DirectoryPath] = None
+    py_tests_dir: Optional[DirectoryPath] = None
+    py_plots_dir: Optional[DirectoryPath] = None
+    mv_project_cfg: Optional[FilePath] = None
+    project_base_plots: Optional[FilePath] = None
 
     # TODO What about the BatchTaskManager configuration?
 
@@ -34,30 +33,30 @@ class ProjectPaths(BaseSchema):
 class ProjectMetadata(BaseSchema):
     """Schema to use for a project's ``metadata`` field"""
 
-    version: Optional[str]
-    long_name: Optional[str]
-    description: Optional[str]
-    long_description: Optional[str]
-    license: Optional[str]
-    authors: Optional[List[str]]
-    email: Optional[str]
-    website: Optional[str]
-    utopya_compatibility: Optional[str]
-    language: Optional[str]
-    requirements: Optional[List[str]]
-    misc: Optional[Dict[str, Any]]
+    version: Optional[str] = None
+    long_name: Optional[str] = None
+    description: Optional[str] = None
+    long_description: Optional[str] = None
+    license: Optional[str] = None
+    authors: Optional[List[str]] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    utopya_compatibility: Optional[str] = None
+    language: Optional[str] = None
+    requirements: Optional[List[str]] = None
+    misc: Optional[Dict[str, Any]] = None
 
 
 class ProjectSettings(BaseSchema):
     """Schema to use for a project's ``settings`` field"""
 
-    preload_project_py_plots: Optional[bool]
+    preload_project_py_plots: Optional[bool] = None
     """Whether to preload the project-level plot module (``py_plots_dir``)
     after initialization of the :py:mod:`~utopya.eval.plotmanager.PlotManager`.
     If not given, will load the module.
     """
 
-    preload_framework_py_plots: Optional[bool]
+    preload_framework_py_plots: Optional[bool] = None
     """Whether to preload the framework-level plot module (``py_plots_dir``)
     after initialization of the :py:mod:`~utopya.eval.plotmanager.PlotManager`.
     If not given, will load the module.
@@ -71,16 +70,16 @@ class ProjectSchema(BaseSchema):
     """The data model for a project registry entry"""
 
     project_name: str
-    framework_name: Optional[str]
+    framework_name: Optional[str] = None
     paths: ProjectPaths
     metadata: ProjectMetadata
     settings: ProjectSettings = {}
     run_cfg_format: str = "yaml"
-    cfg_set_abs_search_dirs: Optional[List[str]]
-    cfg_set_model_source_subdirs: Optional[List[str]]
-    custom_py_modules: Optional[Dict[str, DirectoryPath]]
-    output_files: Optional[dict]  # TODO Needs sub-schema
-    debug_level_updates: Optional[Dict[str, dict]]  # TODO Implement
+    cfg_set_abs_search_dirs: Optional[List[str]] = None
+    cfg_set_model_source_subdirs: Optional[List[str]] = None
+    custom_py_modules: Optional[Dict[str, DirectoryPath]] = None
+    output_files: Optional[dict] = None  # TODO Needs sub-schema
+    debug_level_updates: Optional[Dict[str, dict]] = None  # TODO Implement
 
 
 # -- Project ------------------------------------------------------------------
