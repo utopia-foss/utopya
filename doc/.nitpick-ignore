@@ -47,6 +47,8 @@ py:class h5py._hl.group.Group
 #
 # NOTE That the regex pattern needs to match the whole string, as if ^ and $
 #      would be inserted.
+py:class FieldInfo
+py:class ConfigDict
 
 # From pydantic and ruamel.yaml (missing from intersphinx)
 re: py:class pydantic..*
