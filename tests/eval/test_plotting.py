@@ -1179,14 +1179,12 @@ def test_GraphPlot_class():
     for name, cfg in load_yml(GRAPH_PLOT_CLS).items():
         fig = plt.figure()
 
-        # Try using a graphviz node layout, which requires pydot
+        # Try using a graphviz node layout, which requires pygraphviz
         if name == "graphviz":
             try:
-                import pydot
+                import pygraphviz
             except ImportError:
-                with pytest.raises(
-                    ImportError, match="No module named 'pydot'"
-                ):
+                with pytest.raises(ImportError, match="requires pygraphviz"):
                     gp = GraphPlot(digraph, fig=fig, **cfg)
 
                 continue

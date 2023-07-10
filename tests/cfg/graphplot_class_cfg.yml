@@ -44,7 +44,10 @@ colorbar_with_additional_options:
 # -- Configurations that raise Errors or Warnings -----------------------------
 graphviz:
   positions:
-    model: graphviz_dot
+    model: graphviz
+    prog: neato
+    args: '-len=2-overlap_scaling=2-sep=2'
+
 
 wrong_edge_label_kwarg:
   _raises: ValueError

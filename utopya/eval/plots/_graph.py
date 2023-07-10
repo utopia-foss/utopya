@@ -27,6 +27,7 @@ POSITIONING_MODELS_NETWORKX = {
     "random": nx.random_layout,
     "spectral": nx.spectral_layout,
     "spiral": nx.spiral_layout,
+    "graphviz": nx.nx_agraph.graphviz_layout,
 }
 """Available networkx node layout options"""
 
@@ -127,11 +128,13 @@ class GraphPlot:
                     See :py:data:`.POSITIONING_MODELS_NETWORKX`.
 
                     If installed, `GraphViz <https://pypi.org/project/graphviz/>`_
-                    models can be selected with a prepended ``graphviz_``.
+                    models can be selected using the
+                    ``agraph_graphviz`` :py:func:`~networkx.drawing.nx_agraph.graphviz_layout`)
+                    layout function, with the ``prog`` argument specifying the layout model.
                     Options depend on the ``GraphViz`` version but may include:
                     ``dot``, ``neato``, ``fdp``, ``sfdp``, ``twopi``,
-                    ``circo``. (Passed as ``prog`` argument to
-                    :py:func:`~networkx.drawing.nx_agraph.graphviz_layout`).
+                    ``circo``. Other arguments must be passed as a single string separated by a hyphen,
+                    e.g. ``'-len=1000-overlap_scaling=100-sep=100'``.
 
                     If the argument is a callable, it is invoked with the graph
                     as the first positional argument and is expected to return
@@ -717,20 +720,6 @@ class GraphPlot:
             if callable(model):
                 self.positions = model(self._g, **kwargs)
 
-            elif model.startswith("graphviz_"):
-                try:
-                    # graphviz models
-                    model = model[9:]
-                    self.positions = nx.nx_pydot.graphviz_layout(
-                        self._g, prog=model, **kwargs
-                    )
-
-                except ModuleNotFoundError as err:
-                    raise ModuleNotFoundError(
-                        "When trying to use the graphviz node positioning "
-                        f"model '{model}': '{err}'"
-                    ) from err
-
             # else: is a networkx positioning model
             else:
                 self.positions = POSITIONING_MODELS_NETWORKX[model](
@@ -969,6 +958,7 @@ class GraphPlot:
         edge_color=None,
         edge_cmap=None,
         cmap_norm=None,
+        alpha=None,
         edge_vmin: float = None,
         edge_vmax: float = None,
         colorbar: dict = None,
@@ -1056,7 +1046,7 @@ class GraphPlot:
         elif width is not None:
             self._edge_kwargs["width"] = width
 
-        # Node colors
+        # Edge colors
         if isinstance(edge_color, dict) and "from_property" in edge_color:
             prop = edge_color["from_property"]
             interval = edge_color.get("scale_to_interval", None)
@@ -1077,6 +1067,18 @@ class GraphPlot:
 
         elif edge_color is not None:
             self._edge_kwargs["edge_color"] = edge_color
+
+        # Edge alpha
+        if isinstance(alpha, dict) and "from_property" in alpha:
+            prop = alpha["from_property"]
+            interval = alpha.get("scale_to_interval", None)
+
+            self._edge_kwargs["alpha"] = self._scale_to_interval(
+                [self._g.edges[n][prop] for n in self._edges_to_draw], interval
+            )
+
+        elif alpha is not None:
+            self._edge_kwargs["alpha"] = alpha
 
         # ... property mapping done.
 
