@@ -2,6 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.7
+- !55 improves graph layouting by using the pygraphviz package (instead of the outdated pydot).
+  For plotting networks, the utopya installation now includes a set of optional dependencies, installable via `pip install utopya[opt]`.
+
 ## v1.2.6
 - !57 fixes regressions from updated versions of numpy and pydantic.
 

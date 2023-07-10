@@ -43,7 +43,10 @@ DOC_DEPS = [
 ]
 
 # Optional dependencies
-OPTIONAL_DEPS = ["networkx", "pygraphviz"]
+OPTIONAL_DEPS = [
+    "networkx",
+    "pygraphviz",
+]
 
 
 # .. Description ..............................................................
