@@ -38,7 +38,7 @@ building Python-based models that use :py:mod:`utopya` as a frontend.
 Also visit :ref:`the user manual front page <welcome>` for more information.
 """
 
-__version__ = "1.2.7"
+__version__ = "1.2.8b0"
 """The :py:mod:`utopya` package version"""
 
 # .. Logging ..................................................................

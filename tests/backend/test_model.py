@@ -2,9 +2,11 @@
 
 import copy
 import os
+import random
 import signal
 import time
 
+import numpy as np
 import pytest
 
 from utopya.testtools import ModelTest
@@ -148,6 +150,54 @@ def test_BaseModel_init(minimal_pspace_cfg, tmpdir):
     # Here, provoke it by removing the attribute altogether
     model._h5file = None
     del model
+
+
+def test_BaseModel_rngs(minimal_pspace_cfg, tmpdir):
+    cfg = minimal_pspace_cfg
+    cfg["root_model_name"] = "MyModel"
+    cfg["MyModel"] = dict(some_param="foo", max_n_iter=13)
+
+    cfg_path = tmpdir.join("cfg.yml")
+    write_yml(cfg, path=cfg_path)
+
+    # Set up a first model and let it generate random numbers
+    N = 100
+    m1 = MyModel(cfg_file_path=cfg_path)
+    rands1 = dict(
+        model=[m1.rng.random() for _ in range(N)],
+        np=[np.random.random() for _ in range(N)],
+        sys=[random.random() for _ in range(N)],
+    )
+
+    # When setting up a second model, it should generate the same numbers
+    os.remove(cfg["output_path"])  # because m1's file still exists
+    m2 = MyModel(cfg_file_path=cfg_path)
+    rands2 = dict(
+        model=[m2.rng.random() for _ in range(N)],
+        np=[np.random.random() for _ in range(N)],
+        sys=[random.random() for _ in range(N)],
+    )
+
+    assert np.isclose(rands1["model"], rands2["model"]).all()
+    assert np.isclose(rands1["np"], rands2["np"]).all()
+    assert np.isclose(rands1["sys"], rands2["sys"]).all()
+
+    # When setting different seeds, this is not the case *for np & system*
+    os.remove(cfg["output_path"])  # because m1s file still exists
+    cfg["seed_numpy_rng"] = False
+    cfg["seed_system_rng"] = None
+    write_yml(cfg, path=cfg_path)
+
+    m3 = MyModel(cfg_file_path=cfg_path)
+    rands3 = dict(
+        model=[m3.rng.random() for _ in range(N)],
+        np=[np.random.random() for _ in range(N)],
+        sys=[random.random() for _ in range(N)],
+    )
+
+    assert np.isclose(rands1["model"], rands3["model"]).all()
+    assert not np.isclose(rands1["np"], rands3["np"]).any()
+    assert not np.isclose(rands1["sys"], rands3["sys"]).any()
 
 
 # -----------------------------------------------------------------------------
