@@ -2,6 +2,11 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.8
+- !58 changes the default behaviour of the `utopya_backend` `BaseModel` to also seed numpy's `np.random` default RNG and the `random` module's default RNG when setting up a model.
+  This makes Python simulations deterministic even in cases where an external RNG is being used; *not* having done this in the past meant that simulations would not be reproducible, which is why this is considered a *bug fix*.
+  The behaviour can be deactivated by setting `seed_numpy_rng` and `seed_system_rng` parameters to False.
+
 ## v1.2.7
 - !55 improves graph layouting by using the pygraphviz package (instead of the outdated pydot).
   For plotting networks, the utopya installation now includes a set of optional dependencies, installable via `pip install utopya[opt]`.

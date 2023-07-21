@@ -4,6 +4,11 @@ Model base classes
 ==================
 
 
+.. contents::
+    :local:
+    :depth: 2
+
+
 .. _backend_basemodel:
 
 ``BaseModel`` class
@@ -14,6 +19,26 @@ Relevant properties
 ^^^^^^^^^^^^^^^^^^^
 
 .. todo:: 🚧
+
+
+Random Number Generator
+^^^^^^^^^^^^^^^^^^^^^^^
+Via :py:meth:`~utopya_backend.model.base.BaseModel.rng`, the model's own random number generator can be accessed.
+Being seeded (with the ``seed`` parameter), this ensures that a simulation is reproducible.
+
+.. note::
+
+    During setup (:py:meth:`~utopya_backend.model.base.BaseModel._setup_rng`), the system's and numpy's *default* RNGs are also seeded (via :py:func:`random.seed` and :py:func:`numpy.random.seed`, respectively).
+    This is done to ensure that simulations are deterministic even if *not* using the model's own RNG instance, which is not always possible.
+
+    To not set those seeds in a simulation, set the ``seed_numpy_rng`` and ``seed_system_rng`` parameters to False:
+
+    .. code-block:: yaml
+
+        parameter_space:
+          seed: 123
+          seed_numpy_rng: false   # if true: will use (seed + 1 = 124)
+          seed_system_rng: false  # if true: will use (seed + 2 = 125)
 
 
 .. _backend_stepwisemodel:
