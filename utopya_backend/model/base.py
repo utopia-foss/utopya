@@ -6,10 +6,11 @@ further assumptions about the abstraction a model makes, like the step-wise
 iteration done in :py:class:`~utopya_backend.model.step.StepwiseModel`."""
 
 import abc
+import random
 import signal
 import sys
 import time
-from typing import Union
+from typing import Optional, Union
 
 import h5py as h5
 import numpy as np
@@ -105,7 +106,15 @@ class BaseModel(abc.ABC):
         self._n_iterations = 0
 
         # RNG
-        self._rng = self._setup_rng(seed=self.root_cfg["seed"])
+        # In order to ensure that a simulation is deterministic even when not
+        # using the model-specific RNG instance, some singleton-like default
+        # RNGs are (by default) seeded additionally. To avoid equal random
+        # number sequences, they are salted.
+        self._rng = self._setup_rng(
+            seed=self.root_cfg["seed"],
+            seed_numpy_rng=self.root_cfg.get("seed_numpy_rng", True),
+            seed_system_rng=self.root_cfg.get("seed_system_rng", True),
+        )
 
         # Create the output file
         self._h5file = self._setup_output_file()
@@ -505,10 +514,55 @@ class BaseModel(abc.ABC):
                 "  Set backend logger's level to '%s'.", backend_log_level
             )
 
-    def _setup_rng(self, *, seed: int, **kwargs) -> "numpy.random.Generator":
-        """Sets up the shared RNG"""
+    def _setup_rng(
+        self,
+        *,
+        seed: int,
+        seed_numpy_rng: Optional[Union[bool, int]] = None,
+        seed_system_rng: Optional[Union[bool, int]] = None,
+        **rng_kwargs,
+    ) -> "numpy.random.Generator":
+        """Sets up the shared RNG.
+
+        .. note::
+
+            If also seeding the other RNGs, make sure to use different seeds
+            for them, such that random number sequences are ensured to be
+            different even if the underlying generator may be the same.
+
+        Args:
+            seed (int): The seed for the new, model-specific RNG, constructed
+                via :py:func:`numpy.random.default_rng`
+            seed_numpy_rng (Optional[Union[bool, int]], optional): If not
+                False or None, will also seed numpy's singleton (i.e.
+                *default*) RNG by calling :py:func:`numpy.random.seed`.
+                If True, will use ``seed + 1`` for that.
+            seed_system_rng (Optional[Union[bool, int]], optional): If not
+                False or None, will also seed the system's default RNG by
+                calling :py:func:`random.seed`.
+                If True, will use ``seed + 2`` for that.
+            **rng_kwargs: Passed on to :py:func:`numpy.random.default_rng`
+        """
         self.log.info("Creating shared RNG (seed: %s) ...", seed)
-        return np.random.default_rng(seed, **kwargs)
+        rng = np.random.default_rng(seed, **rng_kwargs)
+
+        if seed_numpy_rng not in (None, False):
+            if seed_numpy_rng is True:
+                seed_numpy_rng = seed + 1
+            np.random.seed(seed_numpy_rng)
+            self.log.debug(
+                "  Default numpy RNG seeded with:  %s", seed_numpy_rng
+            )
+
+        if seed_system_rng not in (None, False):
+            if seed_system_rng is True:
+                seed_system_rng = seed + 2
+            random.seed(seed_system_rng)
+            self.log.debug(
+                "  Default system RNG seeded with: %s", seed_system_rng
+            )
+
+        return rng
 
     def _setup_output_file(self) -> "h5py.File":
         """Creates the output file for this model; by default, it is a HDF5
