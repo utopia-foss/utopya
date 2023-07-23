@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 # .. Dependency lists .........................................................
 
 INSTALL_DEPS = [
-    "numpy",
+    "numpy < 2.0",
     "scipy",
     "matplotlib",
     "seaborn",
@@ -16,9 +16,10 @@ INSTALL_DEPS = [
     "pydantic >= 2.0",
     "python-git-info",
     #
-    # related to utopya:
-    "paramspace>=2.5.9",
-    "dantro>=0.18.5",
+    # first-party packages
+    "yayaml>=0.1.1",
+    "paramspace>=2.6.1",
+    "dantro>=0.19.2",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.

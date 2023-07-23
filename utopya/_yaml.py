@@ -1,7 +1,6 @@
-"""Supplies basic YAML interface, inherited from dantro and paramspace"""
+"""Supplies basic YAML interface, inherited from :py:mod:`yayaml`"""
 
-import paramspace
-from dantro.tools import load_yml, write_yml, yaml
+from yayaml import load_yml, write_yml, yaml
 
-# Make sure the yaml instances are really shared
-assert yaml is paramspace.yaml
+# Set the flow style
+yaml.default_flow_style = False

@@ -362,6 +362,7 @@ intersphinx_mapping = {
     #
     # First-party docs:
     "paramspace":   ("https://paramspace.readthedocs.io/en/latest/", None),
+    "yayaml":       ("https://yayaml.readthedocs.io/en/latest/", None),
     "dantro":       ("https://dantro.readthedocs.io/en/latest/", None),
     #
     # Third-party docs
