@@ -1369,14 +1369,19 @@ class Multiverse:
             )
 
             # Do a sweep over the whole activated parameter space
+            vol = pspace.volume
             log.progress(
-                "Adding tasks for simulation of %d universes ...",
-                pspace.volume,
+                "Adding tasks for simulation of %d universes ...", vol
             )
 
-            for uni_cfg, uni_id_str in psp_iter:
+            for i, (uni_cfg, uni_id_str) in enumerate(psp_iter):
                 self._add_sim_task(
                     uni_id_str=uni_id_str, uni_cfg=uni_cfg, is_sweep=True
+                )
+
+                print(
+                    f"  Added simulation task:  {uni_id_str}  ({i+1}/{vol})",
+                    end="\r",
                 )
 
         else:

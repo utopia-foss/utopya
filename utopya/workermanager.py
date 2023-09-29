@@ -73,7 +73,8 @@ class WorkerManager:
         self,
         num_workers: Union[int, str] = "auto",
         poll_delay: float = 0.05,
-        lines_per_poll: int = 20,
+        spawn_rate: int = -1,
+        lines_per_poll: int = 50,
         periodic_task_callback: int = None,
         QueueCls: type = queue.Queue,
         reporter: WorkerManagerReporter = None,
@@ -94,6 +95,9 @@ class WorkerManager:
             poll_delay (float, optional): How long (in seconds) the delay
                 between worker polls should be. For too small delays (<0.01),
                 the CPU load will become significant.
+            spawn_rate (int, optional): How many workers to spawn each working
+                loop iteration. If -1, will assign new tasks to all free
+                workers.
             lines_per_poll (int, optional): How many lines to read from
                 each stream during polling of the tasks. This value should not
                 be too large, otherwise the polling is delayed by too much.
@@ -163,6 +167,7 @@ class WorkerManager:
         # Initialize attributes, some of which are property-managed
         self._num_workers = None
         self._poll_delay = None
+        self._spawn_rate = None
         self._periodic_callback = periodic_task_callback
         self._tasks = TaskList()
         self._task_q = QueueCls()
@@ -178,6 +183,7 @@ class WorkerManager:
 
         # Hand over arguments
         self.poll_delay = poll_delay
+        self.spawn_rate = spawn_rate
         self.lines_per_poll = lines_per_poll
         self.nonzero_exit_handling = nonzero_exit_handling
         self._cluster_mode = cluster_mode
@@ -313,6 +319,20 @@ class WorkerManager:
                 UserWarning,
             )
         self._poll_delay = val
+
+    @property
+    def spawn_rate(self) -> int:
+        """Returns the spawn rate"""
+        return self._spawn_rate
+
+    @spawn_rate.setter
+    def spawn_rate(self, val: int) -> None:
+        """Set the spawn rate."""
+        if not (val == -1 or val > 0) or not isinstance(val, int):
+            raise ValueError(
+                f"Spawn rate needs to be a positive integer or -1, was {val}!"
+            )
+        self._spawn_rate = val
 
     @property
     def stop_conditions(self) -> Set[StopCondition]:
@@ -609,27 +629,8 @@ class WorkerManager:
                 # Check if there was another reason for exiting
                 self._handle_pending_exceptions()
 
-                # Check if there are free workers
-                if self.num_free_workers:
-                    # Yes. => Try to grab a task and start working on it
-                    try:
-                        new_task = self._grab_task()
-
-                    except queue.Empty:
-                        # There were no tasks left in the task queue
-                        pass
-
-                    else:
-                        # Succeeded in grabbing a task; worker spawned
-                        self.active_tasks.append(new_task)
-                    # NOTE Only a single task is grabbed here, even if there is
-                    # more than one free worker. This is to assure that the
-                    # while loop iterations have comparable run time, even if
-                    # a task is added (which can take O(ms)). As this loop
-                    # handles more than just grabbing new tasks, it is safer
-                    # to have it run reliably and foreseeably.
-                    # Also, the poll delay is usually not so large that there
-                    # would be an issue with workers staying idle for too long.
+                # Assign tasks to free workers
+                self._assign_tasks(self.num_free_workers)
 
                 # Do stream-related actions for each task
                 for task in self.active_tasks:
@@ -852,6 +853,35 @@ class WorkerManager:
 
         # Now return the task
         return task
+
+    def _assign_tasks(self, num_free_workers: int) -> int:
+        """Assigns tasks to (at most) ``num`` free workers."""
+        if num_free_workers <= 0:
+            return 0
+
+        # How many workers are meant to be spawned?
+        if self.spawn_rate == -1:
+            num_spawn = num_free_workers
+        else:
+            num_spawn = min(num_free_workers, self.spawn_rate)
+
+        # Grab the tasks, spawning the corresponding workers
+        num_spawned = 0
+        for _ in range(num_spawn):
+            # Try to grab a task and start working on it
+            try:
+                new_task = self._grab_task()
+
+            except queue.Empty:
+                # There were no tasks left in the task queue
+                break
+
+            else:
+                # Succeeded in grabbing a task; worker spawned
+                self.active_tasks.append(new_task)
+                num_spawned += 1
+
+        return num_spawned
 
     def _poll_workers(self) -> None:
         """Will poll all workers that are in the working list and remove them
