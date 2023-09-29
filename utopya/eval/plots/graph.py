@@ -5,16 +5,14 @@
 
 import copy
 import logging
-import os
 import warnings
 from itertools import chain, product
-from typing import Any, Callable, Dict, Sequence, Tuple, Union
+from typing import Sequence, Union
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import xarray as xr
+from dantro.tools import adjusted_log_levels as _adjusted_log_levels
 
 from . import PlotHelper, is_plot_func
 from ._graph import GraphPlot
@@ -107,11 +105,30 @@ def graph_array_from_group(
     # If needed, extract coordinates from property data
     for dim in sel:
         if isinstance(sel[dim], dict) and "from_property" in sel[dim]:
-            sel[dim] = list(
-                graph_group._get_item_or_pmap(sel[dim]["from_property"])
-                .coords[dim]
-                .values
+            _k = sel[dim]["from_property"]
+            log.note(
+                "Extracting graph animation selection for dimension '%s' "
+                "from property '%s' ...",
+                dim,
+                _k,
             )
+
+            _vals = graph_group._get_item_or_pmap(_k).coords[dim]
+
+            # subselection
+            _isel = sel[dim].get("isel")  # for subselection
+            _sel = sel[dim].get("sel")  # for subselection
+
+            if _isel:
+                log.remark("Performing index-based subselection:  %s", _isel)
+                _vals = _vals.isel(_isel)
+            if _sel:
+                log.remark("Performing value-based subselection:  %s", _sel)
+                _vals = _vals.sel(_sel)
+
+            # assign selector values
+            log.remark("Selector for '%s' dimension:\n%s", dim, _vals)
+            sel[dim] = list(_vals.values)
 
     # With the given selectors, can now set up the graph-DataArray and create
     # a graph from each coordinate combination.
@@ -129,7 +146,12 @@ def graph_array_from_group(
 
     indices = [[i for i in range(len(c))] for c in all_selectors]
 
-    for idxs, selector in zip(product(*indices), product(*all_selectors)):
+    N = len(list(product(*indices)))
+    log.note("Creating %d graphs for animation ...", N)
+
+    for i, (idxs, selector) in enumerate(
+        zip(product(*indices), product(*all_selectors))
+    ):
         sel_coords = selector[: len(sel)]
         isel_coords = selector[len(sel) :]
 
@@ -137,21 +159,28 @@ def graph_array_from_group(
         select = {d: c for d, c in zip(sel.keys(), sel_coords)}
         iselect = {d: c for d, c in zip(isel.keys(), isel_coords)}
 
-        g = GraphPlot.create_graph_from_group(
-            graph_group=graph_group,
-            register_property_maps=register_property_maps,
-            clear_existing_property_maps=clear_existing_property_maps,
-            sel=select,
-            isel=iselect,
-            **graph_creation,
-        )
+        with _adjusted_log_levels(("dantro.groups.graph", 21)):
+            g = GraphPlot.create_graph_from_group(
+                graph_group=graph_group,
+                register_property_maps=register_property_maps,
+                clear_existing_property_maps=clear_existing_property_maps,
+                sel=select,
+                isel=iselect,
+                **graph_creation,
+            )
 
         graphs[idxs] = g
 
         # Extract the coordinate values from the networkx graph attributes
+        # NOTE This assumes that there are no additional graph attributes that
+        #      also match a dimension name ...
         for d, c in g.graph.items():
+            if d not in coords:
+                continue
             if coords[d] == [] or coords[d][-1] != c:
                 coords[d].append(c)
+
+        print(f"  {i+1:4d} / {N}:  {g}", end="\r")
 
     coords = {d: coords[d] for d in dims}
 
@@ -326,17 +355,26 @@ def graph_animation_update(
         if not _missing_val:
             # Use a new GraphPlot for the next frame such that the `select`
             # kwargs are re-evaluated.
-            gp = GraphPlot(
-                g=g,
-                fig=hlpr.fig,
-                ax=hlpr.ax,
-                positions=positions,
-                **drawing_kwargs,
-            )
-            gp.draw(
-                suppress_cbar=not _update_colormapping,
-                update_colormapping=_update_colormapping,
-            )
+            with _adjusted_log_levels(
+                ("dantro.plot.utils.color_mngr", 15),
+                ("utopya.eval.plots._graph", 15),
+            ):
+                log.remark(
+                    "Drawing %s ...  (%s)",
+                    g,
+                    ", ".join(f"{k}: {v}" for k, v in coords.items()),
+                )
+                gp = GraphPlot(
+                    g=g,
+                    fig=hlpr.fig,
+                    ax=hlpr.ax,
+                    positions=positions,
+                    **drawing_kwargs,
+                )
+                gp.draw(
+                    suppress_cbar=not _update_colormapping,
+                    update_colormapping=_update_colormapping,
+                )
 
         # Update the suptitle format string and invoke the helper
         st_kwargs = copy.deepcopy(suptitle_kwargs)
@@ -358,7 +396,8 @@ def graph_animation_update(
 
         if not _missing_val:
             # Clean up the frame
-            gp.clear_plot(keep_colorbars=not _update_colormapping)
+            with _adjusted_log_levels(("utopya.eval.plots._graph", 15)):
+                gp.clear_plot(keep_colorbars=not _update_colormapping)
 
             if _first_graph:
                 # If the positions should be fixed, overwrite the positions arg
@@ -427,11 +466,14 @@ def draw_graph(
                 *Deprecated*: Equivaluent to a ``sel.time`` entry.
             sel (dict, optional):
                 Select by value. Dictionary with dimension names as keys. The
-                values may either be coordinate values or a dict with a single
+                values may either be coordinate values or a dict with a
                 ``from_property`` (str) entry which specifies a container
                 within the :py:class:`~utopya.eval.groups.GraphGroup` or
                 registered external data from which the coordinates are
                 extracted.
+                Additionally, there can be ``isel`` and ``sel`` keys beside the
+                ``from_property`` key, performing a subselection on those
+                coordinates.
             isel (dict, optional):
                 Select by index. Coordinate indices keyed by dimension. May be
                 given together with ``sel`` if no key appears in both.
