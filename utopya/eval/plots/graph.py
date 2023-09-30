@@ -7,7 +7,7 @@ import copy
 import logging
 import warnings
 from itertools import chain, product
-from typing import Sequence, Union
+from typing import Callable, Sequence, Union
 
 import networkx as nx
 import numpy as np
@@ -201,6 +201,7 @@ def graph_animation_update(
     positions: dict = None,
     animation_kwargs: dict = None,
     suptitle_kwargs: dict = None,
+    suptitle_formatter: Callable = None,
     **drawing_kwargs,
 ):
     """Graph animation frame generator. Yields whenever the plot helper may
@@ -378,7 +379,10 @@ def graph_animation_update(
 
         # Update the suptitle format string and invoke the helper
         st_kwargs = copy.deepcopy(suptitle_kwargs)
-        st_kwargs["title"] = st_kwargs["title"].format(**coords)
+        if suptitle_formatter is None:
+            suptitle_formatter = lambda fstr, **coords: fstr.format(**coords)
+
+        st_kwargs["title"] = suptitle_formatter(st_kwargs["title"], **coords)
         hlpr.invoke_helper("set_suptitle", **st_kwargs)
 
         if _first_graph:
@@ -425,6 +429,7 @@ def draw_graph(
     register_property_maps: Sequence[str] = None,
     clear_existing_property_maps: bool = True,
     suptitle_kwargs: dict = None,
+    suptitle_formatter: Callable = None,
 ):
     """Draws a graph either from a :py:class:`~utopya.eval.groups.GraphGroup`
     or directly from a :py:class:`networkx.Graph` using the
@@ -512,6 +517,10 @@ def draw_graph(
             is done. The format string is updated for each frame of the
             animation. The default is ``<dim-name> = {<dim-name>}`` for each
             dimension.
+        suptitle_formatter (Callable, optional): If given, this should be a
+            function that takes coordinates and their values as keyword
+            arguments and returns the string that is to be used as the title.
+            Only used in animation mode.
 
     Raises:
         ValueError: On invalid or non-computed
@@ -622,6 +631,7 @@ def draw_graph(
                 register_property_maps=property_maps,
                 clear_existing_property_maps=clear_existing_property_maps,
                 suptitle_kwargs=suptitle_kwargs,
+                suptitle_formatter=suptitle_formatter,
                 animation_kwargs=graph_animation,
                 **graph_drawing,
             )
