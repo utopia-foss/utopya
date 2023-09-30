@@ -2,6 +2,11 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.9 *(work in progress)*
+- !61 fixes a bug in graph animation plots that prohibited plotting if additional graph attributes were set.
+    - Also reduces the verbosity of the graph plot by hiding repetitive log messages.
+
+
 ## v1.2.8
 - !58 changes the default behaviour of the `utopya_backend` `BaseModel` to also seed numpy's `np.random` default RNG and the `random` module's default RNG when setting up a model.
   This makes Python simulations deterministic even in cases where an external RNG is being used; *not* having done this in the past meant that simulations would not be reproducible, which is why this is considered a *bug fix*.

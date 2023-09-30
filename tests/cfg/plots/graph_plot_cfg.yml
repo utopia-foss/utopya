@@ -331,6 +331,18 @@ graph_anim4:
         from_property: weights
     update_positions: True
 
+graph_anim_from_property_isel:
+  <<: *base
+  animation:
+    enabled: True
+    writer: frames
+  graph_animation:
+    sel:
+      time:
+        from_property: weights
+        isel: !slice [0, ~, 2]
+    update_positions: True
+
 graph_anim_external:
   <<: *ext_prop
   animation:
