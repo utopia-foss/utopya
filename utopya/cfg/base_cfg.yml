@@ -155,11 +155,22 @@ worker_manager:
   #       If this value is too high, the log output from simulations is not
   #       read from the line buffer frequently enough.
 
+  # How many workers to spawn each working loop iteration.
+  # For -1, will assign tasks to all free workers.
+  spawn_rate: -1
+  # NOTE: If simulations are short, it makes sense to set this to a large value
+  #       or to -1, otherwise CPU utilization will be low because tasks are
+  #       finished faster than new ones are spawned, leading to idle workers.
+  #       If you would like to keep main thread utilization low, set to 1.
+
   # Maximum number of lines to read from each task's stream per poll cycle.
   # Choosing a value that is too large may affect poll performance in cases
   # where the task generates many lines of output.
   # Set to -1 to read *all* available lines from the stream upon each poll.
-  lines_per_poll: 20
+  lines_per_poll: 50
+  # NOTE: If there is a lot of log output, choose a large value here. This will
+  #       lead to higher main thread utilization, but otherwise the tasks will
+  #       live on for a longer time, blocking the spawning of new tasks.
 
   # Periodic task callback (in units of poll events). Set None to deactivate.
   periodic_task_callback: ~

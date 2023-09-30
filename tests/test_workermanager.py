@@ -20,7 +20,7 @@ STOP_CONDS_PATH = get_cfg_fpath("stop_conds.yml")
 @pytest.fixture
 def wm():
     """Create the simplest possible WorkerManager instance"""
-    return WorkerManager(num_workers=2, poll_delay=0.042)
+    return WorkerManager(num_workers=2, poll_delay=0.042, spawn_rate=1)
 
 
 @pytest.fixture
@@ -28,7 +28,10 @@ def wm_priQ():
     """Create simple WorkerManager instance with a PriorityQueue for the tasks.
     Priority from -inf to +inf (high to low)."""
     return WorkerManager(
-        num_workers=2, poll_delay=0.01, QueueCls=queue.PriorityQueue
+        num_workers=2,
+        poll_delay=0.01,
+        QueueCls=queue.PriorityQueue,
+        spawn_rate=1,
     )
 
 
@@ -93,7 +96,7 @@ def wm_with_tasks(sleep_task):
     tasks.append(sleep_task)
 
     # Now initialise the worker manager
-    wm = WorkerManager(num_workers=2)
+    wm = WorkerManager(num_workers=2, spawn_rate=1)
 
     # And pass the tasks
     for task_dict in tasks:
@@ -115,11 +118,21 @@ def test_init():
     WorkerManager()
 
     # Test different `poll_delay` arguments: negative and small value
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="needs to be positive"):
         WorkerManager(num_workers=1, poll_delay=-1000)
 
     with pytest.warns(UserWarning):
         WorkerManager(num_workers=1, poll_delay=0.001)
+
+    # Test different `spawn_rate` arguments
+    with pytest.raises(ValueError, match="needs to be a positive integer"):
+        WorkerManager(num_workers="auto", spawn_rate=-2)
+
+    with pytest.raises(ValueError, match="needs to be a positive integer"):
+        WorkerManager(num_workers="auto", spawn_rate=0)
+
+    with pytest.raises(ValueError, match="needs to be a positive integer"):
+        WorkerManager(num_workers="auto", spawn_rate=0.1)
 
     # Test initialization with different `nonzero_exit_handling` values
     WorkerManager(nonzero_exit_handling="ignore")
@@ -352,6 +365,60 @@ def test_detach(wm):
 def test_empty_task_queue(wm):
     with pytest.raises(queue.Empty):
         wm._grab_task()
+
+
+def test_spawn_rate(wm_with_tasks):
+    """Tests whether the start_working methods does what it should"""
+    wm = wm_with_tasks
+    assert wm.num_workers > 1
+    assert wm.spawn_rate == 1
+
+    # Set more robustly testable values
+    POLL_DELAY = 0.1
+    wm.spawn_rate = 2
+    wm.poll_delay = POLL_DELAY
+
+    wm.start_working()
+
+    # Check that all tasks finished with exit status 0
+    for task in wm.tasks:
+        assert task.worker_status == 0
+        assert task.profiling["end_time"] > task.profiling["create_time"]
+
+    # First two tasks should be spawned very close to each other, because of
+    # spawn rate -1
+    task0 = wm.tasks[0]
+    task1 = wm.tasks[1]
+    p0 = task0.profiling
+    p1 = task1.profiling
+
+    dt = p1["create_time"] - p0["create_time"]
+    assert dt > 0
+    assert dt < POLL_DELAY / 10
+
+    # Third task should be spawned in the next loop
+    task2 = wm.tasks[2]
+    p2 = task2.profiling
+    assert (p2["create_time"] - p0["create_time"]) > 0.9 * POLL_DELAY
+
+
+def test_parallel_spawn(wm_with_tasks):
+    """Tests whether the start_working methods does what it should"""
+    wm = wm_with_tasks
+    assert wm.num_workers > 1
+    assert wm.spawn_rate == 1
+
+    # Set more robustly testable values
+    POLL_DELAY = 0.1
+    wm.spawn_rate = -1
+    wm.poll_delay = POLL_DELAY
+
+    wm.start_working()
+
+    # Check that all tasks finished with exit status 0
+    for task in wm.tasks:
+        assert task.worker_status == 0
+        assert task.profiling["end_time"] > task.profiling["create_time"]
 
 
 def test_timeout(wm, sleep_task, longer_sleep_task):

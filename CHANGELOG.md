@@ -2,10 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
-## v1.2.9 *(work in progress)*
+## v1.2.9
 - !61 fixes a bug in graph animation plots that prohibited plotting if additional graph attributes were set.
     - Also reduces the verbosity of the graph plot by hiding repetitive log messages.
-
+- !60 allows controlling how many tasks the `WorkerManager` spawns each iteration of the working loop, improving CPU utilisation when many short simulations need to be started in fast succession.
 
 ## v1.2.8
 - !58 changes the default behaviour of the `utopya_backend` `BaseModel` to also seed numpy's `np.random` default RNG and the `random` module's default RNG when setting up a model.
