@@ -2,6 +2,9 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.10 *(work in progress)*
+- !62 adds the `-W`/`--num-workers` option to `utopya run`, a shortcut to more easily set the number of worker processes.
+
 ## v1.2.9
 - !61 fixes a bug in graph animation plots that prohibited plotting if additional graph attributes were set.
     - Also reduces the verbosity of the graph plot by hiding repetitive log messages.
