@@ -43,7 +43,19 @@ def test_run(with_test_models, tmp_output_dir):
     # Adjusting some of the meta config parameters, testing if they show up
     args = ("run", DUMMY_MODEL, "--no-eval", "--note", "some_note", "-d")
     res = invoke_cli(
-        args + ("-N", "23", "--we", "5", "--ws", "7", "--mp", "foo.bar=ABCXYZ")
+        args
+        + (
+            "-N",
+            "23",
+            "--we",
+            "5",
+            "--ws",
+            "7",
+            "--mp",
+            "foo.bar=ABCXYZ",
+            "-W",
+            "1",
+        )
     )
     _check_result(res, expected_exit=0)
 

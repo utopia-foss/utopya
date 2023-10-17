@@ -436,6 +436,13 @@ def parse_update_dicts(
             )
             add_item(True, add_to=update_dict, key_path=("perform_sweep",))
 
+        if args.num_workers is not None:
+            add_item(
+                args.num_workers,
+                add_to=update_dict,
+                key_path=("worker_manager", "num_workers"),
+            )
+
         if args.run_mode is not None:
             add_item(
                 args.run_mode == "sweep",
