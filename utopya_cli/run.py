@@ -1,5 +1,7 @@
 """Implements the utopya run CLI subtree"""
 
+import os
+
 import click
 
 from ._shared import OPTIONS, add_options, complete_model_names, default_none
@@ -99,6 +101,18 @@ from ._utils import Echo
     ),
 )
 @click.option(
+    "-W",
+    "--num-workers",
+    default=None,
+    type=click.IntRange(min=-os.cpu_count() + 1, max=+os.cpu_count()),
+    help=(
+        "Shortcut for meta-config entry ``worker_manager.num_workers``, which "
+        "sets the number of worker processes. "
+        "Can be an integer; if negative, will deduce the number from the "
+        "number of available CPUs."
+    ),
+)
+@click.option(
     "--set-model-params",
     "--mp",
     multiple=True,
@@ -164,7 +178,6 @@ from ._utils import Echo
 def run(ctx, **kwargs):
     """Invokes a model simulation run and subsequent evaluation"""
     import utopya
-    from utopya.exceptions import ValidationError
     from utopya.tools import pformat
 
     from ._utils import parse_run_and_plots_cfg, parse_update_dicts
