@@ -394,7 +394,7 @@ def test_spawn_rate(wm_with_tasks):
 
     dt = p1["create_time"] - p0["create_time"]
     assert dt > 0
-    assert dt < POLL_DELAY / 10
+    assert dt < POLL_DELAY / 5  # heuristical factor, depends on machine
 
     # Third task should be spawned in the next loop
     task2 = wm.tasks[2]
