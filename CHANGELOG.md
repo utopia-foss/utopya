@@ -4,6 +4,7 @@
 
 ## v1.2.10 *(work in progress)*
 - !62 adds the `-W`/`--num-workers` option to `utopya run`, a shortcut to more easily set the number of worker processes.
+- !63 fixes a YAML loading issue in the `MinimalModel` introduced by `ruamel.yaml >= 0.18`.
 
 ## v1.2.9
 - !61 fixes a bug in graph animation plots that prohibited plotting if additional graph attributes were set.
