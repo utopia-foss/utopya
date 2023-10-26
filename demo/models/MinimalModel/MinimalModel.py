@@ -5,7 +5,9 @@ import sys
 
 import h5py as h5
 import numpy as np
-import ruamel.yaml as yaml
+from ruamel.yaml import YAML
+
+yaml = YAML(typ="safe")
 
 # -----------------------------------------------------------------------------
 # -- Model implementation -----------------------------------------------------
@@ -109,7 +111,7 @@ if __name__ == "__main__":
     print("Preparing model run ...")
     print(f"  Loading config file:\n    {cfg_file_path}")
     with open(cfg_file_path, "r") as cfg_file:
-        cfg = yaml.load(cfg_file, Loader=yaml.Loader)
+        cfg = yaml.load(cfg_file)
 
     model_name = cfg.get("root_model_name", "MinimalModel")
     print(f"Model name:  {model_name}")
