@@ -44,7 +44,7 @@ You should now be able to invoke the utopya CLI:
 utopya --help
 ```
 
-*Note:* utopya does not specify minimum versions for its requirements; but it is always tested using the latest versions of its dependencies (for Python 3.8 to 3.11).
+*Note:* utopya does not specify minimum versions for its requirements; but it is always tested using the latest versions of its dependencies (for Python 3.8 to 3.12).
 In case you run into problems, consider upgrading the involved packages using `pip install --upgrade`.
 
 ## Optional Dependencies

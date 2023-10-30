@@ -2,9 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
-## v1.2.10 *(work in progress)*
+## v1.2.10
 - !62 adds the `-W`/`--num-workers` option to `utopya run`, a shortcut to more easily set the number of worker processes.
 - !63 fixes a YAML loading issue in the `MinimalModel` introduced by `ruamel.yaml >= 0.18`.
+- !65 adds test environments for Python 3.12
 
 ## v1.2.9
 - !61 fixes a bug in graph animation plots that prohibited plotting if additional graph attributes were set.

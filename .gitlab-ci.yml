@@ -154,6 +154,10 @@ test:py311:
   extends: test:py38
   image: python:3.11
 
+test:py312:
+  extends: test:py38
+  image: python:3.12
+
 
 # -- Deploy Stage -------------------------------------------------------------
 
