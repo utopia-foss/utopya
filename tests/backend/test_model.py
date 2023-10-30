@@ -282,7 +282,7 @@ def test_StepwiseModel_missing_methods(minimal_pspace_cfg, tmpdir):
     class IncompleteModel(StepwiseModel):
         pass
 
-    with pytest.raises(TypeError, match="perform_step, setup, write_data"):
+    with pytest.raises(TypeError, match="perform_step.*setup.*write_data"):
         IncompleteModel(cfg_file_path=cfg_path)
 
     # Can instantiate with those three methods implemented
