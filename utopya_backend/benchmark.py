@@ -484,11 +484,16 @@ class ModelBenchmarkMixin:
             self.__enabled
             and self.__write
             and self._dset_cumulative is not None
+            and self._dset_cumulative_invocation_times
+            and not self._is_stepwise_model
         ):
             ds = self._dset_cumulative
             times = self._dset_cumulative_invocation_times
+            self.log.info("ds.attrs:  %s", dict(ds.attrs.items()))
             ds.attrs["coords_mode__n_iterations"] = "values"
             ds.attrs["coords__n_iterations"] = times
+            self.log.info("times: %s", times)
+            self.log.info("ds.attrs:  %s", dict(ds.attrs.items()))
 
         # Show times
         if self.__enabled and self._show_on_exit:
