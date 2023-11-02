@@ -263,8 +263,7 @@ _:
         path: data
         transform:
           - getitem: [!dag_prev , !dag_tag model_name]
-          - getitem: [!dag_prev , benchmark]
-          - getitem: [!dag_prev , total]
+          - getitem: [!dag_prev , benchmark/total]
 
   sns_kind: catplot
 
@@ -281,6 +280,7 @@ _:
     set_labels:
       x: " "
       y: total walltime [s]
+      only_label_outer: true
     set_limits:
       y: [0, ~]
     call:
@@ -308,8 +308,7 @@ _:
         path: data
         transform:
           - getitem: [!dag_prev , !dag_tag model_name]
-          - getitem: [!dag_prev , benchmark]
-          - getitem: [!dag_prev , cumulative]
+          - getitem: [!dag_prev , benchmark/cumulative]
 
   x: n_iterations
 
@@ -317,6 +316,24 @@ _:
     set_labels:
       x: time [#iterations]
       y: cumulative walltime [s]
+      only_label_outer: true
+
+
+.plot.benchmark.cumulative_diff:
+  based_on:
+    - .plot.benchmark.cumulative
+
+  select_and_combine:
+    fields:
+      data:
+        transform_after_combine:
+          - .diff: [!dag_prev , n_iterations]
+
+  helpers:
+    set_labels:
+      x: time [#iterations]
+      y: diff. walltime [s]
+      only_label_outer: true
 
 
 
