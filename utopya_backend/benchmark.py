@@ -489,11 +489,10 @@ class ModelBenchmarkMixin:
         ):
             ds = self._dset_cumulative
             times = self._dset_cumulative_invocation_times
-            self.log.info("ds.attrs:  %s", dict(ds.attrs.items()))
             ds.attrs["coords_mode__n_iterations"] = "values"
             ds.attrs["coords__n_iterations"] = times
-            self.log.info("times: %s", times)
-            self.log.info("ds.attrs:  %s", dict(ds.attrs.items()))
+            self.log.debug("times:\n%s", times)
+            self.log.debug("ds.attrs:  %s", dict(ds.attrs.items()))
 
         # Show times
         if self.__enabled and self._show_on_exit:
