@@ -2,6 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.12
+- !68 lets the `xr.DataArray` underlying `XarrayDC` inherit attributes from the container instance (don't know why that wasn't configured to be the case before).
+- !67 fixes a regression in the Read-The-Docs configuration.
+
 ## v1.2.11
 - !66 fixes a bug in `ModelBenchmarkMixin` that prevented reconstructing a labelled DataArray for evaluation of the cumulative benchmarking results.
 
