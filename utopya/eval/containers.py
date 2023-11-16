@@ -100,7 +100,7 @@ class XarrayDC(
     ``coords_mode__time`` attribute to value ``start_and_step``
     """
 
-    _XRC_INHERIT_CONTAINER_ATTRIBUTES = False
+    _XRC_INHERIT_CONTAINER_ATTRIBUTES = True
     """Whether to inherit the other container attributes"""
 
     _XRC_STRICT_ATTR_CHECKING = True
