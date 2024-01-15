@@ -139,10 +139,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     url="https://gitlab.com/utopia-project/utopya",
     author="utopya developers",
-    author_email=(
-        "Benjamin Herdeanu <Benjamin.Herdeanu@iup.uni-heidelberg.de>, "
-        "Yunus Sevinchan <yunus.sevinchan@hu-berlin.de>"
-    ),
+    author_email=("Yunus Sevinchan <yunus.sevinchan@hu-berlin.de>"),
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -162,7 +159,9 @@ setup(
     # Package content
     packages=find_packages(exclude=("demo", "tests")),
     package_data=dict(utopya=["cfg/*.yml"]),
-    data_files=[("", ["COPYING", "COPYING.LESSER", "README.md"])],
+    data_files=[
+        ("", ["COPYING", "COPYING.LESSER", "README.md", "CHANGELOG.md"]),
+    ],
     #
     # Dependencies
     install_requires=INSTALL_DEPS,
@@ -177,6 +176,7 @@ setup(
     entry_points={
         "console_scripts": [
             "utopya = utopya_cli.cli:cli",
+            "utopia = utopya_cli.cli:cli",
         ],
     },
 )
