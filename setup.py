@@ -34,7 +34,7 @@ TEST_DEPS = [
 
 # Dependencies for building the utopya documentation
 DOC_DEPS = [
-    "sphinx>=4.5,<5",
+    "sphinx>=5.3,<6",
     "sphinx-book-theme",
     "sphinx-togglebutton",
     "ipython>=7.0",
