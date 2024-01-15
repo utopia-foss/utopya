@@ -68,7 +68,7 @@ def find_version(*file_paths) -> str:
 # -- Project information ------------------------------------------------------
 
 project = "utopya"
-copyright = "2018 — 2023, utopya developers"
+copyright = "2018 — 2024, utopya developers"
 author = "utopya developers"
 
 # The short X.Y version
@@ -82,7 +82,7 @@ release = find_version("..", "utopya", "__init__.py")
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-needs_sphinx = "4.5"
+needs_sphinx = "5.3"
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -136,7 +136,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

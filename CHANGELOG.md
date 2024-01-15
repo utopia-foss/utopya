@@ -2,6 +2,9 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.2.13
+- !70 adds `utopia` as a console script, giving access to the `utopya` CLI.
+
 ## v1.2.12
 - !68 lets the `xr.DataArray` underlying `XarrayDC` inherit attributes from the container instance (don't know why that wasn't configured to be the case before).
 - !67 fixes a regression in the Read-The-Docs configuration.
