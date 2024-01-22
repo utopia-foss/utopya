@@ -34,7 +34,8 @@ To select this plot function, the following configuration can be used as a start
         some_data:
           title: some custom title
           cmap: inferno
-          limits: [min, max]
+          vmin: min
+          vmax: max
           # ... more arguments here, see docstring
 
 For more information, see below.

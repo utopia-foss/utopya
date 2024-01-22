@@ -337,47 +337,6 @@ _:
 
 
 
-# -- DEPRECATED PLOTS ---------------------------------------------------------
-# NOTE This is the legacy plot function, will be removed; use .plot.ca instead!
-.ca.state:
-  based_on:
-    - .creator.universe  # does not work with anything else
-    - .animation.disabled
-
-  module: !add [*utopya_plots, .ca]
-  plot_func: state
-
-  file_ext: pdf
-
-  default_imshow_kwargs:
-    interpolation: 'none'
-
-  # Can use constrained layout, because axis labels don't change
-  style:
-    figure.constrained_layout.use: true
-
-
-
-# .. .ca.state specializations for different animation writers ................
-.ca.state.anim_frames:
-  based_on:
-    - .ca.state
-    - .animation.frames
-
-  time_idx: 0  # ignored in animations, but required
-
-.ca.state.anim_ffmpeg:
-  based_on:
-    - .ca.state
-    - .animation.ffmpeg
-
-  time_idx: 0  # ignored in animations, but required
-
-
-
-
-
-
 
 # =============================================================================
 #  ╔═╗╔╦╗╦ ╦╦  ╔═╗

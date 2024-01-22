@@ -88,7 +88,6 @@ def _plot_ca_property(
     imshow_hexagonal_extra_kwargs: dict = None,
     default_cbar_kwargs: dict = None,
     grid_structure: str = None,
-    limits: Tuple[float, float] = None,
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
     cmap: Union[str, dict] = None,
@@ -103,8 +102,8 @@ def _plot_ca_property(
     no_cbar_markings: bool = False,
     **cbar_kwargs,
 ) -> mpl.image.AxesImage:
-    """Helper function, used in :py:func:`caplot` and :py:func:`state` to plot
-    a property on the given axis. Returns the created axes image object.
+    """Helper function, used in :py:func:`caplot` to plot a property on the
+    given axis. Returns the created axes image object.
 
     .. note::
 
@@ -130,9 +129,6 @@ def _plot_ca_property(
             or :py:func:`imshow_hexagonal`.
             Note that the ``grid_properties`` need to be passed via the
             ``imshow_kwargs`` argument below.
-        limits (Tuple[float, float], optional): The data limits to use in the
-            form ``(vmin, vmax)``. Individual entries can also be None.
-            *Deprecated!* Use ``vmin`` and ``vmax`` instead.
         vmin (float, optional): The lower limit to use for the colorbar range.
         vmax (float, optional): The upper limit to use for the colorbar range.
         cmap (Union[str, dict], optional): The colormap to use. If a dict is
@@ -170,32 +166,6 @@ def _plot_ca_property(
         ValueError: on invalid grid structure; supported structures are
             ``square`` and ``hexagonal``
     """
-    # Handle deprecations
-    if "draw_cbar" in cbar_kwargs:
-        cbar_kwargs.pop("draw_cbar")
-        _msg = (
-            "The `draw_cbar` argument is deprecated and will be removed. "
-            "Use `add_colorbar` instead."
-        )
-        warnings.warn(_msg, DeprecationWarning)
-        log.caution(_msg)
-
-    if limits is not None:
-        if vmin is None and vmax is None:
-            _msg = (
-                "The `limits` argument is deprecated and will be removed. "
-                "Use `vmin` and `vmax` instead."
-            )
-            warnings.warn(_msg, DeprecationWarning)
-            log.caution(_msg)
-            vmin, vmax = limits
-        else:
-            raise ValueError(
-                "Got the deprecated `limits` argument but also `vmin` and/or "
-                "`vmax`! Remove the `limits` argument and use only `vmin` and "
-                "`vmax` instead."
-            )
-
     # Set up the ColorManager
     cm = ColorManager(
         cmap=cmap, norm=norm, vmin=vmin, vmax=vmax, labels=cbar_labels
@@ -1059,9 +1029,10 @@ def caplot(
                 For instance, by passing mapping from labels to colors, a
                 discrete colormap is created: The keys will be the labels and
                 the values will be their colors. Association happens in the
-                order of entries, with values being inferred from ``limits``,
-                if given. For more information and examples, see the docstring
-                of the :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
+                order of entries, with values being inferred from ``vmin`` and
+                ``vmax``, if given.
+                For more information and examples, see the docstring of the
+                :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
             - ``norm`` (Union[str, dict], optional):
                 The normalization function to use, also handled by the
                 :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
@@ -1073,8 +1044,6 @@ def caplot(
             - ``vmax`` (float, optional):
                 Same as ``vmin``, but with the maximum and allowing ``'max'``
                 argument for choosing the global maximum.
-            - ``limits`` (Union[tuple, list], optional):
-                *Deprecated!* Use ``vmin`` and ``vmax`` instead.
             - ``label`` (str, optional):
                 The *colorbar* label.
             - ``imshow_kwargs`` (dict, optional):
@@ -1214,17 +1183,7 @@ def caplot(
         grid_structure = next(iter(structures.values()))
 
     # Evaluate limits argument for all properties
-    # NOTE That `limits` is deprecated in _plot_ca_property. Once it is
-    #      removed from there, remove evaluation of `limits` here as well
     for prop_name, spec in to_plot.items():
-        if spec.get("limits"):
-            vmin, vmax = spec["limits"]
-            if vmin == "min":
-                vmin = ds[prop_name].min().item()
-            if vmax == "max":
-                vmax = ds[prop_name].max().item()
-            spec["limits"] = (vmin, vmax)
-
         if spec.get("vmin") == "min":
             spec["vmin"] = ds[prop_name].min().item()
 
@@ -1321,17 +1280,10 @@ def caplot(
     def update_data():
         """Updates the data of the imshow objects"""
 
-        def need_autoscale(
-            *, limits=None, vmin=None, vmax=None, cmap=None, **_
-        ) -> bool:
-            """Returns True if there no bounds (limits, vmin, vmax) are given
+        def need_autoscale(*, vmin=None, vmax=None, cmap=None, **_) -> bool:
+            """Returns True if there are no bounds (vmin, vmax) given
             or if a discrete colormap is created from a dict"""
-            return (
-                vmin is None
-                and vmax is None
-                and not limits
-                and not isinstance(cmap, dict)
-            )
+            return vmin is None and vmax is None and not isinstance(cmap, dict)
 
         log.note("Plotting animation with %d frames ...", num_frames)
 
@@ -1376,182 +1328,6 @@ def caplot(
 
             # Done with this frame; yield control to the animation framework.
             yield
-
-    # Register this update method with the helper, which takes care of the rest
-    hlpr.register_animation_update(update_data)
-
-
-# .............................................................................
-# DEPRECATED CA state plot
-
-
-@is_plot_func(creator="universe", supports_animation=True)
-def state(
-    dm: DataManager,
-    *,
-    uni: UniverseGroup,
-    hlpr: PlotHelper,
-    model_name: str,
-    to_plot: dict,
-    time_idx: int,
-    default_imshow_kwargs: dict = None,
-    **_kwargs,
-):
-    r"""Plots the state of the cellular automaton as a 2D heat map.
-    This plot function can be used for a single plot, but also supports
-    animation.
-
-    Which properties of the state to plot can be defined in ``to_plot``.
-
-    Args:
-        dm (DataManager): The DataManager that holds all loaded data
-        uni (UniverseGroup): The currently selected universe, parsed by the
-            :py:class:`~utopya.eval.plotcreators.UniversePlotCreator`.
-        hlpr (PlotHelper): The plot helper
-        model_name (str): The name of the model of which the data is to be
-            plotted
-        to_plot (dict): Which data to plot and how. The keys of this dict
-            refer to a path within the data and can include forward slashes to
-            navigate to data of submodels. Each of these keys is expected to
-            hold yet another dict, supporting the following configuration
-            options (all optional):
-
-                - cmap (str or dict): The colormap to use. If it is a dict, a
-                    discrete colormap is assumed. The keys will be the labels
-                    and the values the color. Association happens in the order
-                    of entries.
-                - title (str): The title for this sub-plot
-                - limits (2-tuple, list): The fixed heat map limits of this
-                    property; if not given, limits will be auto-scaled.
-                - \**imshow_kwargs: passed on to imshow invocation
-
-        time_idx (int): Which time index to plot the data of. Is ignored when
-            creating an animation.
-        default_imshow_kwargs (dict, optional): The default parameters passed
-            to the underlying imshow plotting function. These are updated by
-            the values given via ``to_plot``.
-
-    Raises:
-        ValueError: Shape mismatch of data selected by ``to_plot``
-        AttributeError: Got unsupported arguments (referring to the old data
-            transformation framework)
-    """
-    if _kwargs:
-        raise AttributeError(
-            "This plot no longer supports preprocessing or transformation but "
-            f"got one of the following arguments:  {_kwargs}\n"
-            "Use the new CA plot function (.ca.caplot) which supports the "
-            "data transformation framework."
-        )
-
-    log.warning(
-        "The .ca.state plot is deprecated and should no longer be used!\n"
-        "Please use the .ca.caplot function, which is almost identical in its "
-        "interface and uses the data transformation framework for data "
-        "selection and pre-processing."
-    )
-
-    # Helper functions ........................................................
-
-    def prepare_data(
-        prop_name: str, *, all_data: dict, time_idx: int
-    ) -> np.ndarray:
-        """Prepares the data for plotting"""
-        return all_data[prop_name][time_idx]
-
-    # Prepare the data ........................................................
-    # Get the group that all datasets are in
-    grp = uni["data"][model_name]
-
-    # Collect all data
-    all_data = {p: grp[p] for p in to_plot.keys()}
-    shapes = [d.shape for p, d in all_data.items()]
-
-    if any([shape != shapes[0] for shape in shapes]):
-        raise ValueError(
-            "Shape mismatch of properties {}: {}! Cannot plot."
-            "".format(", ".join(to_plot.keys()), shapes)
-        )
-
-    # Can now be sure they all have the same shape,
-    # so its fine to take the first shape to extract the number of steps
-    num_steps = shapes[0][0]
-
-    structure = prepare_data(
-        list(to_plot.keys())[0], all_data=all_data, time_idx=0
-    ).attrs.get("grid_structure", "square")
-
-    if structure != "square":
-        raise ValueError(
-            "Legacy CA plot no longer supports non-square grid structure "
-            f"'{structure}'! Use the modern caplot (`.plot.ca`) instead."
-        )
-
-    # Prepare the figure ......................................................
-    # Prepare the figure to have as many columns as there are properties
-    hlpr.setup_figure(
-        ncols=len(to_plot), scale_figsize_with_subplots_shape=True
-    )
-
-    # Store the imshow objects such that only the data has to be updated in a
-    # following iteration step. Keys will be the property names.
-    ims = dict()
-
-    # Do the single plot for all properties, looping through subfigures
-    for col_no, (prop_name, props) in enumerate(to_plot.items()):
-        # Select the axis
-        hlpr.select_axis(col_no, 0)
-
-        # Get the data for this time step
-        data = prepare_data(prop_name, all_data=all_data, time_idx=time_idx)
-
-        # In the first time step create a new imshow object
-        ims[prop_name] = _plot_ca_property(
-            prop_name,
-            data=data,
-            hlpr=hlpr,
-            default_imshow_kwargs=default_imshow_kwargs,
-            **props,
-        )
-
-    # End of single frame CA state plot function ..............................
-    # The above variables are all available below, but the update function is
-    # supposed to start plotting anew starting from frame 0.
-
-    def update_data():
-        """Updates the data of the imshow objects"""
-        log.info(
-            "Plotting animation with %d frames of %d %s each ...",
-            num_steps,
-            len(to_plot),
-            "property" if len(to_plot) == 1 else "properties",
-        )
-
-        for time_idx in range(num_steps):
-            log.debug("Plotting frame for time index %d ...", time_idx)
-
-            # Loop through the columns
-            for col_no, (prop_name, props) in enumerate(to_plot.items()):
-                hlpr.select_axis(col_no, 0)
-                data = prepare_data(
-                    prop_name, all_data=all_data, time_idx=time_idx
-                )
-
-                # Update imshow data without creating a new object
-                ims[prop_name].set_data(data.T)
-
-                # If no limits are provided, autoscale the new limits in
-                # the case of continuous colormaps. A discrete colormap,
-                # that is provided as a dict, should never have to autoscale.
-                if not isinstance(props.get("cmap"), dict):
-                    if not props.get("limits"):
-                        ims[prop_name].autoscale()
-
-            # Done with this frame; yield control to the animation framework
-            # which will grab the frame...
-            yield
-
-        log.info("Animation finished.")
 
     # Register this update method with the helper, which takes care of the rest
     hlpr.register_animation_update(update_data)
