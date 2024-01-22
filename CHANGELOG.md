@@ -2,6 +2,10 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.3.0 *(Work in progress)*
+- !71 allows setting permissions on a simulation's subdirectories.
+  Also sets the `eval` directory permissions such that other users of the same group can evaluate simulations without requiring manual permission changes.
+
 ## v1.2.13
 - !70 adds `utopia` as a console script, giving access to the `utopya` CLI.
 

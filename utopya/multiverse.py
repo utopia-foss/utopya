@@ -601,7 +601,13 @@ class Multiverse:
         if lvl >= 2:
             warnings.simplefilter("always", DeprecationWarning)
 
-    def _create_run_dir(self, *, out_dir: str, model_note: str = None) -> None:
+    def _create_run_dir(
+        self,
+        *,
+        out_dir: str,
+        model_note: str = None,
+        dir_permissions: dict = None,
+    ) -> None:
         """Create the folder structure for the run output.
 
         For the chosen model name and current timestamp, the run directory
@@ -641,6 +647,11 @@ class Multiverse:
                 is stored.
             model_note (str, optional): The note to add to the run directory
                 of the current run.
+            dir_permissions (Dict[str, str]): If given, will set directory
+                permissions on the specified managed directories of this
+                Multiverse. The keys of this dict should be entries of the
+                :py:attr:`.dirs` attribute, values should be octal permissions
+                values given as a string.
 
         Raises:
             RuntimeError: If the simulation directory already existed. This
@@ -725,6 +736,21 @@ class Multiverse:
             self.dirs[subdir] = subdir_path
 
         log.debug("Created subdirectories:  %s", self._dirs)
+
+        # May want to adapt directory permissions
+        if not dir_permissions:
+            return
+
+        for dirname, mode in dir_permissions.items():
+            if mode is None:
+                continue
+            mode = int(str(mode), 8)
+            log.debug(
+                "Setting permissions on %s directory to %s ...",
+                dirname,
+                oct(mode),
+            )
+            os.chmod(self.dirs[dirname], mode)
 
     def _setup_pm(self, **update_kwargs) -> PlotManager:
         """Helper function to setup a PlotManager instance"""
@@ -1732,7 +1758,7 @@ class FrozenMultiverse(Multiverse):
                 log.debug("Received absolute run_dir, using that one.")
 
             elif re.match(PATTERN, run_dir):
-                # Is a timestamp, look relative to the model directory
+                # Looks like a relative path within the model directory
                 log.info(
                     "Received timestamp '%s' for run_dir; trying to find "
                     "one within the model output directory ...",

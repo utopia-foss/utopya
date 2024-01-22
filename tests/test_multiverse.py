@@ -229,8 +229,16 @@ def test_create_run_dir(default_mv):
     latest = folders[-1]
 
     # Check if the subdirectories are present
-    for folder in ["config", "data", "eval"]:
-        assert os.path.isdir(os.path.join(path_base, latest, folder)) is True
+    for folder, perm_mask in dict(config=None, eval="775", data=None).items():
+        subdir_path = os.path.join(path_base, latest, folder)
+        assert os.path.isdir(subdir_path)
+
+        # ... and it has the right directory permissions
+        expected_permissions = int(perm_mask, 8) if perm_mask else 0o755
+
+        dirstat = os.stat(subdir_path)
+        print(folder, "folder type and permission mask:", dirstat.st_mode)
+        assert oct(dirstat.st_mode)[-3:] == oct(expected_permissions)[-3:]
 
 
 def test_detect_doubled_folders(mv_kwargs):
