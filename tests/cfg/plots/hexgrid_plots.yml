@@ -123,42 +123,7 @@ multiple_snapshot:
 
 
 # -- Deprecations -------------------------------------------------------------
-
-deprec_limits:
-  <<: *base
-
-  to_plot:
-    small:
-      cmap: inferno
-      limits: [min, max]
-
-  _warns: DeprecationWarning
-  _match: '`limits` argument is deprecated and will be removed. Use `vmin` and'
-
-
-err_deprec_limits_and_vmin_vmax:
-  <<: *base
-
-  to_plot:
-    small:
-      cmap: inferno
-      limits: [0, 1]
-      vmax: foo
-
-  _raises: PlotCreatorError
-  _match: Got the deprecated `limits` argument but also `vmin` and/or `vmax`!
-
-
-deprec_draw_cbar:
-  <<: *base
-
-  to_plot:
-    small:
-      cmap: inferno
-      draw_cbar: true
-
-  _warns: DeprecationWarning
-  _match: '`draw_cbar` argument is deprecated .* Use `add_colorbar` instead.'
+# NOTE Can add some here, if there are any
 
 
 # -- Special features ---------------------------------------------------------

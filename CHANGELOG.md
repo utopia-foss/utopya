@@ -3,8 +3,13 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
 ## v1.3.0 *(Work in progress)*
+### Features and enhancements
 - !71 allows setting permissions on a simulation's subdirectories.
   Also sets the `eval` directory permissions such that other users of the same group can evaluate simulations without requiring manual permission changes.
+
+### Removals and deprecations
+- !72 removes the deprecated CA `ca.state` plot and the `draw_cbar` and `limits` arguments of the `.plot.ca`.
+
 
 ## v1.2.13
 - !70 adds `utopia` as a console script, giving access to the `utopya` CLI.

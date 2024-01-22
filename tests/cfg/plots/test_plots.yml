@@ -144,21 +144,6 @@ histogram_animation:
 
 
 
-# -- CA plot ------------------------------------------------------------------
-# ... the old one needs tests as well
-
-ca_legacy:
-  based_on:
-    - .ca.state.anim_frames
-
-  model_name: ExtendedModel
-
-  to_plot:
-    ca:
-      title: CA state
-
-
-
 # -- FacetGrid extensions -----------------------------------------------------
 
 fg_imshow_hexagonal: &fg_imshow_hex
