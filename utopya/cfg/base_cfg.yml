@@ -16,15 +16,31 @@
 # Multiverse configuration ....................................................
 # Output paths
 paths:
-  # base output directory
+  # Base output directory
   out_dir: ~/utopya_output
 
-  # model note is added to the output directory path
+  # A note that is added to the output directory path
   model_note: ~
 
   # From the two above, the run directory will be created at:
   #     <out_dir>/<model_name>/<timestamp>_<model_note>/
   # Subfolders will be:  config, eval, data
+
+  # Change file permissions for certain folders.
+  # Keys are managed multiverse directories (run, config, data, eval) and
+  # values are strings representing octal permission levels for unix systems.
+  # If None, will keep the default permissions (typically 755).
+  # Be aware that subdirectories that are created later may not inherit these
+  # permission levels and that the permissions are set _before_ a simulation
+  # begins, not after it has finished, thus always requiring write permissions
+  # for the user level.
+  # Also note that this may not have an effect on Windows systems at all.
+  dir_permissions:
+    run: ~
+
+    # Make eval subdirectory group-writeable to allow evaluation of shared
+    # simulation output within the user's group.
+    eval: "775"
 
 # Control of the backup of files that belong to a simulation
 backups:
@@ -43,14 +59,14 @@ executable_control:
   # Whether to copy the executable to a temporary directory at the
   # initialization of the Multiverse and execute it from there. This way,
   # accidental changes to the executable _during_ a simulation are prevented.
+  #
+  # Note that for interpreted languages, copying the executable file alone may
+  # not suffice to isolate the whole model from changes.
   run_from_tmpdir: true
 
-# Whether to perfom a parameter sweep
-# Is evaluated by the Multiverse.run method
+# Whether to perfom a parameter sweep (if configured).
+# Is evaluated only when calling the Multiverse.run method.
 perform_sweep: false
-# NOTE This will be ignored if run_single or run_sweep are called directly.
-#      Also, the `parameter_space` key (see below) will need to span at least
-#      a volume of 1 in order to be sweep-able.
 
 # Whether to perform parameter validation
 # For large sweeps, validation can take quite some time. For such scenarios, it
