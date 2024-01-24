@@ -359,11 +359,6 @@ def test_signal_workers(wm, longer_sleep_task):
     wm._signal_workers("all", signal="SIGTERM")
 
 
-def test_detach(wm):
-    with pytest.raises(NotImplementedError):
-        wm.start_working(detach=True)
-
-
 def test_empty_task_queue(wm):
     with pytest.raises(queue.Empty):
         wm._grab_task()

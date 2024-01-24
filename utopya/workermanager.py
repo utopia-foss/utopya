@@ -535,7 +535,6 @@ class WorkerManager:
     def start_working(
         self,
         *,
-        detach: bool = False,
         timeout: float = None,
         stop_conditions: Sequence[StopCondition] = None,
         post_poll_func: Callable = None,
@@ -557,16 +556,9 @@ class WorkerManager:
                 actions during a the polling loop.
 
         Raises:
-            NotImplementedError: if ``detach`` was set
             ValueError: For invalid (i.e., negative) timeout value
             WorkerManagerTotalTimeout: Upon a total timeout
         """
-        if detach:
-            raise NotImplementedError(
-                "It is currently not possible to detach the WorkerManager "
-                "from the main thread."
-            )
-
         self._invoke_report("before_working")
 
         log.progress("Preparing to work ...")
