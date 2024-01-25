@@ -25,6 +25,7 @@ from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .parameter import ValidationError
 from .project_registry import PROJECTS
 from .reporter import WorkerManagerReporter
+from .task import NoWorkTask, WorkerTask
 from .tools import parse_num_steps, pformat, recursive_update
 from .workermanager import WorkerManager
 from .yaml import load_yml, write_yml
@@ -1319,9 +1320,16 @@ class Multiverse:
             wk["forward_streams"] = not is_sweep
             wk["forward_kwargs"] = dict(forward_raw=True)
 
+        # Decide on the WorkerTask type
+        if wk and wk.get("perform_task", True):
+            TaskCls = WorkerTask
+        else:
+            TaskCls = NoWorkTask
+
         # Try to add a task to the worker manager
         try:
             self.wm.add_task(
+                TaskCls=TaskCls,
                 name=uni_basename,
                 priority=None,
                 setup_func=setup_universe,

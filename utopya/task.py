@@ -1097,6 +1097,101 @@ class WorkerTask(Task):
 
 
 # -----------------------------------------------------------------------------
+
+
+class NoWorkTask(WorkerTask):
+    """A WorkerTask specialization that does not spawn the worker.
+
+    It is mostly equivalent to :py:class:`~utopya.task.WorkerTask` but adjusts
+    the private methods that take care of spawning the actual process and
+    skips the actual work.
+    """
+
+    @property
+    def worker(self) -> subprocess.Popen:
+        """The associated worker process object or None, if not yet created."""
+        return self._worker
+
+    @worker.setter
+    def worker(self, proc: subprocess.Popen):
+        """Set the associated worker process of this task."""
+        if proc is not None:
+            raise RuntimeError("NoWorkTask does not accept an active worker!")
+
+    @property
+    def worker_pid(self) -> int:
+        """The process ID of the associated worker process"""
+        raise RuntimeError("NoWorkTask does not have an active worker!")
+
+    @property
+    def worker_status(self) -> Union[int, None]:
+        """The worker processe's current status or False, if there is no
+        worker spawned yet.
+
+        Note that the worker is inactive after it was spawned.
+
+        Returns:
+            Union[int, None]: Current worker status. False, if there was no
+                worker associated yet.
+        """
+        if self._worker_status is None:
+            return False
+
+        return self._worker_status
+
+    @property
+    def outstream_objs(self) -> list:
+        """Returns the list of objects parsed from the 'out' stream"""
+        if not self.streams:
+            return self.streams
+        return self.streams["out"]["log_parsed"]
+
+    def spawn_worker(self) -> None:
+        """Spawn a void process.
+
+        Returns:
+            None
+
+        Raises:
+            RuntimeError: If a worker was already spawned for this task.
+        """
+        if self._worker_status is not None:
+            raise RuntimeError("Can only spawn one worker per task!")
+
+        # If a setup function is available, call it with the given kwargs
+        if self.setup_func:
+            log.debug("Calling a setup function ...")
+            worker_kwargs = self.setup_func(
+                worker_kwargs=self.worker_kwargs, **self.setup_kwargs
+            )
+        else:
+            log.debug("No setup function given; using given `worker_kwargs`")
+            worker_kwargs = self.worker_kwargs
+
+        self.profiling["create_time"] = time.time()
+        log.debug("This is a NoWorkTask: Skipping to work on task.")
+        self._worker_status = 0
+        self._finished()
+
+        return None
+
+    def _setup_stream_reader(
+        self,
+        stream_name: str,
+        **_,
+    ):
+        raise RuntimeError("NoWorkTasks cannot have a stream!")
+
+    def signal_worker(self, signal: str) -> tuple:
+        """Overwrites signal_worker from WorkerTask
+
+        Raises:
+            RuntimeError: It is not possible to signal a NoWorkTask.
+        """
+        raise RuntimeError("Cannot signal to a terminated worker!")
+
+
+# -----------------------------------------------------------------------------
 # ... working with the multiprocessing module
 
 

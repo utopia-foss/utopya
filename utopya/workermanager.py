@@ -589,6 +589,17 @@ class WorkerManager:
                 # Assign tasks to free workers
                 self._assign_tasks(self.num_free_workers)
 
+                # Poll the workers. (Will also remove no longer active workers)
+                self._poll_workers()
+
+                # Call the post-poll function
+                if post_poll_func is not None:
+                    log.debug(
+                        "Calling post_poll_func %s ...",
+                        post_poll_func.__name__,
+                    )
+                    post_poll_func()
+
                 # Do stream-related actions for each task
                 for task in self.active_tasks:
                     # Read the streams and forward them (if the tasks were
@@ -611,17 +622,6 @@ class WorkerManager:
 
                     # Now signal those workers such that they terminate.
                     self._signal_workers(fulfilled, signal=SIG_STOPCOND)
-
-                # Poll the workers. (Will also remove no longer active workers)
-                self._poll_workers()
-
-                # Call the post-poll function
-                if post_poll_func is not None:
-                    log.debug(
-                        "Calling post_poll_func %s ...",
-                        post_poll_func.__name__,
-                    )
-                    post_poll_func()
 
                 # Invoke periodic callback for all tasks
                 if (
