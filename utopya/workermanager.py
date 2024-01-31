@@ -607,9 +607,11 @@ class WorkerManager:
         )
         log.note(
             "  Stop conditions: %s",
-            "None"
-            if not stop_conditions
-            else ", ".join([sc.name for sc in stop_conditions]),
+            (
+                "None"
+                if not stop_conditions
+                else ", ".join([sc.name for sc in stop_conditions])
+            ),
         )
 
         log.hilight("Starting to work ...")

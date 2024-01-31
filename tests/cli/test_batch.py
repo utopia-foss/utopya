@@ -30,6 +30,12 @@ def register_test_project(tmp_projects):
 @skip_if_on_macOS
 def test_batch(with_test_models):  # FIXME creates test artifacts in output dir
     """Tests the `utopya batch` subcommand"""
+    # Make sure the ExtendedModel has already run
+    model = utopya.Model(name="ExtendedModel")
+    mv = model.create_mv()
+    mv.run()
+
+    # Now actually perform the batch eval
     res = invoke_cli(("batch", "-d", "-s", "--note", "some_note", BATCH_FILE))
     print(res.output)
 

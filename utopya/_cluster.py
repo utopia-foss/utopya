@@ -51,9 +51,11 @@ def parse_node_list(node_list_str: str, *, mode: str, rcps: dict) -> List[str]:
             # others are node numbers of a single node.
             # Expand intervals
             segments = [
-                [int(seg[0])]
-                if len(seg) == 1
-                else list(range(int(seg[0]), int(seg[1]) + 1))
+                (
+                    [int(seg[0])]
+                    if len(seg) == 1
+                    else list(range(int(seg[0]), int(seg[1]) + 1))
+                )
                 for seg in segments
             ]
 

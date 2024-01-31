@@ -1426,9 +1426,11 @@ def abmplot(
     log.remark("  Data variables:         %s", ", ".join(to_plot))
     log.remark(
         "  Frames dimension(s):    %s",
-        shared_frames_dim
-        if shared_frames_dim
-        else ", ".join(f"{f}" for f in frame_dims),
+        (
+            shared_frames_dim
+            if shared_frames_dim
+            else ", ".join(f"{f}" for f in frame_dims)
+        ),
     )
     log.remark(
         "  Number of frames:       %s",

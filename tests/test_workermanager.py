@@ -16,6 +16,7 @@ from . import get_cfg_fpath
 
 STOP_CONDS_PATH = get_cfg_fpath("stop_conds.yml")
 
+
 # Fixtures --------------------------------------------------------------------
 @pytest.fixture
 def wm():
@@ -254,6 +255,7 @@ def test_interrupt_handling(wm, sleep_task, tmpdir):
     """Tests the keyboard interrupt handling of the WorkerManager.start_working
     method.
     """
+
     # Define a post poll function that is to simulate the KeyboardInterrupt
     def ppf():
         time.sleep(0.2)  # To give the task enough time to start up ...

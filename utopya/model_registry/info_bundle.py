@@ -1,6 +1,7 @@
 """Implements the ModelInfoBundle class, which holds a single bundle of
 information about a model.
 """
+
 import copy
 import logging
 import os

@@ -2,6 +2,7 @@
 sits at the heart of utopya and supplies the main user interface for the
 frontend. It allows to run a simulation and then evaluate it.
 """
+
 import copy
 import itertools
 import logging

@@ -425,6 +425,7 @@ class BaseModel(abc.ABC):
 
     def _emit_monitor(self):
         """Actually emits the monitoring information using :py:func:`print`."""
+
         # TODO Consider using YAML for creating the monitor string
         def parse_val(v) -> str:
             if isinstance(v, float):

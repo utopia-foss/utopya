@@ -4,6 +4,7 @@ NOTE This test should be carried out first and there should not be any imports
      here on the test module level, otherwise the deprecations will already
      have been emitted.
 """
+
 import pytest
 
 # -----------------------------------------------------------------------------
