@@ -5,6 +5,7 @@ utopya module structure.
 
     This module will be removed soon, please use :py:mod:`utopya.eval` instead.
 """
+
 import warnings
 
 from .eval import MultiverseGroup, PlotManager, UniverseGroup

@@ -15,6 +15,7 @@ SC_FUNCS = sc.STOP_CONDITION_FUNCS
 timeout_wall = SC_FUNCS["timeout_wall"]
 check_monitor_entry = SC_FUNCS["check_monitor_entry"]
 
+
 # Fixtures --------------------------------------------------------------------
 @pytest.fixture
 def basic_sc():
