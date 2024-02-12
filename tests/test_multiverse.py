@@ -12,7 +12,7 @@ import uuid
 
 import pytest
 
-from utopya import FrozenMultiverse, Multiverse
+from utopya import DistributedMultiverse, FrozenMultiverse, Multiverse
 from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
 
@@ -749,3 +749,121 @@ def test_FrozenMultiverse(mv_kwargs, cluster_env):
             use_meta_cfg_from_run_dir=True,
             data_manager=dict(out_dir="eval/{timestamp:}_7"),
         )
+
+
+def test_run_distributed_mv_run(mv_kwargs):
+    """Tests a run with a distributed simulation"""
+    # Adjust the defaults to use the sweep configuration for run configuration
+    mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
+    update_cfg = dict({"worker_kwargs": {"perform_task": False}})
+    mv = Multiverse(**mv_kwargs, **update_cfg)
+
+    # Run the sweep
+    mv.run()
+
+    # There should now be four directories in the data directory
+    assert len(os.listdir(mv.dirs["data"])) == 4
+    for uni in os.listdir(mv.dirs["data"]):
+        files = os.listdir(os.path.join(mv.dirs["data"], uni))
+        assert "config.yml" in files
+        assert not "data.h5" in files
+        assert not "out.log" in files
+
+    distributed_mv = DistributedMultiverse(
+        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+    )
+    distributed_mv.run()
+
+    # There should now be four directories in the data directory
+    assert len(os.listdir(mv.dirs["data"])) == 4
+    for uni in os.listdir(mv.dirs["data"]):
+        files = os.listdir(os.path.join(mv.dirs["data"], uni))
+        assert "config.yml" in files
+        assert "data.h5" in files
+        assert "out.log" in files
+
+    with pytest.raises(
+        RuntimeError, match=r"Could not add simulation task for universe .*"
+    ):
+        distributed_mv.run_selection(
+            uni_id_strs=[os.listdir(mv.dirs["data"])[1]]
+        )
+
+    with pytest.raises(
+        RuntimeError, match=r"Could not add simulation task for universe .*"
+    ):
+        distributed_mv.run()
+
+    with pytest.raises(
+        RuntimeError, match=r"Could not add simulation task for universe .*"
+    ):
+        distributed_mv__ = DistributedMultiverse(
+            model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        )
+        distributed_mv__.run()
+
+
+def test_run_distributed_mv_run_selection(mv_kwargs):
+    """Tests a run with a selection of tasks in a distributed simulation"""
+    # Adjust the defaults to use the sweep configuration for run configuration
+    mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
+    update_cfg = dict({"worker_kwargs": {"perform_task": False}})
+    mv = Multiverse(**mv_kwargs, **update_cfg)
+
+    # Run the sweep
+    mv.run()
+
+    # There should now be four directories in the data directory
+    assert len(os.listdir(mv.dirs["data"])) == 4
+    for uni in os.listdir(mv.dirs["data"]):
+        files = os.listdir(os.path.join(mv.dirs["data"], uni))
+        assert "config.yml" in files
+        assert not "data.h5" in files
+        assert not "out.log" in files
+
+    distributed_mv_0 = DistributedMultiverse(
+        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+    )
+    distributed_mv_1 = DistributedMultiverse(
+        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+    )
+    distributed_mv_23 = DistributedMultiverse(
+        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+    )
+    distributed_mv_0.run_selection(
+        uni_id_strs=[os.listdir(mv.dirs["data"])[0]]
+    )
+    distributed_mv_1.run_selection(
+        uni_id_strs=[os.listdir(mv.dirs["data"])[1]]
+    )
+    distributed_mv_23.run_selection(
+        uni_id_strs=os.listdir(mv.dirs["data"])[2:]
+    )
+
+    # There should now be four directories in the data directory
+    assert len(os.listdir(mv.dirs["data"])) == 4
+    for uni in os.listdir(mv.dirs["data"]):
+        files = os.listdir(os.path.join(mv.dirs["data"], uni))
+        assert "config.yml" in files
+        assert "data.h5" in files
+        assert "out.log" in files
+
+    with pytest.raises(
+        RuntimeError, match=r"Could not add simulation task for universe .*"
+    ):
+        distributed_mv_0.run_selection(
+            uni_id_strs=[os.listdir(mv.dirs["data"])[1]]
+        )
+
+    with pytest.raises(
+        RuntimeError, match=r"Could not add simulation task for universe .*"
+    ):
+        distributed_mv_0.run()
+
+    with pytest.raises(
+        RuntimeError, match=r"Could not add simulation task for universe .*"
+    ):
+        distributed_mv = DistributedMultiverse(
+            model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        )
+        distributed_mv.run()

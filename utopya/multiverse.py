@@ -1798,3 +1798,344 @@ class FrozenMultiverse(Multiverse):
             subdir_path = os.path.join(run_dir, subdir)
             self.dirs[subdir] = subdir_path
             # TODO Consider checking if it exists?
+
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
+
+class DistributedMultiverse(FrozenMultiverse):
+    """A distributed Multiverse is like a Multiverse, but initialised from an
+    existing meta configuration.
+
+    It re-creates the WorkerManager attributes from that configuration and
+    is not allowed to change the configuration from the existing meta
+    configuration.
+    """
+
+    def __init__(
+        self,
+        *,
+        model_name: str = None,
+        info_bundle: ModelInfoBundle = None,
+        run_dir: str = None,
+    ):
+        """Initializes a DistributedMultiverse from a model name and the name
+        of an existing run directory.
+
+        Args:
+            model_name (str): The name of the model to load. From this, the
+                model output directory is determined and the run_dir will be
+                seen as relative to that directory.
+            info_bundle (ModelInfoBundle, optional): The model information
+                bundle that includes information about the binary path etc.
+                If not given, will attempt to read it from the model registry.
+            run_dir (str, optional): The run directory to load. Can be a path
+                relative to the current working directory, an absolute path,
+                or the timestamp of the run directory. If not given, will use
+                the most recent timestamp.
+        """
+        # First things first: get the info bundle
+        if info_bundle is None:
+            info_bundle = get_info_bundle(
+                model_name=model_name, info_bundle=info_bundle
+            )
+        self._info_bundle = info_bundle
+
+        log.progress(
+            "Initializing DistributedMultiverse for '%s' model ...",
+            self.model_name,
+        )
+
+        # Initialize property-managed attributes
+        self._dirs = dict()
+        self._model_executable = None
+        self._tmpdir = None
+
+        if not os.path.exists(run_dir):
+            raise ValueError(
+                "The provided run_dir {} does not exist!", run_dir
+            )
+
+        # restore directories
+        self.dirs["run"] = run_dir
+        for subdir in ("config", "data", "eval"):
+            subdir_path = os.path.join(run_dir, subdir)
+            if not os.path.exists(subdir_path):
+                raise RuntimeError(
+                    "Expected subdir %s to run_dir %s, but did not find it!",
+                    subdir,
+                    run_dir,
+                )
+            self.dirs[subdir] = subdir_path
+
+        # load the meta config
+        meta_cfg_path = os.path.join(run_dir, "config", "meta_cfg.yml")
+        if not os.path.isfile(meta_cfg_path):
+            raise ValueError(
+                "No meta config found in run dir {} at {}!",
+                run_dir,
+                meta_cfg_path,
+            )
+
+        log.debug("Loading from meta config at %s ...", meta_cfg_path)
+
+        # Only keep selected entries from the meta configuration. The rest is
+        # not needed and is deleted in order to not confuse the user with
+        # potentially varying versions of the meta config.
+        mcfg = load_yml(meta_cfg_path)
+        self._meta_cfg = {
+            k: v
+            for k, v in mcfg.items()
+            if k
+            not in (
+                "data_manager",
+                "plot_manager",
+                "cluster_mode",
+                "cluster_params",
+            )
+        }
+        self._meta_cfg["cluster_mode"] = False
+        log.info("Restored meta configuration.")
+
+        log.remark("  Debug level:  %d", self.debug_level)
+        self._apply_debug_level()
+
+        # Prepare the executable
+        self._prepare_executable(**self.meta_cfg["executable_control"])
+
+        self._wm = WorkerManager(**self.meta_cfg["worker_manager"])
+        self._reporter = WorkerManagerReporter(
+            self.wm,
+            mv=self,
+            report_dir=self.dirs["run"],
+            **self.meta_cfg["reporter"],
+        )
+
+        log.progress("Initialized DistributedMultiverse.\n")
+
+    def run_selection(self, *, uni_id_strs: List[str]):
+        if len(uni_id_strs) == 1:
+            uni_id_str = uni_id_strs[0]
+            if uni_id_str.startswith("uni"):
+                uni_id_str = uni_id_str[3:]
+
+            log.info(
+                "Preparing for simulation run of universe %s ...", uni_id_str
+            )
+            self._add_sim_task(uni_id_str=uni_id_str, is_sweep=False)
+        elif len(uni_id_strs) > 1:
+            log.info(
+                "Preparing for simulation run of %i universes (%s) ...",
+                len(uni_id_strs),
+                uni_id_strs,
+            )
+            for uni_id_str in uni_id_strs:
+                if uni_id_str.startswith("uni"):
+                    uni_id_str = uni_id_str[3:]
+                self._add_sim_task(uni_id_str=uni_id_str, is_sweep=True)
+
+        self.wm.tasks.lock()
+
+        # Tell the WorkerManager to start working (is a blocking call)
+        self.wm.start_working(**self.meta_cfg["run_kwargs"])
+
+        # Done! :)
+        log.success("Finished simulation run. Wohoo. :)\n")
+
+    def _prepare_executable(self, *args, **kwargs) -> None:
+        if self.meta_cfg["backups"]["backup_executable"]:
+            backup_dir = os.path.join(self.dirs["run"], "backup")
+            if not os.isfile(backup_dir, self.model_name):
+                raise RuntimeError(
+                    "No executable found at %s!",
+                    os.isfile(backup_dir, self.model_name),
+                )
+
+            self.model_executable = os.isfile(backup_dir, self.model_name)
+
+        return super()._prepare_executable(*args, **kwargs)
+
+    def _perform_pspace_backup(*args, **kwargs):
+        log.note("  Skipping backup of pspace, as it is restored from backup.")
+
+    def _add_sim_task(self, *, uni_id_str: str, is_sweep: bool) -> None:
+        """Helper function that handles task assignment to the WorkerManager.
+
+        This function creates a WorkerTask that will perform the following
+        actions **once it is grabbed and worked at**:
+
+          - Create a universe (folder) for the task (simulation)
+          - Write that universe's configuration to a yaml file in that folder
+          - Create the correct arguments for the call to the model binary
+
+        To that end, this method gathers all necessary arguments and registers
+        a WorkerTask with the WorkerManager.
+
+        Args:
+            uni_id_str (str): The zero-padded uni id string
+            is_sweep (bool): Flag is needed to distinguish between sweeps
+                and single simulations. With this information, the forwarding
+                of a simulation's output stream can be controlled.
+
+        Raises:
+            RuntimeError: If adding the simulation task failed
+        """
+
+        def setup_universe(
+            *,
+            worker_kwargs: dict,
+            model_name: str,
+            model_executable: str,
+            uni_basename: str,
+        ) -> dict:
+            """The callable that will setup everything needed for a universe.
+
+            This is called before the worker process starts working on the
+            universe.
+
+            Args:
+                worker_kwargs (dict): the current status of the worker_kwargs
+                    dictionary; is always passed to a task setup function
+                model_name (str): The name of the model
+                model_executable (str): path to the binary to execute
+                uni_cfg (dict): the configuration to create a yml file from
+                    which is then needed by the model
+                uni_basename (str): Basename of the universe to use for folder
+                    creation, i.e.: zero-padded universe number, e.g. uni0042
+
+            Returns:
+                dict: kwargs for the process to be run when task is grabbed by
+                    Worker.
+            """
+            # Create universe directory path using the basename
+            uni_dir = os.path.join(self.dirs["data"], uni_basename)
+
+            # Load config from file:
+            uni_cfg_path = os.path.join(uni_dir, "config.yml")
+            if not os.path.isfile(uni_cfg_path):
+                raise RuntimeError(
+                    "Could not find a config file at %s", uni_cfg_path
+                )
+            uni_cfg = load_yml(uni_cfg_path)
+
+            if os.path.isfile(
+                os.path.join(uni_dir, "out.log")
+            ) or os.path.isfile(os.path.join(uni_dir, "data.h5")):
+                raise RuntimeError(
+                    "Could not add simulation task for universe '%s'. Did you already perform a run on this Universe?",
+                    uni_basename,
+                )
+
+            # Build args tuple for task assignment; only need to pass the path
+            # to the configuration file ...
+            args = (model_executable, uni_cfg_path)
+
+            # Generate a new worker_kwargs dict, carrying over the given ones
+            wk = dict(
+                args=args,
+                read_stdout=True,
+                stdout_parser="yaml_dict",
+                **(worker_kwargs if worker_kwargs else {}),
+            )
+
+            # Determine whether to save the streams (True by default)
+            if wk.get("save_streams", True):
+                # Generate a path and store in the worker kwargs
+                wk["save_streams_to"] = os.path.join(uni_dir, "{name:}.log")
+
+            return wk
+
+        # Generate the universe basename, which will be used for the folder
+        # and the task name
+        uni_basename = f"uni{uni_id_str}"
+
+        # Create the dict that will be passed as arguments to setup_universe
+        setup_kwargs = dict(
+            model_name=self.model_name,
+            model_executable=self.model_executable,
+            uni_basename=uni_basename,
+        )
+
+        # Process worker_kwargs
+        wk = self.meta_cfg.get("worker_kwargs")
+
+        if wk and wk.get("forward_streams") == "in_single_run":
+            # Reverse the flag to determine whether to forward streams
+            wk["forward_streams"] = not is_sweep
+            wk["forward_kwargs"] = dict(forward_raw=True)
+
+        # Try to add a task to the worker manager
+        try:
+            self.wm.add_task(
+                name=uni_basename,
+                priority=None,
+                setup_func=setup_universe,
+                setup_kwargs=setup_kwargs,
+                worker_kwargs=wk,
+            )
+
+        except RuntimeError as err:
+            # Task list was locked, probably because there already was a run
+            raise RuntimeError(
+                "Could not add simulation task for universe '{uni_basename}'! "
+                "Did you already perform a run with this Multiverse?"
+            ) from err
+
+        log.debug("Added simulation task: %s.", uni_basename)
+
+    def _add_sim_tasks(self, *, sweep: bool = None) -> int:
+        """Adds the simulation tasks needed for a single run or for a sweep.
+
+        Args:
+            sweep (bool, optional): Whether tasks for a parameter sweep should
+                be added or only for a single universe. If None, will read the
+                ``perform_sweep`` key from the meta-configuration.
+
+        Returns:
+            int: The number of added tasks.
+
+        Raises:
+            ValueError: On ``sweep == True`` and zero-volume parameter space.
+        """
+        if sweep is None:
+            sweep = self.meta_cfg.get("perform_sweep", False)
+
+        pspace = self.meta_cfg["parameter_space"]
+
+        if not sweep:
+            # Add the task to the worker manager.
+            log.progress("Adding task for simulation of a single universe ...")
+            self._add_sim_task(uni_id_str="0", is_sweep=False)
+
+            return 1
+        # -- else: tasks for parameter sweep needed
+
+        if pspace.volume < 1:
+            raise ValueError(
+                "The parameter space has no sweeps configured! "
+                "Refusing to run a sweep. You can either call "
+                "the run_single method or add sweeps to your "
+                "run configuration using the !sweep YAML tags."
+            )
+
+        # Get the parameter space iterator and the number of already-existing
+        # tasks (to later compute the number of _added_ tasks)
+        psp_iter = pspace.iterator(with_info="state_no_str")
+        _num_tasks = len(self.wm.tasks)
+
+        # Do a sweep over the whole activated parameter space
+        vol = pspace.volume
+        log.progress("Adding tasks for simulation of %d universes ...", vol)
+
+        for i, (uni_cfg, uni_id_str) in enumerate(psp_iter):
+            self._add_sim_task(uni_id_str=uni_id_str, is_sweep=True)
+
+            print(
+                f"  Added simulation task:  {uni_id_str}  ({i+1}/{vol})",
+                end="\r",
+            )
+
+        num_new_tasks = len(self.wm.tasks) - _num_tasks
+        log.info("Added %d tasks.", num_new_tasks)
+        return num_new_tasks

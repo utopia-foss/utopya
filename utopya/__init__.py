@@ -45,7 +45,7 @@ from ._logging import _DEFAULT_LOG_LEVEL, _getLogger
 from .eval import DataManager, MultiverseGroup, PlotManager, UniverseGroup
 from .model import Model
 from .model_registry import MODELS
-from .multiverse import FrozenMultiverse, Multiverse
+from .multiverse import DistributedMultiverse, FrozenMultiverse, Multiverse
 from .project_registry import PROJECTS
 from .testtools import ModelTest
 
