@@ -1818,7 +1818,7 @@ class DistributedMultiverse(FrozenMultiverse):
         *,
         model_name: str = None,
         info_bundle: ModelInfoBundle = None,
-        run_dir: str = None,
+        run_dir: str,
     ):
         """Initializes a DistributedMultiverse from a model name and the name
         of an existing run directory.
@@ -1852,22 +1852,10 @@ class DistributedMultiverse(FrozenMultiverse):
         self._model_executable = None
         self._tmpdir = None
 
-        if not os.path.exists(run_dir):
-            raise ValueError(
-                "The provided run_dir {} does not exist!", run_dir
-            )
-
-        # restore directories
-        self.dirs["run"] = run_dir
-        for subdir in ("config", "data", "eval"):
-            subdir_path = os.path.join(run_dir, subdir)
-            if not os.path.exists(subdir_path):
-                raise RuntimeError(
-                    "Expected subdir %s to run_dir %s, but did not find it!",
-                    subdir,
-                    run_dir,
-                )
-            self.dirs[subdir] = subdir_path
+        # Generate the path to the run directory that is to be loaded
+        self._get_run_dir(out_dir=None, run_dir=run_dir)
+        # TODO Extract out dir from available infos
+        log.note("Run directory:\n  %s", self.dirs["run"])
 
         # load the meta config
         meta_cfg_path = os.path.join(run_dir, "config", "meta_cfg.yml")
@@ -1914,7 +1902,107 @@ class DistributedMultiverse(FrozenMultiverse):
 
         log.progress("Initialized DistributedMultiverse.\n")
 
-    def run_selection(self, *, uni_id_strs: List[str]):
+    def _get_run_dir(self, *, out_dir: str, run_dir: str):
+        """Helper function to find the run directory from arguments given
+        to :py:meth:`~utopya.multiverse.Multiverse.__init__`.
+
+        Overwrites the method from the parent FrozenMultiverse class, because
+        the DistributedMultiverse does not require setting up a *new* run
+        directory but should instead identify the existing one.
+
+        Args:
+            out_dir (str): The output directory
+            run_dir (str): The run directory to use
+
+        Raises:
+            IOError: No directory found to use as run directory
+            TypeError: When run_dir was not a string
+        """
+        PATTERN = r"\d{6}-\d{6}_?.*"
+
+        if out_dir is None and not os.path.isabs(os.path.expanduser(run_dir)):
+            raise NotImplementedError(
+                "Auto-completion of run directory by timestamp not "
+                "implemented! Please provide an absolute path."
+            )
+
+        # Create model directory path (where the to-be-loaded data is expected)
+        out_dir = os.path.expanduser(str(out_dir))
+        model_dir = os.path.join(out_dir, self.model_name)
+
+        # Distinguish different types of values for the run_dir argument
+        if run_dir is None:
+            log.info("Trying to identify the most recent run directory ...")
+
+            # Create list of _directories_ matching timestamp pattern
+            dirs = [
+                d
+                for d in sorted(os.listdir(model_dir))
+                if os.path.isdir(os.path.join(model_dir, d))
+                and re.match(PATTERN, os.path.basename(d))
+            ]
+
+            if not dirs:
+                raise FileNotFoundError(
+                    "Could not find a run directory to load for evaluation "
+                    f"of model '{self.model_name}'!\n"
+                    f"Model output directory:  {model_dir}\n\n"
+                    "Did you perform a simulation yet? If you are using this "
+                    "model only for evaluation, place your data in a new "
+                    "subdirectory in that folder (using timestamp as name)."
+                )
+
+            # Use the latest to choose the run directory
+            run_dir = os.path.join(model_dir, dirs[-1])
+
+        elif isinstance(run_dir, str):
+            run_dir = os.path.expanduser(run_dir)
+
+            # Distinguish absolute and relative paths and those starting with
+            # a timestamp-like pattern, which can be looked up from the model
+            # directory.
+            if os.path.isabs(run_dir):
+                log.debug("Received absolute run_dir, using that one.")
+
+            elif re.match(PATTERN, run_dir):
+                # Looks like a relative path within the model directory
+                log.info(
+                    "Received timestamp '%s' for run_dir; trying to find "
+                    "one within the model output directory ...",
+                    run_dir,
+                )
+                run_dir = os.path.join(model_dir, run_dir)
+
+            else:
+                # Is not an absolute path and not a timestamp; thus a path
+                # relative to the current working directory
+                run_dir = os.path.join(os.getcwd(), run_dir)
+
+        else:
+            raise TypeError(
+                "Argument run_dir needs to be None, an absolute "
+                "path, or a path relative to the model output "
+                f"directory, but it was: {run_dir}"
+            )
+
+        # Check if the directory exists
+        if not os.path.isdir(run_dir):
+            raise OSError(f"No run directory found at '{run_dir}'!")
+
+        # Store the path and associate the subdirectories
+        self.dirs["run"] = run_dir
+
+        for subdir in ("config", "eval", "data"):
+            subdir_path = os.path.join(run_dir, subdir)
+            if not os.path.exists(subdir_path):
+                raise RuntimeError(
+                    "Expected subdir %s to run_dir %s, but did not find it!",
+                    subdir,
+                    run_dir,
+                )
+            self.dirs[subdir] = subdir_path
+
+    def run_selection(self, *, uni_id_strs: List[str], num_workers=None):
         if len(uni_id_strs) == 1:
             uni_id_str = uni_id_strs[0]
             if uni_id_str.startswith("uni"):
@@ -1936,6 +2024,9 @@ class DistributedMultiverse(FrozenMultiverse):
                 self._add_sim_task(uni_id_str=uni_id_str, is_sweep=True)
 
         self.wm.tasks.lock()
+
+        if num_workers is not None:
+            self.wm.num_workers = num_workers
 
         # Tell the WorkerManager to start working (is a blocking call)
         self.wm.start_working(**self.meta_cfg["run_kwargs"])
