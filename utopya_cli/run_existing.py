@@ -51,6 +51,17 @@ from ._utils import Echo
         "number of available CPUs."
     ),
 )
+@click.option(
+    "--clear-existing",
+    "clear_existing_universes",
+    default=False,
+    is_flag=True,
+    help=(
+        "Whether to clear files (other than the configuration) from universes "
+        "that already contain data. "
+        "Universes containing files cannot be re-run."
+    ),
+)
 #
 #
 #
@@ -77,7 +88,9 @@ def run_existing(ctx, **kwargs):
 
     # Running the simulation . . . . . . . . . . . . . . . . . . . . . . . . .
     mv.run_selection(
-        uni_id_strs=kwargs["universe"], num_workers=kwargs["num_workers"]
+        uni_id_strs=kwargs["universe"],
+        num_workers=kwargs["num_workers"],
+        clear_existing=kwargs["clear_existing_universes"],
     )
 
     _log.note("Evaluation routine is not possible for repeated run.")

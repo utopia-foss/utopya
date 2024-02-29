@@ -1143,7 +1143,7 @@ class NoWorkTask(WorkerTask):
     def outstream_objs(self) -> list:
         """Returns the list of objects parsed from the 'out' stream"""
         if not self.streams:
-            return self.streams
+            return []
         return self.streams["out"]["log_parsed"]
 
     def spawn_worker(self) -> None:

@@ -23,6 +23,8 @@ doc/_static/_gen
 # Ignore the local test output directory
 tests/_output
 
+build
+
 # To be on the safe side, ignore some artifacts that may be created from tests
 demo/**/_CopyTest_*
 

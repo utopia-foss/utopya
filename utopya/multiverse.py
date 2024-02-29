@@ -1340,7 +1340,7 @@ class Multiverse:
         except RuntimeError as err:
             # Task list was locked, probably because there already was a run
             raise RuntimeError(
-                "Could not add simulation task for universe '{uni_basename}'! "
+                f"Could not add simulation task for universe '{uni_basename}'! "
                 "Did you already perform a run with this Multiverse?"
             ) from err
 
@@ -2002,26 +2002,66 @@ class DistributedMultiverse(FrozenMultiverse):
                 )
             self.dirs[subdir] = subdir_path
 
-    def run_selection(self, *, uni_id_strs: List[str], num_workers=None):
-        if len(uni_id_strs) == 1:
-            uni_id_str = uni_id_strs[0]
+    def run_selection(
+        self,
+        *,
+        uni_id_strs: List[str],
+        num_workers=None,
+        clear_existing: bool = False,
+    ):
+        """Starts a Utopia simulation run for specified universes.
+
+        Specifically, this method adds simulation tasks to the associated
+        WorkerManager, locks its task list, and then invokes the
+        :py:meth:`~utopya.workermanager.WorkerManager.start_working` method
+        which performs all the simulation tasks.
+
+        .. note::
+
+            As this method locks the task list of the
+            :py:class:`~utopya.workermanager.WorkerManager`, no further tasks
+            can be added henceforth. This means, that each Multiverse instance
+            can only perform a single simulation run.
+
+        Args:
+            uni_id_strs(List[str]): The list of universe id strings
+                (e.g. '00154') to run.
+            sweep (bool, optional): Whether to perform a sweep or not. If None,
+                the value will be read from the ``perform_sweep`` key of the
+                meta-configuration.
+            clear_existing (bool, default: False): Whether to remove files in
+                the output directory of the universes other than the
+                configuration file.
+        """
+        log.info(
+            "Preparing for simulation run of %i universe(s) (%s) ...",
+            len(uni_id_strs),
+            uni_id_strs,
+        )
+
+        pspace = self.meta_cfg["parameter_space"]
+        psp_iter = pspace.iterator(with_info="state_no_str")
+
+        uni_cfgs = dict()
+        for uni_cfg, uni_id_str in psp_iter:
+            uni_cfgs[uni_id_str] = uni_cfg
+
+        is_sweep = len(uni_id_strs) > 1
+        for i, uni_id_str in enumerate(uni_id_strs):
             if uni_id_str.startswith("uni"):
                 uni_id_str = uni_id_str[3:]
+            uni_cfg = uni_cfgs.get(uni_id_str, None)
 
-            log.info(
-                "Preparing for simulation run of universe %s ...", uni_id_str
+            if uni_cfg is None:
+                raise RuntimeError(
+                    f"No universe with id '{uni_id_strs[i]}' found!"
+                )
+            self._add_sim_task(
+                uni_id_str=uni_id_str,
+                uni_cfg=uni_cfg,
+                is_sweep=is_sweep,
+                clear_existing=clear_existing,
             )
-            self._add_sim_task(uni_id_str=uni_id_str, is_sweep=False)
-        elif len(uni_id_strs) > 1:
-            log.info(
-                "Preparing for simulation run of %i universes (%s) ...",
-                len(uni_id_strs),
-                uni_id_strs,
-            )
-            for uni_id_str in uni_id_strs:
-                if uni_id_str.startswith("uni"):
-                    uni_id_str = uni_id_str[3:]
-                self._add_sim_task(uni_id_str=uni_id_str, is_sweep=True)
 
         self.wm.tasks.lock()
 
@@ -2036,21 +2076,28 @@ class DistributedMultiverse(FrozenMultiverse):
 
     def _prepare_executable(self, *args, **kwargs) -> None:
         if self.meta_cfg["backups"]["backup_executable"]:
-            backup_dir = os.path.join(self.dirs["run"], "backup")
-            if not os.isfile(backup_dir, self.model_name):
-                raise RuntimeError(
-                    "No executable found at %s!",
-                    os.isfile(backup_dir, self.model_name),
-                )
+            execpath = os.path.join(
+                self.dirs["run"], "backup", self.model_name
+            )
+            if not os.path.isfile(execpath):
+                raise FileNotFoundError(f"No executable found at {execpath}!")
+            log.info("Restored executable at %s", execpath)
 
-            self.model_executable = os.isfile(backup_dir, self.model_name)
+            self._model_executable = execpath
 
         return super()._prepare_executable(*args, **kwargs)
 
     def _perform_pspace_backup(*args, **kwargs):
         log.note("  Skipping backup of pspace, as it is restored from backup.")
 
-    def _add_sim_task(self, *, uni_id_str: str, is_sweep: bool) -> None:
+    def _add_sim_task(
+        self,
+        *,
+        uni_id_str: str,
+        uni_cfg: dict,
+        is_sweep: bool,
+        clear_existing: bool = False,
+    ) -> None:
         """Helper function that handles task assignment to the WorkerManager.
 
         This function creates a WorkerTask that will perform the following
@@ -2065,9 +2112,14 @@ class DistributedMultiverse(FrozenMultiverse):
 
         Args:
             uni_id_str (str): The zero-padded uni id string
+            uni_cfg (dict): given by ParamSpace. Defines how many simulations
+                should be started
             is_sweep (bool): Flag is needed to distinguish between sweeps
                 and single simulations. With this information, the forwarding
                 of a simulation's output stream can be controlled.
+            clear_existing (bool, default: False): Whether to remove files in
+                the output directory of the universes other than the
+                configuration file.
 
         Raises:
             RuntimeError: If adding the simulation task failed
@@ -2078,6 +2130,7 @@ class DistributedMultiverse(FrozenMultiverse):
             worker_kwargs: dict,
             model_name: str,
             model_executable: str,
+            uni_cfg: dict,
             uni_basename: str,
         ) -> dict:
             """The callable that will setup everything needed for a universe.
@@ -2101,21 +2154,55 @@ class DistributedMultiverse(FrozenMultiverse):
             """
             # Create universe directory path using the basename
             uni_dir = os.path.join(self.dirs["data"], uni_basename)
+            if not os.path.isdir(uni_dir):
+                log.debug("Created universe directory:\n  %s", uni_dir)
+                os.mkdir(uni_dir)
 
-            # Load config from file:
+            # Load config from file or create if does not exist
             uni_cfg_path = os.path.join(uni_dir, "config.yml")
             if not os.path.isfile(uni_cfg_path):
-                raise RuntimeError(
-                    "Could not find a config file at %s", uni_cfg_path
+                log.debug(
+                    "No uni config found at %s. Using config from meta config "
+                    "and saving it there.",
+                    uni_cfg_path,
                 )
-            uni_cfg = load_yml(uni_cfg_path)
 
-            if os.path.isfile(
-                os.path.join(uni_dir, "out.log")
-            ) or os.path.isfile(os.path.join(uni_dir, "data.h5")):
+                # Store it in the configuration
+                uni_cfg["output_dir"] = uni_dir
+
+                # Generate a path to the output hdf5 file and add it to the dict
+                output_path = os.path.join(uni_dir, "data.h5")
+                uni_cfg["output_path"] = output_path
+
+                # Parse the potentially string-valued number of steps values, and
+                # other step-like arguments. Raises an error if they are negative.
+                uni_cfg["num_steps"] = parse_num_steps(uni_cfg["num_steps"])
+                uni_cfg["write_every"] = parse_num_steps(
+                    uni_cfg["write_every"]
+                )
+                uni_cfg["write_start"] = parse_num_steps(
+                    uni_cfg["write_start"]
+                )
+
+                write_yml(uni_cfg, path=uni_cfg_path)
+
+            else:
+                log.debug("Restoring uni config from %s.", uni_cfg_path)
+                uni_cfg = load_yml(uni_cfg_path)
+
+            # (optional) clear the directory
+            if clear_existing and len(os.listdir(uni_dir)) > 1:
+                for file in os.listdir(uni_dir):
+                    if file == "config.yml":
+                        continue
+                    os.remove(os.path.join(uni_dir, file))
+
+            # check that uni dir is empty except for config
+            if len(os.listdir(uni_dir)) > 1:
                 raise RuntimeError(
-                    "Could not add simulation task for universe '%s'. Did you already perform a run on this Universe?",
-                    uni_basename,
+                    f"Output directory of universe '{uni_basename}' contains "
+                    "files other than the configuration file. Did you already "
+                    "perform a run on this Universe?"
                 )
 
             # Build args tuple for task assignment; only need to pass the path
@@ -2145,6 +2232,7 @@ class DistributedMultiverse(FrozenMultiverse):
         setup_kwargs = dict(
             model_name=self.model_name,
             model_executable=self.model_executable,
+            uni_cfg=uni_cfg,
             uni_basename=uni_basename,
         )
 
@@ -2169,64 +2257,8 @@ class DistributedMultiverse(FrozenMultiverse):
         except RuntimeError as err:
             # Task list was locked, probably because there already was a run
             raise RuntimeError(
-                "Could not add simulation task for universe '{uni_basename}'! "
-                "Did you already perform a run with this Multiverse?"
+                f"Could not add simulation task for universe '{uni_basename}'! "
+                "Did you already perform a run with this Multiverse?",
             ) from err
 
         log.debug("Added simulation task: %s.", uni_basename)
-
-    def _add_sim_tasks(self, *, sweep: bool = None) -> int:
-        """Adds the simulation tasks needed for a single run or for a sweep.
-
-        Args:
-            sweep (bool, optional): Whether tasks for a parameter sweep should
-                be added or only for a single universe. If None, will read the
-                ``perform_sweep`` key from the meta-configuration.
-
-        Returns:
-            int: The number of added tasks.
-
-        Raises:
-            ValueError: On ``sweep == True`` and zero-volume parameter space.
-        """
-        if sweep is None:
-            sweep = self.meta_cfg.get("perform_sweep", False)
-
-        pspace = self.meta_cfg["parameter_space"]
-
-        if not sweep:
-            # Add the task to the worker manager.
-            log.progress("Adding task for simulation of a single universe ...")
-            self._add_sim_task(uni_id_str="0", is_sweep=False)
-
-            return 1
-        # -- else: tasks for parameter sweep needed
-
-        if pspace.volume < 1:
-            raise ValueError(
-                "The parameter space has no sweeps configured! "
-                "Refusing to run a sweep. You can either call "
-                "the run_single method or add sweeps to your "
-                "run configuration using the !sweep YAML tags."
-            )
-
-        # Get the parameter space iterator and the number of already-existing
-        # tasks (to later compute the number of _added_ tasks)
-        psp_iter = pspace.iterator(with_info="state_no_str")
-        _num_tasks = len(self.wm.tasks)
-
-        # Do a sweep over the whole activated parameter space
-        vol = pspace.volume
-        log.progress("Adding tasks for simulation of %d universes ...", vol)
-
-        for i, (uni_cfg, uni_id_str) in enumerate(psp_iter):
-            self._add_sim_task(uni_id_str=uni_id_str, is_sweep=True)
-
-            print(
-                f"  Added simulation task:  {uni_id_str}  ({i+1}/{vol})",
-                end="\r",
-            )
-
-        num_new_tasks = len(self.wm.tasks) - _num_tasks
-        log.info("Added %d tasks.", num_new_tasks)
-        return num_new_tasks
