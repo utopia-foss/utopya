@@ -10,6 +10,9 @@
 ### Removals and deprecations
 - !72 removes the deprecated CA `ca.state` plot and the `draw_cbar` and `limits` arguments of the `.plot.ca`.
 
+### Internal
+- !76 moves the logging-related adjustments (e.g. colored log messages) to their own private module, `utopya._logging`.
+
 
 ## v1.2.13
 - !70 adds `utopia` as a console script, giving access to the `utopya` CLI.
