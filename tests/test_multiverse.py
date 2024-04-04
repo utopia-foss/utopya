@@ -757,10 +757,10 @@ def test_run_dmv_run(mv_kwargs):
     update_cfg = dict({"worker_kwargs": {"perform_task": False}})
     mv = Multiverse(**mv_kwargs, **update_cfg)
 
-    # Run the sweep
+    # Run the sweep, after which there should be four universe directories,
+    # but no data or output files
     mv.run()
 
-    # There should now be four directories in the data directory
     assert len(os.listdir(mv.dirs["data"])) == 4
     for uni in os.listdir(mv.dirs["data"]):
         files = os.listdir(os.path.join(mv.dirs["data"], uni))
@@ -768,12 +768,12 @@ def test_run_dmv_run(mv_kwargs):
         assert "data.h5" not in files
         assert "out.log" not in files
 
+    # Now, after DistributedMultiverse ran, all directories should have files.
     distributed_mv = DistributedMultiverse(
         model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
     )
     distributed_mv.run()
 
-    # There should now be four directories in the data directory
     assert len(os.listdir(mv.dirs["data"])) == 4
     for uni in os.listdir(mv.dirs["data"]):
         files = os.listdir(os.path.join(mv.dirs["data"], uni))
@@ -907,7 +907,7 @@ def test_run_dmv_run_selection(mv_kwargs):
         model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
     )
     distributed_mv__clear.run_selection(
-        uni_id_strs=os.listdir(mv.dirs["data"]), clear_existing=True
+        uni_id_strs=os.listdir(mv.dirs["data"]), clear_existing_output=True
     )
 
 

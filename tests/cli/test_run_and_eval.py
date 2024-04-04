@@ -1,6 +1,7 @@
 """Tests the utopya run CLI command"""
 
 import logging
+import os
 import time
 import traceback
 
@@ -107,7 +108,7 @@ def test_run_existing(with_test_models, tmp_output_dir):
     res = invoke_cli(("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1"))
     _check_result(res, expected_exit=0)
     assert "uni1" in res.output
-    assert not "Now creating plots" in res.output  # evaluation not attempted
+    assert "Now creating plots" not in res.output  # evaluation not attempted
 
     # Check that cannot be repeated again as data already exists
     res_fail_repeat = invoke_cli(
@@ -123,13 +124,13 @@ def test_run_existing(with_test_models, tmp_output_dir):
             run_dir,
             "--uni",
             "uni2",
-            "--uni",
+            "-u",
             "uni3",
         )
     )
     _check_result(res, expected_exit=0)
     assert run_dir in res.output
-    assert not "Now creating plots" in res.output  # evaluation not attempted
+    assert "Now creating plots" not in res.output  # evaluation not attempted
 
     # Check that data exists
     for uni in range(1, 4):
@@ -164,7 +165,7 @@ def test_run_existing(with_test_models, tmp_output_dir):
     )
     _check_result(res, expected_exit=0)
     assert "uni1" in res.output
-    assert not "Now creating plots" in res.output  # evaluation not attempted
+    assert "Now creating plots" not in res.output  # evaluation not attempted
 
     assert not os.path.isfile(
         os.path.join(run_dir, "data", "uni1", "this_file_should_not_exist.txt")

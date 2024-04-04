@@ -1,4 +1,4 @@
-"""Implements the utopya run CLI subtree"""
+"""Implements the utopya run-existing CLI subtree"""
 
 import os
 
@@ -9,91 +9,83 @@ from ._shared import (
     add_options,
     complete_model_names,
     complete_run_dirs,
-    default_none,
 )
-from ._utils import Echo
 
 
 @click.command(
     help=(
-        "(Re-)Run universes of an existing simulation.\n"
+        "(Re-)Run universes of an existing simulation run.\n"
         "\n"
-        "Restores a simulation of the ``MODEL_NAME`` model. Subsequently, "
-        "individual tasks (universes) can be (re-)run."
+        "Restores a run of ``MODEL_NAME`` from the given RUN_DIR. "
+        "Subsequently, individual universes can be (re-)run."
     ),
 )
 @click.argument("model_name", shell_complete=complete_model_names)
 @click.argument(
-    "simulation_path",
+    "run_dir",
     shell_complete=complete_run_dirs,
     required=True,
-    # type=click.Path(exists=True, dir_okay=True, resolve_path=True),
-)
-@click.option(
-    "--universe",
-    "--uni",
-    multiple=True,
-    type=str,
 )
 @add_options(OPTIONS["label"])
-#
-# -- Update the worker manager
-#
 @click.option(
-    "-W",
-    "--num-workers",
-    default=None,
-    type=click.IntRange(min=-os.cpu_count() + 1, max=+os.cpu_count()),
+    "-u",
+    "--uni",
+    "--universe",
+    "universes",
+    multiple=True,
+    type=str,
     help=(
-        "Shortcut for meta-config entry ``worker_manager.num_workers``, which "
-        "sets the number of worker processes. "
-        "Can be an integer; if negative, will deduce the number from the "
-        "number of available CPUs."
+        "Which universes to run (e.g.: 00154). Note that leading zeros need "
+        "to be added. To supply multiple, use the -u option multiple times."
     ),
 )
 @click.option(
+    "-c",
     "--clear-existing",
-    "clear_existing_universes",
+    "clear_existing_output",
     default=False,
     is_flag=True,
     help=(
-        "Whether to clear files (other than the configuration) from universes "
-        "that already contain data. "
-        "Universes containing files cannot be re-run."
+        "Whether to clear existing output files from universes. "
+        "Set this option to re-run universes that were previously run."
     ),
 )
+@add_options(OPTIONS["num_workers"])  # -W, --num-workers
 #
 #
 #
 @click.pass_context
-def run_existing(ctx, **kwargs):
+def run_existing(
+    ctx,
+    run_dir,
+    model_name: str,
+    label: str,
+    universes: list,
+    num_workers: int,
+    clear_existing_output: bool,
+    **kwargs,
+):
     """Repeats a model simulation in parts or entirely"""
     import utopya
-    from utopya.tools import pformat
 
-    from ._utils import parse_run_and_plots_cfg, parse_update_dicts
-    from .eval import _load_and_eval
+    _log = utopya._getLogger("utopya")
 
-    _log = utopya._getLogger("utopya")  # TODO How best to do this?!
+    model = utopya.Model(name=model_name, bundle_label=label)
+    mv = model.create_distributed_mv(run_dir=run_dir)
 
-    # Preparations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-    _log.info("Parsing additional command line arguments ...")
-
-    model = utopya.Model(
-        name=kwargs["model_name"],
-        bundle_label=kwargs["label"],
-    )
-
-    mv = model.create_distributed_mv(run_dir=kwargs["simulation_path"])
-
-    # Running the simulation . . . . . . . . . . . . . . . . . . . . . . . . .
-    mv.run_selection(
-        uni_id_strs=kwargs["universe"],
-        num_workers=kwargs["num_workers"],
-        clear_existing=kwargs["clear_existing_universes"],
-    )
+    if universes:
+        mv.run_selection(
+            uni_id_strs=universes,
+            num_workers=num_workers,
+            clear_existing_output=clear_existing_output,
+        )
+    else:
+        raise NotImplementedError("Cannot run all universes again (yet).")
 
     _log.note("Evaluation routine is not possible for repeated run.")
-    _log.remark("Please call a separate eval task.")
+    _log.remark(
+        "For evaluation, call:\n  utopya eval %s %s\n",
+        model_name,
+        os.path.basename(run_dir),
+    )
     _log.progress("Exiting now ...\n")
-    return
