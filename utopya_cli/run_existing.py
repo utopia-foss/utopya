@@ -14,9 +14,9 @@ from ._shared import (
 
 @click.command(
     help=(
-        "(Re-)Run universes of an existing simulation run.\n"
+        "[Advanced feature] (Re-)Run universes of an existing simulation run.\n"
         "\n"
-        "Restores a run of ``MODEL_NAME`` from the given RUN_DIR. "
+        "Restores a run of MODEL_NAME from the given RUN_DIR. "
         "Subsequently, individual universes can be (re-)run."
     ),
 )
@@ -36,7 +36,8 @@ from ._shared import (
     type=str,
     help=(
         "Which universes to run (e.g.: 00154). Note that leading zeros need "
-        "to be added. To supply multiple, use the -u option multiple times."
+        "to be added. To supply multiple, use the -u option multiple times. "
+        "If no universe specified, a run on all universes is performed."
     ),
 )
 @click.option(
@@ -47,7 +48,19 @@ from ._shared import (
     is_flag=True,
     help=(
         "Whether to clear existing output files from universes. "
-        "Set this option to re-run universes that were previously run."
+        "Set this option to re-run universes that were previously run. "
+    ),
+)
+@click.option(
+    "-c",
+    "--skip-existing",
+    "skip_existing_output",
+    default=False,
+    is_flag=True,
+    help=(
+        "Whether to skip universes with existing output. "
+        "Set this option to complete universes from a previously run. "
+        "Cannot be used together with --universe."
     ),
 )
 @add_options(OPTIONS["num_workers"])  # -W, --num-workers
@@ -63,6 +76,7 @@ def run_existing(
     universes: list,
     num_workers: int,
     clear_existing_output: bool,
+    skip_existing_output: bool,
     **kwargs,
 ):
     """Repeats a model simulation in parts or entirely"""
@@ -74,13 +88,29 @@ def run_existing(
     mv = model.create_distributed_mv(run_dir=run_dir)
 
     if universes:
+        if skip_existing_output:
+            raise RuntimeError(
+                "Option --skip-existing cannot be set together "
+                "with a list of universes to perform."
+            )
+
         mv.run_selection(
             uni_id_strs=universes,
             num_workers=num_workers,
             clear_existing_output=clear_existing_output,
         )
     else:
-        raise NotImplementedError("Cannot run all universes again (yet).")
+        if skip_existing_output and clear_existing_output:
+            raise RuntimeError(
+                "Options --skip-existing and --clear-existing are exclusive "
+                "but both were set."
+            )
+
+        mv.run(
+            num_workers=num_workers,
+            clear_existing_output=clear_existing_output,
+            skip_existing_output=skip_existing_output,
+        )
 
     _log.note("Evaluation routine is not possible for repeated run.")
     _log.remark(

@@ -1998,9 +1998,8 @@ class DistributedMultiverse(FrozenMultiverse):
         Args:
             uni_id_strs(List[str]): The list of universe id strings
                 (e.g. '00154') to run.
-            sweep (bool, optional): Whether to perform a sweep or not. If None,
-                the value will be read from the ``perform_sweep`` key of the
-                meta-configuration.
+            num_workers (int, optional): Specify the number of workers
+                available.
             clear_existing_output (bool, default: False): Whether to remove
                 files in the output directory of the universes other than the
                 configuration file.
@@ -2030,8 +2029,84 @@ class DistributedMultiverse(FrozenMultiverse):
 
             uni_cfg = uni_cfgs.get(uni_id_str, None)
             if uni_cfg is None:
-                raise ValueError(f"No universe '{uni_id_strs[i]}' found!")
+                raise ValueError(f"No universe '{uni_id_str}' found!")
 
+            self._add_sim_task(
+                uni_id_str=uni_id_str,
+                uni_cfg=uni_cfg,
+                is_sweep=is_sweep,
+            )
+
+        self.wm.tasks.lock()
+        if num_workers is not None:
+            self.wm.num_workers = num_workers
+
+        # Tell the WorkerManager to start working (is a blocking call)
+        self.wm.start_working(**self.meta_cfg["run_kwargs"])
+
+        # Done! :)
+        log.success("Finished simulation run. Wohoo. :)\n")
+
+    def run(
+        self,
+        *,
+        num_workers=None,
+        clear_existing_output: bool = False,
+        skip_existing_output: bool = False,
+    ):
+        """Starts a Utopia simulation run for all universes.
+
+        Overload of parent method that allows for universes to be skipped if
+        output already exists from a previous run.
+
+        Args:
+            num_workers (int, optional): Specify the number of workers
+                available.
+            clear_existing_output (bool, default: False): Whether to remove
+                files in the output directory of the universes other than the
+                configuration file.
+            skip_existing_output (bool, default: False): Whether to skip
+                universes if output already exists.
+        """
+        ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
+
+        log.info(
+            "Preparing for repeated simulation run ...",
+        )
+
+        # Store parameter, used during universe dir setup
+        self._clear_existing_output = clear_existing_output
+
+        # Generate all possible parameter space combinations
+        pspace = self.meta_cfg["parameter_space"]
+        psp_iter = pspace.iterator(with_info="state_no_str")
+
+        # gather uni configs
+        uni_cfgs = dict()
+        for uni_cfg, uni_id_str in psp_iter:
+            if skip_existing_output:
+                output_exists = False
+                uni_basename = f"uni{uni_id_str}"
+                uni_dir = os.path.join(self.dirs["data"], uni_basename)
+
+                # Check existence of path and its content
+                if os.path.isdir(uni_dir):
+                    for file in os.listdir(uni_dir):
+                        if file not in ALLOWED_FILES:
+                            output_exists = True
+                            break
+                # only add uni to tasks if no output exists
+                if not output_exists:
+                    uni_cfgs[uni_id_str] = uni_cfg
+
+            else:
+                uni_cfgs[uni_id_str] = uni_cfg
+
+        log.info("  Found %d universe(s) to work on.", len(uni_cfgs))
+
+        # Now, add the respective tasks, if the selection matches
+        is_sweep = len(uni_cfgs) > 1
+        for uni_id_str, uni_cfg in uni_cfgs.items():
             self._add_sim_task(
                 uni_id_str=uni_id_str,
                 uni_cfg=uni_cfg,

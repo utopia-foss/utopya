@@ -171,6 +171,35 @@ def test_run_existing(with_test_models, tmp_output_dir):
         os.path.join(run_dir, "data", "uni1", "this_file_should_not_exist.txt")
     )
 
+    # Run all but skip existing
+    res = invoke_cli(
+        (
+            "run-existing",
+            DUMMY_MODEL,
+            run_dir,
+            "--skip-existing",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    # Check that uni4 was run
+    assert "Finished working. Total tasks worked on: 1" in res.output
+    assert os.path.isfile(os.path.join(run_dir, "data", "uni4", "data.h5"))
+    assert os.path.isfile(os.path.join(run_dir, "data", "uni4", "out.log"))
+
+    # Re-run all with clear existing option
+    res = invoke_cli(
+        (
+            "run-existing",
+            DUMMY_MODEL,
+            run_dir,
+            "--clear-existing",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "Finished working. Total tasks worked on: 4" in res.output
+
 
 def test_eval(with_test_models, tmp_output_dir, delay):
     """Tests the invocation of the utopya eval command"""
