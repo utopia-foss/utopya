@@ -311,7 +311,7 @@ class Multiverse:
     # Public methods ..........................................................
 
     def run(self, *, sweep: bool = None):
-        """Starts a Utopia simulation run.
+        """Starts a simulation run.
 
         Specifically, this method adds simulation tasks to the associated
         WorkerManager, locks its task list, and then invokes the
@@ -1142,7 +1142,7 @@ class Multiverse:
         .. note::
 
             This method is separated from the regular backup method
-            :py:meth:`._perform_backup` because the
+            :py:meth:`Multiverse._perform_backup` because the
             parameter space that is *used* during a simulation run may be a
             lower-dimensional version of the one the Multiverse was
             initialized with.
@@ -1981,7 +1981,7 @@ class DistributedMultiverse(FrozenMultiverse):
         num_workers=None,
         clear_existing_output: bool = False,
     ):
-        """Starts a Utopia simulation run for specified universes.
+        """Starts a simulation run for specified universes.
 
         Specifically, this method adds simulation tasks to the associated
         WorkerManager, locks its task list, and then invokes the
@@ -1996,13 +1996,13 @@ class DistributedMultiverse(FrozenMultiverse):
             can only perform a single simulation run.
 
         Args:
-            uni_id_strs(List[str]): The list of universe id strings
-                (e.g. '00154') to run.
+            uni_id_strs(List[str]): The list of universe ID strings to run,
+                e.g. '00154'. Note that leading zeros are required.
             num_workers (int, optional): Specify the number of workers
-                available.
-            clear_existing_output (bool, default: False): Whether to remove
-                files in the output directory of the universes other than the
-                configuration file.
+                to use, overwriting the setting from the meta-configuration.
+            clear_existing_output (bool, optional): Whether to remove
+                existing files from the universe outpout directories.
+                Only the configuration file will not be deleted.
         """
         log.info(
             "Preparing for simulation run of %d universe(s) (%s) ...",
@@ -2054,7 +2054,7 @@ class DistributedMultiverse(FrozenMultiverse):
         clear_existing_output: bool = False,
         skip_existing_output: bool = False,
     ):
-        """Starts a Utopia simulation run for all universes.
+        """Starts a simulation run for all universes.
 
         Overload of parent method that allows for universes to be skipped if
         output already exists from a previous run.
@@ -2062,17 +2062,15 @@ class DistributedMultiverse(FrozenMultiverse):
         Args:
             num_workers (int, optional): Specify the number of workers
                 available.
-            clear_existing_output (bool, default: False): Whether to remove
+            clear_existing_output (bool, optional): Whether to remove
                 files in the output directory of the universes other than the
                 configuration file.
-            skip_existing_output (bool, default: False): Whether to skip
+            skip_existing_output (bool, optional): Whether to skip
                 universes if output already exists.
         """
         ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
 
-        log.info(
-            "Preparing for repeated simulation run ...",
-        )
+        log.info("Preparing for repeated simulation run ...")
 
         # Store parameter, used during universe dir setup
         self._clear_existing_output = clear_existing_output
@@ -2081,7 +2079,8 @@ class DistributedMultiverse(FrozenMultiverse):
         pspace = self.meta_cfg["parameter_space"]
         psp_iter = pspace.iterator(with_info="state_no_str")
 
-        # gather uni configs
+        # Gather uni configs
+        # TODO Rework this: skip-existing decision should be taken later!
         uni_cfgs = dict()
         for uni_cfg, uni_id_str in psp_iter:
             if skip_existing_output:
@@ -2095,6 +2094,7 @@ class DistributedMultiverse(FrozenMultiverse):
                         if file not in ALLOWED_FILES:
                             output_exists = True
                             break
+
                 # only add uni to tasks if no output exists
                 if not output_exists:
                     uni_cfgs[uni_id_str] = uni_cfg

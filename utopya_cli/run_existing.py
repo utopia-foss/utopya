@@ -14,10 +14,13 @@ from ._shared import (
 
 @click.command(
     help=(
-        "[Advanced feature] (Re-)Run universes of an existing simulation run.\n"
+        "[EXPERIMENTAL] (Re-)Run universes of an existing simulation run.\n"
         "\n"
         "Restores a run of MODEL_NAME from the given RUN_DIR. "
-        "Subsequently, individual universes can be (re-)run."
+        "Subsequently, individual universes can be (re-)run.\n"
+        "\n"
+        "Note that this feature is currently experimental, meaning that the "
+        "interface may still change a lot."
     ),
 )
 @click.argument("model_name", shell_complete=complete_model_names)
@@ -37,7 +40,7 @@ from ._shared import (
     help=(
         "Which universes to run (e.g.: 00154). Note that leading zeros need "
         "to be added. To supply multiple, use the -u option multiple times. "
-        "If no universe specified, a run on all universes is performed."
+        "If no universes are specified, a run on all universes is performed."
     ),
 )
 @click.option(
@@ -49,18 +52,19 @@ from ._shared import (
     help=(
         "Whether to clear existing output files from universes. "
         "Set this option to re-run universes that were previously run. "
+        "Cannot be used together with --skip-existing."
     ),
 )
 @click.option(
-    "-c",
+    "-s",
     "--skip-existing",
     "skip_existing_output",
     default=False,
     is_flag=True,
     help=(
         "Whether to skip universes with existing output. "
-        "Set this option to complete universes from a previously run. "
-        "Cannot be used together with --universe."
+        "Set this option to complete universes from a previous run. "
+        "Cannot be used together with --uni or --clear-existing."
     ),
 )
 @add_options(OPTIONS["num_workers"])  # -W, --num-workers
