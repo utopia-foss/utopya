@@ -14,7 +14,7 @@ from dantro.tools import make_columns as _make_columns
 from .cfg import load_from_cfg_dir
 from .eval import DataManager
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
-from .multiverse import FrozenMultiverse, Multiverse
+from .multiverse import DistributedMultiverse, FrozenMultiverse, Multiverse
 
 log = logging.getLogger(__name__)
 
@@ -316,6 +316,21 @@ class Model:
                 :py:meth:`utopya.multiverse.FrozenMultiverse.__init__`
         """
         mv = FrozenMultiverse(model_name=self.name, **fmv_kwargs)
+        self._store_mv(mv)
+
+        return mv
+
+    def create_distributed_mv(self, **dmv_kwargs) -> DistributedMultiverse:
+        """Create a :py:class:`utopya.multiverse.FrozenMultiverse`, coupling it
+        to a run directory.
+
+        Use this method if you want to load an *existing* simulation run.
+
+        Args:
+            **fmv_kwargs: Passed on to
+                :py:meth:`utopya.multiverse.FrozenMultiverse.__init__`
+        """
+        mv = DistributedMultiverse(model_name=self.name, **dmv_kwargs)
         self._store_mv(mv)
 
         return mv

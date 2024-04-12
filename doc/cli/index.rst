@@ -15,6 +15,7 @@ Below you will find a reference of the whole :ref:`utopya <cli_utopya>` CLI tree
 
     utopya
     run
+    run_existing
     eval
     test
     models

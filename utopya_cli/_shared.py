@@ -237,6 +237,20 @@ OPTIONS["cluster_mode"] = (
         help="Enables cluster mode.",
     ),
 )
+OPTIONS["num_workers"] = (
+    click.option(
+        "-W",
+        "--num-workers",
+        default=None,
+        type=click.IntRange(min=-os.cpu_count() + 1, max=+os.cpu_count()),
+        help=(
+            "Shortcut for meta-config entry ``worker_manager.num_workers``, "
+            "which sets the number of worker processes. "
+            "Can be an integer; if negative, will deduce the number from the "
+            "number of available CPUs."
+        ),
+    ),
+)
 
 # -- Data loading options
 OPTIONS["load"] = (

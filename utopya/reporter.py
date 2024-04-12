@@ -266,7 +266,7 @@ class Reporter:
             **parser_kwargs: The kwargs to the parser function
 
         Raises:
-            ValueError: A report format with this `name` already exists
+            ValueError: A report format with this ``name`` already exists
         """
         if name in self.report_formats:
             raise ValueError(
@@ -663,16 +663,16 @@ class WorkerManagerReporter(Reporter):
                 "after_work", parser="progress_bar", write_to="stdout_noreturn"
             )
 
-        # Store the WorkerManager and associate it with this reporter
-        self._wm = wm
-        wm.reporter = self
-        log.debug("Associated reporter with WorkerManager.")
-
         # Other attributes
         self.mv = mv
         self.runtimes = []
         self.exit_codes = Counter()
         self._eta_info = dict()
+
+        # Store the WorkerManager and associate it with this reporter
+        self._wm = wm
+        wm.reporter = self
+        log.debug("Associated reporter with WorkerManager.")
 
         log.debug("WorkerManagerReporter initialised.")
 
@@ -1363,7 +1363,9 @@ class WorkerManagerReporter(Reporter):
 
         return " \n".join(parts)
 
-    def _parse_pspace_info(self, *, fstr: str, report_no: int = None) -> str:
+    def _parse_pspace_info(
+        self, *, fstr: str, only_for_sweep: bool = True, report_no: int = None
+    ) -> str:
         """Provides information about the parameter space.
 
         Extracts the ``parameter_space`` from the associated Multiverse's meta
@@ -1395,12 +1397,10 @@ class WorkerManagerReporter(Reporter):
         if not isinstance(pspace, psp.ParamSpace):
             raise TypeError(f"Expected a ParamSpace object, got:\n\n{pspace}")
 
-        if len(self.wm.tasks) <= 1:
+        if only_for_sweep and len(self.wm.tasks) <= 1:
             return ""
 
-        return fstr.format(
-            num_tasks=len(self.wm.tasks), sweep_info=pspace.get_info_str()
-        )
+        return fstr.format(sweep_info=pspace.get_info_str())
 
     # Writer methods ..........................................................
 

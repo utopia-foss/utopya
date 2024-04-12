@@ -153,6 +153,7 @@ reporter:
           lvl: 18
           skip_if_empty: true
       fstr: "Sweeping over the following parameter space:\n\n{sweep_info:}"
+      only_for_sweep: true
 
   # Can define a default format to use
   # default_format: ~
@@ -244,6 +245,13 @@ run_kwargs:
 # The defaults for the worker_kwargs
 # These are passed to the setup function of each WorkerTask before spawning
 worker_kwargs:
+  # Whether the task should be performed at all.
+  # If false, this will call each universes' setup function, writing respective
+  # config files, but not actually carry out universe simulations. This is used
+  # in combination with the DistributedMultiverse, which can then carry out the
+  # actual universe runs.
+  perform_task: true
+
   # Whether to save the streams of each Universe to a log file
   save_streams: true
   # This file is saved only after the WorkerTask has finished in order to

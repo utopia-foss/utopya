@@ -450,6 +450,25 @@ def parse_update_dicts(
                 key_path=("perform_sweep",),
             )
 
+        if args.worker_perform_task is not None:
+            add_item(
+                args.worker_perform_task,
+                add_to=update_dict,
+                key_path=("worker_kwargs", "perform_task"),
+            )
+            if (
+                not args.worker_perform_task
+                and args.perform_eval is not None
+                and args.perform_eval
+            ):
+                raise ValueError("Cannot perform eval after --no-work.")
+            if not args.worker_perform_task and args.perform_eval is None:
+                raise NotImplementedError(
+                    "Please explicityly specify "
+                    "'--no-eval' option together with '--no-work'. Sorry for "
+                    "the inconvenience."
+                )
+
         if args.set_model_params:
             # TODO More elegant solution?
             if not update_dict.get("parameter_space"):

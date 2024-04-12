@@ -11,7 +11,7 @@ import sys
 import time
 import warnings
 from datetime import datetime as dt
-from typing import Callable, Dict, List, Sequence, Set, Union
+from typing import Callable, Dict, List, Optional, Sequence, Set, Union
 
 from .exceptions import *
 from .reporter import WorkerManagerReporter
@@ -59,6 +59,7 @@ class WorkerManager:
     """The report format specifications that are used throughout the
     WorkerManager. These are invoked at different points of the operation:
 
+    - ``before_working``
     - ``while_working``
     - ``after_work``
     - ``after_abort``
@@ -112,7 +113,8 @@ class WorkerManager:
             rf_spec (Dict[str, Union[str, List[str]]], optional): The names of
                 report formats that should be invoked at different points of
                 the WorkerManager's operation.
-                Possible keys: ``before_working``, ``while_working``,
+                Possible keys:
+                ``before_working``, ``while_working``,
                 ``after_work``, ``after_abort``, ``task_spawn``,
                 ``task_finished``. All other keys are ignored.
 
@@ -535,7 +537,6 @@ class WorkerManager:
     def start_working(
         self,
         *,
-        detach: bool = False,
         timeout: float = None,
         stop_conditions: Sequence[StopCondition] = None,
         post_poll_func: Callable = None,
@@ -557,71 +558,25 @@ class WorkerManager:
                 actions during a the polling loop.
 
         Raises:
-            NotImplementedError: if ``detach`` was set
             ValueError: For invalid (i.e., negative) timeout value
             WorkerManagerTotalTimeout: Upon a total timeout
         """
-        if detach:
-            raise NotImplementedError(
-                "It is currently not possible to detach the WorkerManager "
-                "from the main thread."
-            )
-
         self._invoke_report("before_working")
 
         log.progress("Preparing to work ...")
-
-        # Determine timeout arguments
-        if timeout:
-            if timeout <= 0:
-                raise ValueError(
-                    f"Invalid value for argument `timeout`: {timeout} -- "
-                    "needs to be positive."
-                )
-
-            # Already calculate the time after which a timeout would be reached
-            self.times["timeout"] = time.time() + timeout
-
-        # Set the variable needed for checking; if above condition was not
-        # fulfilled, this will be None
-        timeout_time = self.times["timeout"]
 
         # Set some variables needed during the run
         poll_no = 0
         self.times["start_working"] = dt.now()
 
-        # Prepare stop conditions, creating objects if needed
-        if stop_conditions:
-            stop_conditions = [
-                sc if isinstance(sc, StopCondition) else StopCondition(**sc)
-                for sc in stop_conditions
-            ]
-
-        # Inform about timeout and stop conditions
-        if timeout:
-            _to_fstr = "%X" if timeout < 60 * 60 * 12 else "%X, %d.%m.%y"
-            _to_at = dt.fromtimestamp(timeout_time).strftime(_to_fstr)
-        log.note(
-            "  Timeout:         %s",
-            "None" if not timeout else f"{_to_at} (in {format_time(timeout)})",
-        )
-        log.note(
-            "  Stop conditions: %s",
-            (
-                "None"
-                if not stop_conditions
-                else ", ".join([sc.name for sc in stop_conditions])
-            ),
-        )
-
-        log.hilight("Starting to work ...")
-
-        # Keep track of the stop condition objects
-        if stop_conditions:
-            self._stop_conditions.update(set(stop_conditions))
+        # Prepare timeout and stop conditions
+        timeout_time = self._parse_timeout_args(timeout=timeout)
+        stop_conditions = self._parse_stop_conditions(stop_conditions)
 
         # Start with the polling loop
         # Basically all working time will be spent in there ...
+        log.hilight("Starting to work ...")
+
         try:
             while self.active_tasks or self.task_queue.qsize() > 0:
                 # Check total timeout
@@ -633,6 +588,17 @@ class WorkerManager:
 
                 # Assign tasks to free workers
                 self._assign_tasks(self.num_free_workers)
+
+                # Poll the workers. (Will also remove no longer active workers)
+                self._poll_workers()
+
+                # Call the post-poll function
+                if post_poll_func is not None:
+                    log.debug(
+                        "Calling post_poll_func %s ...",
+                        post_poll_func.__name__,
+                    )
+                    post_poll_func()
 
                 # Do stream-related actions for each task
                 for task in self.active_tasks:
@@ -656,17 +622,6 @@ class WorkerManager:
 
                     # Now signal those workers such that they terminate.
                     self._signal_workers(fulfilled, signal=SIG_STOPCOND)
-
-                # Poll the workers. (Will also remove no longer active workers)
-                self._poll_workers()
-
-                # Call the post-poll function
-                if post_poll_func is not None:
-                    log.debug(
-                        "Calling post_poll_func %s ...",
-                        post_poll_func.__name__,
-                    )
-                    post_poll_func()
 
                 # Invoke periodic callback for all tasks
                 if (
@@ -693,77 +648,7 @@ class WorkerManager:
         except (KeyboardInterrupt, WorkerManagerTotalTimeout) as exc:
             # Got interrupted or a total timeout.
             # Interrupt the workers, giving them some time to shut down ...
-
-            # Suppress reporter to use CR; then inform via log messages
-            if self.reporter:
-                self.reporter.suppress_cr = True
-
-            log.warning("Received %s.", type(exc).__name__)
-
-            # Extract parameters from config
-            # Which signal to send to workers
-            signal = self.interrupt_params.get("send_signal", "SIGINT")
-
-            # The grace period within which the tasks have to shut down
-            grace_period = self.interrupt_params.get("grace_period", 5.0)
-
-            # Send the signal
-            log.info(
-                "Sending signal %s to %d active task(s) ...",
-                signal,
-                len(self.active_tasks),
-            )
-            self._signal_workers(self.active_tasks, signal=signal)
-
-            # Continuously poll them for a certain grace period in order to
-            # find out if they have shut down.
-            log.warning(
-                "Allowing %s for %d task(s) to shut down ... "
-                "(Ctrl + C to kill them now.)",
-                format_time(grace_period, ms_precision=1),
-                len(self.active_tasks),
-            )
-            grace_period_start = time.time()
-
-            try:
-                while True:
-                    self._poll_workers()
-
-                    # Check whether to leave the loop
-                    if not self.active_tasks:
-                        break
-                    elif time.time() > grace_period_start + grace_period:
-                        raise KeyboardInterrupt
-
-                    # Need to continue. Delay polling ...
-                    time.sleep(self.poll_delay)
-
-            except KeyboardInterrupt:
-                log.critical(
-                    "Killing workers of %d tasks now ...",
-                    len(self.active_tasks),
-                )
-                self._signal_workers(self.active_tasks, signal="SIGKILL")
-
-                # Wait briefly (killing shouldn't take long), then poll
-                # one last time to update all task's status.
-                time.sleep(0.5)
-                self._poll_workers()
-
-            # Store end time and invoke a report
-            self.times["end_working"] = dt.now()
-            self._invoke_report("after_abort", force=True)
-
-            log.hilight("Work session ended.")
-
-            if type(exc) is KeyboardInterrupt and self.interrupt_params.get(
-                "exit", True
-            ):
-                # Exit with appropriate exit code (128 + abs(signum))
-                log.warning("Exiting after KeyboardInterrupt ...")
-                sys.exit(128 + abs(SIGMAP[signal]))
-
-            # Otherwise, just return control to the calling scope
+            self._handle_KeyboardInterrupt_or_TotalTimeout(exc)
 
         except WorkerManagerError as err:
             # Some error not related to the non-zero exit code occurred.
@@ -814,14 +699,63 @@ class WorkerManager:
             # Do not report this one
             return
 
-        # Resolve the spec name
+        # Resolve the spec name and invoke the reports
         rfs = self.rf_spec[rf_spec_name]
-
         if not isinstance(rfs, list):
             rfs = [rfs]
 
         for rf in rfs:
             self.reporter.report(rf, *args, **kwargs)
+
+    def _parse_timeout_args(
+        self, *, timeout: Optional[float]
+    ) -> Optional[float]:
+        """Parses timeout-related arguments"""
+        # Determine timeout arguments
+        if not timeout:
+            log.note("  Timeout:         None")
+            return None
+
+        if timeout <= 0:
+            raise ValueError(
+                f"Invalid value for argument `timeout`: {timeout} -- "
+                "needs to be positive."
+            )
+
+        # Calculate the time after which a timeout would be reached
+        timeout_time = time.time() + timeout
+        self.times["timeout"] = timeout_time
+
+        # Inform about timeout
+        _to_fstr = "%X" if timeout < 60 * 60 * 12 else "%X, %d.%m.%y"
+        _to_at = dt.fromtimestamp(timeout_time).strftime(_to_fstr)
+        log.note(
+            "  Timeout:         %s", f"{_to_at} (in {format_time(timeout)})"
+        )
+
+        return self.times["timeout"]
+
+    def _parse_stop_conditions(
+        self, stop_conditions: Optional[list]
+    ) -> Optional[List[StopCondition]]:
+        """Prepare stop conditions, creating the corresponding objects if
+        needed."""
+        if not stop_conditions:
+            log.note("  Stop conditions: None")
+            return
+
+        stop_conditions = [
+            sc if isinstance(sc, StopCondition) else StopCondition(**sc)
+            for sc in stop_conditions
+        ]
+        self._stop_conditions.update(set(stop_conditions))
+
+        log.note(
+            "  Stop conditions: %s",
+            ", ".join([sc.name for sc in stop_conditions]),
+        )
+
+        return stop_conditions
 
     def _grab_task(self) -> WorkerTask:
         """Will initiate that a task is gotten from the queue and that it
@@ -1095,3 +1029,75 @@ class WorkerManager:
 
         # The pending_exceptions list is now empty
         log.debug("Handled all pending exceptions.")
+
+    def _handle_KeyboardInterrupt_or_TotalTimeout(self, exc: Exception):
+        # Suppress reporter to use CR; then inform via log messages
+        if self.reporter:
+            self.reporter.suppress_cr = True
+
+        log.warning("Received %s.", type(exc).__name__)
+
+        # Extract parameters from config
+        # Which signal to send to workers
+        signal = self.interrupt_params.get("send_signal", "SIGINT")
+
+        # The grace period within which the tasks have to shut down
+        grace_period = self.interrupt_params.get("grace_period", 5.0)
+
+        # Send the signal
+        log.info(
+            "Sending signal %s to %d active task(s) ...",
+            signal,
+            len(self.active_tasks),
+        )
+        self._signal_workers(self.active_tasks, signal=signal)
+
+        # Continuously poll them for a certain grace period in order to
+        # find out if they have shut down.
+        log.warning(
+            "Allowing %s for %d task(s) to shut down ... "
+            "(Ctrl + C to kill them now.)",
+            format_time(grace_period, ms_precision=1),
+            len(self.active_tasks),
+        )
+        grace_period_start = time.time()
+
+        try:
+            while True:
+                self._poll_workers()
+
+                # Check whether to leave the loop
+                if not self.active_tasks:
+                    break
+                elif time.time() > grace_period_start + grace_period:
+                    raise KeyboardInterrupt
+
+                # Need to continue. Delay polling ...
+                time.sleep(self.poll_delay)
+
+        except KeyboardInterrupt:
+            log.critical(
+                "Killing workers of %d tasks now ...",
+                len(self.active_tasks),
+            )
+            self._signal_workers(self.active_tasks, signal="SIGKILL")
+
+            # Wait briefly (killing shouldn't take long), then poll
+            # one last time to update all task's status.
+            time.sleep(0.5)
+            self._poll_workers()
+
+        # Store end time and invoke a report
+        self.times["end_working"] = dt.now()
+        self._invoke_report("after_abort", force=True)
+
+        log.hilight("Work session ended.")
+
+        exit = self.interrupt_params.get("exit", True)
+        if type(exc) is KeyboardInterrupt and exit:
+            # Exit with appropriate exit code (128 + abs(signum))
+            log.warning("Exiting after KeyboardInterrupt ...")
+            sys.exit(128 + abs(SIGMAP[signal]))
+
+        # Otherwise, just return control to the calling scope
+        return

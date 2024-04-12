@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from utopya.stop_conditions import SIG_STOPCOND
-from utopya.task import SIGMAP
+from utopya.task import SIGMAP, NoWorkTask
 from utopya.workermanager import WorkerManager, WorkerManagerTotalTimeout
 from utopya.yaml import load_yml
 
@@ -59,7 +59,23 @@ def longer_sleep_task() -> dict:
 
 
 @pytest.fixture
-def wm_with_tasks(sleep_task):
+def nowork_task() -> dict:
+    """A sleep task definition"""
+    return dict(
+        TaskCls=NoWorkTask,
+        worker_kwargs=dict(
+            args=(
+                "python3",
+                "-c",
+                "raise RuntimeError('I shall not be called!')",
+            ),
+            read_stdout=True,
+        ),
+    )
+
+
+@pytest.fixture
+def wm_with_tasks(sleep_task, nowork_task):
     """Create a WorkerManager instance and add some tasks"""
     # A few tasks
     tasks = []
@@ -94,6 +110,7 @@ def wm_with_tasks(sleep_task):
             )
         )
     )
+    tasks.append(nowork_task)
     tasks.append(sleep_task)
 
     # Now initialise the worker manager
@@ -357,11 +374,6 @@ def test_signal_workers(wm, longer_sleep_task):
 
     # Signal all tasks (they all ended anyway)
     wm._signal_workers("all", signal="SIGTERM")
-
-
-def test_detach(wm):
-    with pytest.raises(NotImplementedError):
-        wm.start_working(detach=True)
 
 
 def test_empty_task_queue(wm):

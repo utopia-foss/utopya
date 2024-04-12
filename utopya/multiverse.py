@@ -25,6 +25,7 @@ from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .parameter import ValidationError
 from .project_registry import PROJECTS
 from .reporter import WorkerManagerReporter
+from .task import NoWorkTask, WorkerTask
 from .tools import parse_num_steps, pformat, recursive_update
 from .workermanager import WorkerManager
 from .yaml import load_yml, write_yml
@@ -310,7 +311,7 @@ class Multiverse:
     # Public methods ..........................................................
 
     def run(self, *, sweep: bool = None):
-        """Starts a Utopia simulation run.
+        """Starts a simulation run.
 
         Specifically, this method adds simulation tasks to the associated
         WorkerManager, locks its task list, and then invokes the
@@ -753,6 +754,104 @@ class Multiverse:
             )
             os.chmod(self.dirs[dirname], mode)
 
+    def _get_run_dir(self, *, out_dir: str, run_dir: str, **__):
+        """Helper function to find the run directory from arguments given
+        to :py:meth:`~utopya.multiverse.Multiverse.__init__`.
+        This is not actually used in :py:class:`~utopya.multiverse.Multiverse`
+        but in :py:class:`~utopya.multiverse.FrozenMultiverse` and
+        :py:class:`~utopya.multiverse.DistributedMultiverse`.
+
+        Args:
+            out_dir (str): The output directory
+            run_dir (str): The run directory to use
+            ``**__``: ignored
+
+        Raises:
+            IOError: No directory found to use as run directory
+            TypeError: When run_dir was not a string
+        """
+        PATTERN = r"\d{6}-\d{6}_?.*"
+
+        # Create model directory path (where the to-be-loaded data is expected)
+        out_dir = os.path.expanduser(str(out_dir))
+        model_dir = os.path.join(out_dir, self.model_name)
+
+        if not os.path.isdir(model_dir):
+            # Just create it, there's no harm in that ...
+            os.makedirs(model_dir)
+
+        # Distinguish different types of values for the run_dir argument
+        if run_dir is None:
+            log.info("Trying to identify the most recent run directory ...")
+
+            # Create list of _directories_ matching timestamp pattern
+            dirs = [
+                d
+                for d in sorted(os.listdir(model_dir))
+                if os.path.isdir(os.path.join(model_dir, d))
+                and re.match(PATTERN, os.path.basename(d))
+            ]
+
+            if not dirs:
+                raise FileNotFoundError(
+                    "Could not find a run directory to load for evaluation "
+                    f"of model '{self.model_name}'!\n"
+                    f"Model output directory:  {model_dir}\n\n"
+                    "Did you perform a simulation yet? If you are using this "
+                    "model only for evaluation, place your data in a new "
+                    "subdirectory in that folder (using timestamp as name)."
+                )
+
+            # Use the latest to choose the run directory
+            run_dir = os.path.join(model_dir, dirs[-1])
+
+        elif isinstance(run_dir, str):
+            run_dir = os.path.expanduser(run_dir)
+
+            # Distinguish absolute and relative paths and those starting with
+            # a timestamp-like pattern, which can be looked up from the model
+            # directory.
+            if os.path.isabs(run_dir):
+                log.debug("Received absolute run_dir, using that one.")
+
+            elif re.match(PATTERN, run_dir):
+                # Looks like a relative path within the model directory
+                log.info(
+                    "Received timestamp '%s' for run_dir; trying to find "
+                    "one within the model output directory ...",
+                    run_dir,
+                )
+                run_dir = os.path.join(model_dir, run_dir)
+
+            else:
+                # Is not an absolute path and not a timestamp; thus a path
+                # relative to the current working directory
+                run_dir = os.path.join(os.getcwd(), run_dir)
+
+        else:
+            raise TypeError(
+                "Argument run_dir needs to be None, an absolute "
+                "path, or a path relative to the model output "
+                f"directory, but it was: {run_dir}"
+            )
+
+        # Check if the directory exists
+        if not os.path.isdir(run_dir):
+            raise OSError(f"No run directory found at '{run_dir}'!")
+
+        # Store the path and associate the subdirectories
+        self.dirs["run"] = run_dir
+
+        for subdir in ("config", "eval", "data"):
+            subdir_path = os.path.join(run_dir, subdir)
+            if not os.path.exists(subdir_path):
+                raise FileNotFoundError(
+                    "Missing '%s' subdirectory in `run_dir` %s!",
+                    subdir,
+                    run_dir,
+                )
+            self.dirs[subdir] = subdir_path
+
     def _setup_pm(self, **update_kwargs) -> PlotManager:
         """Helper function to setup a PlotManager instance"""
         pm_kwargs = copy.deepcopy(self.meta_cfg["plot_manager"])
@@ -1043,7 +1142,7 @@ class Multiverse:
         .. note::
 
             This method is separated from the regular backup method
-            :py:meth:`._perform_backup` because the
+            :py:meth:`Multiverse._perform_backup` because the
             parameter space that is *used* during a simulation run may be a
             lower-dimensional version of the one the Multiverse was
             initialized with.
@@ -1202,6 +1301,143 @@ class Multiverse:
         log.debug("Resolved cluster parameters:\n%s", pformat(resolved))
         return resolved
 
+    def _setup_universe(
+        self,
+        *,
+        worker_kwargs: dict,
+        model_name: str,
+        model_executable: str,
+        uni_cfg: dict,
+        uni_basename: str,
+    ) -> dict:
+        """Setup function for individual universes.
+
+        This is called before the worker process starts working on the
+        universe.
+
+        Args:
+            worker_kwargs (dict): the current status of the worker_kwargs
+                dictionary; is always passed to a task setup function
+            model_name (str): The name of the model
+            model_executable (str): path to the binary to execute
+            uni_cfg (dict): the configuration to create a yml file from
+                which is then needed by the model
+            uni_basename (str): Basename of the universe to use for folder
+                creation, i.e.: zero-padded universe number, e.g. uni0042
+
+        Returns:
+            dict: kwargs for the process to be run when task is grabbed by
+                Worker.
+        """
+        # Generate paths
+        uni_dir = os.path.join(self.dirs["data"], uni_basename)
+        uni_cfg_path = os.path.join(uni_dir, "config.yml")
+
+        # Create universe directory path using the basename
+        self._setup_universe_dir(uni_dir, uni_basename=uni_basename)
+        uni_cfg = self._setup_universe_config(
+            uni_cfg=uni_cfg, uni_dir=uni_dir, uni_cfg_path=uni_cfg_path
+        )
+        wk = self._setup_universe_worker_kwargs(
+            model_executable=model_executable,
+            uni_dir=uni_dir,
+            uni_cfg_path=uni_cfg_path,
+            uni_cfg=uni_cfg,
+            **worker_kwargs,
+        )
+        return wk
+
+    def _setup_universe_dir(self, uni_dir: str, *, uni_basename: str) -> None:
+        """Determines the universe directory and, if needed, creates it.
+
+        This is invoked from :py:meth:`~._setup_universe` and is carried out
+        directly before work on that universe starts.
+
+        Args:
+            uni_basename (str): The basename of the universe to create the run
+                directory for.
+        """
+        os.mkdir(uni_dir)
+        log.debug("Created universe directory:\n  %s", uni_dir)
+
+    def _setup_universe_config(
+        self,
+        *,
+        uni_cfg: dict,
+        uni_dir: str,
+        uni_cfg_path: str,
+    ) -> dict:
+        """Sets up the universe configuration and writes it to a file.
+
+        This is invoked from :py:meth:`~._setup_universe` and is carried out
+        directly before work on that universe starts.
+
+        Args:
+            uni_cfg (dict): The given universe configuration
+            uni_dir (str): The universe directory, added to the configuration
+            uni_cfg_path (str): Where to store the uni configuration at
+
+        Returns:
+            dict: The (potentially updated) universe configuration
+        """
+        # Store output directory and determine a path to the output hdf5 file
+        uni_cfg["output_dir"] = uni_dir
+        uni_cfg["output_path"] = os.path.join(uni_dir, "data.h5")
+
+        # Parse the potentially string-valued number of steps values, and
+        # other step-like arguments. Raises an error if they are negative.
+        uni_cfg["num_steps"] = parse_num_steps(uni_cfg["num_steps"])
+        uni_cfg["write_every"] = parse_num_steps(uni_cfg["write_every"])
+        uni_cfg["write_start"] = parse_num_steps(uni_cfg["write_start"])
+
+        # Write the universe config to file
+        write_yml(uni_cfg, path=uni_cfg_path)
+
+        return uni_cfg
+
+    def _setup_universe_worker_kwargs(
+        self,
+        *,
+        model_executable: str,
+        uni_cfg_path: str,
+        uni_cfg: dict,
+        uni_dir: str,
+        save_streams: bool = False,
+        **worker_kwargs,
+    ) -> dict:
+        """Assembles worker kwargs for a specific universe.
+
+        This is invoked from :py:meth:`~._setup_universe` and is carried out
+        directly before work on that universe starts.
+
+        Returns:
+            dict: the combined worker kwargs, including ``args`` for running
+                the model executable.
+        """
+        # Build args tuple for task assignment; only need to pass the path
+        # to the configuration file
+        args = (model_executable, uni_cfg_path)
+
+        # Assemble the worker_kwargs dict
+        wk = dict(
+            args=args,
+            read_stdout=True,
+            stdout_parser="yaml_dict",
+            save_streams=save_streams,
+            **worker_kwargs,
+        )
+
+        # Determine where to save the streams to, if enabled
+        if save_streams:
+            wk["save_streams_to"] = os.path.join(uni_dir, "{name:}.log")
+
+        return wk
+
+    def _get_TaskCls(self, *, perform_task: bool = True, **_) -> type:
+        if perform_task:
+            return WorkerTask
+        return NoWorkTask
+
     def _add_sim_task(
         self, *, uni_id_str: str, uni_cfg: dict, is_sweep: bool
     ) -> None:
@@ -1228,77 +1464,6 @@ class Multiverse:
         Raises:
             RuntimeError: If adding the simulation task failed
         """
-
-        def setup_universe(
-            *,
-            worker_kwargs: dict,
-            model_name: str,
-            model_executable: str,
-            uni_cfg: dict,
-            uni_basename: str,
-        ) -> dict:
-            """The callable that will setup everything needed for a universe.
-
-            This is called before the worker process starts working on the
-            universe.
-
-            Args:
-                worker_kwargs (dict): the current status of the worker_kwargs
-                    dictionary; is always passed to a task setup function
-                model_name (str): The name of the model
-                model_executable (str): path to the binary to execute
-                uni_cfg (dict): the configuration to create a yml file from
-                    which is then needed by the model
-                uni_basename (str): Basename of the universe to use for folder
-                    creation, i.e.: zero-padded universe number, e.g. uni0042
-
-            Returns:
-                dict: kwargs for the process to be run when task is grabbed by
-                    Worker.
-            """
-            # Create universe directory path using the basename
-            uni_dir = os.path.join(self.dirs["data"], uni_basename)
-
-            # Now create the folder
-            os.mkdir(uni_dir)
-            log.debug("Created universe directory:\n  %s", uni_dir)
-
-            # Store it in the configuration
-            uni_cfg["output_dir"] = uni_dir
-
-            # Generate a path to the output hdf5 file and add it to the dict
-            output_path = os.path.join(uni_dir, "data.h5")
-            uni_cfg["output_path"] = output_path
-
-            # Parse the potentially string-valued number of steps values, and
-            # other step-like arguments. Raises an error if they are negative.
-            uni_cfg["num_steps"] = parse_num_steps(uni_cfg["num_steps"])
-            uni_cfg["write_every"] = parse_num_steps(uni_cfg["write_every"])
-            uni_cfg["write_start"] = parse_num_steps(uni_cfg["write_start"])
-
-            # write essential part of config to file:
-            uni_cfg_path = os.path.join(uni_dir, "config.yml")
-            write_yml(uni_cfg, path=uni_cfg_path)
-
-            # Build args tuple for task assignment; only need to pass the path
-            # to the configuration file ...
-            args = (model_executable, uni_cfg_path)
-
-            # Generate a new worker_kwargs dict, carrying over the given ones
-            wk = dict(
-                args=args,
-                read_stdout=True,
-                stdout_parser="yaml_dict",
-                **(worker_kwargs if worker_kwargs else {}),
-            )
-
-            # Determine whether to save the streams (True by default)
-            if wk.get("save_streams", True):
-                # Generate a path and store in the worker kwargs
-                wk["save_streams_to"] = os.path.join(uni_dir, "{name:}.log")
-
-            return wk
-
         # Generate the universe basename, which will be used for the folder
         # and the task name
         uni_basename = f"uni{uni_id_str}"
@@ -1320,11 +1485,13 @@ class Multiverse:
             wk["forward_kwargs"] = dict(forward_raw=True)
 
         # Try to add a task to the worker manager
+        TaskCls = self._get_TaskCls(**wk)
         try:
             self.wm.add_task(
+                TaskCls=TaskCls,
                 name=uni_basename,
                 priority=None,
-                setup_func=setup_universe,
+                setup_func=self._setup_universe,
                 setup_kwargs=setup_kwargs,
                 worker_kwargs=wk,
             )
@@ -1332,7 +1499,7 @@ class Multiverse:
         except RuntimeError as err:
             # Task list was locked, probably because there already was a run
             raise RuntimeError(
-                "Could not add simulation task for universe '{uni_basename}'! "
+                f"Could not add simulation task for universe '{uni_basename}'! "
                 "Did you already perform a run with this Multiverse?"
             ) from err
 
@@ -1679,7 +1846,7 @@ class FrozenMultiverse(Multiverse):
             )
 
         # Generate the path to the run directory that is to be loaded
-        self._create_run_dir(**self.meta_cfg["paths"], run_dir=run_dir)
+        self._get_run_dir(**self.meta_cfg["paths"], run_dir=run_dir)
         log.note("Run directory:\n  %s", self.dirs["run"])
 
         # Create a data manager
@@ -1696,97 +1863,331 @@ class FrozenMultiverse(Multiverse):
 
         log.progress("Initialized FrozenMultiverse.\n")
 
-    def _create_run_dir(self, *, out_dir: str, run_dir: str, **__):
-        """Helper function to find the run directory from arguments given
-        to :py:meth:`~utopya.multiverse.Multiverse.__init__`.
+    def _create_run_dir(self, *_, **__):
+        """Overload of parent method, for safety: we should not create a new
+        run directory."""
+        raise AttributeError(
+            f"`_create_run_dir` method should not be called from {type(self)}"
+        )
 
-        Overwrites the method from the parent Multiverse class, because the
-        FrozenMultiverse does not require setting up a *new* run directory but
-        should instead identify the existing one and create an appropriate
-        output directory.
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
+
+class DistributedMultiverse(FrozenMultiverse):
+    """A distributed Multiverse is like a Multiverse, but initialized from an
+    existing meta-configuration.
+
+    It re-creates the WorkerManager attributes from that configuration and
+    is not allowed to change the meta-configuration that was loaded.
+    """
+
+    def __init__(
+        self,
+        *,
+        run_dir: str,
+        model_name: str = None,
+        info_bundle: ModelInfoBundle = None,
+    ):
+        """Initializes a DistributedMultiverse from a model name and the name
+        of an existing run directory.
 
         Args:
-            out_dir (str): The output directory
-            run_dir (str): The run directory to use
-            ``**__``: ignored
-
-        Raises:
-            IOError: No directory found to use as run directory
-            TypeError: When run_dir was not a string
+            run_dir (str, optional): The run directory to load. Can be a path
+                relative to the current working directory, an absolute path,
+                or the timestamp of the run directory. If not given, will use
+                the most recent timestamp.
+            model_name (str): The name of the model to load. From this, the
+                model output directory is determined and the run_dir will be
+                seen as relative to that directory.
+            info_bundle (ModelInfoBundle, optional): The model information
+                bundle that includes information about the binary path etc.
+                If not given, will attempt to read it from the model registry.
         """
-        PATTERN = r"\d{6}-\d{6}_?.*"
+        # First things first: get the info bundle
+        if info_bundle is None:
+            info_bundle = get_info_bundle(
+                model_name=model_name, info_bundle=info_bundle
+            )
+        self._info_bundle = info_bundle
 
-        # Create model directory path (where the to-be-loaded data is expected)
-        out_dir = os.path.expanduser(str(out_dir))
-        model_dir = os.path.join(out_dir, self.model_name)
+        log.progress(
+            "Initializing DistributedMultiverse for '%s' model ...",
+            self.model_name,
+        )
 
-        if not os.path.isdir(model_dir):
-            # Just create it, there's no harm in that ...
-            os.makedirs(model_dir)
+        # Initialize property-managed attributes
+        self._dirs = dict()
+        self._model_executable = None
+        self._tmpdir = None
 
-        # Distinguish different types of values for the run_dir argument
-        if run_dir is None:
-            log.info("Trying to identify the most recent run directory ...")
+        self._clear_existing_output = False
 
-            # Create list of _directories_ matching timestamp pattern
-            dirs = [
-                d
-                for d in sorted(os.listdir(model_dir))
-                if os.path.isdir(os.path.join(model_dir, d))
-                and re.match(PATTERN, os.path.basename(d))
-            ]
+        # Generate the path to the run directory that is to be loaded
+        # TODO Extract out dir from available infos
+        self._get_run_dir(out_dir=None, run_dir=run_dir)
+        log.note("Run directory:\n  %s", self.dirs["run"])
 
-            if not dirs:
-                raise FileNotFoundError(
-                    "Could not find a run directory to load for evaluation "
-                    f"of model '{self.model_name}'!\n"
-                    f"Model output directory:  {model_dir}\n\n"
-                    "Did you perform a simulation yet? If you are using this "
-                    "model only for evaluation, place your data in a new "
-                    "subdirectory in that folder (using timestamp as name)."
-                )
-
-            # Use the latest to choose the run directory
-            run_dir = os.path.join(model_dir, dirs[-1])
-
-        elif isinstance(run_dir, str):
-            run_dir = os.path.expanduser(run_dir)
-
-            # Distinguish absolute and relative paths and those starting with
-            # a timestamp-like pattern, which can be looked up from the model
-            # directory.
-            if os.path.isabs(run_dir):
-                log.debug("Received absolute run_dir, using that one.")
-
-            elif re.match(PATTERN, run_dir):
-                # Looks like a relative path within the model directory
-                log.info(
-                    "Received timestamp '%s' for run_dir; trying to find "
-                    "one within the model output directory ...",
-                    run_dir,
-                )
-                run_dir = os.path.join(model_dir, run_dir)
-
-            else:
-                # Is not an absolute path and not a timestamp; thus a path
-                # relative to the current working directory
-                run_dir = os.path.join(os.getcwd(), run_dir)
-
-        else:
-            raise TypeError(
-                "Argument run_dir needs to be None, an absolute "
-                "path, or a path relative to the model output "
-                f"directory, but it was: {run_dir}"
+        # Load the meta config
+        meta_cfg_path = os.path.join(run_dir, "config", "meta_cfg.yml")
+        if not os.path.isfile(meta_cfg_path):
+            raise ValueError(
+                "No meta config found in run dir {} at {}!",
+                run_dir,
+                meta_cfg_path,
             )
 
-        # Check if the directory exists
-        if not os.path.isdir(run_dir):
-            raise OSError(f"No run directory found at '{run_dir}'!")
+        log.debug("Loading from meta config at %s ...", meta_cfg_path)
 
-        # Store the path and associate the subdirectories
-        self.dirs["run"] = run_dir
+        # Only keep selected entries from the meta configuration. The rest is
+        # not needed and is deleted in order to not confuse the user with
+        # potentially varying versions of the meta config.
+        mcfg = load_yml(meta_cfg_path)
+        self._meta_cfg = {
+            k: v
+            for k, v in mcfg.items()
+            if k
+            not in (
+                "data_manager",
+                "plot_manager",
+                "cluster_mode",
+                "cluster_params",
+            )
+        }
+        self._meta_cfg["cluster_mode"] = False
+        log.info("Restored meta-configuration.")
 
-        for subdir in ("config", "eval", "data"):
-            subdir_path = os.path.join(run_dir, subdir)
-            self.dirs[subdir] = subdir_path
-            # TODO Consider checking if it exists?
+        log.remark("  Debug level:  %d", self.debug_level)
+        self._apply_debug_level()
+
+        # Prepare the executable
+        self._prepare_executable(**self.meta_cfg["executable_control"])
+
+        self._wm = WorkerManager(**self.meta_cfg["worker_manager"])
+        self._reporter = WorkerManagerReporter(
+            self.wm,
+            mv=self,
+            report_dir=self.dirs["run"],
+            **self.meta_cfg["reporter"],
+        )
+
+        log.progress("Initialized DistributedMultiverse.\n")
+
+    def run_selection(
+        self,
+        *,
+        uni_id_strs: List[str],
+        num_workers=None,
+        clear_existing_output: bool = False,
+    ):
+        """Starts a simulation run for specified universes.
+
+        Specifically, this method adds simulation tasks to the associated
+        WorkerManager, locks its task list, and then invokes the
+        :py:meth:`~utopya.workermanager.WorkerManager.start_working` method
+        which performs all the simulation tasks.
+
+        .. note::
+
+            As this method locks the task list of the
+            :py:class:`~utopya.workermanager.WorkerManager`, no further tasks
+            can be added henceforth. This means, that each Multiverse instance
+            can only perform a single simulation run.
+
+        Args:
+            uni_id_strs(List[str]): The list of universe ID strings to run,
+                e.g. '00154'. Note that leading zeros are required.
+            num_workers (int, optional): Specify the number of workers
+                to use, overwriting the setting from the meta-configuration.
+            clear_existing_output (bool, optional): Whether to remove
+                existing files from the universe outpout directories.
+                Only the configuration file will not be deleted.
+        """
+        log.info(
+            "Preparing for simulation run of %d universe(s) (%s) ...",
+            len(uni_id_strs),
+            uni_id_strs,
+        )
+
+        # Store parameter, used during universe dir setup
+        self._clear_existing_output = clear_existing_output
+
+        # Generate all possible parameter space combinations
+        pspace = self.meta_cfg["parameter_space"]
+        psp_iter = pspace.iterator(with_info="state_no_str")
+
+        uni_cfgs = dict()
+        for uni_cfg, uni_id_str in psp_iter:
+            uni_cfgs[uni_id_str] = uni_cfg
+
+        # Now, add the respective tasks, if the selection matches
+        is_sweep = len(uni_id_strs) > 1
+        for i, uni_id_str in enumerate(uni_id_strs):
+            if uni_id_str.startswith("uni"):
+                uni_id_str = uni_id_str[3:]
+
+            uni_cfg = uni_cfgs.get(uni_id_str, None)
+            if uni_cfg is None:
+                raise ValueError(f"No universe '{uni_id_str}' found!")
+
+            self._add_sim_task(
+                uni_id_str=uni_id_str,
+                uni_cfg=uni_cfg,
+                is_sweep=is_sweep,
+            )
+
+        self.wm.tasks.lock()
+        if num_workers is not None:
+            self.wm.num_workers = num_workers
+
+        # Tell the WorkerManager to start working (is a blocking call)
+        self.wm.start_working(**self.meta_cfg["run_kwargs"])
+
+        # Done! :)
+        log.success("Finished simulation run. Wohoo. :)\n")
+
+    def run(
+        self,
+        *,
+        num_workers=None,
+        clear_existing_output: bool = False,
+        skip_existing_output: bool = False,
+    ):
+        """Starts a simulation run for all universes.
+
+        Overload of parent method that allows for universes to be skipped if
+        output already exists from a previous run.
+
+        Args:
+            num_workers (int, optional): Specify the number of workers
+                available.
+            clear_existing_output (bool, optional): Whether to remove
+                files in the output directory of the universes other than the
+                configuration file.
+            skip_existing_output (bool, optional): Whether to skip
+                universes if output already exists.
+        """
+        ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
+
+        log.info("Preparing for repeated simulation run ...")
+
+        # Store parameter, used during universe dir setup
+        self._clear_existing_output = clear_existing_output
+
+        # Generate all possible parameter space combinations
+        pspace = self.meta_cfg["parameter_space"]
+        psp_iter = pspace.iterator(with_info="state_no_str")
+
+        # Gather uni configs
+        # TODO Rework this: skip-existing decision should be taken later!
+        uni_cfgs = dict()
+        for uni_cfg, uni_id_str in psp_iter:
+            if skip_existing_output:
+                output_exists = False
+                uni_basename = f"uni{uni_id_str}"
+                uni_dir = os.path.join(self.dirs["data"], uni_basename)
+
+                # Check existence of path and its content
+                if os.path.isdir(uni_dir):
+                    for file in os.listdir(uni_dir):
+                        if file not in ALLOWED_FILES:
+                            output_exists = True
+                            break
+
+                # only add uni to tasks if no output exists
+                if not output_exists:
+                    uni_cfgs[uni_id_str] = uni_cfg
+
+            else:
+                uni_cfgs[uni_id_str] = uni_cfg
+
+        log.info("  Found %d universe(s) to work on.", len(uni_cfgs))
+
+        # Now, add the respective tasks, if the selection matches
+        is_sweep = len(uni_cfgs) > 1
+        for uni_id_str, uni_cfg in uni_cfgs.items():
+            self._add_sim_task(
+                uni_id_str=uni_id_str,
+                uni_cfg=uni_cfg,
+                is_sweep=is_sweep,
+            )
+
+        self.wm.tasks.lock()
+        if num_workers is not None:
+            self.wm.num_workers = num_workers
+
+        # Tell the WorkerManager to start working (is a blocking call)
+        self.wm.start_working(**self.meta_cfg["run_kwargs"])
+
+        # Done! :)
+        log.success("Finished simulation run. Wohoo. :)\n")
+
+    def _prepare_executable(self, *args, **kwargs) -> None:
+        if self.meta_cfg["backups"]["backup_executable"]:
+            execpath = os.path.join(
+                self.dirs["run"], "backup", self.model_name
+            )
+            if not os.path.isfile(execpath):
+                raise FileNotFoundError(f"No executable found at {execpath}!")
+            log.remark("Restored executable at:\n  %s", execpath)
+
+            self._model_executable = execpath
+
+        return super()._prepare_executable(*args, **kwargs)
+
+    def _perform_pspace_backup(*args, **kwargs):
+        log.debug(
+            "  Skipping parameter space backup (was already read from backup)."
+        )
+
+    # .. Overloads for universe setup .........................................
+
+    def _get_TaskCls(self, **_) -> type:
+        return WorkerTask
+
+    def _setup_universe_dir(self, uni_dir: str, *, uni_basename: str):
+        """Overload of parent method that allows for universe directories to
+        already exist."""
+        ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
+
+        if not os.path.isdir(uni_dir):
+            # Easy, set up from scratch:
+            super()._setup_universe_dir(
+                uni_dir=uni_dir, uni_basename=uni_basename
+            )
+            return
+
+        # else: already exists.
+        # Allow to remove existing output from the directory
+        if self._clear_existing_output and len(os.listdir(uni_dir)) > 1:
+            for file in os.listdir(uni_dir):
+                if file in ALLOWED_FILES:
+                    continue
+                os.remove(os.path.join(uni_dir, file))
+
+        # Check that the universe directory is empty
+        existing_files = os.listdir(uni_dir)
+        if existing_files and sorted(existing_files) != list(ALLOWED_FILES):
+            raise RuntimeError(
+                f"Output directory of universe '{uni_basename}' contains "
+                f"files other than ({', '.join(ALLOWED_FILES)}). "
+                "Did you already perform a run on this universe? "
+                f"Found the following files:  {', '.join(existing_files)}"
+            )
+
+    def _setup_universe_config(self, *, uni_cfg_path: str, **kwargs) -> dict:
+        """Overload of parent method that checks if a universe config already
+        exists and, if so, loads that one instead of storing a new one.
+        """
+        if os.path.isfile(uni_cfg_path):
+            # Can restore it
+            log.debug("Restoring universe config from:\n  %s.", uni_cfg_path)
+            uni_cfg = load_yml(uni_cfg_path)
+        else:
+            # Need to create it
+            uni_cfg = super()._setup_universe_config(
+                uni_cfg_path=uni_cfg_path, **kwargs
+            )
+
+        return uni_cfg

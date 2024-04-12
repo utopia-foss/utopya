@@ -47,6 +47,16 @@ from ._utils import Echo
     ),
 )
 @click.option(
+    "--no-work",
+    "worker_perform_task",
+    default=True,
+    is_flag=True,
+    help=(
+        "Whether to call WorkerTask or NoWorkTask. NoWorkerTask only creates "
+        "configurations, but does not spawn a worker. No-work implies no-eval."
+    ),
+)
+@click.option(
     "--note",
     default=None,
     type=str,
