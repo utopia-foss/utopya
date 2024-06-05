@@ -412,6 +412,10 @@ class AgentCollection(PathCollection):
         self.tails.set_segments(self._build_line_segments())
         return self.tails
 
+    def set(self, *args, **kwargs):
+        """Sets AgentCollection artist properties"""
+        return super().set(*args, **kwargs)
+
     def set_markersizes(self, sizes):
         """Sets the marker sizes, taking into account the size scaling.
 
