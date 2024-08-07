@@ -993,7 +993,8 @@ def draw_agents(
         """Retrieve and aggregate x and y position data"""
         xpos = _get_data(d, x)
         ypos = _get_data(d, y)
-        return np.stack([xpos, ypos], -1)
+        stacked = np.stack([xpos, ypos], -1)
+        return stacked
         # equivalent to np.dstack([xpos, ypos])[0], but that one is slower
 
     # .........................................................................
@@ -1273,7 +1274,9 @@ def abmplot(
                     f"  data:\n{d}"
                 ) from exc
 
-        frames_iter = None if frames is None else d.groupby(frames)
+        frames_iter = None
+        if frames is not None:
+            frames_iter = d.groupby(frames, squeeze=False)
 
         # ... and store it all to the layer specs
         lyr["frames"] = frames
@@ -1452,7 +1455,7 @@ def abmplot(
     # .. Define single frame and animation update functions ...................
     # For simplicity, these use objects from the outer scope
 
-    def plot_frame(frame_data: list, *, frame_no: int):
+    def plot_frame(frame_data: tuple, *, frame_no: int):
         """Plots a single frame from the given frame data"""
         frame_coords = parse_frame_coords(frame_data, names=layer_names)
         set_suptitle(
@@ -1476,6 +1479,12 @@ def abmplot(
                 # always draw, using the data from the iterator
                 _, xy = coords_and_data
 
+            # May need to squeeze out size-1 dimensions that are created from
+            # the .groupby iteration
+            if lyr_spec["frames"]:
+                xy = xy.squeeze(dim=lyr_spec["frames"], drop=True)
+
+            # Now draw
             lyr_spec["coll"] = draw_agents(
                 xy,
                 ax=hlpr.ax,

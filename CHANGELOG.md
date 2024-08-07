@@ -8,6 +8,9 @@
   Also sets the `eval` directory permissions such that other users of the same group can evaluate simulations without requiring manual permission changes.
 - !74 implements `utopya run-existing`, an *experimental* feature that allows finishing or re-running a previously-created simulation run.
 
+### Bug fixes
+- !78 fixes a regression in `.plot.abm` caused by changed `.groupby` operation behaviour in xarray.
+
 ### Removals and deprecations
 - !72 removes the deprecated CA `ca.state` plot and the `draw_cbar` and `limits` arguments of the `.plot.ca`.
 
