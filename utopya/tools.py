@@ -15,6 +15,7 @@ from dantro.tools import (
     TTY_COLS,
     center_in_line,
     fill_line,
+    format_bytesize,
     format_time,
     is_iterable,
     make_columns,
@@ -296,3 +297,18 @@ def parse_num_steps(
         )
 
     return N
+
+
+def get_physical_memory_bytes() -> int:
+    """Returns number of bytes of physical system memory"""
+    return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+
+
+def get_physical_memory_str(*, precision: int = 0, **format_kwargs) -> str:
+    """Returns physical system memory in a string representation; if this
+    fails for some reason, returns an empty string."""
+    try:
+        nbytes = get_physical_memory_bytes()
+    except:
+        return ""
+    return format_bytesize(nbytes, precision=precision, **format_kwargs)
