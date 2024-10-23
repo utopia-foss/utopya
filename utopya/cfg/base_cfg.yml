@@ -137,8 +137,11 @@ reporter:
         file:
           path: _report.txt
       min_report_intv: 10             # don't update this one too often
-      min_num: 4                      # min. number of universes for statistics
+      show_host_info: true            # basic information about host machine
+      show_exit_codes: true           # exit code overview
+      min_num: 2                      # min. number of universes for statistics
       show_individual_runtimes: true  # for large number of universes, disable
+      max_num_to_show: 2048           # max. number of individual times to show
       task_label_singular: universe
       task_label_plural: universes
 

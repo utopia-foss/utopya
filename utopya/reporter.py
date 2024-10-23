@@ -2,10 +2,12 @@
 progress or result of operations within utopya.
 """
 
+import copy
 import logging
 import os
+import platform
 import sys
-from collections import Counter, OrderedDict, deque
+from collections import Counter, OrderedDict, defaultdict, deque
 from datetime import datetime as dt
 from datetime import timedelta
 from functools import partial
@@ -15,7 +17,7 @@ from typing import Callable, Dict, List, Union
 import numpy as np
 import paramspace as psp
 
-from .tools import TTY_COLS, format_time
+from .tools import TTY_COLS, format_time, get_physical_memory_str
 
 log = logging.getLogger(__name__)
 
@@ -667,7 +669,17 @@ class WorkerManagerReporter(Reporter):
         self.mv = mv
         self.runtimes = []
         self.exit_codes = Counter()
+        self.tasks_by_exit_codes = defaultdict(list)
         self._eta_info = dict()
+        self._host_info = dict(
+            host_name=platform.node(),
+            cpu_count=os.cpu_count(),
+            memory=get_physical_memory_str(),
+            architecture=platform.machine(),
+            processor=platform.processor(),
+            platform=platform.system(),
+            release=platform.release(),
+        )
 
         # Store the WorkerManager and associate it with this reporter
         self._wm = wm
@@ -767,31 +779,36 @@ class WorkerManagerReporter(Reporter):
         if "run_time" in task.profiling:
             self.runtimes.append(task.profiling["run_time"])
 
-        self.exit_codes[task.worker_status] += 1
+        self.exit_codes[int(task.worker_status)] += 1
+        self.tasks_by_exit_codes[int(task.worker_status)].append(task.name)
 
-    def calc_runtime_statistics(
-        self, min_num: int = 10
-    ) -> Union[OrderedDict, None]:
+    def calc_runtime_statistics(self, min_num: int = 10) -> OrderedDict:
         """Calculates the current runtime statistics.
 
         Args:
             min_num (int, optional): Minimum number of runtimes that need to
-                be registered for these statistics to actually be computed.
-                If below this number, will return None.
+                be registered for advanced statistics to actually be computed.
+                If below this number, not all entries will exist.
 
         Returns:
-            Union[OrderedDict, None]: The runtime statistics or None, if there
-                were too few entries.
+            OrderedDict: The runtime statistics. If there are no runtimes yet,
+                only the ``total (wall)`` entry will be there.
+                If there are too few
         """
-        if not self.runtimes or len(self.runtimes) < min_num:
-            return None
+        d = OrderedDict()
+        if self.wm_elapsed is not None:
+            d["total (wall)"] = self.wm_elapsed.total_seconds()
+
+        if not self.runtimes:
+            return d
 
         # Throw out Nones and convert to np.array
         rts = np.array([rt for rt in self.runtimes if rt is not None])
-
-        d = OrderedDict()
         d["total (CPU)"] = np.sum(rts)
-        d["total (wall)"] = self.wm_elapsed.total_seconds()
+
+        if len(rts) < min_num:
+            return d
+
         d["mean"] = np.mean(rts)
         d[" (last 50%)"] = np.mean(rts[-len(rts) // 2 :])
         d[" (last 20%)"] = np.mean(rts[-len(rts) // 5 :])
@@ -1234,9 +1251,12 @@ class WorkerManagerReporter(Reporter):
         self,
         *,
         fstr: str = "  {k:<{w:}s}  {v:}",
-        min_num: int = 4,
+        min_num: int = 2,
         report_no: int = None,
+        show_host_info: bool = True,
+        show_exit_codes: bool = True,
         show_individual_runtimes: bool = True,
+        max_num_to_show: int = 2048,
         task_label_singular: str = "task",
         task_label_plural: str = "tasks",
     ) -> str:
@@ -1250,48 +1270,63 @@ class WorkerManagerReporter(Reporter):
                 with ``v`` being a non-numeric value. Also, ``w`` can be used
                 to have a key column of constant width.
             min_num (int, optional): The minimum number of universes needed to
-                calculate runtime statistics.
+                calculate extended runtime statistics.
             report_no (int, optional): A counter variable passed by the
                 :py:class:`~utopya.reporter.ReportFormat` call, indicating
                 how often this parser was called so far.
+            show_host_info (bool, optional): Whether to show basic information
+                about the host machine
+            show_exit_codes (bool, optional): Whether to show a table of exit
+                codes of the finished simulations
             show_individual_runtimes (bool, optional): Whether to report
                 individual universe runtimes; default: True. This should be
                 disabled if there are a huge number of universes.
+            max_num_to_show (int, optional): Maximum number of tasks to list
+                in the report
             task_label_singular (str, optional): The label to use in the report
                 when referring to a single task.
             task_label_plural (str, optional): The label to use in the report
                 when referring to multiple tasks.
 
-        Returns:
+        No Longer Returned:
             str: The multi-line simulation report string
         """
+        from .workermanager import STOPCOND_EXIT_CODES
+
         # List that contains the parts that will be written
         parts = []
 
-        # Calculate the runtime statistics and add them to the parts
-        rtstats = self.calc_runtime_statistics(min_num=min_num)
+        # Host information
+        if show_host_info:
+            parts += ["Host Information"]
+            parts += ["----------------"]
+            parts += [""]
+            parts += [
+                fstr.format(k=k.replace("_", " "), v=v, w=12)
+                for k, v in self._host_info.items()
+            ]
+            parts += [""]
+            parts += [""]
 
-        if rtstats is not None:
-            parts += ["Runtime Statistics"]
-            parts += ["------------------"]
-            parts += [""]
-            parts += [
-                "The statistics below are calculated from all "
-                f"individual {task_label_singular} run times."
-            ]
-            parts += [""]
-            parts += [
-                "  # {}:  {} / {}".format(
-                    task_label_plural, len(self.runtimes), len(self.wm.tasks)
-                )
-            ]
-            parts += [""]
-            parts += [
-                fstr.format(k=k, v=format_time(v, ms_precision=1), w=12)
-                for k, v in rtstats.items()
-            ]
-            parts += [""]
-            parts += [""]
+        # Calculate the runtime statistics and add them to the parts
+        parts += ["Runtime Statistics"]
+        parts += ["------------------"]
+        parts += [""]
+        parts += [
+            "  # {}:  {} / {}".format(
+                task_label_plural, len(self.runtimes), len(self.wm.tasks)
+            )
+        ]
+        parts += [""]
+
+        rtstats = self.calc_runtime_statistics(min_num=min_num)
+        parts += [
+            fstr.format(k=k, v=format_time(v, ms_precision=1), w=12)
+            for k, v in rtstats.items()
+        ]
+
+        parts += [""]
+        parts += [""]
 
         # In cluster mode, add more information
         if self.wm.cluster_mode:
@@ -1301,7 +1336,7 @@ class WorkerManagerReporter(Reporter):
             parts += ["------------------------"]
             parts += [""]
             parts += [
-                fstr.format(k=k, v=_rcps[k], w=12)
+                fstr.format(k=k.replace("_", " "), v=_rcps[k], w=12)
                 for k in (
                     "node_name",
                     "node_index",
@@ -1318,6 +1353,67 @@ class WorkerManagerReporter(Reporter):
             parts += [""]
             parts += [""]
 
+        # Exit Codes
+        if show_exit_codes:
+            parts += ["Exit Codes"]
+            parts += ["----------"]
+
+            tasks_by_exit_codes = copy.deepcopy(self.tasks_by_exit_codes)
+            n_tasks_exited = sum(len(t) for t in tasks_by_exit_codes.values())
+            n_tasks_total = len(self.wm.tasks)
+            _w = max(
+                [1] + [len(str(len(t))) for t in tasks_by_exit_codes.values()]
+            )
+            task_label = (
+                task_label_singular
+                if n_tasks_exited == 1
+                else task_label_plural
+            )
+
+            n_success = len(self.tasks_by_exit_codes.get(0, []))
+
+            parts += [""]
+            parts += [
+                fstr.format(
+                    k="success",
+                    v=(
+                        f"{n_success:>{_w}d} / {n_tasks_exited} finished "
+                        f"{task_label},  {n_tasks_total - n_tasks_exited} left"
+                    ),
+                    w=12,
+                )
+            ]
+            for exit_code, task_names in sorted(
+                self.tasks_by_exit_codes.items()
+            ):
+                if exit_code == 0:
+                    continue
+
+                parts += [""]
+                _desc = (
+                    "stopped" if exit_code in STOPCOND_EXIT_CODES else "failed"
+                )
+
+                # else: failed or stopped
+                parts += [
+                    fstr.format(
+                        k=f"code {exit_code:d}",
+                        v=f"{len(task_names):>{_w}d} / {n_tasks_exited} {_desc}",
+                        w=12,
+                    )
+                ]
+                if len(task_names) <= max_num_to_show:
+                    parts += [
+                        fstr.format(
+                            k="",
+                            v=", ".join(task_names),
+                            w=12,
+                        )
+                    ]
+
+            parts += [""]
+            parts += [""]
+
         # If stop conditions were fulfilled, inform about those
         if self.wm.stop_conditions:
 
@@ -1326,11 +1422,15 @@ class WorkerManagerReporter(Reporter):
                     return "(None)"
                 return ", ".join(sorted(t.name for t in sc.fulfilled_for))
 
+            total_stopped = sum(
+                len(sc.fulfilled_for) for sc in self.wm.stop_conditions
+            )
+
             parts += ["Stop Conditions"]
             parts += ["---------------"]
             parts += [""]
             parts += [
-                f"  {len(self.runtimes)} / {len(self.wm.tasks)} "
+                f"  {total_stopped} / {len(self.wm.tasks)} "
                 f"{task_label_plural} were stopped due to at least one "
                 "of the following stop conditions:"
             ]
@@ -1342,8 +1442,8 @@ class WorkerManagerReporter(Reporter):
             parts += [""]
             parts += [""]
 
-        # Add individual universe run times
-        if show_individual_runtimes:
+        # Add individual universe run times, up to a limit
+        if show_individual_runtimes and len(self.wm.tasks) <= max_num_to_show:
             parts += [f"{task_label_singular.capitalize()} Runtimes"]
             parts += ["-" * len(parts[-1])]
             parts += [""]
@@ -1353,10 +1453,18 @@ class WorkerManagerReporter(Reporter):
             for task in self.wm.tasks:
                 if "run_time" in task.profiling:
                     rt = task.profiling["run_time"]
+                    rt_info = format_time(rt, ms_precision=1)
+
+                    if task.worker_status in STOPCOND_EXIT_CODES:
+                        rt_info += f"  --  stopped"
+
+                    elif task.worker_status not in (None, 0, "0"):
+                        rt_info += f"  --  error code:  {task.worker_status}"
+
                     parts += [
                         fstr.format(
                             k=task.name,
-                            v=format_time(rt, ms_precision=1),
+                            v=rt_info,
                             w=max_name_len,
                         )
                     ]

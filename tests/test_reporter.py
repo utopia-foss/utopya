@@ -376,10 +376,10 @@ def test_runtime_statistics(rep):
     # In the beginning, there should be no run times registered
     assert not rep.runtimes
 
-    # The runtime statistics should return None now
-    assert rep.calc_runtime_statistics() is None
+    # The runtime statistics should be empty now
+    assert len(rep.calc_runtime_statistics()) == 0
 
-    # After working, there should be some
+    # After working, there should be some more entries
     rep.wm.start_working()
     assert len(rep.runtimes) == 11
 
