@@ -87,8 +87,7 @@ to_assert:
         - required uint8-compatible type, but got int with value -1.
       - - 256
         - >-
-          cannot be correctly represented as the required type, uint8, but
-          would be coerced to 0 != 256
+          Python integer 256 out of bounds for uint8
       - ~
 
   float32:

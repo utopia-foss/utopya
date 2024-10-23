@@ -380,9 +380,9 @@ intersphinx_mapping = {
     "sympy":        ("https://docs.sympy.org/latest/", None),
     "dill":         ("https://dill.readthedocs.io/en/latest/", None),
     "pytest":       ("https://pytest.org/en/stable/", None),
+    "pydantic":     ("https://docs.pydantic.dev/latest/", None),
     #
     # Broken:
-    # "pydantic":     ("https://pydantic-docs.helpmanual.io/", None),
     # "ruamel.yaml":  ("https://yaml.readthedocs.io/en/latest/", None),
 }
 # fmt: on

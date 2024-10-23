@@ -16,7 +16,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Tuple, Union
 
 import paramspace as psp
-from pkg_resources import resource_filename
+from dantro._import_tools import get_resource_path
 
 from ._cluster import parse_node_list
 from .cfg import get_cfg_path as _get_cfg_path
@@ -53,7 +53,7 @@ class Multiverse:
     plotting of that data.
     """
 
-    BASE_META_CFG_PATH = resource_filename("utopya", "cfg/base_cfg.yml")
+    BASE_META_CFG_PATH = get_resource_path("utopya", "cfg/base_cfg.yml")
     """Where the default meta configuration can be found"""
 
     USER_CFG_SEARCH_PATH = _get_cfg_path("user")
@@ -62,7 +62,7 @@ class Multiverse:
     RUN_DIR_TIME_FSTR = "%y%m%d-%H%M%S"
     """The time format string for the run directory"""
 
-    UTOPYA_BASE_PLOTS_PATH = resource_filename("utopya", "cfg/base_plots.yml")
+    UTOPYA_BASE_PLOTS_PATH = get_resource_path("utopya", "cfg/base_plots.yml")
     """Where the utopya base plots configuration can be found; this is passed
     to the :py:class:`~utopya.eval.plotmanager.PlotManager`.
     """

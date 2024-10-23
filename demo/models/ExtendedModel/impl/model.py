@@ -92,8 +92,8 @@ class ExtendedModel(StepwiseModel):
     def monitor(self, monitor_info: dict):
         """Provides information about the current state of the model to the
         monitor, which is then emitted to the frontend."""
-        monitor_info["state_mean"] = self._state.mean()
-        monitor_info["ca_max"] = self._ca.max()
+        monitor_info["state_mean"] = float(self._state.mean())
+        monitor_info["ca_max"] = int(self._ca.max())
 
         return monitor_info
 

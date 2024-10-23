@@ -2,7 +2,6 @@
 
 import networkx as nx
 import pytest
-from pkg_resources import resource_filename
 
 import utopya
 from utopya.eval.groups import GraphGroup, UniverseGroup

@@ -114,9 +114,9 @@ build:docs:
 # -- Test Stage ---------------------------------------------------------------
 # ... for testing with different python environments
 
-test:py38:
+test:py39:
   stage: test
-  image: python:3.8
+  image: python:3.9
   extends:
     - .reports
   needs: []
@@ -142,21 +142,21 @@ test:py38:
         --junitxml=report.xml
         tests/.
 
-test:py39:
-  extends: test:py38
-  image: python:3.9
-
 test:py310:
-  extends: test:py38
+  extends: test:py39
   image: python:3.10
 
 test:py311:
-  extends: test:py38
+  extends: test:py39
   image: python:3.11
 
 test:py312:
-  extends: test:py38
+  extends: test:py39
   image: python:3.12
+
+test:py313:
+  extends: test:py39
+  image: python:3.13
 
 
 # -- Deploy Stage -------------------------------------------------------------

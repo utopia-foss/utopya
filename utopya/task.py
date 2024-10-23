@@ -18,8 +18,17 @@ import time
 import uuid
 import warnings
 from functools import partial
-from typing import Callable, Dict, Generator, List, Sequence, Set, Tuple, Union
-from typing.io import TextIO
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Sequence,
+    Set,
+    TextIO,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 

@@ -2,7 +2,7 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
-## v1.3.0 *(Work in progress)*
+## v1.3.0
 ### Features and enhancements
 - !71 allows setting permissions on a simulation's subdirectories.
   Also sets the `eval` directory permissions such that other users of the same group can evaluate simulations without requiring manual permission changes.
@@ -16,6 +16,8 @@
 
 ### Internal
 - !76 moves the logging-related adjustments (e.g. colored log messages) to their own private module, `utopya._logging`.
+- !79 removes testing (and thus official support) for Python 3.8.
+- !79 replaces the deprecated `pkg_resources` module with `importlib.resources`.
 
 
 ## v1.2.13

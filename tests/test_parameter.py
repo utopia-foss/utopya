@@ -7,7 +7,7 @@ from typing import Any, Tuple
 import numpy as np
 import pytest
 import ruamel.yaml
-from pkg_resources import resource_filename
+from dantro._import_tools import get_resource_path
 
 import utopya
 from utopya.parameter import Parameter
@@ -16,7 +16,7 @@ from utopya.yaml import load_yml, yaml
 
 # -- Test resources -----------------------------------------------------------
 
-PM_CFG_PATH = resource_filename("tests", "cfg/parameter.yml")
+PM_CFG_PATH = get_resource_path("tests", "cfg/parameter.yml")
 
 
 # -- Fixtures -----------------------------------------------------------------

@@ -33,6 +33,11 @@ py:class FieldInfo
 py:class ComputedFieldInfo
 py:class ConfigDict
 
+py:class dir
+py:class file
+py:class pathlib._local.Path
+py:class pathlib.Annotated
+
 # -- first-party packages --
 # ...
 
