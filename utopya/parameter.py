@@ -339,7 +339,17 @@ class Parameter:
                 and np.issubdtype(type(value), np.number)
                 and not np.isnan(value)
             ):
-                _coerced_value = self.dtype.type(value)
+                try:
+                    _coerced_value = self.dtype.type(value)
+                except OverflowError as err:
+                    # Raised as of numpy >= 2.0
+                    return was_invalid(
+                        f"the {type(value).__name__} value {repr(value)} "
+                        "cannot be correctly represented as the required "
+                        f"type, {self.dtype} and would produce an "
+                        f"OverflowError: {err}"
+                    )
+
                 _is_equal = _coerced_value == value
                 _is_close = np.isclose(_coerced_value, value)
                 # NOTE This is done instead of np.can_cast, which would look

@@ -3,7 +3,7 @@
 import os
 
 import pytest
-from pkg_resources import resource_filename
+from dantro._import_tools import get_resource_path
 
 import utopya_backend.tools as t
 
@@ -29,7 +29,7 @@ def test_load_cfg_file(tmpdir):
         t.load_cfg_file(tmpdir.join("some_file.foobar"))
 
     # Can also load an actual file
-    fpath = resource_filename("utopya", "cfg/base_cfg.yml")
+    fpath = get_resource_path("utopya", "cfg/base_cfg.yml")
     cfg = t.load_cfg_file(fpath)
     assert "parameter_space" in cfg
 

@@ -8,7 +8,7 @@ repos:
 
   # Run if desiring to make use of newer language features
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.0
+    rev: v3.19.0
     hooks:
     - id: pyupgrade
       name: upgrade python syntax
@@ -28,7 +28,7 @@ repos:
         args: [--project=utopya]
 
   - repo: https://github.com/psf/black
-    rev: 24.1.1
+    rev: 24.10.0
     hooks:
       - id: black
         name: black code formatting
@@ -41,7 +41,7 @@ repos:
         name: check RST backticks
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
       - id: end-of-file-fixer
         name: fix end of files

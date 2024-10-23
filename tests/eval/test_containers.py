@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-from pkg_resources import resource_filename
 
 from utopya.eval.containers import GridDC
 from utopya.testtools import ModelTest

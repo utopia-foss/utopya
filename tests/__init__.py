@@ -5,7 +5,7 @@ import os
 import shutil
 import uuid
 
-from pkg_resources import resource_filename
+from dantro._import_tools import get_resource_path
 
 import utopya
 
@@ -22,7 +22,7 @@ logging.getLogger("utopya.reporter").setLevel(logging.INFO)
 # -- Shared utilities or definitions ------------------------------------------
 # .. Function defintions ......................................................
 
-get_cfg_fpath = lambda filename: resource_filename("tests", f"cfg/{filename}")
+get_cfg_fpath = lambda filename: get_resource_path("tests", f"cfg/{filename}")
 """Simplifies importing config files used in tests"""
 
 

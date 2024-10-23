@@ -5,7 +5,6 @@ import itertools
 import numpy as np
 import pytest
 import xarray as xr
-from pkg_resources import resource_filename
 
 import utopya
 import utopya.eval.plots._utils

@@ -449,6 +449,7 @@ def test_timeout(wm, sleep_task, longer_sleep_task):
     # Check if no WorkerManagerTotalTimeout is raised for a high timeout value
     wm.start_working(timeout=23.4)
     assert wm.num_finished_tasks == 3
+    prev_finished = wm.num_finished_tasks
 
     # Add more asks
     for _ in range(17):
@@ -456,9 +457,10 @@ def test_timeout(wm, sleep_task, longer_sleep_task):
     assert wm.task_count == 20
 
     # For a brief timeout duration, not all of the queued tasks should be run.
-    # With 2 workers, there will be two finished tasks and two interrupted ones
-    wm.start_working(timeout=1.4)
-    assert wm.num_finished_tasks == 3 + 2 + 2
+    # With 2 workers, there will be 2 finished tasks and 2 interrupted ones,
+    # which also count as "finished" (just not with a zero exit code).
+    wm.start_working(timeout=1.7)
+    assert wm.num_finished_tasks == prev_finished + 2 + 2
 
 
 def test_stopconds(wm, wm_with_tasks, longer_sleep_task, sc_run_kws):

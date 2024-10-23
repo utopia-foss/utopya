@@ -7,7 +7,6 @@ import uuid
 import numpy as np
 import pytest
 from paramspace import ParamSpace
-from pkg_resources import resource_filename
 
 import utopya.eval.containers as udc
 import utopya.eval.groups as udg

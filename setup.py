@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 # .. Dependency lists .........................................................
 
 INSTALL_DEPS = [
-    "numpy < 2.0",
+    "numpy",
     "scipy",
     "matplotlib",
     "seaborn",
@@ -19,7 +19,7 @@ INSTALL_DEPS = [
     # first-party packages
     "yayaml>=0.2",
     "paramspace>=2.7",
-    "dantro>=0.19.5",
+    "dantro>=0.20.1",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
@@ -34,7 +34,7 @@ TEST_DEPS = [
 
 # Dependencies for building the utopya documentation
 DOC_DEPS = [
-    "sphinx>=5.3,<8",
+    "sphinx>=5.3",
     "sphinx-book-theme",
     "sphinx-togglebutton",
     "ipython>=7.0",
@@ -141,11 +141,11 @@ setup(
     author="utopya developers",
     author_email=("Yunus Sevinchan <yunus.sevinchan@hu-berlin.de>"),
     classifiers=[
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         #
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
         "Development Status :: 5 - Production/Stable",

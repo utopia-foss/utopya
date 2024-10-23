@@ -5,7 +5,6 @@ import os
 
 import numpy as np
 import pytest
-from pkg_resources import resource_filename
 
 import utopya.tools as t
 

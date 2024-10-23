@@ -16,13 +16,16 @@ import numpy as np
 import paramspace as psp
 import pytest
 import xarray as xr
-from dantro._import_tools import added_sys_path, remove_from_sys_modules
+from dantro._import_tools import (
+    added_sys_path,
+    get_resource_path,
+    remove_from_sys_modules,
+)
 from dantro._import_tools import temporary_sys_modules as tmp_sys_modules
 from dantro.containers import ObjectContainer
 from dantro.data_ops import available_operations
 from dantro.exceptions import *
 from dantro.plot_mngr import PlotCreatorError
-from pkg_resources import resource_filename
 
 import utopya.eval.plots.attractor
 import utopya.eval.plots.ca
@@ -1219,7 +1222,7 @@ def test_draw_graph(out_dir, graph_dm, with_test_models):
         raise_exc=True,
         _model_info_bundle=MODELS[ADVANCED_MODEL].item(),
         base_cfg_pools=[
-            ("utopya_base", resource_filename("utopya", "cfg/base_plots.yml")),
+            ("utopya_base", get_resource_path("utopya", "cfg/base_plots.yml")),
         ],
     )
 

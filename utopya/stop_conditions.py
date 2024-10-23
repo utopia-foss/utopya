@@ -14,6 +14,7 @@ import warnings
 from typing import Callable, Dict, List, Set, Tuple, Union
 
 from dantro.data_ops.db import BOOLEAN_OPERATORS as _OPERATORS
+from dantro.tools import try_conversion
 from paramspace.tools import recursive_getitem as _recursive_getitem
 
 log = logging.getLogger(__name__)
@@ -362,6 +363,10 @@ def check_monitor_entry(
             )
             _FAILED_MONITOR_ENTRY_CHECKS.append(entry_name)
         return False
+
+    # Attempt conversion for both to be more compatible
+    entry = try_conversion(entry)
+    value = try_conversion(value)
 
     # Now perform the comparison
     return _OPERATORS[operator](entry, value)

@@ -7,7 +7,7 @@ from copy import deepcopy as _deepcopy
 from shutil import copy2 as _copy2
 from typing import Callable, Dict, Sequence, Tuple, Union
 
-from pkg_resources import resource_filename as _resource_filename
+from dantro._import_tools import get_resource_path
 
 from .cfg import UTOPYA_CFG_FILE_PATHS as _UTOPYA_CFG_FILE_PATHS
 from .cfg import load_from_cfg_dir as _load_from_cfg_dir
@@ -18,7 +18,7 @@ from .workermanager import WorkerManager
 from .yaml import load_yml as _load_yml
 from .yaml import write_yml as _write_yml
 
-_BTM_BASE_CFG_PATH = _resource_filename("utopya", "cfg/btm_cfg.yml")
+_BTM_BASE_CFG_PATH = get_resource_path("utopya", "cfg/btm_cfg.yml")
 """Base configuration path of the batch task manager"""
 
 _BTM_BASE_CFG = _load_yml(_BTM_BASE_CFG_PATH)
