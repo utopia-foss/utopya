@@ -7,6 +7,7 @@
 - !71 allows setting permissions on a simulation's subdirectories.
   Also sets the `eval` directory permissions such that other users of the same group can evaluate simulations without requiring manual permission changes.
 - !74 implements `utopya run-existing`, an *experimental* feature that allows finishing or re-running a previously-created simulation run.
+- !80 improves the `Reporter` to show host machine information and an overview of task exit codes.
 
 ### Bug fixes
 - !78 fixes a regression in `.plot.abm` caused by changed `.groupby` operation behaviour in xarray.
@@ -18,6 +19,7 @@
 - !76 moves the logging-related adjustments (e.g. colored log messages) to their own private module, `utopya._logging`.
 - !79 removes testing (and thus official support) for Python 3.8.
 - !79 replaces the deprecated `pkg_resources` module with `importlib.resources`.
+- !79 adds support for numpy >= 2.0.
 
 
 ## v1.2.13
