@@ -3,10 +3,10 @@ progress or result of operations within utopya.
 """
 
 import copy
+import getpass
 import logging
 import os
 import platform
-import sys
 from collections import Counter, OrderedDict, defaultdict, deque
 from datetime import datetime as dt
 from datetime import timedelta
@@ -672,6 +672,7 @@ class WorkerManagerReporter(Reporter):
         self.tasks_by_exit_codes = defaultdict(list)
         self._eta_info = dict()
         self._host_info = dict(
+            user=getpass.getuser(),
             host_name=platform.node(),
             cpu_count=os.cpu_count(),
             memory=get_physical_memory_str(),
