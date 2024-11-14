@@ -2,6 +2,9 @@
 
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).
 
+## v1.3.1
+- !81 also saves the user name in the report file, useful in shared `utopya_output` directories.
+
 ## v1.3.0
 ### Features and enhancements
 - !71 allows setting permissions on a simulation's subdirectories.
