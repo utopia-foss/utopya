@@ -185,7 +185,7 @@ def _load_and_eval(
 
     # ... and drop some other flags and combinations of shortcuts of flags
     # that will no longer be necessary.
-    # NOTE This is a rather rudimentary approach and will probably not remove
+    # NOTE This is a rather improvised approach and will probably not remove
     #      *all* possibly offending arguments. It's purely for convenience at
     #      this point. If there are remaining args that are not parseable, the
     #      parser in interactive plotting mode will complain and the input can
@@ -206,6 +206,7 @@ def _load_and_eval(
             "--show-data-tree",
             "--load-parallel",
             "-P",
+            "--note",
             #
             # Combinations
             "-iP",
@@ -214,6 +215,7 @@ def _load_and_eval(
             # Values
             ctx.params.get("run_cfg"),
             ctx.params.get("run_dir"),
+            ctx.params.get("note"),
             ctx.params["show_data_tree"],
         )
     ]

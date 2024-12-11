@@ -62,6 +62,7 @@ INTERACTIVE_MODE_PROHIBITED_ARGS = (
     "show_data_tree",
     "use_data_tree_cache",
     "load_parallel",
+    "note",
 )
 """Argument names that may NOT be given in the interactive plotting prompt"""
 
