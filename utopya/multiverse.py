@@ -4,6 +4,7 @@ frontend. It allows to run a simulation and then evaluate it.
 """
 
 import copy
+import glob
 import itertools
 import logging
 import os
@@ -13,7 +14,7 @@ import warnings
 from collections import defaultdict
 from shutil import copy2
 from tempfile import TemporaryDirectory
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import paramspace as psp
 from dantro._import_tools import get_resource_path
@@ -21,6 +22,12 @@ from dantro._import_tools import get_resource_path
 from ._cluster import parse_node_list
 from .cfg import get_cfg_path as _get_cfg_path
 from .eval import DataManager, PlotManager
+from .exceptions import (
+    MultiverseError,
+    MultiverseRunAlreadyFinished,
+    SkipExistingUniverse,
+    UniverseOutputDirectoryError,
+)
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .parameter import ValidationError
 from .project_registry import PROJECTS
@@ -292,6 +299,10 @@ class Multiverse:
         """
         # Return the cached value as a _copy_ to secure it against changes
         return copy.deepcopy(self._resolved_cluster_params)
+
+    @property
+    def skippable_universes(self) -> bool:
+        return self.meta_cfg.get("skippable_universes", False)
 
     @property
     def dm(self) -> DataManager:
@@ -1357,7 +1368,13 @@ class Multiverse:
             uni_basename (str): The basename of the universe to create the run
                 directory for.
         """
-        os.mkdir(uni_dir)
+        try:
+            os.mkdir(uni_dir)
+        except FileExistsError:
+            if self.skippable_universes:
+                raise SkipExistingUniverse(uni_basename)
+            raise
+
         log.debug("Created universe directory:\n  %s", uni_dir)
 
     def _setup_universe_config(
@@ -1366,6 +1383,7 @@ class Multiverse:
         uni_cfg: dict,
         uni_dir: str,
         uni_cfg_path: str,
+        mode: str = "x",
     ) -> dict:
         """Sets up the universe configuration and writes it to a file.
 
@@ -1376,6 +1394,8 @@ class Multiverse:
             uni_cfg (dict): The given universe configuration
             uni_dir (str): The universe directory, added to the configuration
             uni_cfg_path (str): Where to store the uni configuration at
+            mode (str): File mode of the config file. Use ``w`` for overwriting
+                an existing file and ``x`` for creating a new file.
 
         Returns:
             dict: The (potentially updated) universe configuration
@@ -1390,8 +1410,13 @@ class Multiverse:
         uni_cfg["write_every"] = parse_num_steps(uni_cfg["write_every"])
         uni_cfg["write_start"] = parse_num_steps(uni_cfg["write_start"])
 
-        # Write the universe config to file
-        write_yml(uni_cfg, path=uni_cfg_path)
+        # Write the universe config to file (by default: a _new_ file)
+        try:
+            write_yml(uni_cfg, path=uni_cfg_path, mode=mode)
+        except FileExistsError:
+            if self.skippable_universes:
+                raise SkipExistingUniverse(uni_cfg_path)
+            raise
 
         return uni_cfg
 
@@ -1494,11 +1519,13 @@ class Multiverse:
                 setup_func=self._setup_universe,
                 setup_kwargs=setup_kwargs,
                 worker_kwargs=wk,
+                skippable=self.skippable_universes,
             )
 
-        except RuntimeError as err:
+        except Exception as err:
+            # Something didn't work. For instance:
             # Task list was locked, probably because there already was a run
-            raise RuntimeError(
+            raise MultiverseError(
                 f"Could not add simulation task for universe '{uni_basename}'! "
                 "Did you already perform a run with this Multiverse?"
             ) from err
@@ -1922,7 +1949,9 @@ class DistributedMultiverse(FrozenMultiverse):
         self._model_executable = None
         self._tmpdir = None
 
-        self._clear_existing_output = False
+        self._clear_existing_output: bool = False
+
+        self.joined_run_num: Optional[int] = None
 
         # Generate the path to the run directory that is to be loaded
         # TODO Extract out dir from available infos
@@ -2123,6 +2152,66 @@ class DistributedMultiverse(FrozenMultiverse):
         # Done! :)
         log.success("Finished simulation run. Wohoo. :)\n")
 
+    def join_run(
+        self,
+        *,
+        num_workers: int = None,
+        shuffle_tasks: Optional[bool] = False,  # FIXME True
+    ):
+        """Joins an already-running simulation and performs tasks that have not
+        been taken up yet.
+
+        Args:
+            num_workers (int, optional): Set number of workers to use.
+            shuffle_tasks (Optional[bool], optional): If given, will overwrite
+                the ``shuffle_tasks`` run arguments.
+                When joining an already-running simulation run, it is advisable
+                to set this to True to reduce competition for new tasks.
+        """
+        log.info("Preparing to join simulation run ...")
+
+        # Can we even join this run?
+        # I.e.: are we doing (1) a sweep that is (2) not yet finished?
+        if not self.meta_cfg["perform_sweep"]:
+            raise MultiverseError(
+                "Cannot join existing run if it is not a parameter sweep."
+            )
+
+        pspace = self.meta_cfg["parameter_space"]
+        num_uni_dirs = len(glob.glob(os.path.join(self.dirs["data"], "uni*")))
+        if num_uni_dirs >= pspace.volume:
+            raise MultiverseRunAlreadyFinished(
+                f"There are already {num_uni_dirs} universe directories for a "
+                f"parameter space of {pspace.volume}. This means that there "
+                "are no tasks left to join in on or the Multiverse run has "
+                "already finished previously.\n\n"
+                "Are you trying to join the correct Multiverse run?\n"
+                f"  {self.dirs['run']}\n"
+            )
+
+        # Ok, all good. Add _all_ tasks, some of which will not need to run.
+        self._add_sim_tasks(sweep=True)
+        self.wm.tasks.lock()
+
+        # The reporter should not write the report file!
+        # TODO
+
+        if num_workers is not None:
+            self.wm.num_workers = num_workers
+
+        run_kwargs = copy.deepcopy(self.meta_cfg["run_kwargs"])
+        if shuffle_tasks is not None:
+            run_kwargs["shuffle_tasks"] = shuffle_tasks
+
+        # Now we can start working ...
+        self.wm.start_working(**run_kwargs)
+
+        # Done (on this machine)
+        log.success("Finished joined simulation run. Wohoo. :)")
+        log.note("Note: Tasks on other machines may still be running.\n")
+
+    # .........................................................................
+
     def _prepare_executable(self, *args, **kwargs) -> None:
         if self.meta_cfg["backups"]["backup_executable"]:
             execpath = os.path.join(
@@ -2152,13 +2241,16 @@ class DistributedMultiverse(FrozenMultiverse):
         ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
 
         if not os.path.isdir(uni_dir):
-            # Easy, set up from scratch:
-            super()._setup_universe_dir(
+            # Set up from scratch ... if it does not exist yet (checked also
+            # in parent method, potentially raising SkipExistingUniverse)
+            return super()._setup_universe_dir(
                 uni_dir=uni_dir, uni_basename=uni_basename
             )
-            return
 
         # else: already exists.
+        if self.skippable_universes:
+            raise SkipExistingUniverse(uni_basename)
+
         # Allow to remove existing output from the directory
         if self._clear_existing_output and len(os.listdir(uni_dir)) > 1:
             for file in os.listdir(uni_dir):
@@ -2169,7 +2261,7 @@ class DistributedMultiverse(FrozenMultiverse):
         # Check that the universe directory is empty
         existing_files = os.listdir(uni_dir)
         if existing_files and sorted(existing_files) != list(ALLOWED_FILES):
-            raise RuntimeError(
+            raise UniverseOutputDirectoryError(
                 f"Output directory of universe '{uni_basename}' contains "
                 f"files other than ({', '.join(ALLOWED_FILES)}). "
                 "Did you already perform a run on this universe? "
@@ -2181,13 +2273,10 @@ class DistributedMultiverse(FrozenMultiverse):
         exists and, if so, loads that one instead of storing a new one.
         """
         if os.path.isfile(uni_cfg_path):
-            # Can restore it
             log.debug("Restoring universe config from:\n  %s.", uni_cfg_path)
-            uni_cfg = load_yml(uni_cfg_path)
-        else:
-            # Need to create it
-            uni_cfg = super()._setup_universe_config(
-                uni_cfg_path=uni_cfg_path, **kwargs
-            )
+            return load_yml(uni_cfg_path)
 
-        return uni_cfg
+        # else: Need to create it, which will not work if it was done before.
+        return super()._setup_universe_config(
+            uni_cfg_path=uni_cfg_path, **kwargs, mode="x"
+        )

@@ -1517,7 +1517,8 @@ class WorkerManagerReporter(Reporter):
         self,
         *args,
         path: str = "_report.txt",
-        cluster_mode_path: str = "{0:}_{node_name:}{ext:}",
+        cluster_mode_path: str = "{:}_{node_name:}{ext:}",
+        joined_mode_path: str = "{:}_joined{num:02d}{ext:}",
         **kwargs,
     ):
         """Overloads the parent method with capabilities needed in cluster mode
@@ -1535,18 +1536,25 @@ class WorkerManagerReporter(Reporter):
                 Additional format keys: ``node_name``, ``job_id``.
             **kwargs: Passed on to parent method
         """
-        if not self.wm.cluster_mode:
+        joined_run_num = getattr(self.mv, "joined_run_num", None)
+        if not self.wm.cluster_mode and not joined_run_num:
             return super()._write_to_file(*args, path=path, **kwargs)
 
-        # else: in cluster mode. Use the information to build a new path
+        # else: need to create a new path
         base_path, ext = os.path.splitext(path)
         fstr_args = [base_path]
         fstr_kwargs = dict(ext=ext)
 
-        fstr_kwargs["node_name"] = self.wm.resolved_cluster_params["node_name"]
-        fstr_kwargs["job_id"] = self.wm.resolved_cluster_params["job_id"]
+        if self.wm.cluster_mode:
+            rcp = self.wm.resolved_cluster_params
+            fstr_kwargs["node_name"] = rcp["node_name"]
+            fstr_kwargs["job_id"] = rcp["job_id"]
+            fstr = cluster_mode_path
+
+        else:
+            fstr_kwargs["num"] = joined_run_num
+            fstr = joined_mode_path
 
         # Build the new path, then let the parent do the rest
-        path = cluster_mode_path.format(*fstr_args, **fstr_kwargs)
-
+        path = fstr.format(*fstr_args, **fstr_kwargs)
         return super()._write_to_file(*args, path=path, **kwargs)

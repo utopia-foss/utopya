@@ -13,6 +13,11 @@ import uuid
 import pytest
 
 from utopya import DistributedMultiverse, FrozenMultiverse, Multiverse
+from utopya.exceptions import (
+    MultiverseError,
+    UniverseOutputDirectoryError,
+    WorkerTaskSetupError,
+)
 from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
 
@@ -391,7 +396,7 @@ def test_multiple_runs_not_allowed(mv_kwargs):
     mv.run_single()
 
     # Another run should not be possible
-    with pytest.raises(RuntimeError, match="Could not add simulation task"):
+    with pytest.raises(MultiverseError, match="Could not add simulation task"):
         mv.run_single()
 
 
@@ -782,19 +787,21 @@ def test_run_dmv_run(mv_kwargs):
         assert "out.log" in files
 
     with pytest.raises(
-        RuntimeError, match=r"Could not add simulation task for universe .*"
+        MultiverseError,
+        match=r"Could not add simulation task for universe .*",
     ):
         distributed_mv.run_selection(
             uni_id_strs=[os.listdir(mv.dirs["data"])[1]]
         )
 
     with pytest.raises(
-        RuntimeError, match=r"Could not add simulation task for universe .*"
+        MultiverseError,
+        match=r"Could not add simulation task for universe .*",
     ):
         distributed_mv.run()
 
     with pytest.raises(
-        RuntimeError,
+        UniverseOutputDirectoryError,
         match=r"Output directory of universe 'uni1' contains files other .*",
     ):
         distributed_mv__repeat = DistributedMultiverse(
@@ -808,11 +815,11 @@ def test_run_dmv_run(mv_kwargs):
     )
     dirs = os.listdir(mv.dirs["data"])
     for _dir in dirs:
-        dir = os.path.join(mv.dirs["data"], _dir)
-        for file in os.listdir(dir):
-            os.remove(os.path.join(dir, file))
-    dir = os.path.join(mv.dirs["data"], dirs[0])
-    os.rmdir(dir)
+        dirpath = os.path.join(mv.dirs["data"], _dir)
+        for file in os.listdir(dirpath):
+            os.remove(os.path.join(dirpath, file))
+    dirpath = os.path.join(mv.dirs["data"], dirs[0])
+    os.rmdir(dirpath)  # FIXME should be part of a fixture / needed at all?!
 
     distributed_mv__create_cfg.run()
 
@@ -860,7 +867,7 @@ def test_run_dmv_run_selection(mv_kwargs):
     bad_file.write("New line of text")
     bad_file.close()
     with pytest.raises(
-        RuntimeError,
+        UniverseOutputDirectoryError,
         match=r".*Output directory of universe .* contains files .*",
     ):
         distributed_mv__fail = DistributedMultiverse(
@@ -882,19 +889,19 @@ def test_run_dmv_run_selection(mv_kwargs):
 
     # check that the universes cannot be worked on again
     with pytest.raises(
-        RuntimeError, match=r"Could not add simulation task for universe .*"
+        MultiverseError, match=r"Could not add simulation task for universe .*"
     ):
         distributed_mv_0.run_selection(
             uni_id_strs=[os.listdir(mv.dirs["data"])[1]]
         )
 
     with pytest.raises(
-        RuntimeError, match=r"Could not add simulation task for universe .*"
+        MultiverseError, match=r"Could not add simulation task for universe .*"
     ):
         distributed_mv_0.run()
 
     with pytest.raises(
-        RuntimeError,
+        UniverseOutputDirectoryError,
         match=r".*Output directory of universe .* contains files .*",
     ):
         distributed_mv__fail = DistributedMultiverse(

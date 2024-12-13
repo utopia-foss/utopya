@@ -8,12 +8,14 @@ from .eval import evaluate
 from .models import models
 from .projects import projects
 from .run import run
+from .run_existing import join_run as __join_run
 from .run_existing import run_existing as __run_existing
 from .test import run_test as test
 
 SUBCOMMANDS = [
     run,
     __run_existing,
+    __join_run,
     evaluate,
     test,
     batch,

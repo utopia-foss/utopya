@@ -68,6 +68,14 @@ executable_control:
 # Is evaluated only when calling the Multiverse.run method.
 perform_sweep: false
 
+# Whether to allow skippable universes
+#
+# This should be false if you want to ensure that only a single Multiverse
+# instance is allowed to generate simulation output.
+# In case you want to be able to *join* a currently running simulation run
+# via `utopya join-run`, set this to true.
+skippable_universes: false
+
 # Whether to perform parameter validation
 # For large sweeps, validation can take quite some time. For such scenarios, it
 # might make sense to disable parameter validation by setting this to false.
@@ -228,12 +236,18 @@ worker_manager:
     task_spawned: [progress_bar]
     monitor_updated: [progress_bar]
     task_finished: [progress_bar, report_file]
+    task_skipped: [progress_bar]
     after_work: [progress_bar, report_file]
     after_abort: [progress_bar, report_file]
 
 
 # Configuration for the WorkerManager.start_working method
 run_kwargs:
+  # Whether task execution order should be shuffled before a run starts.
+  # This may help in load-balancing when some tasks systematically take longer
+  # than others.
+  shuffle_tasks: false
+
   # Total timeout (in s) of a run; to ignore, set to ~
   timeout: ~
 

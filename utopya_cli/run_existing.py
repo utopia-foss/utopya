@@ -81,7 +81,6 @@ def run_existing(
     num_workers: int,
     clear_existing_output: bool,
     skip_existing_output: bool,
-    **kwargs,
 ):
     """Repeats a model simulation in parts or entirely"""
     import utopya
@@ -117,6 +116,59 @@ def run_existing(
         )
 
     _log.note("Evaluation routine is not possible for repeated run.")
+    _log.remark(
+        "For evaluation, call:\n  utopya eval %s %s\n",
+        model_name,
+        os.path.basename(run_dir),
+    )
+    _log.progress("Exiting now ...\n")
+
+
+# -----------------------------------------------------------------------------
+
+
+@click.command(
+    "join-run",
+    help=(
+        "[EXPERIMENTAL] Join a currently-running simulation.\n"
+        "\n"
+        "Initializes MODEL_NAME from RUN_DIR and joins in working on "
+        "the remaining simulation tasks.\n"
+        "\n"
+        "Note that this feature is currently experimental, meaning that the "
+        "interface may still change a lot."
+    ),
+)
+@click.argument("model_name", shell_complete=complete_model_names)
+@click.argument(
+    "run_dir",
+    shell_complete=complete_run_dirs,
+    required=True,
+)
+@add_options(OPTIONS["label"])
+@add_options(OPTIONS["num_workers"])  # -W, --num-workers
+#
+#
+#
+@click.pass_context
+def join_run(
+    ctx,
+    run_dir,
+    model_name: str,
+    label: str,
+    num_workers: int,
+):
+    """Repeats a model simulation in parts or entirely"""
+    import utopya
+
+    _log = utopya._getLogger("utopya")
+
+    model = utopya.Model(name=model_name, bundle_label=label)
+    mv = model.create_distributed_mv(run_dir=run_dir)
+
+    mv.join_run(num_workers=num_workers)
+
+    _log.note("Evaluation routine is not possible for joined run.")
     _log.remark(
         "For evaluation, call:\n  utopya eval %s %s\n",
         model_name,

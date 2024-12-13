@@ -11,7 +11,6 @@ import multiprocessing
 import os
 import queue
 import re
-import signal
 import subprocess
 import threading
 import time
@@ -23,6 +22,7 @@ from typing import (
     Dict,
     Generator,
     List,
+    Optional,
     Sequence,
     Set,
     TextIO,
@@ -33,6 +33,11 @@ from typing import (
 import numpy as np
 
 from ._signal import SIGMAP
+from .exceptions import (
+    SkipWorkerTask,
+    WorkerTaskNotSkippable,
+    WorkerTaskSetupError,
+)
 from .tools import yaml
 
 log = logging.getLogger(__name__)
@@ -43,6 +48,8 @@ _ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 From: https://stackoverflow.com/a/14693789/1827608
 """
 
+SKIP_EXIT_CODE: int = 999
+"""An exit code denoting that a task was skipped."""
 
 # -----------------------------------------------------------------------------
 # Helper methods
@@ -194,6 +201,7 @@ class Task:
         "_uid",
         "_progress_func",
         "_stop_conditions",
+        "_skipping",
         "callbacks",
     )
 
@@ -204,6 +212,7 @@ class Task:
         priority: float = None,
         callbacks: Dict[str, Callable] = None,
         progress_func: Callable = None,
+        skippable: bool = True,
     ):
         """Initialize a Task object.
 
@@ -230,6 +239,7 @@ class Task:
         self._progress_func = progress_func
 
         self._stop_conditions = set()
+        self._skipping = dict(enabled=skippable, was_skipped=None)
 
         log.debug(
             "Initialized Task '%s'.\n  Priority: %s,  UID: %s.",
@@ -291,6 +301,19 @@ class Task:
         """
         return self._stop_conditions
 
+    @property
+    def skippable(self) -> bool:
+        """Whether this task may be skipped."""
+        return self._skipping["enabled"]
+
+    @property
+    def was_skipped(self) -> Optional[bool]:
+        """Whether this task was skipped.
+        If None, the task has not finished yet, so the final evaluation is
+        still open.
+        """
+        return self._skipping["was_skipped"]
+
     # Magic methods ...........................................................
     # ... including rich comparisons, needed in PriorityQueue
 
@@ -298,7 +321,7 @@ class Task:
         return hash(self.uid)
 
     def __str__(self) -> str:
-        return f"Task<uid: {self.uid}, priority: {self.priority}>"
+        return f"Task<{self.name}, uid: {self.uid}, priority: {self.priority}>"
 
     def __lt__(self, other) -> bool:
         return bool(self.order_tuple < other.order_tuple)
@@ -504,16 +527,22 @@ class WorkerTask(Task):
         return self._worker_status
 
     @property
-    def outstream_objs(self) -> list:
-        """Returns the list of objects parsed from the 'out' stream"""
+    def outstream_objs(self) -> List[dict]:
+        """Returns the list of objects parsed from the 'out' stream, typically
+        dictionaries.
+
+        If there are no streams, returns an empty list."""
+        if not self.streams:
+            return []
         return self.streams["out"]["log_parsed"]
 
     # Magic methods ...........................................................
 
     def __str__(self) -> str:
         """Return basic WorkerTask information."""
-        return "{}<uid: {}, priority: {}, worker_status: {}>".format(
+        return "{}<{}, uid: {}, priority: {}, worker_status: {}>".format(
             self.__class__.__name__,
+            self.name,
             self.uid,
             self.priority,
             self.worker_status,
@@ -521,7 +550,7 @@ class WorkerTask(Task):
 
     # Public API ..............................................................
 
-    def spawn_worker(self) -> subprocess.Popen:
+    def spawn_worker(self) -> Optional[subprocess.Popen]:
         """Spawn a worker process using subprocess.Popen and manage the
         corresponding queue and thread for reading the stdout stream.
 
@@ -541,15 +570,12 @@ class WorkerTask(Task):
         if self.worker:
             raise RuntimeError("Can only spawn one worker per task!")
 
-        # If a setup function is available, call it with the given kwargs
-        if self.setup_func:
-            log.debug("Calling a setup function ...")
-            worker_kwargs = self.setup_func(
-                worker_kwargs=self.worker_kwargs, **self.setup_kwargs
-            )
-        else:
-            log.debug("No setup function given; using given `worker_kwargs`")
-            worker_kwargs = self.worker_kwargs
+        # Get the worker kwargs, perhaps by invoking the setup function
+        try:
+            worker_kwargs = self._prepare_worker_kwargs()
+        except SkipWorkerTask as err:
+            self._mark_as_skipped(err)
+            return
 
         # Start the subprocess and associate it with this WorkerTask
         self.worker = self._spawn_worker(**worker_kwargs)
@@ -950,6 +976,37 @@ class WorkerTask(Task):
 
         return args, kwargs
 
+    def _prepare_worker_kwargs(self) -> dict:
+        # If a setup function is available, call it with the given kwargs
+        if self.setup_func:
+            log.debug("Calling a setup function ...")
+            worker_kwargs = self._invoke_setup_func()
+        else:
+            log.debug("No setup function given; using given `worker_kwargs`")
+            worker_kwargs = self.worker_kwargs
+
+        return worker_kwargs
+
+    def _invoke_setup_func(self) -> dict:
+        """Invokes the setup function, which returns potentially adjusted
+        worker kwargs.
+
+        Also takes care of error handling.
+        """
+        try:
+            return self.setup_func(
+                worker_kwargs=self.worker_kwargs, **self.setup_kwargs
+            )
+        except SkipWorkerTask:
+            # Propagate this ...
+            raise
+
+        except Exception as exc:
+            raise WorkerTaskSetupError(
+                "Encountered an error when calling the setup function of "
+                f"task '{self.name}'!\n\n{type(exc).__name__}: {exc}"
+            ) from exc
+
     def _spawn_process(self, args, **popen_kwargs):
         """This helper takes care *only* of spawning the actual process and
         potential error handling.
@@ -1074,12 +1131,14 @@ class WorkerTask(Task):
         """
         self.streams[name]["stream"].close()
 
-    def _finished(self) -> None:
+    def _finished(self):
         """Is called once the worker has finished working on this task.
 
         It takes care that a profiling time is saved and that the remaining
         stream information is logged.
         """
+        self._skipping["was_skipped"] = False
+
         # Update profiling info
         self.profiling["end_time"] = time.time()
         self.profiling["run_time"] = (
@@ -1103,6 +1162,27 @@ class WorkerTask(Task):
             self.name,
             self.worker_status,
         )
+
+    def _mark_as_skipped(self, skip_signal: Exception):
+        """Marks this task as skipped."""
+        if not self.skippable:
+            raise WorkerTaskNotSkippable(self.name)
+
+        self._skipping["was_skipped"] = True
+
+        # Mock state of this task to be more similar to non-skipped tasks
+        self.profiling["create_time"] = time.time()
+        self.profiling["end_time"] = time.time()
+        self.profiling["run_time"] = (
+            0.0  # TODO use duration of setup function?
+        )
+
+        self._worker_status = SKIP_EXIT_CODE
+
+        # Finish up
+        self._invoke_callback("skipped")
+
+        log.debug("Task %s: skipped", self.name)
 
 
 # -----------------------------------------------------------------------------
@@ -1148,13 +1228,6 @@ class NoWorkTask(WorkerTask):
 
         return self._worker_status
 
-    @property
-    def outstream_objs(self) -> list:
-        """Returns the list of objects parsed from the 'out' stream"""
-        if not self.streams:
-            return []
-        return self.streams["out"]["log_parsed"]
-
     def spawn_worker(self) -> None:
         """Spawn a void process.
 
@@ -1167,15 +1240,9 @@ class NoWorkTask(WorkerTask):
         if self._worker_status is not None:
             raise RuntimeError("Can only spawn one worker per task!")
 
-        # If a setup function is available, call it with the given kwargs
-        if self.setup_func:
-            log.debug("Calling a setup function ...")
-            worker_kwargs = self.setup_func(
-                worker_kwargs=self.worker_kwargs, **self.setup_kwargs
-            )
-        else:
-            log.debug("No setup function given; using given `worker_kwargs`")
-            worker_kwargs = self.worker_kwargs
+        # We don't need worker kwargs, but we may still want to invoke the
+        # setup function:
+        _ = self._prepare_worker_kwargs()
 
         self.profiling["create_time"] = time.time()
         log.debug("This is a NoWorkTask: Skipping to work on task.")

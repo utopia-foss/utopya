@@ -62,6 +62,43 @@ class WorkerTaskStopConditionFulfilled(WorkerTaskNonZeroExit):
     """
 
 
+class WorkerTaskSetupError(WorkerTaskError):
+    """Raised upon errors in the worker task setup function"""
+
+
+class SkipWorkerTask(WorkerTaskError):
+    """Raised to indicate that a worker task should be skipped."""
+
+
+class WorkerTaskNotSkippable(WorkerTaskError):
+    """Raised when a worker task was NOT marked as skippable but a skip event
+    was raised."""
+
+
+# -- Multiverse ---------------------------------------------------------------
+
+
+class MultiverseError(UtopyaException):
+    """Base class for Multiverse-related exceptions"""
+
+
+class MultiverseRunAlreadyFinished(MultiverseError):
+    """Raised when a Multiverse run has already finished."""
+
+
+class UniverseOutputDirectoryError(MultiverseError):
+    """Raised on issues with universe output directory"""
+
+
+class SkipUniverse(SkipWorkerTask, MultiverseError):
+    """Raised to indicate that a universe should be skipped."""
+
+
+class SkipExistingUniverse(SkipUniverse):
+    """Raised to indicate that a universe should be skipped because it already
+    exists, e.g. in the context of a joined Multiverse run."""
+
+
 # -----------------------------------------------------------------------------
 
 

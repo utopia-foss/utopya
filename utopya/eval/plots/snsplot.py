@@ -151,6 +151,7 @@ def snsplot(
     # For some kinds, it makes sense to re-index such that only the free
     # indices are used as columns
     if reset_index:
+        # FIXME df.index.names can be [None]
         reset_for = [n for n in df.index.names if n not in free_indices]
         if reset_for:
             df = df.reset_index(level=reset_for)

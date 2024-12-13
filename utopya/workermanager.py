@@ -7,6 +7,7 @@ import copy
 import logging
 import os
 import queue
+import random
 import sys
 import time
 import warnings
@@ -16,7 +17,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Set, Union
 from .exceptions import *
 from .reporter import WorkerManagerReporter
 from .stop_conditions import SIG_STOPCOND, StopCondition
-from .task import SIGMAP, TaskList, WorkerTask
+from .task import SIGMAP, SKIP_EXIT_CODE, TaskList, WorkerTask
 from .tools import format_time
 
 log = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class WorkerManager:
     - ``after_abort``
     - ``task_spawn``
     - ``task_finished``
+    - ``task_skipped``
     """
 
     times: dict = None
@@ -114,9 +116,10 @@ class WorkerManager:
                 report formats that should be invoked at different points of
                 the WorkerManager's operation.
                 Possible keys:
-                ``before_working``, ``while_working``,
-                ``after_work``, ``after_abort``, ``task_spawn``,
-                ``task_finished``. All other keys are ignored.
+                    ``before_working``, ``while_working``,
+                    ``after_work``, ``after_abort``, ``task_spawn``,
+                    ``task_finished``, ``task_skipped``.
+                All other keys are ignored.
 
                 The values of the dict can be either strings or lists of
                 strings, where the strings always refer to report formats
@@ -202,6 +205,7 @@ class WorkerManager:
             while_working="while_working",
             task_spawned="while_working",
             task_finished="while_working",
+            task_skipped="while_working",
             after_work="after_work",
             after_abort="after_work",
         )
@@ -502,6 +506,13 @@ class WorkerManager:
                     exc = WorkerTaskNonZeroExit(task)
                 self.pending_exceptions.put_nowait(exc)
 
+        def task_skipped(task):
+            """Performs actions after a task was skipped."""
+            if self.reporter is not None:
+                self.reporter.register_task(task)
+
+            self._invoke_report("task_skipped")
+
         def monitor_updated(task):
             """Performs actions when there was a parsed object in the task's
             stream, i.e. when the monitor got an update.
@@ -516,6 +527,7 @@ class WorkerManager:
             # Invoked by task itself
             spawn=task_spawned,
             finished=task_finished,
+            skipped=task_skipped,
             parsed_object_in_stream=monitor_updated,
             #
             # Invoked by WorkerManager
@@ -537,6 +549,7 @@ class WorkerManager:
     def start_working(
         self,
         *,
+        shuffle_tasks: bool = False,
         timeout: float = None,
         stop_conditions: Sequence[StopCondition] = None,
         post_poll_func: Callable = None,
@@ -573,6 +586,11 @@ class WorkerManager:
         timeout_time = self._parse_timeout_args(timeout=timeout)
         stop_conditions = self._parse_stop_conditions(stop_conditions)
 
+        # Perhaps shuffle the tasks queue
+        if shuffle_tasks:
+            log.remark("Shuffling tasks queue ...")
+            random.shuffle(self._task_q.queue)
+
         # Start with the polling loop
         # Basically all working time will be spent in there ...
         log.hilight("Starting to work ...")
@@ -586,7 +604,7 @@ class WorkerManager:
                 # Check if there was another reason for exiting
                 self._handle_pending_exceptions()
 
-                # Assign tasks to free workers
+                # Assign tasks to free workers; this creates new processes
                 self._assign_tasks(self.num_free_workers)
 
                 # Poll the workers. (Will also remove no longer active workers)
@@ -784,7 +802,10 @@ class WorkerManager:
                 task.priority,
             )
 
-        # Let it spawn its own worker
+        # Let it spawn its own worker, which will invoke its setup routine and
+        # then (typically) create a worker subprocess for this task ...
+        # In some cases, the worker may finish directly or the task will be
+        # skipped, but this does not need to concern us at this point.
         task.spawn_worker()
 
         # Now return the task
@@ -982,7 +1003,7 @@ class WorkerManager:
             # If the type does not match, can directly raise it
             if not isinstance(exc, WorkerTaskNonZeroExit):
                 log.error(
-                    "Encountered a pending exception that requires " "raising!"
+                    "Encountered a pending exception that requires raising!"
                 )
                 raise exc
 
@@ -990,6 +1011,10 @@ class WorkerManager:
 
             # Take care of stop conditions, which do NOT need to be raised
             if isinstance(exc, WorkerTaskStopConditionFulfilled):
+                continue
+
+            # Same for skipped tasks
+            if isinstance(exc, SkipWorkerTask):
                 continue
 
             # Distinguish different ways of handling these exceptions
@@ -1001,7 +1026,7 @@ class WorkerManager:
             # Ignore terminated tasks for `warn` and `ignore` levels
             elif abs(exc.task.worker_status) == SIGMAP[
                 "SIGTERM"
-            ] and self.nonzero_exit_handling not in ["warn_all", "raise"]:
+            ] and self.nonzero_exit_handling not in ("warn_all", "raise"):
                 continue
 
             # else: will generate some log output, so need to adjust Reporter
@@ -1011,17 +1036,17 @@ class WorkerManager:
 
             # Provide some info on the exit status
 
-            if self.nonzero_exit_handling in ["warn", "warn_all"]:
+            if self.nonzero_exit_handling in ("warn", "warn_all"):
                 # Print the error and the last few lines of the error log
                 log.warning(str(exc))
-                log_task_stream(exc.task, num_entries=8)
+                log_task_stream(exc.task, num_entries=12)
 
                 # Nothing else to do
                 continue
 
             # At this stage, the handling mode is 'raise'. Show more log lines:
             log.critical(str(exc))
-            log_task_stream(exc.task, num_entries=24)
+            log_task_stream(exc.task, num_entries=32)
 
             # By raising here, the except block in start_working will be
             # invoked and terminate workers before calling sys.exit
