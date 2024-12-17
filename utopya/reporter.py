@@ -12,10 +12,11 @@ from datetime import datetime as dt
 from datetime import timedelta
 from functools import partial
 from shutil import get_terminal_size as _get_terminal_size
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, List, Set, Union
 
 import numpy as np
 import paramspace as psp
+from yayaml import yaml_dumps as _yaml_dumps
 
 from .tools import TTY_COLS, format_time, get_physical_memory_str
 
@@ -194,6 +195,8 @@ class Reporter:
         # Other attributes
         self.suppress_cr = suppress_cr  # NOTE writers need to implement this
 
+        self._tmp_files: Dict[str, Set[str]] = defaultdict(set)
+
         log.debug("Reporter.__init__ finished.")
 
     # Properties ..............................................................
@@ -358,6 +361,8 @@ class Reporter:
         for writer_name, writer in writers.items():
             writer(report)
             log.debug("Wrote report using %s .", writer_name)
+
+    # TODO implement temp file deletion
 
     # Private methods .........................................................
 
@@ -591,7 +596,6 @@ class Reporter:
             path = os.path.join(self.report_dir, path)
 
         log.debug("Writing given string (length %d) to %s ...", len(s), path)
-
         with open(path, mode) as file:
             file.write(s)
 
@@ -688,6 +692,7 @@ class WorkerManagerReporter(Reporter):
 
         # Store the WorkerManager and associate it with this reporter
         self._wm = wm
+        self._latest_wm_report = None
         wm.reporter = self
         log.debug("Associated reporter with WorkerManager.")
 
@@ -1580,26 +1585,35 @@ class WorkerManagerReporter(Reporter):
                 "Cannot parse ParamSpace information."
             )
 
-        pspace = self.mv.meta_cfg["parameter_space"]
-        if not isinstance(pspace, psp.ParamSpace):
-            raise TypeError(f"Expected a ParamSpace object, got:\n\n{pspace}")
-
         if only_for_sweep and len(self.wm.tasks) <= 1:
             return ""
 
-        return fstr.format(sweep_info=pspace.get_info_str())
+        pspace = self.mv.meta_cfg["parameter_space"]
+
+        try:
+            return fstr.format(sweep_info=pspace.get_info_str())
+        except (AttributeError, TypeError) as exc:
+            raise TypeError(
+                f"Expected a ParamSpace object, got:\n\n{pspace}"
+            ) from exc
 
     def _parse_work_status(self, *, report_no: int = None) -> str:
-        """Supplies a very simple machine-readable status string"""
+        """Supplies a very simple, YAML-formatted status string"""
         cntr = self.task_counters
+        if self._latest_wm_report.startswith("after_"):
+            wm_status = "finished"
+        else:
+            wm_status = "working"
+
         status = dict(
-            status="working",
-            last_update=dt.now().isoformat(),
+            status=wm_status,
+            time=dt.now().isoformat(),
+            progress=f"{self.wm_progress_total*100:.4g}%",
             finished=cntr["finished"],
             skipped=cntr["skipped"],
             stopped=cntr["stopped"],
         )
-        return repr(status)
+        return _yaml_dumps(status)
 
     # Writer methods ..........................................................
 

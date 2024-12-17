@@ -597,8 +597,8 @@ class WorkerManager:
         stop_conditions = self._parse_stop_conditions(stop_conditions)
 
         # Perhaps shuffle the tasks queue
+        log.note("  Shuffled Tasks:  %s", shuffle_tasks)
         if shuffle_tasks:
-            log.remark("Shuffling tasks queue ...")
             random.shuffle(self._task_q.queue)
 
         # Start with the polling loop
@@ -711,9 +711,17 @@ class WorkerManager:
         self._invoke_report("after_work", force=True)
 
         print("")
-        log.progress(
-            "Finished working. Total tasks worked on: %d", self.task_count
-        )
+        log.progress("Finished working.")
+
+        duration = self.times["end_working"] - self.times["start_working"]
+        n_tasks = self.task_count
+        n_stopped = len(self.stopped_tasks)
+        n_skipped = len(self.skipped_tasks)
+        n_worked = n_tasks - n_skipped
+        log.note("  Work Duration:    %s", format_time(duration))
+        log.note("  Tasks worked on:  %d / %d total", n_worked, n_tasks)
+        log.note("  Tasks stopped:    %d", n_stopped)
+        log.note("  Tasks skipped:    %d", n_skipped)
 
     # Non-public API ..........................................................
 
@@ -726,6 +734,9 @@ class WorkerManager:
         if self._suppress_rf_specs and rf_spec_name in self._suppress_rf_specs:
             # Do not report this one
             return
+
+        # Use the report format name as something like a "status indicator"
+        self._reporter._latest_wm_report = rf_spec_name
 
         # Resolve the spec name and invoke the reports
         rfs = self.rf_spec[rf_spec_name]
@@ -1066,6 +1077,11 @@ class WorkerManager:
         log.debug("Handled all pending exceptions.")
 
     def _handle_KeyboardInterrupt_or_TotalTimeout(self, exc: Exception):
+        """Used to wind down work in case of KeyboardInterrupt or TotalTimeout.
+        All active workers will be stopped, either on their own within a grace
+        period or, after that, abruptly via a kill signal.
+        """
+
         # Suppress reporter to use CR; then inform via log messages
         if self.reporter:
             self.reporter.suppress_cr = True

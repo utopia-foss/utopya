@@ -167,12 +167,12 @@ reporter:
       fstr: "Sweeping over the following parameter space:\n\n{sweep_info:}"
       only_for_sweep: true
 
-    # Creates a work status file
+    # Creates a work status file, for internal use only
     work_status:
       parser: work_status
       write_to:
         file:
-          path: _status.txt  # TODO use leading . instead
+          path: _status.yml  # FIXME use leading .
       min_report_intv: 5.
 
   # Can define a default format to use
