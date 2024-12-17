@@ -14,7 +14,7 @@ import warnings
 from collections import defaultdict
 from shutil import copy2
 from tempfile import TemporaryDirectory
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import paramspace as psp
 from dantro._import_tools import get_resource_path
@@ -60,19 +60,22 @@ class Multiverse:
     plotting of that data.
     """
 
-    BASE_META_CFG_PATH = get_resource_path("utopya", "cfg/base_cfg.yml")
-    """Where the default meta configuration can be found"""
-
-    USER_CFG_SEARCH_PATH = _get_cfg_path("user")
-    """Where to look for the user configuration"""
-
     RUN_DIR_TIME_FSTR = "%y%m%d-%H%M%S"
     """The time format string for the run directory"""
+
+    BASE_META_CFG_PATH = get_resource_path("utopya", "cfg/base_cfg.yml")
+    """Where the default meta-configuration can be loaded from.
+    """
 
     UTOPYA_BASE_PLOTS_PATH = get_resource_path("utopya", "cfg/base_plots.yml")
     """Where the utopya base plots configuration can be found; this is passed
     to the :py:class:`~utopya.eval.plotmanager.PlotManager`.
     """
+
+    USER_CFG_SEARCH_PATH = _get_cfg_path("user")
+    """Where to look for the user configuration"""
+
+    # .........................................................................
 
     def __init__(
         self,
@@ -391,6 +394,136 @@ class Multiverse:
 
     # Helpers .................................................................
 
+    @classmethod
+    def _load_user_cfg(cls, user_cfg_path: str = None) -> Tuple[str, dict]:
+        """Loads the user configuration from a path; if no path is given,
+        searches for it ..."""
+        if user_cfg_path is None:
+            log.debug(
+                "Looking for user configuration file in default location, %s",
+                cls.USER_CFG_SEARCH_PATH,
+            )
+
+            if os.path.isfile(cls.USER_CFG_SEARCH_PATH):
+                user_cfg_path = cls.USER_CFG_SEARCH_PATH
+            else:
+                # No user cfg will be loaded
+                log.debug("No file found at the default search location.")
+
+        elif user_cfg_path is False:
+            log.debug(
+                "Not loading the user configuration from default search path: %s",
+                cls.USER_CFG_SEARCH_PATH,
+            )
+
+        user_cfg = None
+        if user_cfg_path:
+            user_cfg = load_yml(user_cfg_path)
+
+        return user_cfg_path, user_cfg
+
+    @classmethod
+    def _load_meta_cfg_parts(
+        cls, *, info_bundle: ModelInfoBundle, user_cfg_path: str = None
+    ) -> Tuple[Dict[str, Optional[str]], Dict[str, Optional[dict]]]:
+        """Loads the various parts of the meta-configuration for a model and
+        returns a dict of their paths and one of the loaded dictionaries."""
+        # Read in the base meta configuration
+        base_cfg_path = cls.BASE_META_CFG_PATH
+        base_cfg = load_yml(base_cfg_path)
+
+        # Framework- and project-level configuration files
+        framework_cfg_path = None
+        framework_cfg = {}
+
+        project_cfg_path = None
+        project_cfg = {}
+
+        model_mv_cfg_path = None
+        model_mv_cfg = {}
+
+        project_name = info_bundle.project_name
+        if project_name:
+            project = info_bundle.project
+
+            # Framework-level
+            framework_name = project.get("framework_name")
+            if framework_name:
+                framework_project = PROJECTS[framework_name]
+                framework_cfg_path = framework_project["paths"].get(
+                    "mv_project_cfg"
+                )
+
+                if framework_cfg_path:
+                    framework_cfg = load_yml(framework_cfg_path)
+
+            # Project level
+            if project_name != framework_name:
+                project_cfg_path = info_bundle.project["paths"].get(
+                    "mv_project_cfg"
+                )
+
+                if project_cfg_path:
+                    project_cfg = load_yml(project_cfg_path)
+
+        # There might be a model-specific configuration
+        if model_mv_cfg_path := info_bundle.paths.get("mv_model_cfg"):
+            model_mv_cfg = load_yml(model_mv_cfg_path)
+
+        # Decide whether to read in the user configuration from the default
+        # search location or use a user-passed one
+        user_cfg_path, user_cfg = cls._load_user_cfg(user_cfg_path)
+
+        # Assemble into two dicts
+        cfg_paths = dict(
+            base=base_cfg_path,
+            framework=framework_cfg_path,
+            project=project_cfg_path,
+            model_mv=model_mv_cfg_path,
+            user=user_cfg_path,
+        )
+        cfgs = dict(
+            base=base_cfg,
+            framework=framework_cfg,
+            project=project_cfg,
+            model_mv=model_mv_cfg,
+            user=user_cfg,
+        )
+
+        return cfg_paths, cfgs
+
+    @classmethod
+    def _assemble_meta_cfg_base_layers(
+        cls, *, info_bundle: ModelInfoBundle, user_cfg_path: str = None
+    ) -> Tuple[dict, Dict[str, str], Dict[str, dict]]:
+        """Assembles the meta-configuration base layers, i.e. *without* the
+        model default configuration or any *run-specific* updates.
+
+        It includes the following layers:
+
+            - ``base``
+            - ``framework``
+            - ``project``
+            - ``model_mv`` (model-specific multiverse updates)
+            - ``user``
+
+        Returns a 3-tuple of (assembled meta config, cfg paths, cfg dicts).
+        """
+        # Load the base layers
+        cfg_paths, cfgs = cls._load_meta_cfg_parts(
+            info_bundle=info_bundle, user_cfg_path=user_cfg_path
+        )
+
+        # Now perform the recursive update steps, starting with the base.
+        meta_tmp = dict()
+        for cfg_name in ("base", "framework", "project", "model_mv", "user"):
+            cfg = cfgs[cfg_name]
+            if cfg:
+                log.debug("Updating with %s configuration ...", cfg_name)
+                meta_tmp = recursive_update(meta_tmp, cfg)
+
+        return meta_tmp, cfg_paths, cfgs
+
     def _create_meta_cfg(
         self, *, run_cfg_path: str, user_cfg_path: str, update_meta_cfg: dict
     ) -> dict:
@@ -416,77 +549,17 @@ class Multiverse:
         """
         log.info("Building meta-configuration ...")
 
-        # Read in the base meta configuration
-        base_cfg = load_yml(self.BASE_META_CFG_PATH)
-
-        # Framework- and project-level configuration files
-        framework_cfg = {}
-        framework_cfg_path = None
-
-        project_cfg = {}
-        project_cfg_path = None
-
-        model_mv_cfg = {}
-        model_mv_cfg_path = None
-
-        project_name = self.info_bundle.project_name
-        if project_name:
-            project = self.info_bundle.project
-
-            # Framework-level
-            framework_name = project.get("framework_name")
-            if framework_name:
-                framework_project = PROJECTS[framework_name]
-                framework_cfg_path = framework_project["paths"].get(
-                    "mv_project_cfg"
-                )
-
-                if framework_cfg_path:
-                    framework_cfg = load_yml(framework_cfg_path)
-
-            # Project level
-            if project_name != framework_name:
-                project_cfg_path = self.info_bundle.project["paths"].get(
-                    "mv_project_cfg"
-                )
-
-                if project_cfg_path:
-                    project_cfg = load_yml(project_cfg_path)
-
-        # There might be a model-specific configuration
-        if model_mv_cfg_path := self.info_bundle.paths.get("mv_model_cfg"):
-            model_mv_cfg = load_yml(model_mv_cfg_path)
-
-        # Decide whether to read in the user configuration from the default
-        # search location or use a user-passed one
-        if user_cfg_path is None:
-            log.debug(
-                "Looking for user configuration file in default "
-                "location, %s",
-                self.USER_CFG_SEARCH_PATH,
-            )
-
-            if os.path.isfile(self.USER_CFG_SEARCH_PATH):
-                user_cfg_path = self.USER_CFG_SEARCH_PATH
-            else:
-                # No user cfg will be loaded
-                log.debug("No file found at the default search location.")
-
-        elif user_cfg_path is False:
-            log.debug(
-                "Not loading the user configuration from the default "
-                "search path: %s",
-                self.USER_CFG_SEARCH_PATH,
-            )
-
-        user_cfg = None
-        if user_cfg_path:
-            user_cfg = load_yml(user_cfg_path)
+        # Load the base layers
+        meta_tmp, cfg_paths, cfgs = self._assemble_meta_cfg_base_layers(
+            info_bundle=self.info_bundle, user_cfg_path=user_cfg_path
+        )
 
         # Read in the configuration corresponding to the chosen model
         (model_cfg, model_cfg_path, params_to_validate) = load_model_cfg(
             info_bundle=self.info_bundle
         )
+        cfg_paths["model"] = model_cfg_path
+        cfgs["model"] = model_cfg
         # NOTE Unlike the other configuration files, this does not attach at
         # root level of the meta configuration but parameter_space.<model_name>
         # in order to allow it to be used as the default configuration for an
@@ -515,32 +588,12 @@ class Multiverse:
 
         else:
             log.note(
-                "Using default run configuration:\n  %s\n", model_cfg_path
+                "Using default model configuration for run:\n  %s\n",
+                model_cfg_path,
             )
-        # After this point it is assumed that all values are valid.
-        # Those keys or values will throw errors once they are used ...
 
-        # Now perform the recursive update steps
-        # Start with the base configuration
-        meta_tmp = base_cfg
-
-        # Update with framework and project config, if available
-        if framework_cfg:
-            log.debug("Updating with framework configuration ...")
-            meta_tmp = recursive_update(meta_tmp, framework_cfg)
-
-        if project_cfg:
-            log.debug("Updating with project configuration ...")
-            meta_tmp = recursive_update(meta_tmp, project_cfg)
-
-        if model_mv_cfg:
-            log.debug("Updating with model-specific configuration ...")
-            meta_tmp = recursive_update(meta_tmp, model_mv_cfg)
-
-        # Update with user configuration, if given
-        if user_cfg:
-            log.debug("Updating with user configuration ...")
-            meta_tmp = recursive_update(meta_tmp, user_cfg)
+        cfg_paths["run"] = run_cfg_path
+        cfgs["run"] = run_cfg
 
         # In order to incorporate the model config, the parameter space is
         # needed. We can already be sure that the parameter_space key exists,
@@ -571,8 +624,8 @@ class Multiverse:
             meta_tmp = recursive_update(
                 meta_tmp, copy.deepcopy(update_meta_cfg)
             )
-            # NOTE using deep copy to make sure that usage of the dict will not
-            #      interfere with the Multiverse's meta config
+            # NOTE using deep copy to make sure that usage of the dict
+            #      elsewhere will not interfere with the Multiverse
 
         # Make `parameter_space` a ParamSpace object
         pspace = meta_tmp["parameter_space"]
@@ -587,17 +640,12 @@ class Multiverse:
         )
 
         # Prepare dict to store paths for config files in (for later backup)
-        log.debug("Preparing dict of config parts ...")
-        cfg_parts = dict(
-            base=self.BASE_META_CFG_PATH,
-            framework=framework_cfg_path,
-            project=project_cfg_path,
-            model_mv=model_mv_cfg,
-            user=user_cfg_path,
-            model=model_cfg_path,
-            run=run_cfg_path,
-            update=update_meta_cfg,
-        )
+        cfg_parts: Dict[str, Union[dict, str, None]] = dict()
+        cfg_parts.update(cfg_paths)
+        cfg_parts["model"] = model_cfg_path
+        cfg_parts["run"] = run_cfg_path
+        cfg_parts["update"] = update_meta_cfg
+
         return meta_tmp, cfg_parts
 
     def _apply_debug_level(self, lvl: int = None):
@@ -765,7 +813,9 @@ class Multiverse:
             )
             os.chmod(self.dirs[dirname], mode)
 
-    def _get_run_dir(self, *, out_dir: str, run_dir: str, **__):
+    def _get_run_dir(
+        self, *, out_dir: Optional[str], run_dir: Optional[str], **__
+    ):
         """Helper function to find the run directory from arguments given
         to :py:meth:`~utopya.multiverse.Multiverse.__init__`.
         This is not actually used in :py:class:`~utopya.multiverse.Multiverse`
@@ -773,8 +823,11 @@ class Multiverse:
         :py:class:`~utopya.multiverse.DistributedMultiverse`.
 
         Args:
-            out_dir (str): The output directory
-            run_dir (str): The run directory to use
+            out_dir (str): The Model output directory. If unknown (None), will
+                try to deduce it from an absolute run directory path or from
+                the info bundle.
+            run_dir (str): The run directory to use; if not known will try to
+                find the latest run directory.
             ``**__``: ignored
 
         Raises:
@@ -782,6 +835,24 @@ class Multiverse:
             TypeError: When run_dir was not a string
         """
         PATTERN = r"\d{6}-\d{6}_?.*"
+        # TODO also match without note segment
+
+        # May need to deduce the output directory
+        if out_dir is None:
+            if run_dir and os.path.abspath(run_dir):
+                out_dir = os.path.abspath(os.path.join(run_dir, ".."))
+            else:
+                # Need to make a good guess which directory is meant. The best
+                # we can do at this point (without the actual meta-config) is
+                # to guess the output directory, which is defined in the
+                # assembled meta-configuration. This will be correct _unless_
+                # a different directory was specified in the run config (in
+                # which case a user should not expect that we can magically
+                # find that directory...)
+                incompl_meta_cfg, *_ = self._assemble_meta_cfg_base_layers(
+                    info_bundle=self._info_bundle
+                )
+                out_dir = incompl_meta_cfg["paths"]["out_dir"]
 
         # Create model directory path (where the to-be-loaded data is expected)
         out_dir = os.path.expanduser(str(out_dir))
@@ -832,6 +903,7 @@ class Multiverse:
                     "one within the model output directory ...",
                     run_dir,
                 )
+                # TODO actual matching using the timestamp
                 run_dir = os.path.join(model_dir, run_dir)
 
             else:
@@ -862,6 +934,8 @@ class Multiverse:
                     run_dir,
                 )
             self.dirs[subdir] = subdir_path
+
+        return run_dir
 
     def _setup_pm(self, **update_kwargs) -> PlotManager:
         """Helper function to setup a PlotManager instance"""
@@ -1951,11 +2025,12 @@ class DistributedMultiverse(FrozenMultiverse):
 
         self._clear_existing_output: bool = False
 
-        self.joined_run_num: Optional[int] = None
+        self._is_joined_run: bool = None
 
-        # Generate the path to the run directory that is to be loaded
-        # TODO Extract out dir from available infos
-        self._get_run_dir(out_dir=None, run_dir=run_dir)
+        # Generate the path to the run directory that is to be loaded.
+        # At this point, we don't know the output directory, but we can deduce
+        # it from the path (or from the user config) ...
+        run_dir = self._get_run_dir(out_dir=None, run_dir=run_dir)
         log.note("Run directory:\n  %s", self.dirs["run"])
 
         # Load the meta config
@@ -1967,12 +2042,14 @@ class DistributedMultiverse(FrozenMultiverse):
                 meta_cfg_path,
             )
 
-        log.debug("Loading from meta config at %s ...", meta_cfg_path)
+        log.note(
+            "Loading existing meta configuration from:\n  %s", meta_cfg_path
+        )
+        mcfg = load_yml(meta_cfg_path)
 
         # Only keep selected entries from the meta configuration. The rest is
         # not needed and is deleted in order to not confuse the user with
         # potentially varying versions of the meta config.
-        mcfg = load_yml(meta_cfg_path)
         self._meta_cfg = {
             k: v
             for k, v in mcfg.items()
@@ -1990,7 +2067,7 @@ class DistributedMultiverse(FrozenMultiverse):
         log.remark("  Debug level:  %d", self.debug_level)
         self._apply_debug_level()
 
-        # Prepare the executable
+        # Prepare executable and WorkerManager
         self._prepare_executable(**self.meta_cfg["executable_control"])
 
         self._wm = WorkerManager(**self.meta_cfg["worker_manager"])
@@ -2170,8 +2247,13 @@ class DistributedMultiverse(FrozenMultiverse):
         """
         log.info("Preparing to join simulation run ...")
 
-        # Can we even join this run?
-        # I.e.: are we doing (1) a sweep that is (2) not yet finished?
+        # Can we even join this run? We need a ...
+        if not self.skippable_universes:
+            raise MultiverseError(
+                "Cannot join a Multiverse run that was started with "
+                "`skippable_universes` set to False!"
+            )
+
         if not self.meta_cfg["perform_sweep"]:
             raise MultiverseError(
                 "Cannot join existing run if it is not a parameter sweep."
@@ -2193,8 +2275,7 @@ class DistributedMultiverse(FrozenMultiverse):
         self._add_sim_tasks(sweep=True)
         self.wm.tasks.lock()
 
-        # The reporter should not write the report file!
-        # TODO
+        self._is_joined_run = True
 
         if num_workers is not None:
             self.wm.num_workers = num_workers

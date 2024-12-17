@@ -5,7 +5,7 @@
 # the Multiverse, which determines all details of how a run is performed.
 #
 # The top-level keys here are used to configure different parts of Multiverse:
-#   - properties of the Multiverse itself: `paths`, `perform_sweep`
+#   - properties of the Multiverse itself: `paths`, `perform_sweep`, ...
 #   - properties of attributes: `worker_manager`, `run_kwargs`, ...
 #   - and the parameter space that is passed on to the model instance
 #
@@ -160,11 +160,20 @@ reporter:
         file:
           path: _sweep_info.txt
           skip_if_empty: true
+          skip_if_joined: true
         log:
           lvl: 18
           skip_if_empty: true
       fstr: "Sweeping over the following parameter space:\n\n{sweep_info:}"
       only_for_sweep: true
+
+    # Creates a work status file
+    work_status:
+      parser: work_status
+      write_to:
+        file:
+          path: _status.txt  # TODO use leading . instead
+      min_report_intv: 5.
 
   # Can define a default format to use
   # default_format: ~
@@ -231,14 +240,14 @@ worker_manager:
   # Keys refer to events, values are lists of report format names, which can be
   # defined via the WorkerManagerReporter (see `reporter.report_formats` above)
   rf_spec:
-    before_working: [sweep_info]
+    before_working: [sweep_info, work_status]
     while_working: [progress_bar]
     task_spawned: [progress_bar]
     monitor_updated: [progress_bar]
-    task_finished: [progress_bar, report_file]
-    task_skipped: [progress_bar]
-    after_work: [progress_bar, report_file]
-    after_abort: [progress_bar, report_file]
+    task_finished: [progress_bar, report_file, work_status]
+    task_skipped: [progress_bar, report_file, work_status]
+    after_work: [progress_bar, report_file, work_status]
+    after_abort: [progress_bar, report_file, work_status]
 
 
 # Configuration for the WorkerManager.start_working method

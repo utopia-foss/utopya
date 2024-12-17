@@ -69,6 +69,10 @@ class WorkerTaskSetupError(WorkerTaskError):
 class SkipWorkerTask(WorkerTaskError):
     """Raised to indicate that a worker task should be skipped."""
 
+    def __init__(self, reason: str, *args, **kwargs):
+        self.reason = reason
+        super().__init__(reason, *args, **kwargs)
+
 
 class WorkerTaskNotSkippable(WorkerTaskError):
     """Raised when a worker task was NOT marked as skippable but a skip event

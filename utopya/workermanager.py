@@ -178,6 +178,7 @@ class WorkerManager:
         self._task_q = QueueCls()
         self._active_tasks = []
         self.stopped_tasks = TaskList()
+        self.skipped_tasks = TaskList()
         self._stop_conditions = set()
         self._reporter = None
         self._num_finished_tasks = 0
@@ -489,6 +490,10 @@ class WorkerManager:
             - registers the task with the reporter, which extracts information
               on the run time of the task and its exit status
             - in debug mode, performs an action upon non-zero task exit status
+
+            .. note::
+
+                This is NOT invoked for skipped tasks.
             """
             if self.reporter is not None:
                 self.reporter.register_task(task)
@@ -507,7 +512,12 @@ class WorkerManager:
                 self.pending_exceptions.put_nowait(exc)
 
         def task_skipped(task):
-            """Performs actions after a task was skipped."""
+            """Performs actions after a task was skipped, i.e. if it did not
+            spawn a process but it was decided *prior to spawning* that the
+            task should not be worked on but skipped.
+            """
+            self.skipped_tasks.append(task)
+
             if self.reporter is not None:
                 self.reporter.register_task(task)
 
@@ -853,7 +863,7 @@ class WorkerManager:
             # Nothing to rebuild
             return
 
-        # Broke out of the loop, i.e.: at least one task finished
+        # Broke out of the loop, i.e. at least one task finished or was skipped
         old_len = len(self.active_tasks)
 
         # have to rebuild the list of active tasks now...

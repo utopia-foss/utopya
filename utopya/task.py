@@ -239,7 +239,7 @@ class Task:
         self._progress_func = progress_func
 
         self._stop_conditions = set()
-        self._skipping = dict(enabled=skippable, was_skipped=None)
+        self._skipping = dict(enabled=skippable, was_skipped=None, reason=None)
 
         log.debug(
             "Initialized Task '%s'.\n  Priority: %s,  UID: %s.",
@@ -313,6 +313,11 @@ class Task:
         still open.
         """
         return self._skipping["was_skipped"]
+
+    @property
+    def skip_reason(self) -> Optional[str]:
+        """Whether this task may be skipped."""
+        return self._skipping["reason"]
 
     # Magic methods ...........................................................
     # ... including rich comparisons, needed in PriorityQueue
@@ -511,6 +516,9 @@ class WorkerTask(Task):
             Union[int, None]: Current worker status. False, if there was no
                 worker associated yet.
         """
+        if self.was_skipped:
+            return SKIP_EXIT_CODE
+
         if not self.worker:
             return False
 
@@ -1166,18 +1174,17 @@ class WorkerTask(Task):
     def _mark_as_skipped(self, skip_signal: Exception):
         """Marks this task as skipped."""
         if not self.skippable:
-            raise WorkerTaskNotSkippable(self.name)
+            raise WorkerTaskNotSkippable(
+                f"{type(self).__name__} '{self.name}' is not skippable!"
+            )
 
         self._skipping["was_skipped"] = True
+        self._skipping["reason"] = skip_signal.reason
 
         # Mock state of this task to be more similar to non-skipped tasks
         self.profiling["create_time"] = time.time()
         self.profiling["end_time"] = time.time()
-        self.profiling["run_time"] = (
-            0.0  # TODO use duration of setup function?
-        )
-
-        self._worker_status = SKIP_EXIT_CODE
+        self.profiling["run_time"] = np.nan
 
         # Finish up
         self._invoke_callback("skipped")
@@ -1245,7 +1252,7 @@ class NoWorkTask(WorkerTask):
         _ = self._prepare_worker_kwargs()
 
         self.profiling["create_time"] = time.time()
-        log.debug("This is a NoWorkTask: Skipping to work on task.")
+        log.debug("This is a NoWorkTask: Will not work on task.")
         self._worker_status = 0
         self._finished()
 

@@ -143,7 +143,7 @@ def run_existing(
 @click.argument(
     "run_dir",
     shell_complete=complete_run_dirs,
-    required=True,
+    required=False,
 )
 @add_options(OPTIONS["label"])
 @add_options(OPTIONS["num_workers"])  # -W, --num-workers
@@ -168,10 +168,10 @@ def join_run(
 
     mv.join_run(num_workers=num_workers)
 
-    _log.note("Evaluation routine is not possible for joined run.")
+    _log.note("Evaluation is not possible for joined run.")
     _log.remark(
-        "For evaluation, call:\n  utopya eval %s %s\n",
+        "Once the run is complete, call:\n\n  utopya eval %s %s\n",
         model_name,
-        os.path.basename(run_dir),
+        os.path.basename(mv.dirs["run"]),
     )
     _log.progress("Exiting now ...\n")
