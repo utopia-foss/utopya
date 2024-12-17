@@ -2,8 +2,10 @@
 
 import copy
 import logging
+import os
 import readline
 import sys
+import time
 import traceback
 from typing import List, Tuple, Union
 
@@ -17,7 +19,15 @@ from ._shared import (
     complete_run_dirs,
     default_none,
 )
-from ._utils import ANSIesc, Echo, parse_run_and_plots_cfg, parse_update_dicts
+from ._utils import (
+    SPINNER,
+    ANSIesc,
+    Echo,
+    get_status_file_paths,
+    parse_run_and_plots_cfg,
+    parse_update_dicts,
+    unfinished_distributed_multiverses,
+)
 
 log = logging.getLogger(__name__)
 
@@ -131,11 +141,26 @@ def _load_and_eval(
     ctx,
     mv: Union["Multiverse", "FrozenMultiverse"],
     _log=log,
+    no_wait: bool = False,
     **params,
 ):
     """Wrapper that takes care of loading and evaluating"""
     from utopya.tools import pformat
 
+    if no_wait:
+        _log.remark(
+            "Not checking for potentially unfinished "
+            "distributed Multiverse runs."
+        )
+        _log.remark(
+            "If you encounter loading or evaluation errors, these may "
+            "be due to an unfinished distributed run."
+        )
+
+    elif not _proceed_after_waiting_for_distributed_run(mv, _log=_log):
+        return
+
+    # Can now begin evaluation for real ...
     _log.progress(
         "Beginning evaluation: loading data and starting PlotManager ...\n"
     )
@@ -389,6 +414,81 @@ def _load_and_eval(
 
     print("\n")
     _log.success("Left interactive plotting session.\n")
+
+
+def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
+    # May need to wait for distributed runs to finish
+    run_dir = mv.dirs["run"]
+    if not (udmv := unfinished_distributed_multiverses(run_dir)):
+        return True
+
+    Ntot = len(get_status_file_paths(run_dir))
+    _log.info(
+        "This run is carried out in a distributed fashion and has not "
+        "finished yet."
+    )
+    _log.note(
+        "Checking %d Multiverse status file%s and automatically "
+        "proceeding to evaluation once all distributed runs concluded ...",
+        Ntot,
+        "s" if Ntot != 1 else "",
+    )
+    _log.remark("Press Ctrl + C to ignore this and proceed to evaluation.")
+
+    try:
+        i = 0
+        while udmv := unfinished_distributed_multiverses(run_dir):
+            N = len(udmv)
+            Ntot = len(get_status_file_paths(run_dir))
+            _spinner = SPINNER[i % len(SPINNER)]
+            print(
+                f"     {_spinner}  ",
+                f"Waiting for {N:d} / {Ntot} Multiverses to finish ... ",
+                end="   \r",
+            )
+            time.sleep(0.3)
+            i += 1
+
+    except KeyboardInterrupt:
+        print("\n")
+        _log.note("Stopped checking distributed Multiverse status.")
+        _log.caution(
+            "Some output may not be ready yet, causing data loading or "
+            "evaluation to fail!\n"
+        )
+
+        # Prompt confirmation
+        prompt_str = (
+            "{ansi.ORANGE}{ansi.BOLD}  Proceed to evaluation regardless? "
+            "[y/N]  {ansi.RESET}"
+        ).format(ansi=ANSIesc)
+
+        input_res = input(prompt_str).strip().lower()
+        print("")
+        if input_res != "y":
+            run_dirname = os.path.split(mv.dirs["run"])[-1]
+            _log.info("Not proceeding with evaluation.")
+            _log.remark(
+                "To evaluate once the run has finished, call:\n\n  %s\n",
+                f"utopya eval {mv.model_name} {run_dirname}",
+            )
+            return False
+
+        _log.caution(
+            "Proceeding to evaluation despite unfinished Multiverses ...\n"
+        )
+        time.sleep(1.0)
+
+    else:
+        print("\n")
+        _log.progress(
+            "All %d distributed Multiverse%s have finished; ready for "
+            "data loading and evaluation now.\n",
+            Ntot,
+            "" if Ntot == 1 else "s",
+        )
+
+    return True
 
 
 def _handle_interactive_plotting_exception(

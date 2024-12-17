@@ -281,6 +281,15 @@ OPTIONS["load"] = (
         show_default=True,
         help="Controls which kind of data tree should be shown after loading.",
     ),
+    click.option(
+        "--no-wait",
+        flag_value=True,
+        default=False,
+        help=(
+            "If set, will not check whether there are distributed Multiverse "
+            "runs that have not finished yet and directly proceed to loading."
+        ),
+    ),
 )
 
 

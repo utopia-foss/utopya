@@ -123,6 +123,17 @@ from ._utils import Echo
     ),
 )
 @click.option(
+    "--skippable/--not-skippable",
+    "skippable_universes",
+    default=None,
+    help=(
+        "If given, will overwrite the default value for `skippable_universes` "
+        "in the meta-configuration. Skippable universes allow that a run can "
+        "be joined from another machine using `utopya join-run`, with the "
+        "disadvantage that the run is now distributed across machines..."
+    ),
+)
+@click.option(
     "--set-model-params",
     "--mp",
     multiple=True,

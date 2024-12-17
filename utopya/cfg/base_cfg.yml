@@ -160,7 +160,7 @@ reporter:
         file:
           path: _sweep_info.txt
           skip_if_empty: true
-          skip_if_joined: true
+          skip_if_joined: true  # already have an identical sweep info file
         log:
           lvl: 18
           skip_if_empty: true
@@ -172,7 +172,7 @@ reporter:
       parser: work_status
       write_to:
         file:
-          path: _status.yml  # FIXME use leading .
+          path: .status.yml
       min_report_intv: 5.
 
   # Can define a default format to use

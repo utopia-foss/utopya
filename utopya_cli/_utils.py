@@ -1,17 +1,65 @@
 """Various utilities used within the CLI definition and for handling click"""
 
 import copy
+import glob
 import logging
 import os
 import sys
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 import click
 import paramspace as psp
+import yayaml
 
 log = logging.getLogger(__name__)
 # FIXME This logger does not support all levels that are used throughout this
 #       module, because it is setup prior to the utopya import.
+
+SPINNER = (
+    "(●      )",
+    "( ●     )",
+    "(  ●    )",
+    "(   ●   )",
+    "(    ●  )",
+    "(     ● )",
+    "(      ●)",
+    "(     ● )",
+    "(    ●  )",
+    "(   ●   )",
+    "(  ●    )",
+    "( ●     )",
+)
+"""A simple ASCII based loading indicator"""
+
+# -----------------------------------------------------------------------------
+# Finding work status of distributed runs
+
+
+def get_status_file_paths(
+    run_dir: str, *, status_file_glob=".status*.yml"
+) -> List[str]:
+    return glob.glob(os.path.join(run_dir, status_file_glob))
+
+
+def get_distributed_work_status(run_dir: str, **kwargs) -> Dict[str, dict]:
+    """Finds and loads the work status files in the given directory"""
+    return {
+        path: yayaml.load_yml(path)
+        for path in get_status_file_paths(run_dir, **kwargs)
+    }
+
+
+def unfinished_distributed_multiverses(
+    run_dir: str, **kwargs
+) -> Dict[str, dict]:
+    """Returns the number of distributed Multiverse instanes that have not
+    finished working on the run of the specified run directory."""
+    return {
+        k: v
+        for k, v in get_distributed_work_status(run_dir, **kwargs).items()
+        if v["status"] != "finished"
+    }
+
 
 # -----------------------------------------------------------------------------
 # Communication via Terminal
@@ -448,6 +496,13 @@ def parse_update_dicts(
                 args.run_mode == "sweep",
                 add_to=update_dict,
                 key_path=("perform_sweep",),
+            )
+
+        if args.skippable_universes is not None:
+            add_item(
+                args.skippable_universes,
+                add_to=update_dict,
+                key_path=("skippable_universes",),
             )
 
         if args.worker_perform_task is not None:
