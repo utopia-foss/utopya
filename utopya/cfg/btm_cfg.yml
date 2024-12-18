@@ -125,13 +125,14 @@ worker_manager:
   # by name here. They can also be lists, if multiple report formats should
   # be invoked.
   rf_spec:
-    before_working: []
+    before_working: [work_status, sweep_info]
     while_working: [progress_bar]
     task_spawned: [progress_bar]
     monitor_updated: [progress_bar]
-    task_finished: [progress_bar, report_file]
-    after_work: [progress_bar, report_file]
-    after_abort: [progress_bar, report_file]
+    task_finished: [work_status, progress_bar, report_file]
+    task_skipped: [work_status, progress_bar, report_file]
+    after_work: [work_status, progress_bar, report_file]
+    after_cancel: [work_status, progress_bar, report_file]
 
 # The defaults for the worker_kwargs
 # These are passed to the setup function of each MPProcessTask before spawning

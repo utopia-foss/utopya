@@ -1645,7 +1645,7 @@ class WorkerManagerReporter(Reporter):
         cntr = self.task_counters
         if self._latest_wm_report == "after_work":
             wm_status = "finished"
-        elif self._latest_wm_report == "after_abort":
+        elif self._latest_wm_report == "after_cancel":
             wm_status = "cancelled"
         else:
             wm_status = "working"

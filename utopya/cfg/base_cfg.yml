@@ -250,7 +250,8 @@ worker_manager:
     task_finished: [work_status, progress_bar, report_file]
     task_skipped: [work_status, progress_bar, report_file]
     after_work: [work_status, progress_bar, report_file]
-    after_abort: [work_status, progress_bar, report_file]
+    after_cancel: [work_status, progress_bar, report_file]
+    after_fail: [work_status, report_file]
 
 
 # Configuration for the WorkerManager.start_working method

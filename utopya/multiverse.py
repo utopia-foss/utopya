@@ -353,17 +353,9 @@ class Multiverse:
                 the value will be read from the ``perform_sweep`` key of the
                 meta-configuration.
         """
-        log.info("Preparing for simulation run ...")
-
-        # Add tasks, then prevent adding further tasks to disallow further runs
+        log.hilight("Preparing for simulation run ...")
         self._add_sim_tasks(sweep=sweep)
-        self.wm.tasks.lock()
-
-        # Tell the WorkerManager to start working (is a blocking call)
-        self.wm.start_working(**self.meta_cfg["run_kwargs"])
-
-        # Done! :)
-        log.success("Finished simulation run. Wohoo. :)\n")
+        self._start_working(**self.meta_cfg["run_kwargs"])
 
     def run_single(self):
         """Runs a single simulation using the parameter space's default value.
@@ -1709,7 +1701,7 @@ class Multiverse:
 
         else:
             # Prepare a cluster mode sweep
-            log.info("Preparing cluster mode sweep ...")
+            log.hilight("Preparing cluster mode sweep ...")
 
             # Get the resolved cluster parameters
             # These include the following values:
@@ -1838,6 +1830,21 @@ class Multiverse:
             "accordingly.\n"
         )
         raise ValidationError(msg)
+
+    def _start_working(self, **kwargs):
+        """Wrapper that helps to invoke the WorkerManager"""
+        # Prevent adding further tasks
+        self.wm.tasks.lock()
+
+        # Tell the WorkerManager to start working (is a blocking call)
+        wm_status = self.wm.start_working(**kwargs)
+
+        if "success" in wm_status:
+            log.success("Successfully finished simulation run. Woohooo! 🎉\n")
+        else:
+            log.caution("Simulation run %s.\n", wm_status)
+
+        return wm_status
 
 
 # -----------------------------------------------------------------------------
@@ -2175,15 +2182,11 @@ class DistributedMultiverse(FrozenMultiverse):
                 is_sweep=is_sweep,
             )
 
-        self.wm.tasks.lock()
         if num_workers is not None:
             self.wm.num_workers = num_workers
 
-        # Tell the WorkerManager to start working (is a blocking call)
-        self.wm.start_working(**self.meta_cfg["run_kwargs"])
-
-        # Done! :)
-        log.success("Finished simulation run. Wohoo. :)\n")
+        # Here we go ...
+        self._start_working(**self.meta_cfg["run_kwargs"])
 
     def run(
         self,
@@ -2208,7 +2211,7 @@ class DistributedMultiverse(FrozenMultiverse):
         """
         ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
 
-        log.info("Preparing for repeated simulation run ...")
+        log.hilight("Preparing for repeated simulation run ...")
 
         # Store parameter, used during universe dir setup
         self._clear_existing_output = clear_existing_output
@@ -2251,15 +2254,9 @@ class DistributedMultiverse(FrozenMultiverse):
                 is_sweep=is_sweep,
             )
 
-        self.wm.tasks.lock()
         if num_workers is not None:
             self.wm.num_workers = num_workers
-
-        # Tell the WorkerManager to start working (is a blocking call)
-        self.wm.start_working(**self.meta_cfg["run_kwargs"])
-
-        # Done! :)
-        log.success("Finished simulation run. Wohoo. :)\n")
+        self._start_working(**self.meta_cfg["run_kwargs"])
 
     def join_run(
         self,
@@ -2277,7 +2274,7 @@ class DistributedMultiverse(FrozenMultiverse):
                 When joining an already-running simulation run, it is advisable
                 to set this to True to reduce competition for new tasks.
         """
-        log.info("Preparing to join simulation run ...")
+        log.hilight("Preparing to join simulation run ...")
 
         # Can we even join this run? We need a ...
         if not self.skippable_universes:
@@ -2305,7 +2302,6 @@ class DistributedMultiverse(FrozenMultiverse):
 
         # Ok, all good. Add _all_ tasks, some of which will not need to run.
         self._add_sim_tasks(sweep=True)
-        self.wm.tasks.lock()
 
         self._is_joined_run = True
 
@@ -2317,10 +2313,7 @@ class DistributedMultiverse(FrozenMultiverse):
             run_kwargs["shuffle_tasks"] = shuffle_tasks
 
         # Now we can start working ...
-        self.wm.start_working(**run_kwargs)
-
-        # Done (on this machine)
-        log.success("Finished joined simulation run. Wohoo. :)")
+        self._start_working(**run_kwargs)
         log.note("Note: Tasks on other machines may still be running.\n")
 
     # .........................................................................

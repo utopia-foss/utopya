@@ -285,7 +285,7 @@ def _load_and_eval(
                     if click.confirm(_prompt):
                         break
 
-                except (KeyboardInterrupt, click.exceptions.Abort):
+                except (KeyboardInterrupt, click.exceptions.cancel):
                     pass
 
                 print("\n")

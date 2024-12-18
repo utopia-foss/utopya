@@ -42,12 +42,6 @@ class WorkerManager:
     """The WorkerManager class orchestrates :py:class:`~utopya.task.WorkerTask`
     objects: setting them up, invoking them, tracking their progress, and
     starting new workers if previous workers finished.
-
-    Attrs:
-        rf_spec (dict): The report format specifications that are used
-            throughout the WorkerManager. These are invoked at different points
-            of the operation of the WorkerManager: ``while_working``,
-            ``after_work``, ``after_abort``, ``task_spawn``, ``task_finished``.
     """
 
     pending_exceptions: queue.Queue = None
@@ -63,7 +57,8 @@ class WorkerManager:
     - ``before_working``
     - ``while_working``
     - ``after_work``
-    - ``after_abort``
+    - ``after_cancel``
+    - ``after_fail``
     - ``task_spawn``
     - ``task_finished``
     - ``task_skipped``
@@ -117,8 +112,8 @@ class WorkerManager:
                 the WorkerManager's operation.
                 Possible keys:
                     ``before_working``, ``while_working``,
-                    ``after_work``, ``after_abort``, ``task_spawn``,
-                    ``task_finished``, ``task_skipped``.
+                    ``after_work``, ``after_cancel``, ``after_fail``,
+                    ``task_spawn``, ``task_finished``, ``task_skipped``.
                 All other keys are ignored.
 
                 The values of the dict can be either strings or lists of
@@ -177,8 +172,11 @@ class WorkerManager:
         self._tasks = TaskList()
         self._task_q = QueueCls()
         self._active_tasks = []
+        self.succeeded_tasks = TaskList()
         self.stopped_tasks = TaskList()
         self.skipped_tasks = TaskList()
+        self.failed_tasks = TaskList()
+        self._work_session_status: str = "not started"
         self._stop_conditions = set()
         self._reporter = None
         self._num_finished_tasks = 0
@@ -208,7 +206,8 @@ class WorkerManager:
             task_finished="while_working",
             task_skipped="while_working",
             after_work="after_work",
-            after_abort="after_work",
+            after_cancel="after_work",
+            after_fail="after_work",
         )
         if rf_spec:
             self.rf_spec.update(rf_spec)
@@ -506,10 +505,26 @@ class WorkerManager:
             # condition being fulfilled separately.
             if self.nonzero_exit_handling != "ignore" and task.worker_status:
                 if task.worker_status in STOPCOND_EXIT_CODES:
+                    # NOTE Not adding to self.stopped_tasks here because this
+                    #      is done already in the main loop
                     exc = WorkerTaskStopConditionFulfilled(task)
                 else:
                     exc = WorkerTaskNonZeroExit(task)
                 self.pending_exceptions.put_nowait(exc)
+
+            # Register whether the task succeeded or not.
+            # Note that stopped tasks don't get into this callback and are
+            # counted in the `task_skipped` callback instead.
+            if task.worker_status == 0:
+                self.succeeded_tasks.append(task)
+
+            elif task.worker_status in STOPCOND_EXIT_CODES:
+                pass
+                # self.stopped_tasks.append(task) … is already called in the
+                # main polling loop
+
+            else:
+                self.failed_tasks.append(task)
 
         def task_skipped(task):
             """Performs actions after a task was skipped, i.e. if it did not
@@ -571,7 +586,7 @@ class WorkerManager:
                 will block here, as it continuously polls the workers and
                 distributes tasks.
             timeout (float, optional): If given, the number of seconds this
-                work session is allowed to take. Workers will be aborted if
+                work session is allowed to take. Workers will be canceled if
                 the number is exceeded. Note that this is not measured in CPU
                 time, but the host systems wall time.
             stop_conditions (Sequence[StopCondition], optional): During the
@@ -587,6 +602,7 @@ class WorkerManager:
         self._invoke_report("before_working")
 
         log.progress("Preparing to work ...")
+        self._work_session_status = "preparing"
 
         # Set some variables needed during the run
         poll_no = 0
@@ -597,17 +613,18 @@ class WorkerManager:
         stop_conditions = self._parse_stop_conditions(stop_conditions)
 
         # Perhaps shuffle the tasks queue
-        log.note("  Shuffled Tasks:  %s", shuffle_tasks)
+        log.note("  Shuffled tasks:   %s", shuffle_tasks)
         if shuffle_tasks:
             random.shuffle(self._task_q.queue)
 
         # Start with the polling loop
         # Basically all working time will be spent in there ...
         log.hilight("Starting to work ...")
+        self._work_session_status = "working"
 
         try:
             while self.active_tasks or self.task_queue.qsize() > 0:
-                # Check total timeout
+                # Check total timeout; if raised, this is handled via except
                 if timeout_time is not None and time.time() > timeout_time:
                     raise WorkerManagerTotalTimeout()
 
@@ -644,7 +661,7 @@ class WorkerManager:
                 # Check stop conditions
                 if stop_conditions:
                     # Compile a list of workers where the stop conditions
-                    # were fulfilled and store them.
+                    # were fulfilled and keep track of them.
                     fulfilled = self._check_stop_conds(stop_conditions)
                     self.stopped_tasks += fulfilled
 
@@ -658,20 +675,17 @@ class WorkerManager:
                 ):
                     self._invoke_periodic_callbacks()
 
-                # Some information
+                # Done with this poll.
                 poll_no += 1
-                log.debug(
-                    "Poll # %6d:  %d active tasks",
-                    poll_no,
-                    len(self.active_tasks),
-                )
-
-                # Delay the next poll
                 time.sleep(self.poll_delay)
 
-            # Finished working
-            # Handle any remaining pending exceptions
-            self._handle_pending_exceptions()
+            else:
+                # Finished working
+                # Handle any remaining pending exceptions
+                self._handle_pending_exceptions()
+
+                # If this succeeded, we can call this work session:
+                self._work_session_status = "finished successfully"
 
         except (KeyboardInterrupt, WorkerManagerTotalTimeout) as exc:
             # Got interrupted or a total timeout.
@@ -687,7 +701,8 @@ class WorkerManager:
             if self.reporter:
                 self.reporter.suppress_cr = True
 
-            log.critical("Did not finish working! See above for error log.")
+            log.critical("Work session failed!")
+            log.error("See above for error log.")
 
             # Now terminate the remaining active tasks
             log.hilight("Terminating active tasks ...")
@@ -695,11 +710,11 @@ class WorkerManager:
 
             # Store end time and invoke a report
             self.times["end_working"] = dt.now()
-            self._invoke_report("after_abort", force=True)
+            self._invoke_report("after_fail", force=True)
 
             # For some specific error types, do not raise but exit with status
             if isinstance(err, WorkerTaskNonZeroExit):
-                log.critical("Exiting now ...")
+                log.critical("Exiting now ...\n")
                 sys.exit(err.task.worker_status)
 
             # Some other error occurred; just raise
@@ -710,18 +725,24 @@ class WorkerManager:
         self.times["end_working"] = dt.now()
         self._invoke_report("after_work", force=True)
 
-        print("")
-        log.progress("Finished working.")
+        print("\n")
+        log.progress("Work session %s.", self._work_session_status)
 
         duration = self.times["end_working"] - self.times["start_working"]
         n_tasks = self.task_count
-        n_stopped = len(self.stopped_tasks)
+        n_success = len(self.succeeded_tasks)
         n_skipped = len(self.skipped_tasks)
-        n_worked = n_tasks - n_skipped
-        log.note("  Work Duration:    %s", format_time(duration))
-        log.note("  Tasks worked on:  %d / %d total", n_worked, n_tasks)
-        log.note("  Tasks stopped:    %d", n_stopped)
-        log.note("  Tasks skipped:    %d", n_skipped)
+        n_stopped = len(self.stopped_tasks)
+        n_failed = len(self.failed_tasks)
+        n_worked = self.num_finished_tasks - n_skipped
+        log.note("  Work duration:           %s", format_time(duration))
+        log.note("  Tasks worked on:         %d / %d total", n_worked, n_tasks)
+        log.note("      … succeeded:         %d", n_success)
+        log.note("      … skipped:           %d", n_skipped)
+        log.note("      … stopped:           %d", n_stopped)
+        log.note("      … failed/cancelled:  %d", n_failed)
+
+        return self._work_session_status
 
     # Non-public API ..........................................................
 
@@ -752,7 +773,7 @@ class WorkerManager:
         """Parses timeout-related arguments"""
         # Determine timeout arguments
         if not timeout:
-            log.note("  Timeout:         None")
+            log.note("  Timeout:          None")
             return None
 
         if timeout <= 0:
@@ -769,7 +790,7 @@ class WorkerManager:
         _to_fstr = "%X" if timeout < 60 * 60 * 12 else "%X, %d.%m.%y"
         _to_at = dt.fromtimestamp(timeout_time).strftime(_to_fstr)
         log.note(
-            "  Timeout:         %s", f"{_to_at} (in {format_time(timeout)})"
+            "  Timeout:          %s", f"{_to_at} (in {format_time(timeout)})"
         )
 
         return self.times["timeout"]
@@ -780,7 +801,7 @@ class WorkerManager:
         """Prepare stop conditions, creating the corresponding objects if
         needed."""
         if not stop_conditions:
-            log.note("  Stop conditions: None")
+            log.note("  Stop conditions:  None")
             return
 
         stop_conditions = [
@@ -790,7 +811,7 @@ class WorkerManager:
         self._stop_conditions.update(set(stop_conditions))
 
         log.note(
-            "  Stop conditions: %s",
+            "  Stop conditions:  %s",
             ", ".join([sc.name for sc in stop_conditions]),
         )
 
@@ -885,7 +906,8 @@ class WorkerManager:
         #      add them to the active_tasks list again.
 
         # Now, only active tasks are in the list, but the list is shorter
-        # Can deduce the number of finished tasks from this
+        # Can deduce the number of finished tasks from this. Note that this
+        # does not tell us anything about whether they finished *successfully*!
         self._num_finished_tasks += old_len - len(self.active_tasks)
 
         return
@@ -1066,6 +1088,8 @@ class WorkerManager:
                 continue
 
             # At this stage, the handling mode is 'raise'. Show more log lines:
+            self._work_session_status = "failed"
+
             log.critical(str(exc))
             log_task_stream(exc.task, num_entries=32)
 
@@ -1081,21 +1105,17 @@ class WorkerManager:
         All active workers will be stopped, either on their own within a grace
         period or, after that, abruptly via a kill signal.
         """
-
-        # Suppress reporter to use CR; then inform via log messages
+        # Temporarily suppress reporter CRs to make room for log messages
         if self.reporter:
             self.reporter.suppress_cr = True
 
         log.warning("Received %s.", type(exc).__name__)
+        self._work_session_status = "cancelled"
 
-        # Extract parameters from config
-        # Which signal to send to workers
+        # Get interruption parameters and send signal to workers
         signal = self.interrupt_params.get("send_signal", "SIGINT")
-
-        # The grace period within which the tasks have to shut down
         grace_period = self.interrupt_params.get("grace_period", 5.0)
 
-        # Send the signal
         log.info(
             "Sending signal %s to %d active task(s) ...",
             signal,
@@ -1106,12 +1126,14 @@ class WorkerManager:
         # Continuously poll them for a certain grace period in order to
         # find out if they have shut down.
         log.warning(
-            "Allowing %s for %d task(s) to shut down ... "
-            "(Ctrl + C to kill them now.)",
+            "Allowing %s for %d task(s) to shut down ... ",
             format_time(grace_period, ms_precision=1),
             len(self.active_tasks),
         )
+        log.caution("Press Ctrl + C to send SIGKILL.\n")
         grace_period_start = time.time()
+        if self.reporter:
+            self.reporter.suppress_cr = False
 
         try:
             while True:
@@ -1128,7 +1150,7 @@ class WorkerManager:
 
         except KeyboardInterrupt:
             log.critical(
-                "Killing workers of %d tasks now ...",
+                "Now sending SIGKILL to %d task(s) ...",
                 len(self.active_tasks),
             )
             self._signal_workers(self.active_tasks, signal="SIGKILL")
@@ -1140,14 +1162,12 @@ class WorkerManager:
 
         # Store end time and invoke a report
         self.times["end_working"] = dt.now()
-        self._invoke_report("after_abort", force=True)
-
-        log.hilight("Work session ended.")
+        self._invoke_report("after_cancel", force=True)
 
         exit = self.interrupt_params.get("exit", True)
         if type(exc) is KeyboardInterrupt and exit:
             # Exit with appropriate exit code (128 + abs(signum))
-            log.warning("Exiting after KeyboardInterrupt ...")
+            log.warning("Exiting after KeyboardInterrupt ...\n")
             sys.exit(128 + abs(SIGMAP[signal]))
 
         # Otherwise, just return control to the calling scope
