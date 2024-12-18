@@ -762,7 +762,7 @@ class WorkerManagerReporter(Reporter):
         """
         progs = [t.progress for t in self._wm.active_tasks]
         if progs:
-            return np.mean(progs)
+            return float(np.mean(progs))
         return 0.0
 
     @property
@@ -1310,6 +1310,11 @@ class WorkerManagerReporter(Reporter):
         report_no: int = None,
         show_host_info: bool = True,
         show_exit_codes: bool = True,
+        show_joined_run_info: bool = True,
+        joined_run_status_fstr: str = (
+            "  {progress_here:>5s}  @  {host_name_short:s} - {pid:d}:  "
+            "{status:10s}  ({tags})"
+        ),
         show_individual_runtimes: bool = True,
         max_num_to_show: int = 2048,
         task_label_singular: str = "task",
@@ -1333,6 +1338,13 @@ class WorkerManagerReporter(Reporter):
                 about the host machine
             show_exit_codes (bool, optional): Whether to show a table of exit
                 codes of the finished simulations
+            show_joined_run_info (bool, optional): Whether to look for work
+                status report files and show their information.
+            joined_run_status_fstr (str, optional): How to represent the work
+                status of joined runs. Available keys are those from the status
+                file plus ``tags``, which is a comma-separated string with
+                information on whether this was a joined run (or main run) and
+                a marker which run belongs to this report file.
             show_individual_runtimes (bool, optional): Whether to report
                 individual universe runtimes; default: True. This should be
                 disabled if there are a huge number of universes.
@@ -1346,6 +1358,7 @@ class WorkerManagerReporter(Reporter):
         Returns:
             str: The multi-line simulation report string
         """
+        from .multiverse import get_distributed_work_status
         from .task import SKIP_EXIT_CODE
         from .workermanager import STOPCOND_EXIT_CODES
 
@@ -1365,7 +1378,7 @@ class WorkerManagerReporter(Reporter):
             parts += [""]
             parts += [""]
 
-        # Calculate the runtime statistics and add them to the parts
+        # Calculate and display runtime statistics
         rtstats = self.calc_runtime_statistics(min_num=min_num)
         num_success = rtstats.pop("num_success", 0)
         num_skipped = rtstats.pop("num_skipped", 0)
@@ -1390,6 +1403,36 @@ class WorkerManagerReporter(Reporter):
 
         parts += [""]
         parts += [""]
+
+        # Check if part of a joined run by looking at status files
+        if show_joined_run_info:
+            dmv_status = get_distributed_work_status(self.mv.dirs["run"])
+            if len(dmv_status) > 1:
+                parts += ["Distributed Multiverses"]
+                parts += ["-----------------------"]
+                parts += [""]
+                parts += [
+                    f"Detected {len(dmv_status)} Multiverses working together "
+                    "on this run.\nNote that work status may be delayed."
+                ]
+                parts += [""]
+
+                for status in dmv_status.values():
+                    tags = [status["kind"]]
+                    if (
+                        status["pid"] == self._host_info["pid"]
+                        and status["host_name"] == self._host_info["host_name"]
+                    ):
+                        tags.append("this report")
+
+                    parts.append(
+                        joined_run_status_fstr.format(
+                            **status, tags=", ".join(tags)
+                        )
+                    )
+
+                parts += [""]
+                parts += [""]
 
         # In cluster mode, add more information
         if self.wm.cluster_mode:
@@ -1600,20 +1643,35 @@ class WorkerManagerReporter(Reporter):
     def _parse_work_status(self, *, report_no: int = None) -> str:
         """Supplies a very simple, YAML-formatted status string"""
         cntr = self.task_counters
-        if self._latest_wm_report.startswith("after_"):
+        if self._latest_wm_report == "after_work":
             wm_status = "finished"
+        elif self._latest_wm_report == "after_abort":
+            wm_status = "cancelled"
         else:
             wm_status = "working"
 
+        progress = self.wm_progress
         status = dict(
             status=wm_status,
             time=dt.now().isoformat(),
-            progress=f"{self.wm_progress_total*100:.4g}%",
-            finished=cntr["finished"],
-            skipped=cntr["skipped"],
-            stopped=cntr["stopped"],
+            counters=dict(cntr),
+            progress=progress,
+            progress_here=f"{progress['worked_on']*100:.3g}%",
+            host_name=self._host_info["host_name"],
+            host_name_short=self._host_info["host_name_short"],
+            pid=self._host_info["pid"],
+            kind=(
+                "joined"
+                if getattr(self.mv, "_is_joined_run", None)
+                else "main"
+            ),
         )
-        return _yaml_dumps(status)
+        try:
+            return _yaml_dumps(status)
+        except:
+            print(status)
+            print(repr(status))
+            raise
 
     # Writer methods ..........................................................
 

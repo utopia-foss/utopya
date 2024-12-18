@@ -4,7 +4,13 @@ import os
 
 import click
 
-from ._shared import OPTIONS, add_options, complete_model_names, default_none
+from ._shared import (
+    OPTIONS,
+    add_options,
+    complete_model_names,
+    complete_run_dirs,
+    default_none,
+)
 from ._utils import Echo
 
 
@@ -134,6 +140,23 @@ from ._utils import Echo
     ),
 )
 @click.option(
+    "-J",
+    "--join",
+    "join_run",
+    type=str,
+    default=None,
+    shell_complete=complete_run_dirs,
+    help=(
+        "If given, will not create a new run but join an existing one by "
+        "creating a DistributedMultiverse. The option value should be the "
+        "path or timestamp of the run directory to join working on. "
+        "Alternatively, for `-J latest`, the latest run will be used. "
+        "Note that the original Multiverse "
+        "needs to have been started with --skippable (or with the meta config "
+        "entry `skippable_universes` set to True)."
+    ),
+)
+@click.option(
     "--set-model-params",
     "--mp",
     multiple=True,
@@ -196,7 +219,7 @@ from ._utils import Echo
 #
 #
 @click.pass_context
-def run(ctx, **kwargs):
+def run(ctx, *, join_run: str = None, **kwargs):
     """Invokes a model simulation run and subsequent evaluation"""
     import utopya
     from utopya.tools import pformat
@@ -230,10 +253,28 @@ def run(ctx, **kwargs):
     kwargs["plots_cfg"] = plots_cfg
     kwargs["update_plots_cfg"] = update_plots_cfg
 
-    mv = model.create_mv(run_cfg_path=run_cfg, **update_dict)
-
     # Running the simulation . . . . . . . . . . . . . . . . . . . . . . . . .
-    mv.run()
+    if join_run is None:
+        mv = model.create_mv(run_cfg_path=run_cfg, **update_dict)
+        mv.run()
+    else:
+        run_dir = join_run if join_run != "latest" else None
+        mv = model.create_distributed_mv(run_dir=run_dir)
+        mv.join_run(num_workers=kwargs.get("num_workers"))
+
+        # TODO Should a joined run be allowed to continue with plotting?!
+        #      Pro: Parallel plotting. Con: Need to manage duplicates etc.
+
+        _log.info("Not proceeding to evaluation for this joined run.")
+        _log.remark(
+            "To start evaluation separately, call:\n\n"
+            "  utopya eval %s %s %s\n",
+            mv.model_name,
+            os.path.split(mv.dirs["run"])[-1],
+            "" if not kwargs.get("cfg_set") else f"--cs {kwargs['cfg_set']}",
+        )
+        _log.progress("Exiting now ...\n")
+        return
 
     # Check whether to start evaluation routine
     perform_eval = model.info_bundle.eval_after_run

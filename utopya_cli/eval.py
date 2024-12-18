@@ -23,10 +23,8 @@ from ._utils import (
     SPINNER,
     ANSIesc,
     Echo,
-    get_status_file_paths,
     parse_run_and_plots_cfg,
     parse_update_dicts,
-    unfinished_distributed_multiverses,
 )
 
 log = logging.getLogger(__name__)
@@ -417,23 +415,22 @@ def _load_and_eval(
 
 
 def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
+    from utopya.multiverse import (
+        get_status_file_paths,
+        unfinished_distributed_multiverses,
+    )
+
     # May need to wait for distributed runs to finish
     run_dir = mv.dirs["run"]
     if not (udmv := unfinished_distributed_multiverses(run_dir)):
         return True
 
     Ntot = len(get_status_file_paths(run_dir))
-    _log.info(
-        "This run is carried out in a distributed fashion and has not "
-        "finished yet."
-    )
-    _log.note(
-        "Checking %d Multiverse status file%s and automatically "
-        "proceeding to evaluation once all distributed runs concluded ...",
-        Ntot,
-        "s" if Ntot != 1 else "",
-    )
-    _log.remark("Press Ctrl + C to ignore this and proceed to evaluation.")
+
+    _log.caution("This Multiverse run is still being worked on.")
+    _log.note("Periodically checking work status of linked Multiverses ...")
+    _log.remark("Evaluation will start once all runs have finished.")
+    _log.remark("Press Ctrl + C to ignore this and proceed now.\n")
 
     try:
         i = 0
@@ -453,8 +450,8 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
         print("\n")
         _log.note("Stopped checking distributed Multiverse status.")
         _log.caution(
-            "Some output may not be ready yet, causing data loading or "
-            "evaluation to fail!\n"
+            "Model output may not be complete, data loading or evaluation "
+            "may fail!\n"
         )
 
         # Prompt confirmation
@@ -467,7 +464,7 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
         print("")
         if input_res != "y":
             run_dirname = os.path.split(mv.dirs["run"])[-1]
-            _log.info("Not proceeding with evaluation.")
+            _log.progress("Not proceeding to evaluation.")
             _log.remark(
                 "To evaluate once the run has finished, call:\n\n  %s\n",
                 f"utopya eval {mv.model_name} {run_dirname}",

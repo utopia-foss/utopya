@@ -286,6 +286,11 @@ class Multiverse:
         return self._dirs
 
     @property
+    def status_file_paths(self) -> List[str]:
+        """Retrieves status file paths for this Multiverses run directory"""
+        return get_status_file_paths(self.dirs["run"])
+
+    @property
     def cluster_mode(self) -> bool:
         """Whether the Multiverse should run in cluster mode"""
         return self.meta_cfg["cluster_mode"]
@@ -834,8 +839,9 @@ class Multiverse:
             IOError: No directory found to use as run directory
             TypeError: When run_dir was not a string
         """
+        # The timestamp pattern to match against. Note that the timestamp
+        # absolutely NEEDS to be there, while the appended note is optional.
         PATTERN = r"\d{6}-\d{6}_?.*"
-        # TODO also match without note segment
 
         # May need to deduce the output directory
         if out_dir is None:
@@ -897,18 +903,40 @@ class Multiverse:
                 log.debug("Received absolute run_dir, using that one.")
 
             elif re.match(PATTERN, run_dir):
-                # Looks like a relative path within the model directory
+                # Looks like a relative path within the model directory, which
+                # may be incomplete
                 log.info(
                     "Received timestamp '%s' for run_dir; trying to find "
                     "one within the model output directory ...",
                     run_dir,
                 )
-                # TODO actual matching using the timestamp
-                run_dir = os.path.join(model_dir, run_dir)
+                # Check if it's already complete, i.e. if such a directory
+                # exists. If not: check against all that start with the same
+                # timestamp; this is sufficient because the PATTERN ensures
+                # that the given run_dir starts with the timestamp.
+                _run_dir = os.path.join(model_dir, run_dir)
+                if os.path.isdir(_run_dir):
+                    run_dir = _run_dir
+                else:
+                    _run_dirs = [
+                        d
+                        for d in sorted(os.listdir(model_dir))
+                        if os.path.isdir(os.path.join(model_dir, d))
+                        and d.startswith(run_dir)
+                    ]
+                    if len(_run_dirs) != 1:
+                        raise ValueError(
+                            f"Got partial run directory name '{run_dir}' that "
+                            "does not uniquely match one and only one run "
+                            f"directory, but matched {len(_run_dirs)}!  "
+                            f"{',  '.join(_run_dirs)}"
+                        )
+                    run_dir = os.path.join(model_dir, _run_dirs[0])
 
             else:
-                # Is not an absolute path and not a timestamp; thus a path
-                # relative to the current working directory
+                # Is not an absolute path and not a timestamp; assume it is
+                # a path relative to the current working directory that does
+                # not conform with the expected pattern but may still be valid
                 run_dir = os.path.join(os.getcwd(), run_dir)
 
         else:
@@ -2078,6 +2106,10 @@ class DistributedMultiverse(FrozenMultiverse):
             **self.meta_cfg["reporter"],
         )
 
+        # TODO Should the DistributedMultiverse have a DataManager and a
+        #      PlotManager as well? In principle, if it's allowed to perform a
+        #      run, why shouldn't it also be allowed to load and evaluate?
+
         log.progress("Initialized DistributedMultiverse.\n")
 
     def run_selection(
@@ -2361,3 +2393,33 @@ class DistributedMultiverse(FrozenMultiverse):
         return super()._setup_universe_config(
             uni_cfg_path=uni_cfg_path, **kwargs, mode="x"
         )
+
+
+# -- Multiverse-related standalone functions ----------------------------------
+# .. Work status of distributed Multiverse runs ...............................
+
+
+def get_status_file_paths(
+    run_dir: str, *, status_file_glob=".status*.yml"
+) -> List[str]:
+    return glob.glob(os.path.join(run_dir, status_file_glob))
+
+
+def get_distributed_work_status(run_dir: str, **kwargs) -> Dict[str, dict]:
+    """Finds and loads the work status files in the given directory"""
+    return {
+        path: load_yml(path)
+        for path in sorted(get_status_file_paths(run_dir, **kwargs))
+    }
+
+
+def unfinished_distributed_multiverses(
+    run_dir: str, **kwargs
+) -> Dict[str, dict]:
+    """Returns the number of distributed Multiverse instanes that have not
+    finished working on the run of the specified run directory."""
+    return {
+        k: v
+        for k, v in get_distributed_work_status(run_dir, **kwargs).items()
+        if v["status"] != "finished"
+    }
