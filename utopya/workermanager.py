@@ -183,6 +183,7 @@ class WorkerManager:
         # worked on. There is some overlap between the task lists, for instance
         # the `finished_tasks` contains all tasks that were worked on except
         # those that were decided to be skipped.
+        self.spawned_tasks = TaskList()
         self.finished_tasks = TaskList()  # success, stop, fail
         self.succeeded_tasks = TaskList()
         self.stopped_tasks = TaskList()
@@ -257,10 +258,12 @@ class WorkerManager:
         cntrs["total"] = self.task_count
         cntrs["active"] = len(self.active_tasks)
         cntrs["finished"] = len(self.finished_tasks)
+        cntrs["spawned"] = len(self.spawned_tasks)
         cntrs["success"] = len(self.succeeded_tasks)
         cntrs["skipped"] = len(self.skipped_tasks)
         cntrs["stopped"] = len(self.stopped_tasks)
         cntrs["failed"] = len(self.failed_tasks)
+        cntrs["finished_or_skipped"] = cntrs["finished"] + cntrs["skipped"]
         return cntrs
 
     @property
@@ -755,18 +758,17 @@ class WorkerManager:
         log.progress("Work session %s.", self._work_session_status)
 
         duration = self.times["end_working"] - self.times["start_working"]
-        n_tasks = self.task_count
-        n_success = len(self.succeeded_tasks)
-        n_skipped = len(self.skipped_tasks)
-        n_stopped = len(self.stopped_tasks)
-        n_failed = len(self.failed_tasks)
-        n_worked = self.num_finished_tasks - n_skipped
+        c = self.task_counters
         log.note("  Work duration:          %11s", format_time(duration))
-        log.note("  Tasks worked on:        %6d / %d total", n_worked, n_tasks)
-        log.note("      … succeeded:        %6d", n_success)
-        log.note("      … skipped:          %6d", n_skipped)
-        log.note("      … stopped:          %6d", n_stopped)
-        log.note("      … failed/cancelled: %6d", n_failed)
+        log.note(
+            "  Tasks worked on:        %6d / %d total",
+            c["spawned"],
+            c["total"],
+        )
+        log.note("      … succeeded:        %6d", c["success"])
+        log.note("      … skipped:          %6d", c["skipped"])
+        log.note("      … stopped:          %6d", c["stopped"])
+        log.note("      … failed/cancelled: %6d", c["failed"])
 
         return self._work_session_status
 
@@ -876,11 +878,10 @@ class WorkerManager:
         # skipped, but this does not need to concern us at this point.
         task.spawn_worker()
 
-        # Now return the task
         return task
 
     def _assign_tasks(self, num_free_workers: int) -> int:
-        """Assigns tasks to (at most) ``num`` free workers."""
+        """Assigns tasks to (at most) ``num_free_workers``."""
         if num_free_workers <= 0:
             return 0
 
@@ -903,6 +904,7 @@ class WorkerManager:
 
             else:
                 # Succeeded in grabbing a task; worker spawned
+                self.spawned_tasks.append(new_task)
                 self.active_tasks.append(new_task)
                 num_spawned += 1
 

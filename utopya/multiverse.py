@@ -1838,6 +1838,15 @@ class Multiverse:
         # Tell the WorkerManager to start working (is a blocking call)
         wm_status = self.wm.start_working(**kwargs)
 
+        # Done; finish up ...
+        self._conclude_working(wm_status)
+
+        return wm_status
+
+    def _conclude_working(self, wm_status: str):
+        """Called after working and provides some final messaging at the
+        end of the simulation run."""
+
         # A friendly success (or failure) message
         if "success" in wm_status:
             log.success(
@@ -1847,7 +1856,25 @@ class Multiverse:
         else:
             log.caution("Simulation run %s.\n", wm_status)
 
-        return wm_status
+        # Inform about potential other distributed workers
+        dws = get_distributed_work_status(self.dirs["run"])
+        if len(dws) > 1:
+            fstr = "  {host_name_short:s} - {pid:d}:  {status:10s}  ({tags})"
+            dws_info: str = self._reporter._parse_distributed_work_status(
+                fstr=fstr,
+                distributed_work_status=dws,
+                include_header=False,
+            ).replace("report", "process")
+            log.progress(
+                "Detected %d Multiverses working together on this run.",
+                len(dws),
+            )
+            log.note("Their current name and status is:\n\n%s\n", dws_info)
+
+            if any(ws["status"] != "finished" for ws in dws.values()):
+                log.remark(
+                    "These other Multiverses may still be working ...\n"
+                )
 
 
 # -----------------------------------------------------------------------------

@@ -22,6 +22,11 @@ from .tools import TTY_COLS, format_time, get_physical_memory_str
 
 log = logging.getLogger(__name__)
 
+_DEFAULT_JOINED_RUN_STATUS_FSTR: str = (
+    "  {progress_here:>5s}  @  {host_name_short:s} - {pid:d}:  "
+    "{status:10s}  ({tags})"
+)
+"""The format string to use for the joined run status"""
 
 # -----------------------------------------------------------------------------
 
@@ -615,7 +620,7 @@ class WorkerManagerReporter(Reporter):
     """Margin to use when writing to terminal"""
 
     PROGRESS_BAR_SYMBOLS = dict(
-        finished="▓", active_progress="▒", active="░", skipped="»", space=" "
+        success="▓", active_progress="▒", active="░", skipped="»", space=" "
     )
     """Symbols to use in progress bar parser"""
 
@@ -725,8 +730,10 @@ class WorkerManagerReporter(Reporter):
 
         progress["active"] = self.wm_active_tasks_progress  # in [0, 1]
         progress["skipped"] = cntr["skipped"] / cntr["total"]
+        progress["success"] = cntr["success"] / cntr["total"]
+        progress["failed"] = cntr["failed"] / cntr["total"]
         progress["total"] = (
-            cntr["finished"] / cntr["total"]
+            cntr["finished_or_skipped"] / cntr["total"]
             + progress["active"] * cntr["active"] / cntr["total"]
         )
         progress["worked_on"] = progress["total"] - progress["skipped"]
@@ -1058,7 +1065,7 @@ class WorkerManagerReporter(Reporter):
 
         # Determine the format string for the times
         if show_times:
-            if cntr["finished"] == cntr["total"]:
+            if cntr["finished_or_skipped"] == cntr["total"]:
                 times_fstr = times_fstr_final
             times_str = self._parse_times(fstr=times_fstr, **times_kwargs)
 
@@ -1078,7 +1085,7 @@ class WorkerManagerReporter(Reporter):
         # (calling the wm_progress property would lead to inconsistencies)
         active_progress = self.wm_active_tasks_progress
         total_progress = (
-            cntr["finished"] / cntr["total"]
+            cntr["finished_or_skipped"] / cntr["total"]
             + active_progress * cntr["active"] / cntr["total"]
         )
 
@@ -1096,17 +1103,16 @@ class WorkerManagerReporter(Reporter):
 
         # Only return percentage indicator if the width would be _very_ short
         if pb_width < 5:
-            return " {:>5.1f}% ".format(cntr["finished"] / cntr["total"] * 100)
+            return " {:>5.1f}% ".format(
+                cntr["finished_or_skipped"] / cntr["total"] * 100
+            )
 
         # Calculate the ticks
         ticks = dict()
         factor = pb_width / cntr["total"]  # == width per task
 
-        # For finished and skipped tasks, note that cntr["finished"] may
-        # include skipped tasks, so we need to correct for that afterwards.
-        # To keep it consistent, we operate on ticks and ensure that they don't
-        # use more ticks together than they should
-        ticks["finished"] = round(cntr["finished"] * factor)
+        # For successful and skipped tasks, simply round
+        ticks["success"] = round(cntr["success"] * factor)
         ticks["skipped"] = round(cntr["skipped"] * factor)
 
         # Calculate the active ticks and those in progress
@@ -1121,14 +1127,15 @@ class WorkerManagerReporter(Reporter):
 
         # Calculate spaces from the sum of all of the above
         ticks["space"] = pb_width - sum(ticks.values())
-        print(f"pb_width: {pb_width}, ticks:", ticks, "cntr:", cntr)  # FIXME
+        # TODO Make sure that this is >= 0, otherwise there was a rounding
+        #      error somewhere above ...
 
         # Have all info now, let's go format!
         syms = self.PROGRESS_BAR_SYMBOLS
         pbar = "".join(
             [
                 syms["skipped"] * ticks["skipped"],
-                syms["finished"] * ticks["finished"],
+                syms["success"] * ticks["success"],
                 syms["active_progress"] * ticks["active_progress"],
                 syms["active"] * ticks["active"],
                 syms["space"] * ticks["space"],
@@ -1290,6 +1297,49 @@ class WorkerManagerReporter(Reporter):
 
         return join_char.join(parts)
 
+    def _parse_distributed_work_status(
+        self,
+        *,
+        fstr: str = _DEFAULT_JOINED_RUN_STATUS_FSTR,
+        distributed_work_status: dict = None,
+        include_header: bool = True,
+        report_no: int = None,
+    ) -> str:
+        """Loads the work status of this *and* the distributed workers and
+        creates a status string from it."""
+        from .multiverse import get_distributed_work_status
+
+        dws = distributed_work_status
+        if dws is None:
+            dws = get_distributed_work_status(self.mv.dirs["run"])
+
+        if len(dws) < 1:
+            return ""
+
+        parts = list()
+
+        if include_header:
+            parts += ["Distributed Multiverses"]
+            parts += ["-----------------------"]
+            parts += [""]
+            parts += [
+                f"Detected {len(dws)} Multiverses working together "
+                "on this run.\nNote that work status may be delayed."
+            ]
+            parts += [""]
+
+        for status in dws.values():
+            tags = [status["kind"]]
+            if (
+                status["pid"] == self._host_info["pid"]
+                and status["host_name"] == self._host_info["host_name"]
+            ):
+                tags.append("this report")
+
+            parts.append(fstr.format(**status, tags=", ".join(tags)))
+
+        return "\n".join(parts)
+
     def _parse_report(
         self,
         *,
@@ -1299,10 +1349,7 @@ class WorkerManagerReporter(Reporter):
         show_host_info: bool = True,
         show_exit_codes: bool = True,
         show_joined_run_info: bool = True,
-        joined_run_status_fstr: str = (
-            "  {progress_here:>5s}  @  {host_name_short:s} - {pid:d}:  "
-            "{status:10s}  ({tags})"
-        ),
+        joined_run_status_fstr: str = _DEFAULT_JOINED_RUN_STATUS_FSTR,
         show_individual_runtimes: bool = True,
         max_num_to_show: int = 2048,
         task_label_singular: str = "task",
@@ -1346,7 +1393,6 @@ class WorkerManagerReporter(Reporter):
         Returns:
             str: The multi-line simulation report string
         """
-        from .multiverse import get_distributed_work_status
         from .task import SKIP_EXIT_CODE
         from .workermanager import STOPCOND_EXIT_CODES
 
@@ -1394,33 +1440,11 @@ class WorkerManagerReporter(Reporter):
 
         # Check if part of a joined run by looking at status files
         if show_joined_run_info:
-            dmv_status = get_distributed_work_status(self.mv.dirs["run"])
-            if len(dmv_status) > 1:
-                parts += ["Distributed Multiverses"]
-                parts += ["-----------------------"]
-                parts += [""]
-                parts += [
-                    f"Detected {len(dmv_status)} Multiverses working together "
-                    "on this run.\nNote that work status may be delayed."
-                ]
-                parts += [""]
-
-                for status in dmv_status.values():
-                    tags = [status["kind"]]
-                    if (
-                        status["pid"] == self._host_info["pid"]
-                        and status["host_name"] == self._host_info["host_name"]
-                    ):
-                        tags.append("this report")
-
-                    parts.append(
-                        joined_run_status_fstr.format(
-                            **status, tags=", ".join(tags)
-                        )
-                    )
-
-                parts += [""]
-                parts += [""]
+            dws_info = self._parse_distributed_work_status(
+                fstr=joined_run_status_fstr, include_header=True
+            )
+            if dws_info:
+                parts += [dws_info, "", ""]
 
         # In cluster mode, add more information
         if self.wm.cluster_mode:
@@ -1629,7 +1653,8 @@ class WorkerManagerReporter(Reporter):
             ) from exc
 
     def _parse_work_status(self, *, report_no: int = None) -> str:
-        """Supplies a very simple, YAML-formatted status string"""
+        """Supplies a very simple, YAML-formatted status string for *this*
+        WorkerManager un."""
         cntr = self.task_counters
         if self._latest_wm_report == "after_work":
             wm_status = "finished"
