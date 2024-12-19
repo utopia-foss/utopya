@@ -709,24 +709,8 @@ class WorkerManagerReporter(Reporter):
 
     @property
     def task_counters(self) -> OrderedDict:
-        """Returns a dict of task counters containing the following entries:
-
-        - ``total``: total number of registered WorkerManager tasks
-        - ``active``: number of currently active tasks
-        - ``finished``: number of finished tasks, *including* tasks that
-          were stopped via a stop condition
-        - ``stopped``: number of tasks for which stop conditions were
-          fulfilled, see :ref:`stop_conds`
-        """
-        # TODO Move to WorkerManager and improve concurrency
-        num = OrderedDict()
-        num["total"] = self.wm.task_count
-        num["active"] = len(self.wm.active_tasks)
-        num["finished"] = self.wm.num_finished_tasks
-        num["stopped"] = len(self.wm.stopped_tasks)
-        num["skipped"] = len(self.wm.skipped_tasks)
-        num["finished_noskip"] = num["finished"] - num["skipped"]
-        return num
+        """Returns a dict of task counters from the WorkerManager"""
+        return self.wm.task_counters
 
     @property
     def wm_progress(self) -> Dict[str, float]:
@@ -1118,13 +1102,12 @@ class WorkerManagerReporter(Reporter):
         ticks = dict()
         factor = pb_width / cntr["total"]  # == width per task
 
-        # For finished and skipped tasks, note that cntr["finished"] includes
-        # skipped tasks, so we need to correct for that afterwards. To keep it
-        # consistent, we operate on ticks and ensure that they don't use more
-        # ticks together than they should
-        ticks["finished"] = int(cntr["finished"] * factor)
-        ticks["skipped"] = int(cntr["skipped"] * factor)  # FIXME something off
-        ticks["finished"] -= ticks["skipped"]
+        # For finished and skipped tasks, note that cntr["finished"] may
+        # include skipped tasks, so we need to correct for that afterwards.
+        # To keep it consistent, we operate on ticks and ensure that they don't
+        # use more ticks together than they should
+        ticks["finished"] = round(cntr["finished"] * factor)
+        ticks["skipped"] = round(cntr["skipped"] * factor)
 
         # Calculate the active ticks and those in progress
         # NOTE Important to round only one of the two, leads to artifacts
@@ -1133,11 +1116,12 @@ class WorkerManagerReporter(Reporter):
             active_progress * cntr["active"] * factor
         )
         ticks["active"] = (
-            int(round(cntr["active"] * factor)) - ticks["active_progress"]
+            round(cntr["active"] * factor) - ticks["active_progress"]
         )
 
         # Calculate spaces from the sum of all of the above
         ticks["space"] = pb_width - sum(ticks.values())
+        print(f"pb_width: {pb_width}, ticks:", ticks, "cntr:", cntr)  # FIXME
 
         # Have all info now, let's go format!
         syms = self.PROGRESS_BAR_SYMBOLS

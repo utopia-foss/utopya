@@ -2265,7 +2265,7 @@ class DistributedMultiverse(FrozenMultiverse):
         self,
         *,
         num_workers: int = None,
-        shuffle_tasks: Optional[bool] = True,
+        shuffle_tasks: Optional[bool] = False,  # FIXME
     ):
         """Joins an already-running simulation and performs tasks that have not
         been taken up yet.

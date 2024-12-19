@@ -168,32 +168,39 @@ class WorkerManager:
         self._num_workers = None
         self._poll_delay = None
         self._spawn_rate = None
-        self._periodic_callback = periodic_task_callback
         self._tasks = TaskList()
         self._task_q = QueueCls()
         self._active_tasks = []
+
+        self._work_session_status: str = "not started"
+        self._stop_conditions = set()
+        self._reporter = None
+        self._nonzero_exit_handling = None
+        self._suppress_rf_specs = []
+        self.pending_exceptions = queue.Queue()
+
+        # Task lists that keep track of the tasks status *after* they were
+        # worked on. There is some overlap between the task lists, for instance
+        # the `finished_tasks` contains all tasks that were worked on except
+        # those that were decided to be skipped.
+        self.finished_tasks = TaskList()  # success, stop, fail
         self.succeeded_tasks = TaskList()
         self.stopped_tasks = TaskList()
         self.skipped_tasks = TaskList()
         self.failed_tasks = TaskList()
-        self._work_session_status: str = "not started"
-        self._stop_conditions = set()
-        self._reporter = None
-        self._num_finished_tasks = 0
-        self._nonzero_exit_handling = None
-        self.save_streams_on = save_streams_on
-        self._suppress_rf_specs = []
-        self.pending_exceptions = queue.Queue()
 
         # Hand over arguments
         self.poll_delay = poll_delay
         self.spawn_rate = spawn_rate
+        self.save_streams_on = save_streams_on
         self.lines_per_poll = lines_per_poll
         self.nonzero_exit_handling = nonzero_exit_handling
-        self._cluster_mode = cluster_mode
-        self._resolved_cluster_params = resolved_cluster_params
         self.interrupt_params = interrupt_params if interrupt_params else {}
         self.num_workers = num_workers
+
+        self._periodic_callback = periodic_task_callback
+        self._cluster_mode = cluster_mode
+        self._resolved_cluster_params = resolved_cluster_params
 
         # Reporter-related, setting default rf_spec
         if reporter:
@@ -242,6 +249,19 @@ class WorkerManager:
         Careful: This is NOT the current number of tasks in the queue!
         """
         return len(self.tasks)
+
+    @property
+    def task_counters(self) -> Dict[str, int]:
+        """Returns a dict with task counter values"""
+        cntrs = dict()
+        cntrs["total"] = self.task_count
+        cntrs["active"] = len(self.active_tasks)
+        cntrs["finished"] = len(self.finished_tasks)
+        cntrs["success"] = len(self.succeeded_tasks)
+        cntrs["skipped"] = len(self.skipped_tasks)
+        cntrs["stopped"] = len(self.stopped_tasks)
+        cntrs["failed"] = len(self.failed_tasks)
+        return cntrs
 
     @property
     def num_workers(self) -> int:
@@ -298,7 +318,7 @@ class WorkerManager:
         """The number of finished tasks. Incremented whenever a task leaves
         the active_tasks list, regardless of its exit status.
         """
-        return self._num_finished_tasks
+        return len(self.finished_tasks)
 
     @property
     def num_free_workers(self) -> int:
@@ -483,7 +503,8 @@ class WorkerManager:
             self._invoke_report("task_spawned", force=True)
 
         def task_finished(task):
-            """Performs actions after a task has finished.
+            """Performs actions after a task has finished, regardless of
+            whether it finished successfully, failed or was stopped.
 
             - invokes the ``task_finished`` report specification
             - registers the task with the reporter, which extracts information
@@ -492,8 +513,10 @@ class WorkerManager:
 
             .. note::
 
-                This is NOT invoked for skipped tasks.
+                This is NOT invoked for *skipped* tasks.
             """
+            self.finished_tasks.append(task)
+
             if self.reporter is not None:
                 self.reporter.register_task(task)
 
@@ -631,7 +654,10 @@ class WorkerManager:
                 # Check if there was another reason for exiting
                 self._handle_pending_exceptions()
 
-                # Assign tasks to free workers; this creates new processes
+                # Assign tasks to free workers; this creates new processes and
+                # will carry out their setup function (in the main thread).
+                # Skipped tasks will be added to the active_tasks, but will
+                # already invoke their callbacks.
                 self._assign_tasks(self.num_free_workers)
 
                 # Poll the workers. (Will also remove no longer active workers)
@@ -735,12 +761,12 @@ class WorkerManager:
         n_stopped = len(self.stopped_tasks)
         n_failed = len(self.failed_tasks)
         n_worked = self.num_finished_tasks - n_skipped
-        log.note("  Work duration:           %s", format_time(duration))
-        log.note("  Tasks worked on:         %d / %d total", n_worked, n_tasks)
-        log.note("      … succeeded:         %d", n_success)
-        log.note("      … skipped:           %d", n_skipped)
-        log.note("      … stopped:           %d", n_stopped)
-        log.note("      … failed/cancelled:  %d", n_failed)
+        log.note("  Work duration:          %11s", format_time(duration))
+        log.note("  Tasks worked on:        %6d / %d total", n_worked, n_tasks)
+        log.note("      … succeeded:        %6d", n_success)
+        log.note("      … skipped:          %6d", n_skipped)
+        log.note("      … stopped:          %6d", n_stopped)
+        log.note("      … failed/cancelled: %6d", n_failed)
 
         return self._work_session_status
 
@@ -896,9 +922,9 @@ class WorkerManager:
             return
 
         # Broke out of the loop, i.e. at least one task finished or was skipped
-        old_len = len(self.active_tasks)
+        # old_len = len(self.active_tasks)
 
-        # have to rebuild the list of active tasks now...
+        # Have to rebuild the list of active tasks now...
         self.active_tasks[:] = [
             t for t in self.active_tasks if t.worker_status is None
         ]
@@ -908,7 +934,7 @@ class WorkerManager:
         # Now, only active tasks are in the list, but the list is shorter
         # Can deduce the number of finished tasks from this. Note that this
         # does not tell us anything about whether they finished *successfully*!
-        self._num_finished_tasks += old_len - len(self.active_tasks)
+        # num_removed = old_len - len(self.active_tasks)
 
         return
 
