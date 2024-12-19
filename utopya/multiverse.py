@@ -8,6 +8,7 @@ import glob
 import itertools
 import logging
 import os
+import random
 import re
 import time
 import warnings
@@ -20,6 +21,7 @@ import paramspace as psp
 from dantro._import_tools import get_resource_path
 
 from ._cluster import parse_node_list
+from ._resources import SNIPPETS
 from .cfg import get_cfg_path as _get_cfg_path
 from .eval import DataManager, PlotManager
 from .exceptions import (
@@ -408,10 +410,7 @@ class Multiverse:
                 log.debug("No file found at the default search location.")
 
         elif user_cfg_path is False:
-            log.debug(
-                "Not loading the user configuration from default search path: %s",
-                cls.USER_CFG_SEARCH_PATH,
-            )
+            log.remark("Ignoring default user configuration.")
 
         user_cfg = None
         if user_cfg_path:
@@ -1839,8 +1838,12 @@ class Multiverse:
         # Tell the WorkerManager to start working (is a blocking call)
         wm_status = self.wm.start_working(**kwargs)
 
+        # A friendly success (or failure) message
         if "success" in wm_status:
-            log.success("Successfully finished simulation run. Woohooo! 🎉\n")
+            log.success(
+                "Successfully finished simulation run. %s\n",
+                random.choice(SNIPPETS["yay"]),
+            )
         else:
             log.caution("Simulation run %s.\n", wm_status)
 

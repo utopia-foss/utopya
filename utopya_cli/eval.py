@@ -19,13 +19,7 @@ from ._shared import (
     complete_run_dirs,
     default_none,
 )
-from ._utils import (
-    SPINNER,
-    ANSIesc,
-    Echo,
-    parse_run_and_plots_cfg,
-    parse_update_dicts,
-)
+from ._utils import ANSIesc, Echo, parse_run_and_plots_cfg, parse_update_dicts
 
 log = logging.getLogger(__name__)
 
@@ -415,6 +409,7 @@ def _load_and_eval(
 
 
 def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
+    from utopya._resources import SPINNER_WIDE
     from utopya.multiverse import (
         get_status_file_paths,
         unfinished_distributed_multiverses,
@@ -437,7 +432,7 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
         while udmv := unfinished_distributed_multiverses(run_dir):
             N = len(udmv)
             Ntot = len(get_status_file_paths(run_dir))
-            _spinner = SPINNER[i % len(SPINNER)]
+            _spinner = SPINNER_WIDE[i % len(SPINNER_WIDE)]
             print(
                 f"     {_spinner}  ",
                 f"Waiting for {N:d} / {Ntot} Multiverses to finish ... ",
@@ -479,11 +474,11 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
     else:
         print("\n")
         _log.progress(
-            "All %d distributed Multiverse%s have finished; ready for "
-            "data loading and evaluation now.\n",
+            "All %d distributed Multiverse%s have finished.",
             Ntot,
             "" if Ntot == 1 else "s",
         )
+        _log.remark("Ready for data loading and evaluation now.\n")
 
     return True
 

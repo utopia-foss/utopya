@@ -1123,7 +1123,7 @@ class WorkerManagerReporter(Reporter):
         # consistent, we operate on ticks and ensure that they don't use more
         # ticks together than they should
         ticks["finished"] = int(cntr["finished"] * factor)
-        ticks["skipped"] = int(cntr["skipped"] * factor)
+        ticks["skipped"] = int(cntr["skipped"] * factor)  # FIXME something off
         ticks["finished"] -= ticks["skipped"]
 
         # Calculate the active ticks and those in progress
@@ -1156,7 +1156,11 @@ class WorkerManagerReporter(Reporter):
     def _parse_times(
         self,
         *,
-        fstr: str = "Elapsed:  {elapsed:<8s}  |  Est. left:  {est_left:<8s}  |  Est. end:  {est_end:<10s}",
+        fstr: str = (
+            "Elapsed:  {elapsed:<8s}  "
+            "|  Est. left:  {est_left:<8s}  "
+            "|  Est. end:  {est_end:<10s}"
+        ),
         timefstr_short: str = "%H:%M:%S",
         timefstr_full: str = "%d.%m., %H:%M:%S",
         use_relative: bool = True,

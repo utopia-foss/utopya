@@ -12,22 +12,6 @@ log = logging.getLogger(__name__)
 # FIXME This logger does not support all levels that are used throughout this
 #       module, because it is setup prior to the utopya import.
 
-SPINNER = (
-    "(●      )",
-    "( ●     )",
-    "(  ●    )",
-    "(   ●   )",
-    "(    ●  )",
-    "(     ● )",
-    "(      ●)",
-    "(     ● )",
-    "(    ●  )",
-    "(   ●   )",
-    "(  ●    )",
-    "( ●     )",
-)
-"""A simple ASCII based loading indicator"""
-
 # -----------------------------------------------------------------------------
 # Communication via Terminal
 # TODO Consider mapping directly to logger?
