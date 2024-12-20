@@ -244,7 +244,7 @@ def test_parsers(rf_dict, sleep_task):
         *a,
         num_cols=n,
         **kws,
-        info_fstr="{total_progress:>5.1f}%  of {cnt[total]} ",
+        info_fstr="{prg[total]:>5.1f}%  of {cnt[total]} ",
     )
     ppbtt = lambda *a, n=60, **kws: rep._parse_progress_bar(
         *a, num_cols=n, show_times=True, **kws

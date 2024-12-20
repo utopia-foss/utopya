@@ -1875,6 +1875,8 @@ class Multiverse:
                 log.remark(
                     "These other Multiverses may still be working ...\n"
                 )
+            else:
+                log.progress("All other Multiverses have finished working.\n")
 
 
 # -----------------------------------------------------------------------------
@@ -2292,7 +2294,7 @@ class DistributedMultiverse(FrozenMultiverse):
         self,
         *,
         num_workers: int = None,
-        shuffle_tasks: Optional[bool] = False,  # FIXME
+        shuffle_tasks: Optional[bool] = True,
     ):
         """Joins an already-running simulation and performs tasks that have not
         been taken up yet.
@@ -2344,7 +2346,6 @@ class DistributedMultiverse(FrozenMultiverse):
 
         # Now we can start working ...
         self._start_working(**run_kwargs)
-        log.note("Note: Tasks on other machines may still be running.\n")
 
     # .........................................................................
 

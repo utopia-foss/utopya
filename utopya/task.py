@@ -573,17 +573,20 @@ class WorkerTask(Task):
 
         Raises:
             RuntimeError: If a worker was already spawned for this task.
-            TypeError: For invalid ``args`` argument
         """
         if self.worker:
             raise RuntimeError("Can only spawn one worker per task!")
 
-        # Get the worker kwargs, perhaps by invoking the setup function
+        self._invoke_callback("invoked")
+
+        # Get the worker kwargs, perhaps by invoking the setup function.
+        # This may trigger skipping, which we are handling here and also
+        # forwarding upstream
         try:
             worker_kwargs = self._prepare_worker_kwargs()
-        except SkipWorkerTask as err:
-            self._mark_as_skipped(err)
-            return
+        except SkipWorkerTask as skip_signal:
+            self._mark_as_skipped(skip_signal)
+            raise
 
         # Start the subprocess and associate it with this WorkerTask
         self.worker = self._spawn_worker(**worker_kwargs)
@@ -598,7 +601,7 @@ class WorkerTask(Task):
             )
 
         # Done with spawning.
-        self._invoke_callback("spawn")
+        self._invoke_callback("spawned")
         return self.worker
 
     def read_streams(
@@ -1145,6 +1148,13 @@ class WorkerTask(Task):
         It takes care that a profiling time is saved and that the remaining
         stream information is logged.
         """
+        log.debug(
+            "Task %s finished with status %s. Finishing up ...",
+            self.name,
+            self.worker_status,
+        )
+
+        # If we end up here, the task was not skipped
         self._skipping["was_skipped"] = False
 
         # Update profiling info
@@ -1165,18 +1175,14 @@ class WorkerTask(Task):
 
         self._invoke_callback("finished")
 
-        log.debug(
-            "Task %s: worker finished with status %s.",
-            self.name,
-            self.worker_status,
-        )
-
     def _mark_as_skipped(self, skip_signal: Exception):
         """Marks this task as skipped."""
         if not self.skippable:
             raise WorkerTaskNotSkippable(
                 f"{type(self).__name__} '{self.name}' is not skippable!"
             )
+
+        log.debug("Task %s skipped, finishing up ...", self.name)
 
         self._skipping["was_skipped"] = True
         self._skipping["reason"] = skip_signal.reason
@@ -1186,10 +1192,8 @@ class WorkerTask(Task):
         self.profiling["end_time"] = time.time()
         self.profiling["run_time"] = np.nan
 
-        # Finish up
+        # Ready to invoke callback
         self._invoke_callback("skipped")
-
-        log.debug("Task %s: skipped", self.name)
 
 
 # -----------------------------------------------------------------------------

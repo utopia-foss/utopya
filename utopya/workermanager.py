@@ -12,7 +12,7 @@ import sys
 import time
 import warnings
 from datetime import datetime as dt
-from typing import Callable, Dict, List, Optional, Sequence, Set, Union
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 from .exceptions import *
 from .reporter import WorkerManagerReporter
@@ -181,10 +181,11 @@ class WorkerManager:
 
         # Task lists that keep track of the tasks status *after* they were
         # worked on. There is some overlap between the task lists, for instance
-        # the `finished_tasks` contains all tasks that were worked on except
-        # those that were decided to be skipped.
+        # the `finished_tasks` contains all tasks that were activated and
+        # returned, regardless of their exit status or skipping
+        self.invoked_tasks = TaskList()
         self.spawned_tasks = TaskList()
-        self.finished_tasks = TaskList()  # success, stop, fail
+        self.finished_tasks = TaskList()  # success, stop, fail, skipped
         self.succeeded_tasks = TaskList()
         self.stopped_tasks = TaskList()
         self.skipped_tasks = TaskList()
@@ -210,6 +211,7 @@ class WorkerManager:
         self.rf_spec = dict(
             before_working="while_working",
             while_working="while_working",
+            task_invoked="while_working",
             task_spawned="while_working",
             task_finished="while_working",
             task_skipped="while_working",
@@ -258,12 +260,13 @@ class WorkerManager:
         cntrs["total"] = self.task_count
         cntrs["active"] = len(self.active_tasks)
         cntrs["finished"] = len(self.finished_tasks)
+        cntrs["invoked"] = len(self.invoked_tasks)
         cntrs["spawned"] = len(self.spawned_tasks)
         cntrs["success"] = len(self.succeeded_tasks)
         cntrs["skipped"] = len(self.skipped_tasks)
         cntrs["stopped"] = len(self.stopped_tasks)
         cntrs["failed"] = len(self.failed_tasks)
-        cntrs["finished_or_skipped"] = cntrs["finished"] + cntrs["skipped"]
+        cntrs["worked_on"] = cntrs["finished"] - cntrs["skipped"]
         return cntrs
 
     @property
@@ -484,12 +487,24 @@ class WorkerManager:
             return task.outstream_objs[-1].get("progress", 0.0)
 
         # Prepare the callback functions needed by the reporter . . . . . . . .
+        def task_invoked(task):
+            """Performs action after a task was grabbed and before anything is
+            done, specifically: before invoking the setup function which may
+            lead to task skipping.
+            """
+            self.active_tasks.append(task)
+            self.invoked_tasks.append(task)
+            self._invoke_report("task_invoked", force=True)
+
         def task_spawned(task):
-            """Performs action after a task was spawned.
+            """Performs action after a task was spawned, i.e. if it was not
+            skipped.
 
             - checks if stream-forwarding was activated
             - invokes the 'task_spawned' report specification
             """
+            self.spawned_tasks.append(task)
+
             # As the task might have been configured to forward streams, it
             # needs to be checked whether this would clash with the reporter's
             # output to stdout.
@@ -518,12 +533,11 @@ class WorkerManager:
 
                 This is NOT invoked for *skipped* tasks.
             """
+            self.active_tasks.remove(task)
             self.finished_tasks.append(task)
 
             if self.reporter is not None:
                 self.reporter.register_task(task)
-
-            self._invoke_report("task_finished", force=True)
 
             # If there was a (non-zero) exit and the handling mode is set
             # accordingly, generate an exception and add it to the list of
@@ -552,11 +566,15 @@ class WorkerManager:
             else:
                 self.failed_tasks.append(task)
 
+            self._invoke_report("task_finished", force=True)
+
         def task_skipped(task):
             """Performs actions after a task was skipped, i.e. if it did not
             spawn a process but it was decided *prior to spawning* that the
             task should not be worked on but skipped.
             """
+            self.active_tasks.remove(task)
+            self.finished_tasks.append(task)
             self.skipped_tasks.append(task)
 
             if self.reporter is not None:
@@ -576,7 +594,8 @@ class WorkerManager:
 
         callbacks = dict(
             # Invoked by task itself
-            spawn=task_spawned,
+            invoked=task_invoked,
+            spawned=task_spawned,
             finished=task_finished,
             skipped=task_skipped,
             parsed_object_in_stream=monitor_updated,
@@ -663,7 +682,9 @@ class WorkerManager:
                 # already invoke their callbacks.
                 self._assign_tasks(self.num_free_workers)
 
-                # Poll the workers. (Will also remove no longer active workers)
+                # Poll the workers.
+                # This will also remove no longer active workers and trigger
+                # their callback functions ...
                 self._poll_workers()
 
                 # Call the post-poll function
@@ -761,10 +782,11 @@ class WorkerManager:
         c = self.task_counters
         log.note("  Work duration:          %11s", format_time(duration))
         log.note(
-            "  Tasks worked on:        %6d / %d total",
-            c["spawned"],
+            "  Tasks finished:         %6d / %d total",
+            c["finished"],
             c["total"],
         )
+        log.note("      … worked on:        %6d", c["worked_on"])
         log.note("      … succeeded:        %6d", c["success"])
         log.note("      … skipped:          %6d", c["skipped"])
         log.note("      … stopped:          %6d", c["stopped"])
@@ -855,7 +877,6 @@ class WorkerManager:
         Raises:
             queue.Empty: If the task queue was empty
         """
-
         # Get a task from the queue
         try:
             task = self.task_queue.get_nowait()
@@ -866,11 +887,7 @@ class WorkerManager:
             ) from err
 
         else:
-            log.debug(
-                "Got task %s from queue. (Priority: %s)",
-                task.uid,
-                task.priority,
-            )
+            log.debug("Got %s from queue.", task)
 
         # Let it spawn its own worker, which will invoke its setup routine and
         # then (typically) create a worker subprocess for this task ...
@@ -880,10 +897,19 @@ class WorkerManager:
 
         return task
 
-    def _assign_tasks(self, num_free_workers: int) -> int:
-        """Assigns tasks to (at most) ``num_free_workers``."""
+    def _assign_tasks(self, num_free_workers: int) -> Tuple[int, int]:
+        """Assigns tasks to (at most) ``num_free_workers`` and returns the
+        number of spawned and skipped tasks.
+
+        The ``spawn_rate`` of the WorkerManager will determine how many are
+        actually spawned.
+
+        .. note::
+
+            Skipped tasks do not count into the number of spawned tasks.
+        """
         if num_free_workers <= 0:
-            return 0
+            return (0, 0)
 
         # How many workers are meant to be spawned?
         if self.spawn_rate == -1:
@@ -893,6 +919,7 @@ class WorkerManager:
 
         # Grab the tasks, spawning the corresponding workers
         num_spawned = 0
+        num_skipped = 0
         for _ in range(num_spawn):
             # Try to grab a task and start working on it
             try:
@@ -902,43 +929,38 @@ class WorkerManager:
                 # There were no tasks left in the task queue
                 break
 
+            except SkipWorkerTask as skip_signal:
+                log.debug("Task skipped: %s", skip_signal)
+                num_skipped += 1
+
             else:
-                # Succeeded in grabbing a task; worker spawned
-                self.spawned_tasks.append(new_task)
-                self.active_tasks.append(new_task)
+                # Task grabbed and spawned
+                log.debug("Task spawned: %s", new_task)
                 num_spawned += 1
 
-        return num_spawned
+        log.debug(
+            "Assigned and spawned %d new tasks, skipping %d.",
+            num_spawned,
+            num_skipped,
+        )
+        return num_spawned, num_skipped
 
-    def _poll_workers(self) -> None:
-        """Will poll all workers that are in the working list and remove them
-        from that list if they are no longer alive.
+    def _poll_workers(self) -> int:
+        """Will poll all workers that are in the active tasks list.
+
+        If they have finished, this will effectively invoke their callbacks,
+        which will in turn remove them from the active tasks list.
         """
-        # Poll the task's worker's status
-        for task in self.active_tasks:
+        num_finished = 0
+        for i, task in enumerate(self.active_tasks):
+            # Poll its worker (by calling the .worker_status property) and thus
+            # find out if it may have finished.
             if task.worker_status is not None:
-                # This task has finished. Need to rebuild the list
-                break
-        else:
-            # Nothing to rebuild
-            return
+                # This task has finished and, at this point, will have already
+                # invoked and concluded with its callback functions.
+                num_finished += 1
 
-        # Broke out of the loop, i.e. at least one task finished or was skipped
-        # old_len = len(self.active_tasks)
-
-        # Have to rebuild the list of active tasks now...
-        self.active_tasks[:] = [
-            t for t in self.active_tasks if t.worker_status is None
-        ]
-        # NOTE this will also poll all other active tasks and potentially not
-        #      add them to the active_tasks list again.
-
-        # Now, only active tasks are in the list, but the list is shorter
-        # Can deduce the number of finished tasks from this. Note that this
-        # does not tell us anything about whether they finished *successfully*!
-        # num_removed = old_len - len(self.active_tasks)
-
-        return
+        return num_finished
 
     def _check_stop_conds(
         self, stop_conds: Sequence[StopCondition]

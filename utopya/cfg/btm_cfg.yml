@@ -178,11 +178,11 @@ reporter:
       num_cols: adaptive
 
       # The format string to use for progress information
-      # Available keys:
-      #   - `total_progress` (in %)
-      #   - `active_progress` (mean progress of _active_ simulations, in %)
-      #   - `cnt` (dict of counters: `total`, `finished`, `active`)
-      info_fstr: "{total_progress:>5.1f}% ({cnt[finished]} / {cnt[total]})"
+      # Available format string elements:
+      #   - `prg`    dict with various progress measures in percent:
+      #              `total`, `active`, `skipped`, `failed`, `success`, ...
+      #   - `cnt`    dict of counters (same keys)
+      info_fstr: "{prg[total]:>5.1f}% "
       # Example of how to access counters in format string:
       # info_fstr: "finished {cnt[finished]}/{cnt[total]} "
 

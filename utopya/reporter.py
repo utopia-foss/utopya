@@ -682,11 +682,20 @@ class WorkerManagerReporter(Reporter):
         self.tasks_by_exit_codes: Dict[int, list] = defaultdict(list)
 
         self._eta_info = dict()
+
+        # Store the WorkerManager and associate it with this reporter
+        self._wm = wm
+        self._latest_wm_report = None
+        wm.reporter = self
+        log.debug("Associated reporter with WorkerManager.")
+
+        # Finally, gather host information
         self._host_info = dict(
             user=getpass.getuser(),
             host_name=platform.node(),
             host_name_short=platform.node().split(".")[0],
             cpu_count=os.cpu_count(),
+            num_workers=self.wm.num_workers,
             memory=get_physical_memory_str(),
             architecture=platform.machine(),
             processor=platform.processor(),
@@ -694,12 +703,6 @@ class WorkerManagerReporter(Reporter):
             release=platform.release(),
             pid=os.getpid(),
         )
-
-        # Store the WorkerManager and associate it with this reporter
-        self._wm = wm
-        self._latest_wm_report = None
-        wm.reporter = self
-        log.debug("Associated reporter with WorkerManager.")
 
         log.debug("WorkerManagerReporter initialised.")
 
@@ -718,43 +721,14 @@ class WorkerManagerReporter(Reporter):
         return self.wm.task_counters
 
     @property
-    def wm_progress(self) -> Dict[str, float]:
-        """Various WorkerManager progress measures, between 0 and 1."""
-        cntr = self.task_counters
-        progress = dict(
-            skipped=0.0, active=0.0, total=0.0, worked_on=0.0, left_to_do=1.0
-        )
-
-        if cntr["total"] == 0:
-            return progress
-
-        progress["active"] = self.wm_active_tasks_progress  # in [0, 1]
-        progress["skipped"] = cntr["skipped"] / cntr["total"]
-        progress["success"] = cntr["success"] / cntr["total"]
-        progress["failed"] = cntr["failed"] / cntr["total"]
-        progress["total"] = (
-            cntr["finished_or_skipped"] / cntr["total"]
-            + progress["active"] * cntr["active"] / cntr["total"]
-        )
-        progress["worked_on"] = progress["total"] - progress["skipped"]
-        progress["left_to_do"] = 1.0 - progress["total"]
-
-        return progress
+    def wm_finished(self) -> bool:
+        cntrs = self.task_counters
+        return cntrs["finished"] == cntrs["total"]
 
     @property
-    def wm_progress_total(self) -> float:
-        """Total WorkerManager progress, in [0, 1]"""
-        return self.wm_progress["total"]
-
-    @property
-    def wm_active_tasks_progress(self) -> float:
-        """The active tasks' progress.
-        If there are no active tasks in the worker manager, returns 0.
-        """
-        progs = [t.progress for t in self._wm.active_tasks]
-        if progs:
-            return float(np.mean(progs))
-        return 0.0
+    def wm_active_tasks_progress(self) -> np.ndarray:
+        """Array of active tasks' progress"""
+        return np.array([t.progress for t in self.wm.active_tasks])
 
     @property
     def wm_elapsed(self) -> Union[timedelta, None]:
@@ -869,7 +843,7 @@ class WorkerManagerReporter(Reporter):
 
         # Add estimate time remaining and ETA, if the WorkerManager started.
         if d["start"] is not None:
-            progress: dict = self.wm_progress
+            progress: dict = self._compute_progress()
             if progress["total"] > 0.0:
                 d["est_left"] = self._compute_est_left(
                     progress=progress, elapsed=d["elapsed"], **eta_options
@@ -879,6 +853,48 @@ class WorkerManagerReporter(Reporter):
             d["est_end"] = d["now"] + d["est_left"]
 
         return d
+
+    def _compute_progress(
+        self, counters: Dict[str, int] = None
+    ) -> Dict[str, float]:
+        """Given task counters, computes various progress measures, each values
+        between 0 and 1."""
+        progress = dict(
+            skipped=0.0,
+            active=0.0,
+            total=0.0,
+            worked_on=0.0,
+            left_to_do=1.0,
+            success=0.0,
+            failed=0.0,
+        )
+
+        cntr = counters
+        if cntr is None:
+            cntr = self.task_counters
+
+        if cntr["total"] == 0:
+            return progress
+
+        # Compute active progress in units of total progress, i.e. in [0, 1]
+        active_progress: np.ndarray = self.wm_active_tasks_progress
+        if active_progress.size:
+            active_progress = float(np.nansum(active_progress) / cntr["total"])
+        else:
+            active_progress = 0.0
+
+        # The rest just depends on the counts
+        progress["total"] = cntr["finished"] / cntr["total"] + active_progress
+        progress["active"] = active_progress
+        progress["skipped"] = cntr["skipped"] / cntr["total"]
+        progress["success"] = cntr["success"] / cntr["total"]
+        progress["failed"] = cntr["failed"] / cntr["total"]
+        progress["worked_on"] = (
+            cntr["worked_on"] / cntr["total"] + active_progress
+        )
+        progress["left_to_do"] = 1.0 - progress["total"]
+
+        return progress
 
     def _compute_est_left(
         self,
@@ -1014,7 +1030,7 @@ class WorkerManagerReporter(Reporter):
         *,
         num_cols: Union[str, int] = "fixed",
         fstr: str = "  ╠{:}╣ {info:}{times:}",
-        info_fstr: str = "{total_progress:>5.1f}% ",
+        info_fstr: str = "{prg[total]:>5.1f}% ",
         show_times: bool = False,
         times_fstr: str = "| {elapsed:} elapsed | ~{est_left:} left ",
         times_fstr_final: str = "| finished in {elapsed:} ",
@@ -1038,10 +1054,11 @@ class WorkerManagerReporter(Reporter):
             info_fstr (str, optional): The format string for the ``info``
                 section of the final output. Available keys:
 
-                    - ``total_progress``
-                    - ``active_progress``
+                    - ``prg``, dict with various progress measures in percent:
+                      ``total``, ``active``, ``skipped``, ``failed``,
+                      ``success``, ...
                     - ``cnt``, the task counters dictionary, see:
-                        :py:meth:`~utopya.reporter.WorkerManagerReporter.task_counters`
+                      :py:meth:`~utopya.reporter.WorkerManagerReporter.task_counters`
 
             show_times (bool, optional): Whether to show a short version of the
                 results of the times parser
@@ -1065,7 +1082,7 @@ class WorkerManagerReporter(Reporter):
 
         # Determine the format string for the times
         if show_times:
-            if cntr["finished_or_skipped"] == cntr["total"]:
+            if cntr["finished"] == cntr["total"]:
                 times_fstr = times_fstr_final
             times_str = self._parse_times(fstr=times_fstr, **times_kwargs)
 
@@ -1082,34 +1099,24 @@ class WorkerManagerReporter(Reporter):
             num_cols = TTY_COLS - self.TTY_MARGIN
 
         # Get the active tasks' mean progress and calculate the total progress
-        # (calling the wm_progress property would lead to inconsistencies)
-        active_progress = self.wm_active_tasks_progress
-        total_progress = (
-            cntr["finished_or_skipped"] / cntr["total"]
-            + active_progress * cntr["active"] / cntr["total"]
-        )
+        progress = self._compute_progress(cntr)
 
         # Get the information string ready
-        info_str = info_fstr.format(
-            total_progress=total_progress * 100,
-            active_progress=active_progress * 100,
-            cnt=cntr,
-        )
+        progress_percent = {k: v * 100 for k, v in progress.items()}
+        info_str = info_fstr.format(cnt=cntr, prg=progress_percent)
 
-        # Determine how much room is left for the progress bar
+        # Determine how much room is available for the progress bar
         pb_width = num_cols - len(
             fstr.format("", info=info_str, times=times_str)
         )
 
         # Only return percentage indicator if the width would be _very_ short
         if pb_width < 5:
-            return " {:>5.1f}% ".format(
-                cntr["finished_or_skipped"] / cntr["total"] * 100
-            )
+            return " {:>5.1f}% ".format(cntr["finished"] / cntr["total"] * 100)
 
         # Calculate the ticks
         ticks = dict()
-        factor = pb_width / cntr["total"]  # == width per task
+        factor = pb_width / cntr["total"]  # == symbols per task
 
         # For successful and skipped tasks, simply round
         ticks["success"] = round(cntr["success"] * factor)
@@ -1119,7 +1126,7 @@ class WorkerManagerReporter(Reporter):
         # NOTE Important to round only one of the two, leads to artifacts
         #      otherwise
         ticks["active_progress"] = int(
-            active_progress * cntr["active"] * factor
+            progress["active"] * cntr["total"] * factor
         )
         ticks["active"] = (
             round(cntr["active"] * factor) - ticks["active_progress"]
@@ -1200,7 +1207,7 @@ class WorkerManagerReporter(Reporter):
         else:
             # No est_left available
             # Distinguish between finished and not started simulaltions
-            if self.wm_progress_total == 1.0:
+            if self.wm_finished:
                 tstrs["est_left"] = "(finished)"
             else:
                 tstrs["est_left"] = "∞"
@@ -1313,7 +1320,7 @@ class WorkerManagerReporter(Reporter):
         if dws is None:
             dws = get_distributed_work_status(self.mv.dirs["run"])
 
-        if len(dws) < 1:
+        if len(dws) <= 1:
             return ""
 
         parts = list()
@@ -1324,7 +1331,8 @@ class WorkerManagerReporter(Reporter):
             parts += [""]
             parts += [
                 f"Detected {len(dws)} Multiverses working together "
-                "on this run.\nNote that work status may be delayed."
+                "on this run.\nTheir name and status is shown below.\n"
+                "Note that this information may be delayed or outdated."
             ]
             parts += [""]
 
@@ -1396,8 +1404,41 @@ class WorkerManagerReporter(Reporter):
         from .task import SKIP_EXIT_CODE
         from .workermanager import STOPCOND_EXIT_CODES
 
-        # List that contains the parts that will be written
+        # .. Get data
+        # Work duration information
+        t_start = self.wm.times["start_working"]
+        t_now = dt.now()
+        duration = t_now - t_start
+        tfstr = "%d.%m.%Y, %H:%M:%S"
+
+        # Counters, progress, statistics, ...
+        cnt = self.task_counters
+
+        rtstats = self.calc_runtime_statistics(min_num=min_num)
+        num_success = rtstats.pop("num_success", 0)
+        num_skipped = rtstats.pop("num_skipped", 0)
+
+        run_finished = cnt["finished"] == cnt["total"]
+
+        # .. Format data
+        # List that contains the lines that will be written, joined later on
         parts = []
+
+        # Let's have a pretty title :)
+        parts += [
+            " __                       __             \n"
+            "(_ . _    | _ |_. _  _   |__)_ _  _  _|_ \n"
+            "__)|||||_||(_||_|(_)| )  | \(-|_)(_)| |_ \n"
+            "==============================|==========\n"
+        ]
+
+        # Runtime information and indication if run finished
+        parts += [f"{'Start:':6s}   {t_start.strftime(tfstr)}"]
+        parts += [
+            f"{'End:' if run_finished else 'Now:':6s}   "
+            f"{t_now.strftime(tfstr)}  (Δ: {format_time(duration)})"
+        ]
+        parts += [""]
 
         # Host information
         if show_host_info:
@@ -1405,18 +1446,44 @@ class WorkerManagerReporter(Reporter):
             parts += ["----------------"]
             parts += [""]
             parts += [
-                fstr.format(k=k.replace("_", " "), v=v, w=12)
+                fstr.format(k=k.replace("_", " ").title(), v=v, w=12)
                 for k, v in self._host_info.items()
                 if k not in ("host_name_short", "pid")
             ]
             parts += [""]
             parts += [""]
 
-        # Calculate and display runtime statistics
-        rtstats = self.calc_runtime_statistics(min_num=min_num)
-        num_success = rtstats.pop("num_success", 0)
-        num_skipped = rtstats.pop("num_skipped", 0)
+        # Short: overall progress
+        parts += ["Current Progress"]
+        parts += ["----------------"]
+        parts += [""]
 
+        _w = len(str(cnt["total"]))
+        _c_tot = cnt["total"]
+        parts += [
+            fstr.format(
+                k="Finished",
+                v=(
+                    f"{cnt['finished']:>{_w}d} / {cnt['total']}  "
+                    f"({cnt['finished']/_c_tot*100:.3g}%)"
+                ),
+                w=12,
+            )
+        ]
+        parts += [
+            fstr.format(
+                k=k.title(),
+                v=f"{v:>{_w}d}{' '*(_w + 3)}  ({v/_c_tot*100:.3g}%)",
+                w=12,
+            )
+            for k, v in cnt.items()
+            if k in ("success", "skipped", "stopped", "failed")
+        ]
+
+        parts += [""]
+        parts += [""]
+
+        # Calculate and display runtime statistics
         parts += ["Runtime Statistics"]
         parts += ["------------------"]
         parts += [""]
@@ -1663,7 +1730,7 @@ class WorkerManagerReporter(Reporter):
         else:
             wm_status = "working"
 
-        progress = self.wm_progress
+        progress = self._compute_progress(cntr)
         status = dict(
             status=wm_status,
             time=dt.now().isoformat(),
