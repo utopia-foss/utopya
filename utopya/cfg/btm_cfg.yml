@@ -88,11 +88,19 @@ worker_manager:
   #       If this value is too high, the log output from simulations is not
   #       read from the line buffer frequently enough.
 
+  # How many workers to spawn each working loop iteration.
+  # For -1, will assign tasks to all free workers.
+  spawn_rate: -1
+  # NOTE: If simulations are short, it makes sense to set this to a large value
+  #       or to -1, otherwise CPU utilization will be low because tasks are
+  #       finished faster than new ones are spawned, leading to idle workers.
+  #       If you would like to keep main thread utilization low, set to 1.
+
   # Maximum number of lines to read from each task's stream per poll cycle.
   # Choosing a value that is too large may affect poll performance in cases
   # where the task generates many lines of output.
   # Set to -1 to read *all* available lines from the stream upon each poll.
-  lines_per_poll: 20
+  lines_per_poll: 50
 
   # Periodic task callback (in units of poll events). Set None to deactivate.
   periodic_task_callback: 20
@@ -125,16 +133,16 @@ worker_manager:
   # by name here. They can also be lists, if multiple report formats should
   # be invoked.
   rf_spec:
-    before_working: [work_status, sweep_info]
+    before_working: []
     while_working: [progress_bar]
     task_invoked: []
     task_spawned: [progress_bar]
     monitor_updated: [progress_bar]
-    task_finished: [work_status, progress_bar, report_file]
-    task_skipped: [work_status, progress_bar, report_file]
-    after_work: [work_status, progress_bar, report_file]
-    after_cancel: [work_status, progress_bar, report_file]
-    after_fail: [work_status, report_file]
+    task_finished: [progress_bar, report_file]
+    task_skipped: [progress_bar, report_file]
+    after_work: [progress_bar, report_file]
+    after_cancel: [progress_bar, report_file]
+    after_fail: [report_file]
 
 # The defaults for the worker_kwargs
 # These are passed to the setup function of each MPProcessTask before spawning
@@ -165,7 +173,7 @@ worker_kwargs:
   popen_kwargs: {}
 
 
-# Reporter configuration
+# Reporter Configuration
 reporter:
   # Define report formats, which are accessible, e.g. from the WorkerManager
   report_formats:
@@ -194,7 +202,7 @@ reporter:
       # How to display time information.
       # Available keys: `elapsed`, `est_left`, `est_end`, `start`, `now`
       # (see `times` parser for more information)
-      times_fstr: "| {elapsed} elapsed"
+      times_fstr: "| {elapsed:>7s} elapsed | ~{est_left:>7s} left "
       times_fstr_final: "| finished in {elapsed:} "
       times_kwargs:
         # How to compute the estimated time left to finish the work session
@@ -203,7 +211,14 @@ reporter:
         #   - `from_buffer`: uses a buffer to store recent progress
         #                    information and use the oldest value for
         #                    making the estimate; see `progress_buffer_size`
-        mode: from_start
+        mode: from_buffer
+
+        # Number of records kept for computing ETA in `from_buffer` mode.
+        # This is in units of parser invocations, so goes back *at least* a
+        # a time interval of `min_report_intv * progress_buffer_size`.
+        # If the reporter is called less frequently (e.g. because of a larger
+        # model-side `monitor_emit_interval`), this interval will be longer.
+        progress_buffer_size: 90
 
     # Creates a report file containing runtime statistics
     report_file:
@@ -212,18 +227,19 @@ reporter:
         file:
           path: _report.txt
       min_report_intv: 10             # don't update this one too often
-      min_num: 4                      # min. number of universes for statistics
+      show_host_info: true            # basic information about host machine
+      show_exit_codes: true           # exit code overview
+      min_num: 2                      # min. number of universes for statistics
+      show_joined_run_info: true      # extra info if part of a joined run
+      joined_run_status_fstr:         # how to format the status information
+        "  {progress_here:>5s}  @  {host_name_short:s} - {pid:d}:  {status:10s}  ({tags})"
       show_individual_runtimes: true  # for large number of universes, disable
-      task_label_singular: task
-      task_label_plural: tasks
+      max_num_to_show: 2048           # max. number of individual times to show
+      task_label_singular: universe
+      task_label_plural: universes
 
-    # Creates a work status file, for internal use only
-    work_status:
-      parser: work_status
-      write_to:
-        file:
-          path: .status.yml
-      min_report_intv: 5.
+  # Can define a default format to use
+  # default_format: ~
 
 
 run_kwargs:

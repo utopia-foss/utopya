@@ -1316,6 +1316,12 @@ class WorkerManagerReporter(Reporter):
         creates a status string from it."""
         from .multiverse import get_distributed_work_status
 
+        if self.mv is None:
+            return (
+                "No Multiverse associated; "
+                "cannot determine distributed work status."
+            )
+
         dws = distributed_work_status
         if dws is None:
             dws = get_distributed_work_status(self.mv.dirs["run"])
@@ -1458,27 +1464,30 @@ class WorkerManagerReporter(Reporter):
         parts += ["----------------"]
         parts += [""]
 
-        _w = len(str(cnt["total"]))
         _c_tot = cnt["total"]
-        parts += [
-            fstr.format(
-                k="Finished",
-                v=(
-                    f"{cnt['finished']:>{_w}d} / {cnt['total']}  "
-                    f"({cnt['finished']/_c_tot*100:.3g}%)"
-                ),
-                w=12,
-            )
-        ]
-        parts += [
-            fstr.format(
-                k=k.title(),
-                v=f"{v:>{_w}d}{' '*(_w + 3)}  ({v/_c_tot*100:.3g}%)",
-                w=12,
-            )
-            for k, v in cnt.items()
-            if k in ("success", "skipped", "stopped", "failed")
-        ]
+        if _c_tot:
+            _w = len(str(_c_tot))
+            parts += [
+                fstr.format(
+                    k="Finished",
+                    v=(
+                        f"{cnt['finished']:>{_w}d} / {_c_tot}  "
+                        f"({cnt['finished']/_c_tot*100:.3g}%)"
+                    ),
+                    w=12,
+                )
+            ]
+            parts += [
+                fstr.format(
+                    k=k.title(),
+                    v=f"{v:>{_w}d}{' '*(_w + 3)}  ({v/_c_tot*100:.3g}%)",
+                    w=12,
+                )
+                for k, v in cnt.items()
+                if k in ("success", "skipped", "stopped", "failed")
+            ]
+        else:
+            parts += ["No {} defined.".format(task_label_plural)]
 
         parts += [""]
         parts += [""]
@@ -1721,12 +1730,14 @@ class WorkerManagerReporter(Reporter):
 
     def _parse_work_status(self, *, report_no: int = None) -> str:
         """Supplies a very simple, YAML-formatted status string for *this*
-        WorkerManager un."""
+        WorkerManager run."""
         cntr = self.task_counters
         if self._latest_wm_report == "after_work":
             wm_status = "finished"
         elif self._latest_wm_report == "after_cancel":
             wm_status = "cancelled"
+        elif self._latest_wm_report is None:
+            wm_status = "unknown"
         else:
             wm_status = "working"
 
@@ -1742,10 +1753,11 @@ class WorkerManagerReporter(Reporter):
             pid=self._host_info["pid"],
             kind=(
                 "joined"
-                if getattr(self.mv, "_is_joined_run", None)
+                if self.mv and getattr(self.mv, "_is_joined_run", None)
                 else "main"
             ),
         )
+
         try:
             return _yaml_dumps(status)
         except:
@@ -1777,9 +1789,11 @@ class WorkerManagerReporter(Reporter):
                 ``{0:}`` which retains the given ``path``, extension split off.
                 Extension can be used via ``ext`` (already includes the dot).
                 Additional format keys: ``node_name``, ``job_id``.
+            skip_if_joined (bool, optional): Whether to skip reporting if part
+                of a joined run.
             **kwargs: Passed on to parent method
         """
-        is_joined_run = getattr(self.mv, "_is_joined_run", None)
+        is_joined_run = self.mv and getattr(self.mv, "_is_joined_run", None)
         if skip_if_joined and is_joined_run:
             return
 
