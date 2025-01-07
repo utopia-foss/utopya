@@ -65,7 +65,7 @@ def test_run(with_test_models, tmp_output_dir):
     assert "ABCXYZ" in res.output
 
 
-def test_run_again(with_test_models, tmp_output_dir):
+def test_run_existing(with_test_models, tmp_output_dir):
     """Tests the invocation of the utopya run_existing command"""
 
     # Run the dummy model with --no-work flag
@@ -106,13 +106,13 @@ def test_run_again(with_test_models, tmp_output_dir):
             os.path.join(run_dir, "data", f"uni{uni}", "out.log")
         )
 
-    # Repeat uni1 with run-again, which should create the output data
-    res = invoke_cli(("run-again", DUMMY_MODEL, run_dir, "--uni", "uni1"))
+    # Repeat uni1 with run-existing, which should create the output data
+    res = invoke_cli(("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1"))
     _check_result(res, expected_exit=0)
     assert "Preparing to run or continue existing simulation" in res.output
     assert "Adding tasks for 1 universe" in res.output
     assert "uni1" in res.output
-    assert "Evaluation routine is not possible" in res.output
+    assert "Not automatically continuing with evaluation" in res.output
 
     assert os.path.isfile(os.path.join(run_dir, "data", "uni1", "data.h5"))
     assert os.path.isfile(os.path.join(run_dir, "data", "uni1", "out.log"))
@@ -120,14 +120,14 @@ def test_run_again(with_test_models, tmp_output_dir):
     # Check that cannot be repeated again as data already exists
     with pytest.raises(UniverseSetupError):
         res_fail_repeat = invoke_cli(
-            ("run-again", DUMMY_MODEL, run_dir, "--uni", "uni1")
+            ("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1")
         )
         _check_result(res_fail_repeat, expected_exit=1)
 
     # Repeat with uni2 and uni3
     res = invoke_cli(
         (
-            "run-again",
+            "run-existing",
             DUMMY_MODEL,
             run_dir,
             "--uni",
@@ -163,7 +163,7 @@ def test_run_again(with_test_models, tmp_output_dir):
 
     res = invoke_cli(
         (
-            "run-again",
+            "run-existing",
             DUMMY_MODEL,
             run_dir,
             "--uni",
@@ -180,7 +180,7 @@ def test_run_again(with_test_models, tmp_output_dir):
     # Run all but skip existing
     res = invoke_cli(
         (
-            "run-again",
+            "run-existing",
             DUMMY_MODEL,
             run_dir,
             "--skip-existing",
@@ -199,7 +199,7 @@ def test_run_again(with_test_models, tmp_output_dir):
     # Re-run all with clear existing option
     res = invoke_cli(
         (
-            "run-again",
+            "run-existing",
             DUMMY_MODEL,
             run_dir,
             "--clear-existing",

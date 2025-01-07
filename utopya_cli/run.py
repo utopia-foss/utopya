@@ -271,7 +271,7 @@ def run(ctx, **kwargs):
 
 
 @click.command(
-    "run-again",
+    "run-existing",
     help=(
         "[EXPERIMENTAL] (Re-)Run universes of an existing simulation run.\n"
         "\n"
@@ -333,7 +333,7 @@ def run(ctx, **kwargs):
 #
 #
 @click.pass_context
-def run_again(
+def run_existing(
     ctx,
     run_dir,
     model_name: str,
@@ -363,13 +363,13 @@ def run_again(
     else:
         on_existing_uni_output = "raise"
 
-    mv.run_again(
+    mv.run(
         universes=universes if universes else "all",
         num_workers=num_workers,
         on_existing_uni_output=on_existing_uni_output,
     )
 
-    _log.note("Evaluation routine is not possible for repeated run.")
+    _log.note("Not automatically continuing with evaluation routine.")
     _log.remark(
         "Once the run is complete, call:\n\n  utopya eval %s %s\n",
         model_name,

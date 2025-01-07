@@ -2191,39 +2191,31 @@ class DistributedMultiverse(FrozenMultiverse):
 
         log.progress("Initialized DistributedMultiverse.\n")
 
-    def run(self, *_, **__):
-        raise NotImplementedError(f"{type(self).__name__}.run")
-
     def run_single(self, *_, **__):
         raise NotImplementedError(f"{type(self).__name__}.run_single")
 
     def run_sweep(self, *_, **__):
         raise NotImplementedError(f"{type(self).__name__}.run_sweep")
 
-    def run_again(
+    def run(
         self,
         *,
         universes: Union[Literal["all"], str, List[str]] = "all",
         num_workers=None,
+        on_existing_uni_dir: str = "continue",
+        on_existing_uni_cfg: str = "continue",
         on_existing_uni_output: str = "raise",
     ):
-        """Starts a simulation run for specified universes.
+        """Starts a simulation run for all or a specified subset of universes,
+        working on the existing run directory.
 
-        Specifically, this method adds simulation tasks to the associated
-        WorkerManager, locks its task list, and then invokes the
-        :py:meth:`~utopya.workermanager.WorkerManager.start_working` method
-        which performs all the simulation tasks.
-
-        .. note::
-
-            As this method locks the task list of the
-            :py:class:`~utopya.workermanager.WorkerManager`, no further tasks
-            can be added henceforth. This means, that each Multiverse instance
-            can only perform a single simulation run.
+        Using the ``on_existing_uni_output`` argument, it is possible to skip
+        universes that already created output; alternatively, the output can
+        be removed, effectively repeating the universe simulation.
 
         Args:
-            universes (Union[Literal["all"], str, List[str]], optional):
-                Which universes to run again. Can either be ``all`` (default)
+            universes (Union[Literal["all"], str, List[str]], optional): Which
+                universes to run again. Can either be ``all`` (default)
                 to run all universes, or a selection of universe IDs.
                 The selection can be given as a list of ID strings or a string
                 of comma-separated IDs. Example for valid formats:
@@ -2236,6 +2228,14 @@ class DistributedMultiverse(FrozenMultiverse):
                 Leading zeros and ``uni`` are optional.
             num_workers (int, optional): Specify the number of workers
                 to use, overwriting the setting from the meta-configuration.
+            on_existing_uni_dir (str, optional): How to proceed if a universe
+                directory already exists; can be ``skip``, ``raise``, or
+                ``continue``. Set this to ``continue`` if you previously
+                generated all universe output directories.
+            on_existing_uni_cfg (str, optional): How to proceed if a universe
+                configuration already exists; can be ``skip``, ``raise``, or
+                ``continue``. Set this to ``continue`` if you previously
+                generated all universe config files.
             on_existing_uni_output (str, optional): What to do if universe
                 output already exists. Options are ``skip``, ``raise``,
                 ``continue`` or ``clear``; the latter will remove existing
@@ -2259,8 +2259,8 @@ class DistributedMultiverse(FrozenMultiverse):
         skipping_updates = dict(
             enabled=True,
             skip_after_setup=False,
-            on_existing_uni_dir="continue",
-            on_existing_uni_cfg="continue",
+            on_existing_uni_dir=on_existing_uni_dir,
+            on_existing_uni_cfg=on_existing_uni_cfg,
             on_existing_uni_output=on_existing_uni_output,
         )
         self.skipping.update(skipping_updates)

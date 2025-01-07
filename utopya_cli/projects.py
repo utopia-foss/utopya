@@ -34,7 +34,6 @@ def list_projects(long_mode: bool):
     Echo.progress("Loading utopya project list ...")
 
     from utopya import PROJECTS
-    from utopya.tools import pformat
 
     Echo.info("\n--- Utopya Projects ---")
     for project_name, project in PROJECTS.items():
@@ -42,7 +41,7 @@ def list_projects(long_mode: bool):
         if not long_mode:
             continue
 
-        for k, v in project.data.dict().items():
+        for k, v in project.data.model_dump().items():
             if isinstance(v, dict):
                 Echo.remark(f"  {k:15s}")
                 for sk, sv in v.items():

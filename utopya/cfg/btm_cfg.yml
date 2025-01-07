@@ -127,12 +127,14 @@ worker_manager:
   rf_spec:
     before_working: [work_status, sweep_info]
     while_working: [progress_bar]
+    task_invoked: []
     task_spawned: [progress_bar]
     monitor_updated: [progress_bar]
     task_finished: [work_status, progress_bar, report_file]
     task_skipped: [work_status, progress_bar, report_file]
     after_work: [work_status, progress_bar, report_file]
     after_cancel: [work_status, progress_bar, report_file]
+    after_fail: [work_status, report_file]
 
 # The defaults for the worker_kwargs
 # These are passed to the setup function of each MPProcessTask before spawning
@@ -214,6 +216,14 @@ reporter:
       show_individual_runtimes: true  # for large number of universes, disable
       task_label_singular: task
       task_label_plural: tasks
+
+    # Creates a work status file, for internal use only
+    work_status:
+      parser: work_status
+      write_to:
+        file:
+          path: .status.yml
+      min_report_intv: 5.
 
 
 run_kwargs:
