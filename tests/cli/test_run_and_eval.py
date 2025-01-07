@@ -212,6 +212,24 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert "succeeded:             4" in res.output
     assert "skipped:               0" in res.output
 
+    # Re-run selection with clear existing option
+    res = invoke_cli(
+        (
+            "run-existing",
+            DUMMY_MODEL,
+            run_dir,
+            "--clear-existing",
+            "-u",
+            "1,02,uni4",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "Successfully finished simulation run." in res.output
+    assert "worked on:             3" in res.output
+    assert "succeeded:             3" in res.output
+    assert "skipped:               0" in res.output
+
 
 def test_eval(with_test_models, tmp_output_dir, delay):
     """Tests the invocation of the utopya eval command"""

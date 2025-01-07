@@ -50,6 +50,7 @@ class WorkerManager:
     allows for other threads that have access to the WorkerManager to add an
     exception and let it be handled in the main thread.
     """
+
     rf_spec: dict = None
     """The report format specifications that are used throughout the
     WorkerManager. These are invoked at different points of the operation:
@@ -110,11 +111,13 @@ class WorkerManager:
             rf_spec (Dict[str, Union[str, List[str]]], optional): The names of
                 report formats that should be invoked at different points of
                 the WorkerManager's operation.
-                Possible keys:
+                Possible keys are:
+
                     ``before_working``, ``while_working``,
                     ``after_work``, ``after_cancel``, ``after_fail``,
                     ``task_spawn``, ``task_finished``, ``task_skipped``.
-                All other keys are ignored.
+
+                All other keys are silently ignored.
 
                 The values of the dict can be either strings or lists of
                 strings, where the strings always refer to report formats

@@ -273,13 +273,15 @@ def run(ctx, **kwargs):
 @click.command(
     "run-existing",
     help=(
-        "[EXPERIMENTAL] (Re-)Run universes of an existing simulation run.\n"
+        "**EXPERIMENTAL** (Re-)Run universes of an existing simulation run.\n"
         "\n"
-        "Restores a run of MODEL_NAME from the given RUN_DIR. "
-        "Subsequently, individual or all universes can be (re-)run.\n"
+        "Restores a run of MODEL_NAME from the given RUN_DIR and allows to "
+        "either continue working on it (e.g. if it was incomplete) or "
+        "re-running universes (e.g. because they failed or were stopped).\n"
         "\n"
-        "Note that this feature is currently experimental, meaning that the "
-        "interface may still change a lot."
+        "Note that this feature is currently *experimental*, meaning that the "
+        "interface may still change a lot. If you encounter any issues, "
+        "please let us know."
     ),
 )
 @click.argument("model_name", shell_complete=complete_model_names)
@@ -297,10 +299,12 @@ def run(ctx, **kwargs):
     multiple=True,
     type=str,
     help=(
-        "Which universes to run (e.g.: `-u uni00154`). "
-        "Note that leading zeros and the 'uni' prefix are not required."
-        "To supply multiple, use the -u option multiple times or provide a "
-        "comma-separated list: `-u 154,167,180`"
+        "If given, will only run a selection of these universes, identified "
+        "by their state number, e.g. ``--uni 0423``.\n\n"
+        "Note that leading zeros and the ``uni`` prefix are optional. "
+        "To supply multiple, use the ``-u`` option multiple times "
+        "(``-u uni123 -u uni234 -u uni345``) or provide a comma-separated "
+        "list without spaces (``-u 154,167,180``).\n\n"
         "If no universes are specified, a run on all universes is performed."
     ),
 )
@@ -384,13 +388,17 @@ def run_existing(
 @click.command(
     "join-run",
     help=(
-        "[EXPERIMENTAL] Join a currently-running simulation.\n"
+        "**EXPERIMENTAL** Join a currently-running simulation.\n"
         "\n"
         "Initializes MODEL_NAME from RUN_DIR and joins in working on "
-        "the remaining simulation tasks.\n"
+        "the remaining simulation tasks, thus speeding up the progress.\n"
         "\n"
-        "Note that this feature is currently experimental, meaning that the "
-        "interface may still change a lot."
+        "Only runs that were started with the ``--skippable`` option can be "
+        "joined, otherwise the main simulation would fail.\n"
+        "\n"
+        "Note that this feature is currently *experimental*, meaning that the "
+        "interface may still change a lot. If you encounter any issues, "
+        "please let us know."
     ),
 )
 @click.argument("model_name", shell_complete=complete_model_names)
