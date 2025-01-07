@@ -1,6 +1,7 @@
 """Implements the utopya run CLI subtree"""
 
 import os
+from typing import List, Union
 
 import click
 
@@ -50,16 +51,6 @@ from ._utils import Echo
     help=(
         "Forces a single simulation or a sweep. If not given, will use the "
         "value specified in the meta configuration."
-    ),
-)
-@click.option(
-    "--no-work",
-    "worker_perform_task",
-    default=True,
-    is_flag=True,
-    help=(
-        "Whether to call WorkerTask or NoWorkTask. NoWorkerTask only creates "
-        "configurations, but does not spawn a worker. No-work implies no-eval."
     ),
 )
 @click.option(
@@ -130,13 +121,26 @@ from ._utils import Echo
 )
 @click.option(
     "--skippable/--not-skippable",
-    "skippable_universes",
+    "skipping_enabled",
     default=None,
     help=(
-        "If given, will overwrite the default value for `skippable_universes` "
+        "If given, will overwrite the default value for `skipping.enabled` "
         "in the meta-configuration. Skippable universes allow that a run can "
         "be joined from another machine using `utopya join-run`, with the "
         "disadvantage that the run is now distributed across machines..."
+    ),
+)
+@click.option(
+    "--skip-after-setup",
+    "--no-work",
+    "skip_after_setup",
+    default=False,
+    is_flag=True,
+    help=(
+        "By setting --no-work, the universe setup will be run, creating a "
+        "universe output directory, but no universe process will be spawned. "
+        "Use this as a first stage of distributedly working on a Multiverse "
+        "run using multiple machines."
     ),
 )
 @click.option(
@@ -267,12 +271,12 @@ def run(ctx, **kwargs):
 
 
 @click.command(
-    "run-existing",
+    "run-again",
     help=(
         "[EXPERIMENTAL] (Re-)Run universes of an existing simulation run.\n"
         "\n"
         "Restores a run of MODEL_NAME from the given RUN_DIR. "
-        "Subsequently, individual universes can be (re-)run.\n"
+        "Subsequently, individual or all universes can be (re-)run.\n"
         "\n"
         "Note that this feature is currently experimental, meaning that the "
         "interface may still change a lot."
@@ -293,8 +297,10 @@ def run(ctx, **kwargs):
     multiple=True,
     type=str,
     help=(
-        "Which universes to run (e.g.: 00154). Note that leading zeros need "
-        "to be added. To supply multiple, use the -u option multiple times. "
+        "Which universes to run (e.g.: `-u uni00154`). "
+        "Note that leading zeros and the 'uni' prefix are not required."
+        "To supply multiple, use the -u option multiple times or provide a "
+        "comma-separated list: `-u 154,167,180`"
         "If no universes are specified, a run on all universes is performed."
     ),
 )
@@ -319,7 +325,7 @@ def run(ctx, **kwargs):
     help=(
         "Whether to skip universes with existing output. "
         "Set this option to complete universes from a previous run. "
-        "Cannot be used together with --uni or --clear-existing."
+        "Cannot be used together --clear-existing."
     ),
 )
 @add_options(OPTIONS["num_workers"])  # -W, --num-workers
@@ -327,12 +333,12 @@ def run(ctx, **kwargs):
 #
 #
 @click.pass_context
-def run_existing(
+def run_again(
     ctx,
     run_dir,
     model_name: str,
     label: str,
-    universes: list,
+    universes: Union[str, List[str]],
     num_workers: int,
     clear_existing_output: bool,
     skip_existing_output: bool,
@@ -345,36 +351,29 @@ def run_existing(
     model = utopya.Model(name=model_name, bundle_label=label)
     mv = model.create_distributed_mv(run_dir=run_dir)
 
-    if universes:
-        if skip_existing_output:
-            raise RuntimeError(
-                "Option --skip-existing cannot be set together "
-                "with a list of universes to perform."
-            )
-
-        mv.run_selection(
-            uni_id_strs=universes,
-            num_workers=num_workers,
-            clear_existing_output=clear_existing_output,
+    if clear_existing_output and skip_existing_output:
+        raise ValueError(
+            "Options --skip-existing and --clear-existing are mutually "
+            "exclusive but both were set."
         )
+    elif clear_existing_output:
+        on_existing_uni_output = "clear"
+    elif skip_existing_output:
+        on_existing_uni_output = "skip"
     else:
-        if skip_existing_output and clear_existing_output:
-            raise RuntimeError(
-                "Options --skip-existing and --clear-existing are exclusive "
-                "but both were set."
-            )
+        on_existing_uni_output = "raise"
 
-        mv.run(
-            num_workers=num_workers,
-            clear_existing_output=clear_existing_output,
-            skip_existing_output=skip_existing_output,
-        )
+    mv.run_again(
+        universes=universes if universes else "all",
+        num_workers=num_workers,
+        on_existing_uni_output=on_existing_uni_output,
+    )
 
     _log.note("Evaluation routine is not possible for repeated run.")
     _log.remark(
-        "For evaluation, call:\n  utopya eval %s %s\n",
+        "Once the run is complete, call:\n\n  utopya eval %s %s\n",
         model_name,
-        os.path.basename(run_dir),
+        os.path.basename(mv.dirs["run"]),
     )
     _log.progress("Exiting now ...\n")
 

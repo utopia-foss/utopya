@@ -90,7 +90,11 @@ class MultiverseRunAlreadyFinished(MultiverseError):
     """Raised when a Multiverse run has already finished."""
 
 
-class UniverseOutputDirectoryError(MultiverseError):
+class UniverseSetupError(MultiverseError):
+    """Raised on issues with universe during setup"""
+
+
+class UniverseOutputDirectoryError(UniverseSetupError):
     """Raised on issues with universe output directory"""
 
 
@@ -98,9 +102,9 @@ class SkipUniverse(SkipWorkerTask, MultiverseError):
     """Raised to indicate that a universe should be skipped."""
 
 
-class SkipExistingUniverse(SkipUniverse):
-    """Raised to indicate that a universe should be skipped because it already
-    exists, e.g. in the context of a joined Multiverse run."""
+class SkipUniverseAfterSetup(SkipUniverse):
+    """Raised to indicate that this universe (and all others) are deliberately
+    skipped after their setup function was invoked."""
 
 
 # -----------------------------------------------------------------------------

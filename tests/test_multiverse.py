@@ -16,7 +16,7 @@ from utopya import DistributedMultiverse, FrozenMultiverse, Multiverse
 from utopya.exceptions import (
     MultiverseError,
     UniverseOutputDirectoryError,
-    WorkerTaskSetupError,
+    UniverseSetupError,
 )
 from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
@@ -756,10 +756,10 @@ def test_FrozenMultiverse(mv_kwargs, cluster_env):
 
 
 def test_run_dmv_run(mv_kwargs):
-    """Tests a run with a distributed simulation"""
+    """Tests a run with a distributed simulation, running all files"""
     # Adjust the defaults to use the sweep configuration for run configuration
     mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
-    update_cfg = dict({"worker_kwargs": {"perform_task": False}})
+    update_cfg = dict(skipping=dict(enabled=True, skip_after_setup=True))
     mv = Multiverse(**mv_kwargs, **update_cfg)
 
     # Run the sweep, after which there should be four universe directories,
@@ -777,7 +777,7 @@ def test_run_dmv_run(mv_kwargs):
     distributed_mv = DistributedMultiverse(
         model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
     )
-    distributed_mv.run()
+    distributed_mv.run_again()
 
     assert len(os.listdir(mv.dirs["data"])) == 4
     for uni in os.listdir(mv.dirs["data"]):
@@ -786,49 +786,47 @@ def test_run_dmv_run(mv_kwargs):
         assert "data.h5" in files
         assert "out.log" in files
 
-    with pytest.raises(
-        MultiverseError,
-        match=r"Could not add simulation task for universe .*",
-    ):
-        distributed_mv.run_selection(
-            uni_id_strs=[os.listdir(mv.dirs["data"])[1]]
-        )
+    # .. Check errors
+    # Can not run again (because task list is locked)
+    with pytest.raises(MultiverseError, match=r"TaskList locked"):
+        distributed_mv.run_again(universes=[os.listdir(mv.dirs["data"])[1]])
 
-    with pytest.raises(
-        MultiverseError,
-        match=r"Could not add simulation task for universe .*",
-    ):
-        distributed_mv.run()
+    with pytest.raises(MultiverseError, match=r"TaskList locked"):
+        distributed_mv.run_again()
 
-    with pytest.raises(
-        UniverseOutputDirectoryError,
-        match=r"Output directory of universe 'uni1' contains files other .*",
-    ):
-        distributed_mv__repeat = DistributedMultiverse(
-            model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
-        )
-        distributed_mv__repeat.run()
+    # But also with a new instance, will fail because output already exists
+    distributed_mv__repeat = DistributedMultiverse(
+        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+    )
+    with pytest.raises(UniverseSetupError, match=r"existing_uni_output"):
+        distributed_mv__repeat.run_again()
 
     # Test that the MV can create uni-folder and uni-config
     distributed_mv__create_cfg = DistributedMultiverse(
         model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
     )
+
     dirs = os.listdir(mv.dirs["data"])
     for _dir in dirs:
         dirpath = os.path.join(mv.dirs["data"], _dir)
         for file in os.listdir(dirpath):
             os.remove(os.path.join(dirpath, file))
     dirpath = os.path.join(mv.dirs["data"], dirs[0])
-    os.rmdir(dirpath)  # FIXME should be part of a fixture / needed at all?!
+    os.rmdir(dirpath)
 
-    distributed_mv__create_cfg.run()
+    distributed_mv__create_cfg.run_again()
+    for _dir in dirs:
+        files = os.listdir(os.path.join(mv.dirs["data"], _dir))
+        assert "config.yml" in files
+        assert "data.h5" in files
+        assert "out.log" in files
 
 
 def test_run_dmv_run_selection(mv_kwargs):
     """Tests a run with a selection of tasks in a distributed simulation"""
     # Adjust the defaults to use the sweep configuration for run configuration
     mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
-    update_cfg = dict({"worker_kwargs": {"perform_task": False}})
+    update_cfg = dict(skipping=dict(enabled=True, skip_after_setup=True))
     mv = Multiverse(**mv_kwargs, **update_cfg)
 
     # Run the sweep
@@ -851,12 +849,8 @@ def test_run_dmv_run_selection(mv_kwargs):
     distributed_mv_23 = DistributedMultiverse(
         model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
     )
-    distributed_mv_0.run_selection(
-        uni_id_strs=[os.listdir(mv.dirs["data"])[0]]
-    )
-    distributed_mv_23.run_selection(
-        uni_id_strs=os.listdir(mv.dirs["data"])[2:]
-    )
+    distributed_mv_0.run_again(universes=[os.listdir(mv.dirs["data"])[0]])
+    distributed_mv_23.run_again(universes=os.listdir(mv.dirs["data"])[2:])
 
     # check that no file can be in directory
     uni1 = os.listdir(mv.dirs["data"])[1]
@@ -866,18 +860,16 @@ def test_run_dmv_run_selection(mv_kwargs):
     bad_file = open(bad_file_path, "a")
     bad_file.write("New line of text")
     bad_file.close()
-    with pytest.raises(
-        UniverseOutputDirectoryError,
-        match=r".*Output directory of universe .* contains files .*",
-    ):
-        distributed_mv__fail = DistributedMultiverse(
-            model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
-        )
-        distributed_mv__fail.run_selection(uni_id_strs=[uni1])
+
+    distributed_mv__fail = DistributedMultiverse(
+        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+    )
+    with pytest.raises(UniverseSetupError, match="existing_uni_output"):
+        distributed_mv__fail.run_again(universes=[uni1])
 
     # run uni1 without that bad file
     os.remove(bad_file_path)
-    distributed_mv_1.run_selection(uni_id_strs=[uni1])
+    distributed_mv_1.run_again(universes=[uni1])
 
     # There should now be four directories in the data directory
     assert len(os.listdir(mv.dirs["data"])) == 4
@@ -888,34 +880,52 @@ def test_run_dmv_run_selection(mv_kwargs):
         assert "out.log" in files
 
     # check that the universes cannot be worked on again
-    with pytest.raises(
-        MultiverseError, match=r"Could not add simulation task for universe .*"
-    ):
-        distributed_mv_0.run_selection(
-            uni_id_strs=[os.listdir(mv.dirs["data"])[1]]
-        )
+    with pytest.raises(UniverseSetupError, match="existing_uni_output"):
+        distributed_mv_0.run_again(universes=[os.listdir(mv.dirs["data"])[1]])
 
-    with pytest.raises(
-        MultiverseError, match=r"Could not add simulation task for universe .*"
-    ):
-        distributed_mv_0.run()
+    with pytest.raises(UniverseSetupError, match="existing_uni_output"):
+        distributed_mv_0.run_again()
 
-    with pytest.raises(
-        UniverseOutputDirectoryError,
-        match=r".*Output directory of universe .* contains files .*",
-    ):
-        distributed_mv__fail = DistributedMultiverse(
-            model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
-        )
-        distributed_mv__fail.run()
+    distributed_mv__fail = DistributedMultiverse(
+        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+    )
+    with pytest.raises(UniverseSetupError, match="existing_uni_output"):
+        distributed_mv__fail.run_again()
 
-    # repeat run with clear existing option
+    # repeat run with clear existing option, this will work
     distributed_mv__clear = DistributedMultiverse(
         model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
     )
-    distributed_mv__clear.run_selection(
-        uni_id_strs=os.listdir(mv.dirs["data"]), clear_existing_output=True
+    distributed_mv__clear.run_again(
+        universes=os.listdir(mv.dirs["data"]), on_existing_uni_output="clear"
     )
+
+    # various ways to specify universe selection
+    dmvc = distributed_mv__clear
+    universes_to_test = (
+        "all",
+        "uni1",
+        ["uni1"],
+        ("uni2",),
+        "uni1,uni2",
+        ["uni1", "uni2", "uni3"],
+        ("uni1", "uni2"),
+        ["uni1", "uni2", "uni1,uni4", "uni3"],
+        "uni00001,uni02,0003",
+        [1, 2, 3, 4],
+        [1, 2, "03", "uni0004"],
+    )
+
+    for universes in universes_to_test:
+        print("universes =", universes)
+        dmvc.run_again(universes=universes, on_existing_uni_output="clear")
+
+    # invalid universe IDs
+    with pytest.raises(MultiverseError, match="A universe with ID '234'"):
+        dmvc.run_again(universes="234")
+
+    with pytest.raises(ValueError, match="invalid literal"):
+        dmvc.run_again(universes="badID")
 
 
 def test_run_dmv_run_backup(mv_kwargs):
@@ -924,10 +934,8 @@ def test_run_dmv_run_backup(mv_kwargs):
     # Adjust the defaults to use the sweep configuration for run configuration
     mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
     update_cfg = dict(
-        {
-            "worker_kwargs": {"perform_task": False},
-            "executable_control": {"run_from_tmpdir": False},
-        }
+        skipping=dict(enabled=True, skip_after_setup=True),
+        executable_control=dict(run_from_tmpdir=False),
     )
 
     # Include the executable
@@ -949,7 +957,7 @@ def test_run_dmv_run_backup(mv_kwargs):
         distributed_mv.dirs["run"], "backup", distributed_mv.model_name
     )
 
-    distributed_mv.run()
+    distributed_mv.run_again()
 
     mv_kwargs["paths"]["model_note"] = "with-exec-backup__broken_backup"
 

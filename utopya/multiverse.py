@@ -15,7 +15,7 @@ import warnings
 from collections import defaultdict
 from shutil import copy2
 from tempfile import TemporaryDirectory
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import paramspace as psp
 from dantro._import_tools import get_resource_path
@@ -27,15 +27,15 @@ from .eval import DataManager, PlotManager
 from .exceptions import (
     MultiverseError,
     MultiverseRunAlreadyFinished,
-    SkipExistingUniverse,
-    UniverseOutputDirectoryError,
+    SkipUniverse,
+    SkipUniverseAfterSetup,
+    UniverseSetupError,
 )
 from .model_registry import ModelInfoBundle, get_info_bundle, load_model_cfg
 from .parameter import ValidationError
 from .project_registry import PROJECTS
 from .reporter import WorkerManagerReporter
-from .task import NoWorkTask, WorkerTask
-from .tools import parse_num_steps, pformat, recursive_update
+from .tools import make_columns, parse_num_steps, pformat, recursive_update
 from .workermanager import WorkerManager
 from .yaml import load_yml, write_yml
 
@@ -311,8 +311,9 @@ class Multiverse:
         return copy.deepcopy(self._resolved_cluster_params)
 
     @property
-    def skippable_universes(self) -> bool:
-        return self.meta_cfg.get("skippable_universes", False)
+    def skipping(self) -> dict:
+        """The skipping control parameters"""
+        return self.meta_cfg["skipping"]
 
     @property
     def dm(self) -> DataManager:
@@ -1414,7 +1415,9 @@ class Multiverse:
         uni_cfg: dict,
         uni_basename: str,
     ) -> dict:
-        """Setup function for individual universes.
+        """Setup function for individual universes. These are realised through
+        individual :py:class:`~utopya.task.WorkerTask` instances, where this
+        function is called as part of the setup routine, before a task is run.
 
         This is called before the worker process starts working on the
         universe.
@@ -1433,11 +1436,12 @@ class Multiverse:
             dict: kwargs for the process to be run when task is grabbed by
                 Worker.
         """
+
         # Generate paths
         uni_dir = os.path.join(self.dirs["data"], uni_basename)
         uni_cfg_path = os.path.join(uni_dir, "config.yml")
 
-        # Create universe directory path using the basename
+        # Create universe directory and configuration
         self._setup_universe_dir(uni_dir, uni_basename=uni_basename)
         uni_cfg = self._setup_universe_config(
             uni_cfg=uni_cfg, uni_dir=uni_dir, uni_cfg_path=uni_cfg_path
@@ -1449,6 +1453,12 @@ class Multiverse:
             uni_cfg=uni_cfg,
             **worker_kwargs,
         )
+
+        # Might not want to perform work at all, in which case we mark this
+        # task as to-be-skipped.
+        if self.skipping["skip_after_setup"]:
+            raise SkipUniverseAfterSetup(f"Skipping work on '{uni_basename}'.")
+
         return wk
 
     def _setup_universe_dir(self, uni_dir: str, *, uni_basename: str) -> None:
@@ -1463,10 +1473,8 @@ class Multiverse:
         """
         try:
             os.mkdir(uni_dir)
-        except FileExistsError:
-            if self.skippable_universes:
-                raise SkipExistingUniverse(uni_basename)
-            raise
+        except FileExistsError as err:
+            self._maybe_skip("existing_uni_cfg", exc=err, desc=uni_basename)
 
         log.debug("Created universe directory:\n  %s", uni_dir)
 
@@ -1506,10 +1514,8 @@ class Multiverse:
         # Write the universe config to file (by default: a _new_ file)
         try:
             write_yml(uni_cfg, path=uni_cfg_path, mode=mode)
-        except FileExistsError:
-            if self.skippable_universes:
-                raise SkipExistingUniverse(uni_cfg_path)
-            raise
+        except FileExistsError as err:
+            self._maybe_skip("existing_uni_cfg", exc=err, desc=uni_cfg_path)
 
         return uni_cfg
 
@@ -1551,10 +1557,45 @@ class Multiverse:
 
         return wk
 
-    def _get_TaskCls(self, *, perform_task: bool = True, **_) -> type:
-        if perform_task:
-            return WorkerTask
-        return NoWorkTask
+    def _maybe_skip(
+        self,
+        context: str,
+        *,
+        desc: str,
+        exc: Exception = None,
+    ):
+        """Called from the universe setup function in certain situations, this
+        method checks how to proceed. It may trigger skipping of the task,
+        raise an error (e.g. if skipping is disabled), or just continue without
+        either of those, potentially causing an error later."""
+        skipping = self.skipping
+
+        # Retrieve the desired action for the specified context
+        try:
+            ctx_action = skipping[f"on_{context}"]
+        except KeyError as err:
+            raise ValueError(
+                f"Missing argument for skipping context '{context}'!\n"
+                f"Skipping parameters were:  {skipping}"
+            ) from err
+
+        # Evaluate
+        if ctx_action == "raise" or not skipping["enabled"]:
+            if exc:
+                raise UniverseSetupError(f"{context}: {desc}") from exc
+            raise UniverseSetupError(f"{context}: {desc}")
+
+        elif ctx_action == "skip":
+            raise SkipUniverse(f"{context}: {desc}")
+
+        elif ctx_action == "continue":
+            pass
+
+        else:
+            raise ValueError(
+                f"Invalid argument '{ctx_action}' for skipping context "
+                f"'{context}'! Choose from:  skip, raise, continue"
+            )
 
     def _add_sim_task(
         self, *, uni_id_str: str, uni_cfg: dict, is_sweep: bool
@@ -1594,8 +1635,8 @@ class Multiverse:
             uni_basename=uni_basename,
         )
 
-        # Process worker_kwargs
-        wk = self.meta_cfg.get("worker_kwargs")
+        # Pre-process some worker_kwargs
+        wk = copy.deepcopy(self.meta_cfg["worker_kwargs"])
 
         if wk and wk.get("forward_streams") == "in_single_run":
             # Reverse the flag to determine whether to forward streams
@@ -1603,27 +1644,27 @@ class Multiverse:
             wk["forward_kwargs"] = dict(forward_raw=True)
 
         # Try to add a task to the worker manager
-        TaskCls = self._get_TaskCls(**wk)
         try:
             self.wm.add_task(
-                TaskCls=TaskCls,
                 name=uni_basename,
                 priority=None,
                 setup_func=self._setup_universe,
                 setup_kwargs=setup_kwargs,
                 worker_kwargs=wk,
-                skippable=self.skippable_universes,
+                skippable=self.skipping["enabled"],
             )
 
         except Exception as err:
             # Something didn't work. For instance:
             # Task list was locked, probably because there already was a run
             raise MultiverseError(
-                f"Could not add simulation task for universe '{uni_basename}'! "
-                "Did you already perform a run with this Multiverse?"
+                f"Could not add simulation task for universe "
+                f"'{uni_basename}'! Did you already perform a run with this "
+                "Multiverse?\n\nWhile adding the universe task, got a "
+                f"{type(err).__name__}: {err}"
             ) from err
 
-        log.debug("Added simulation task: %s.", uni_basename)
+        log.debug("Added simulation task:  %s", uni_basename)
 
     def _add_sim_tasks(self, *, sweep: bool = None) -> int:
         """Adds the simulation tasks needed for a single run or for a sweep.
@@ -1830,10 +1871,11 @@ class Multiverse:
         )
         raise ValidationError(msg)
 
-    def _start_working(self, **kwargs):
+    def _start_working(self, *, lock_tasks: bool = True, **kwargs):
         """Wrapper that helps to invoke the WorkerManager"""
-        # Prevent adding further tasks
-        self.wm.tasks.lock()
+        # Maybe prevent adding further tasks
+        if lock_tasks:
+            self.wm.tasks.lock()
 
         # Tell the WorkerManager to start working (is a blocking call)
         wm_status = self.wm.start_working(**kwargs)
@@ -2047,8 +2089,8 @@ class DistributedMultiverse(FrozenMultiverse):
     """A distributed Multiverse is like a Multiverse, but initialized from an
     existing meta-configuration.
 
-    It re-creates the WorkerManager attributes from that configuration and
-    is not allowed to change the meta-configuration that was loaded.
+    Unlike the FrozenMultiverse, it is able to continue, join or repeat an
+    existing simulation run.
     """
 
     def __init__(
@@ -2058,8 +2100,8 @@ class DistributedMultiverse(FrozenMultiverse):
         model_name: str = None,
         info_bundle: ModelInfoBundle = None,
     ):
-        """Initializes a DistributedMultiverse from a model name and the name
-        of an existing run directory.
+        """Initializes a DistributedMultiverse from a model name and an
+        existing run directory.
 
         Args:
             run_dir (str, optional): The run directory to load. Can be a path
@@ -2089,8 +2131,6 @@ class DistributedMultiverse(FrozenMultiverse):
         self._dirs = dict()
         self._model_executable = None
         self._tmpdir = None
-
-        self._clear_existing_output: bool = False
 
         self._is_joined_run: bool = None
 
@@ -2151,12 +2191,21 @@ class DistributedMultiverse(FrozenMultiverse):
 
         log.progress("Initialized DistributedMultiverse.\n")
 
-    def run_selection(
+    def run(self, *_, **__):
+        raise NotImplementedError(f"{type(self).__name__}.run")
+
+    def run_single(self, *_, **__):
+        raise NotImplementedError(f"{type(self).__name__}.run_single")
+
+    def run_sweep(self, *_, **__):
+        raise NotImplementedError(f"{type(self).__name__}.run_sweep")
+
+    def run_again(
         self,
         *,
-        uni_id_strs: List[str],
+        universes: Union[Literal["all"], str, List[str]] = "all",
         num_workers=None,
-        clear_existing_output: bool = False,
+        on_existing_uni_output: str = "raise",
     ):
         """Starts a simulation run for specified universes.
 
@@ -2173,122 +2222,137 @@ class DistributedMultiverse(FrozenMultiverse):
             can only perform a single simulation run.
 
         Args:
-            uni_id_strs(List[str]): The list of universe ID strings to run,
-                e.g. '00154'. Note that leading zeros are required.
+            universes (Union[Literal["all"], str, List[str]], optional):
+                Which universes to run again. Can either be ``all`` (default)
+                to run all universes, or a selection of universe IDs.
+                The selection can be given as a list of ID strings or a string
+                of comma-separated IDs. Example for valid formats:
+
+                    ['uni01', 'uni02', 'uni03']
+                    'uni01,uni02,uni03'
+                    ['01', '02', '03']
+                    1,2,3
+
+                Leading zeros and ``uni`` are optional.
             num_workers (int, optional): Specify the number of workers
                 to use, overwriting the setting from the meta-configuration.
-            clear_existing_output (bool, optional): Whether to remove
-                existing files from the universe outpout directories.
-                Only the configuration file will not be deleted.
+            on_existing_uni_output (str, optional): What to do if universe
+                output already exists. Options are ``skip``, ``raise``,
+                ``continue`` or ``clear``; the latter will remove existing
+                output files without prompting for this again!
         """
-        log.info(
-            "Preparing for simulation run of %d universe(s) (%s) ...",
-            len(uni_id_strs),
-            uni_id_strs,
+
+        def parse_uni_id_str(s: str) -> Tuple[str, int]:
+            if s.lower().startswith("uni"):
+                s = s[3:]
+            return s, int(s)
+
+        if self.cluster_mode:
+            raise MultiverseError("Cannot run again in cluster mode, sorry.")
+
+        log.info("Preparing to run or continue existing simulation ...")
+
+        # Update skipping options to allow running on a previously started
+        # simulation, meaning that at least some (or all) universe data
+        # directories will exist and they may contain a config. Some of them
+        # may even contain output data...
+        skipping_updates = dict(
+            enabled=True,
+            skip_after_setup=False,
+            on_existing_uni_dir="continue",
+            on_existing_uni_cfg="continue",
+            on_existing_uni_output=on_existing_uni_output,
+        )
+        self.skipping.update(skipping_updates)
+
+        log.note(
+            "Updated skipping configuration accordingly:\n%s\n",
+            "\n".join(f"  {k}: {v}" for k, v in self.skipping.items()),
         )
 
-        # Store parameter, used during universe dir setup
-        self._clear_existing_output = clear_existing_output
-
-        # Generate all possible parameter space combinations
-        pspace = self.meta_cfg["parameter_space"]
-        psp_iter = pspace.iterator(with_info="state_no_str")
-
-        uni_cfgs = dict()
-        for uni_cfg, uni_id_str in psp_iter:
-            uni_cfgs[uni_id_str] = uni_cfg
-
-        # Now, add the respective tasks, if the selection matches
-        is_sweep = len(uni_id_strs) > 1
-        for i, uni_id_str in enumerate(uni_id_strs):
-            if uni_id_str.startswith("uni"):
-                uni_id_str = uni_id_str[3:]
-
-            uni_cfg = uni_cfgs.get(uni_id_str, None)
-            if uni_cfg is None:
-                raise ValueError(f"No universe '{uni_id_str}' found!")
-
-            self._add_sim_task(
-                uni_id_str=uni_id_str,
-                uni_cfg=uni_cfg,
-                is_sweep=is_sweep,
+        # If clearing existing output, unlock task list ...
+        if on_existing_uni_output == "clear":
+            self.wm.tasks.unlock()
+            log.note(
+                "Unlocked task list to allow re-running with clearing output."
             )
 
+        # Add the tasks, depending on whether all or a selection of universes
+        # should be carried out
+        if universes == "all":
+            log.note("Adding tasks for all universes ...")
+            self._add_sim_tasks()
+            lock_tasks = True
+
+        elif isinstance(universes, (str, tuple, list)):
+            # Add only a selection of universe tasks.
+
+            # Bring selection into uniform format.
+            # Initial format can be ['uni01', 'uni02', …] but also of form
+            # ['uni01,uni02', 'uni03', …] so it's easiest and most robust to
+            # just join them all together to a string and then split them again
+            if isinstance(universes, (tuple, list)):
+                universes = ",".join([str(u) for u in universes])
+
+            universes = set(
+                [u.strip() for u in universes.split(",") if u.strip()]
+            )
+            is_sweep = len(universes) > 1
+
+            log.note(
+                "Adding tasks for %d universe%s ...",
+                len(universes),
+                "s" if is_sweep else "",
+            )
+            if len(universes) < 64:
+                log.remark(
+                    "Selected universe%s:\n\n%s\n",
+                    "s" if is_sweep else "",
+                    make_columns(universes, wrap_width=60),
+                )
+
+            # For that, first create all possible parameter space combinations:
+            pspace = self.meta_cfg["parameter_space"]
+            psp_iter = pspace.iterator(with_info="state_no_str")
+            uni_cfgs: Dict[int, dict] = {
+                int(uni_id_str): uni_cfg for uni_cfg, uni_id_str in psp_iter
+            }
+
+            lock_tasks = len(universes) >= pspace.volume
+
+            # Now, add the respective tasks, if they are part of the selection:
+            for i, uni_id_str in enumerate(universes):
+                uni_id_str, uni_id = parse_uni_id_str(uni_id_str)
+
+                uni_cfg = uni_cfgs.get(uni_id)
+                if uni_cfg is None:
+                    raise MultiverseError(
+                        f"A universe with ID '{uni_id_str}' does not exist! "
+                        "Make sure the universe IDs are part of the specified "
+                        "parameter space."
+                    )
+
+                self._add_sim_task(
+                    uni_id_str=uni_id_str,
+                    uni_cfg=uni_cfg,
+                    is_sweep=is_sweep,
+                )
+
+            log.info("Added %d tasks.", i + 1)
+
+        else:
+            raise TypeError(
+                "Argument `universes` should be 'all' or a string or list of "
+                f"universe IDs! Was {type(universes)} with value: {universes}"
+            )
+
+        # Start working with the specified number of workers
         if num_workers is not None:
             self.wm.num_workers = num_workers
 
-        # Here we go ...
-        self._start_working(**self.meta_cfg["run_kwargs"])
-
-    def run(
-        self,
-        *,
-        num_workers=None,
-        clear_existing_output: bool = False,
-        skip_existing_output: bool = False,
-    ):
-        """Starts a simulation run for all universes.
-
-        Overload of parent method that allows for universes to be skipped if
-        output already exists from a previous run.
-
-        Args:
-            num_workers (int, optional): Specify the number of workers
-                available.
-            clear_existing_output (bool, optional): Whether to remove
-                files in the output directory of the universes other than the
-                configuration file.
-            skip_existing_output (bool, optional): Whether to skip
-                universes if output already exists.
-        """
-        ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
-
-        log.hilight("Preparing for repeated simulation run ...")
-
-        # Store parameter, used during universe dir setup
-        self._clear_existing_output = clear_existing_output
-
-        # Generate all possible parameter space combinations
-        pspace = self.meta_cfg["parameter_space"]
-        psp_iter = pspace.iterator(with_info="state_no_str")
-
-        # Gather uni configs
-        # TODO Rework this: skip-existing decision should be taken later!
-        uni_cfgs = dict()
-        for uni_cfg, uni_id_str in psp_iter:
-            if skip_existing_output:
-                output_exists = False
-                uni_basename = f"uni{uni_id_str}"
-                uni_dir = os.path.join(self.dirs["data"], uni_basename)
-
-                # Check existence of path and its content
-                if os.path.isdir(uni_dir):
-                    for file in os.listdir(uni_dir):
-                        if file not in ALLOWED_FILES:
-                            output_exists = True
-                            break
-
-                # only add uni to tasks if no output exists
-                if not output_exists:
-                    uni_cfgs[uni_id_str] = uni_cfg
-
-            else:
-                uni_cfgs[uni_id_str] = uni_cfg
-
-        log.info("  Found %d universe(s) to work on.", len(uni_cfgs))
-
-        # Now, add the respective tasks, if the selection matches
-        is_sweep = len(uni_cfgs) > 1
-        for uni_id_str, uni_cfg in uni_cfgs.items():
-            self._add_sim_task(
-                uni_id_str=uni_id_str,
-                uni_cfg=uni_cfg,
-                is_sweep=is_sweep,
-            )
-
-        if num_workers is not None:
-            self.wm.num_workers = num_workers
-        self._start_working(**self.meta_cfg["run_kwargs"])
+        self._start_working(
+            lock_tasks=lock_tasks, **self.meta_cfg["run_kwargs"]
+        )
 
     def join_run(
         self,
@@ -2307,20 +2371,22 @@ class DistributedMultiverse(FrozenMultiverse):
                 to set this to True to reduce competition for new tasks.
         """
         log.hilight("Preparing to join simulation run ...")
+        meta_cfg = self.meta_cfg
+        skipping = self.skipping
 
-        # Can we even join this run? We need a ...
-        if not self.skippable_universes:
+        # Can we even join this run? We need skipping enabled and a sweep!
+        if not skipping["enabled"]:
             raise MultiverseError(
                 "Cannot join a Multiverse run that was started with "
-                "`skippable_universes` set to False!"
+                "`skipping.enabled` set to False!"
             )
 
-        if not self.meta_cfg["perform_sweep"]:
+        if not meta_cfg["perform_sweep"]:
             raise MultiverseError(
                 "Cannot join existing run if it is not a parameter sweep."
             )
 
-        pspace = self.meta_cfg["parameter_space"]
+        pspace = meta_cfg["parameter_space"]
         num_uni_dirs = len(glob.glob(os.path.join(self.dirs["data"], "uni*")))
         if num_uni_dirs >= pspace.volume:
             raise MultiverseRunAlreadyFinished(
@@ -2369,47 +2435,48 @@ class DistributedMultiverse(FrozenMultiverse):
 
     # .. Overloads for universe setup .........................................
 
-    def _get_TaskCls(self, **_) -> type:
-        return WorkerTask
-
     def _setup_universe_dir(self, uni_dir: str, *, uni_basename: str):
         """Overload of parent method that allows for universe directories to
         already exist."""
-        ALLOWED_FILES = ("config.yml",)  # make sure these are sorted
 
         if not os.path.isdir(uni_dir):
             # Set up from scratch ... if it does not exist yet (checked also
             # in parent method, potentially raising SkipExistingUniverse)
             return super()._setup_universe_dir(
-                uni_dir=uni_dir, uni_basename=uni_basename
+                uni_dir=uni_dir,
+                uni_basename=uni_basename,
             )
 
         # else: already exists.
-        if self.skippable_universes:
-            raise SkipExistingUniverse(uni_basename)
+        self._maybe_skip("existing_uni_dir", desc=uni_basename)
 
-        # Allow to remove existing output from the directory
-        if self._clear_existing_output and len(os.listdir(uni_dir)) > 1:
-            for file in os.listdir(uni_dir):
-                if file in ALLOWED_FILES:
-                    continue
-                os.remove(os.path.join(uni_dir, file))
+        # Check whether the directory is empty
+        ALLOWED_FILES = ("config.yml",)
+        existing_output = [
+            f for f in os.listdir(uni_dir) if f not in ALLOWED_FILES
+        ]
+        if not existing_output:
+            # No output yet, can simply continue.
+            return
 
-        # Check that the universe directory is empty
-        existing_files = os.listdir(uni_dir)
-        if existing_files and sorted(existing_files) != list(ALLOWED_FILES):
-            raise UniverseOutputDirectoryError(
-                f"Output directory of universe '{uni_basename}' contains "
-                f"files other than ({', '.join(ALLOWED_FILES)}). "
-                "Did you already perform a run on this universe? "
-                f"Found the following files:  {', '.join(existing_files)}"
-            )
+        # else: output was already created.
+        # We may want to respond to this by raising, clearing or skipping.
+        if self.skipping["on_existing_uni_output"] == "clear":
+            for fname in existing_output:
+                os.remove(os.path.join(uni_dir, fname))
+        else:
+            self._maybe_skip("existing_uni_output", desc=uni_basename)
 
     def _setup_universe_config(self, *, uni_cfg_path: str, **kwargs) -> dict:
         """Overload of parent method that checks if a universe config already
         exists and, if so, loads that one instead of storing a new one.
         """
         if os.path.isfile(uni_cfg_path):
+            self._maybe_skip(
+                "existing_uni_cfg",
+                desc=uni_cfg_path,
+            )
+
             log.debug("Restoring universe config from:\n  %s.", uni_cfg_path)
             return load_yml(uni_cfg_path)
 

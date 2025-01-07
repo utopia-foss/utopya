@@ -689,10 +689,6 @@ class WorkerManager:
 
                 # Call the post-poll function
                 if post_poll_func is not None:
-                    log.debug(
-                        "Calling post_poll_func %s ...",
-                        post_poll_func.__name__,
-                    )
                     post_poll_func()
 
                 # Do stream-related actions for each task

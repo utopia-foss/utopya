@@ -13,7 +13,6 @@ import pytest
 from utopya.task import (
     SIGMAP,
     MPProcessTask,
-    NoWorkTask,
     PopenMPProcess,
     Task,
     TaskList,
@@ -303,78 +302,6 @@ def test_workertask_streams_stderr(tmpdir):
     for stream_name in t.streams:
         with pytest.raises(ValueError, match="I/O operation on closed file"):
             t.streams[stream_name]["stream"].read()
-
-
-# NoWorkTask tests ------------------------------------------------------------
-
-
-def test_noworktask_spawning():
-    """Tests the read_ and save_streams methods of the WorkerTask"""
-
-    t = NoWorkTask(
-        name="spawn_test",
-        worker_kwargs=dict(
-            args=("echo", "foo\nbar\nbaz"),
-        ),
-    )
-
-    # Now spawn the worker
-    t.spawn_worker()
-
-    # Add additional sleep to avoid any form of race condition
-    sleep(0.2)
-
-    assert t.worker_status == 0
-
-    # Task cannot be spawned another time
-    with pytest.raises(RuntimeError):
-        t.spawn_worker()
-
-
-def test_noworktask_streams(tmpdir):
-    """Tests the read_ and save_streams methods of the NoWorkTask"""
-    save_path = tmpdir.join("out.log")
-
-    t = NoWorkTask(
-        name="stream_test",
-        worker_kwargs=dict(
-            args=("echo", "foo\nbar\nbaz"),
-            read_stdout=True,
-            stdout_parser="yaml_dict",
-            save_streams=True,
-            save_streams_to=str(save_path),
-        ),
-    )
-
-    # There are no streams yet, so trying to save streams now should not
-    # generate a file at save_path
-    t.save_streams()
-    assert not save_path.isfile()
-
-    # Now spawn the worker
-    t.spawn_worker()
-
-    # Add additional sleep to avoid any form of race condition
-    sleep(0.2)
-
-    assert t.worker_status == 0
-    assert not t.worker
-
-    # Read a single line
-    t.read_streams(max_num_reads=1)
-    assert not t.streams
-
-    # Read all the remaining stream content
-    t.read_streams(max_num_reads=-1)
-    assert not t.streams
-
-    # Save it
-    t.save_streams()
-    assert not save_path.isfile()
-
-    # Trying to save the streams again, there should be no more lines available
-    t.save_streams()
-    assert not save_path.isfile()
 
 
 # TaskList tests --------------------------------------------------------------

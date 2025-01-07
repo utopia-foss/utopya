@@ -195,15 +195,15 @@ def test_wm_progress(sleep_task):
     rep = WorkerManagerReporter(wm)
 
     # Should be zero if there are no tasks
-    assert rep.wm_progress == 0.0
+    assert rep._compute_progress()["total"] == 0.0
 
     # Should still be zero after having added a task
     wm.add_task(**sleep_task)
-    assert rep.wm_progress == 0.0
+    assert rep._compute_progress()["total"] == 0.0
 
     # Should be 1. after working
     wm.start_working()
-    assert rep.wm_progress == 1.0
+    assert rep._compute_progress()["total"] == 1.0
 
 
 def test_wm_times(rep):
@@ -251,7 +251,10 @@ def test_parsers(rf_dict, sleep_task):
     )
 
     # Test without tasks assigned
-    assert ptc() == "total: 0,  active: 0,  finished: 0,  stopped: 0"
+    assert ptc() == (
+        "total: 0,  active: 0,  finished: 0,  invoked: 0,  spawned: 0,  "
+        "success: 0,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 0"
+    )
     assert pp() == "(No tasks assigned to WorkerManager yet.)"
     assert ppb() == "(No tasks assigned to WorkerManager yet.)"
     assert ppbt() == "(No tasks assigned to WorkerManager yet.)"
@@ -262,8 +265,11 @@ def test_parsers(rf_dict, sleep_task):
         wm.add_task(**sleep_task)
 
     # Test the initial return strings
-    assert ptc() == "total: 11,  active: 0,  finished: 0,  stopped: 0"
-    assert pp() == "Finished   0 / 11  (0.0%)"
+    assert ptc() == (
+        "total: 11,  active: 0,  finished: 0,  invoked: 0,  spawned: 0,  "
+        "success: 0,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 0"
+    )
+    assert pp() == "Finished   0 / 11  (0.0%, 0 skipped)"
     assert ppb() == "  ╠           ╣   0.0% "
     assert ppbt() == "  ╠           ╣   0.0%  of 11 "
     assert re.match("  ╠(.*)╣   0.0% | * elapsed | ~* left  ", ppbtt())
@@ -275,16 +281,22 @@ def test_parsers(rf_dict, sleep_task):
 
     # Start working and check again afterwards
     rep.wm.start_working()
-    assert ptc() == "total: 11,  active: 0,  finished: 11,  stopped: 0"
-    assert pp() == "Finished  11 / 11  (100.0%)"
+    assert ptc() == (
+        "total: 11,  active: 0,  finished: 11,  invoked: 11,  spawned: 11,  "
+        "success: 11,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 11"
+    )
+    assert pp() == "Finished  11 / 11  (100.0%, 0 skipped)"
     assert ppb() == "  ╠▓▓▓▓▓▓▓▓▓▓▓╣ 100.0% "
     assert ppbt() == "  ╠▓▓▓▓▓▓▓▓▓▓▓╣ 100.0%  of 11 "
     assert re.match("  ╠(▓*)╣ 100.0% | finished in *  ", ppbtt())
 
     # Add another task to the WorkerManager, which should change the counts
     rep.wm.add_task(**sleep_task)
-    assert ptc() == "total: 12,  active: 0,  finished: 11,  stopped: 0"
-    assert pp() == "Finished  11 / 12  (91.7%)"
+    assert ptc() == (
+        "total: 12,  active: 0,  finished: 11,  invoked: 11,  spawned: 11,  "
+        "success: 11,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 11"
+    )
+    assert pp() == "Finished  11 / 12  (91.7%, 0 skipped)"
     assert ppb() == "  ╠▓▓▓▓▓▓▓▓▓▓ ╣  91.7% "
     assert ppbt() == "  ╠▓▓▓▓▓▓▓▓▓▓ ╣  91.7%  of 12 "
     assert re.match("  ╠(▓*)(.*)╣  91.7% | * elapsed | ~* left  ", ppbtt())
@@ -385,11 +397,15 @@ def test_runtime_statistics(rep):
 
     # Calculate the runtime statistics
     rtstats = rep.calc_runtime_statistics()
+    print("Runtime Statistics: ", rtstats)
 
     # All entries but the std should be larger than the sleep time of the task
     for key, val in rtstats.items():
+        print("Testing key: ", key, "=", val)
         if key == "std":
             assert val > 0.0
+        elif key.startswith("num_"):
+            assert isinstance(val, int)
         else:
             assert val > SLEEP_TIME
 
@@ -491,7 +507,10 @@ def test_write_to_file(wm, rf_dict, tmpdir):
 
     # Read file content
     with open(str(report_file)) as f:
-        assert f.read() == "total: 11,  active: 0,  finished: 0,  stopped: 0"
+        assert f.read() == (
+            "total: 11,  active: 0,  finished: 0,  invoked: 0,  spawned: 0,  "
+            "success: 0,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 0"
+        )
 
     # Unset the report directory and try with relative path
     rep.report_dir = None

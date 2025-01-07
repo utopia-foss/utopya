@@ -449,34 +449,36 @@ def parse_update_dicts(
                 key_path=("perform_sweep",),
             )
 
-        if args.skippable_universes is not None:
+        if args.skipping_enabled is not None:
             add_item(
-                args.skippable_universes,
+                args.skipping_enabled,
                 add_to=update_dict,
-                key_path=("skippable_universes",),
+                key_path=("skipping", "enabled"),
             )
 
-        if args.worker_perform_task is not None:
+        if args.skip_after_setup:
             add_item(
-                args.worker_perform_task,
+                True,
                 add_to=update_dict,
-                key_path=("worker_kwargs", "perform_task"),
+                key_path=("skipping", "enabled"),
             )
-            if (
-                not args.worker_perform_task
-                and args.perform_eval is not None
-                and args.perform_eval
-            ):
-                raise ValueError("Cannot perform eval after --no-work.")
-            if not args.worker_perform_task and args.perform_eval is None:
-                raise NotImplementedError(
-                    "Please explicityly specify "
-                    "'--no-eval' option together with '--no-work'. Sorry for "
-                    "the inconvenience."
-                )
+            add_item(
+                True,
+                add_to=update_dict,
+                key_path=("skipping", "skip_after_setup"),
+            )
+            add_item(
+                "continue",
+                add_to=update_dict,
+                key_path=("skipping", "on_existing_uni_dir"),
+            )
+            add_item(
+                "continue",
+                add_to=update_dict,
+                key_path=("skipping", "on_existing_uni_cfg"),
+            )
 
         if args.set_model_params:
-            # TODO More elegant solution?
             if not update_dict.get("parameter_space"):
                 update_dict["parameter_space"] = dict()
 
@@ -506,7 +508,7 @@ def parse_update_dicts(
         pass
 
     else:
-        raise ValueError(f"Bad mode '{mode}'! Needs be: run or eval")
+        raise ValueError(f"Bad mode '{_mode}'! Needs be: run or eval")
 
     # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     # Evaluate arguments that apply to both run and eval modes

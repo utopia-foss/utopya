@@ -68,14 +68,6 @@ executable_control:
 # Is evaluated only when calling the Multiverse.run method.
 perform_sweep: false
 
-# Whether to allow skippable universes
-#
-# This should be false if you want to ensure that only a single Multiverse
-# instance is allowed to generate simulation output.
-# In case you want to be able to *join* a currently running simulation run
-# via `utopya join-run`, set this to true.
-skippable_universes: false
-
 # Whether to perform parameter validation
 # For large sweeps, validation can take quite some time. For such scenarios, it
 # might make sense to disable parameter validation by setting this to false.
@@ -85,6 +77,47 @@ perform_validation: true
 # This is a mapping of key sequence -> Parameter object
 parameters_to_validate: {}
 
+
+# Skipping universes ..........................................................
+# Controls whether and when universe tasks will be skipped.
+#
+# Example use cases and corresponding configuration options:
+#
+#   A - Work should be done on a single machine and in one session;
+#       in this case, skipping should be disabled completely.
+#   B - Work may be joined from other machines to speed up completion;
+#       for this, enable skipping and skip
+#   C - Work should be done in two stages: first create all the output folders
+#       and configurations, then work on them independently. For this case,
+#       enable skipping and activate `skip_after_setup`.
+#
+skipping:
+  # Whether skipping is enabled at all.
+  #
+  # This should be set to false if you want to ensure that only a single
+  # Multiverse instance is allowed to generate simulation output.
+  # In that case, any skip event will instead result in an error.
+  enabled: false
+
+  # If true, all tasks will be skipped after their setup function ran, meaning
+  # that the universe output directories and config files will be created and
+  # can be worked on later on.
+  skip_after_setup: false
+
+  # How to proceed in certain situations.
+  # In all cases, the options are:  skip, raise, continue
+  #
+  # ... if a universe directory already exists
+  on_existing_uni_dir: skip
+  #
+  # ... if a universe config file already exists
+  on_existing_uni_cfg: skip
+
+  # ... if there already is universe output.
+  # Note that this is only checked for DistributedMultiverse, i.e. when running
+  # from an already existing run directory. Otherwise this is ignored.
+  # Additional option here: `clear` to remove existing output
+  on_existing_uni_output: skip
 
 
 # Reporter ....................................................................
@@ -276,13 +309,6 @@ run_kwargs:
 # The defaults for the worker_kwargs
 # These are passed to the setup function of each WorkerTask before spawning
 worker_kwargs:
-  # Whether the task should be performed at all.
-  # If false, this will call each universes' setup function, writing respective
-  # config files, but not actually carry out universe simulations. This is used
-  # in combination with the DistributedMultiverse, which can then carry out the
-  # actual universe runs.
-  perform_task: true
-
   # Whether to save the streams of each Universe to a log file
   save_streams: true
   # This file is saved only after the WorkerTask has finished in order to

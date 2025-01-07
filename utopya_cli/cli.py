@@ -7,12 +7,12 @@ from .config import config
 from .eval import evaluate
 from .models import models
 from .projects import projects
-from .run import join_run, run, run_existing
+from .run import join_run, run, run_again
 from .test import run_test as test
 
 SUBCOMMANDS = [
     run,
-    run_existing,
+    run_again,
     join_run,
     evaluate,
     test,

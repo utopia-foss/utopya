@@ -565,7 +565,7 @@ class Reporter:
         self,
         s: str,
         *,
-        path: str,
+        path: str = "_report.txt",
         mode: str = "w",
         skip_if_empty: bool = False,
     ):
@@ -806,16 +806,16 @@ class WorkerManagerReporter(Reporter):
         if len(rts) < min_num:
             return d
 
-        d["mean"] = np.mean(rts)
-        d[" (last 50%)"] = np.mean(rts[-len(rts) // 2 :])
-        d[" (last 20%)"] = np.mean(rts[-len(rts) // 5 :])
-        d[" (last 5%)"] = np.mean(rts[-len(rts) // 20 :])
-        d["std"] = np.std(rts)
-        d["min"] = np.min(rts)
-        d["at 25%"] = np.percentile(rts, 25)
-        d["median"] = np.median(rts)
-        d["at 75%"] = np.percentile(rts, 75)
-        d["max"] = np.max(rts)
+        d["mean"] = np.mean(rts).item()
+        d[" (last 50%)"] = np.mean(rts[-len(rts) // 2 :]).item()
+        d[" (last 20%)"] = np.mean(rts[-len(rts) // 5 :]).item()
+        d[" (last 5%)"] = np.mean(rts[-len(rts) // 20 :]).item()
+        d["std"] = np.std(rts).item()
+        d["min"] = np.min(rts).item()
+        d["at 25%"] = np.percentile(rts, 25).item()
+        d["median"] = np.median(rts).item()
+        d["at 75%"] = np.percentile(rts, 75).item()
+        d["max"] = np.max(rts).item()
 
         return d
 
@@ -1426,10 +1426,10 @@ class WorkerManagerReporter(Reporter):
 
         # Let's have a pretty title :)
         parts += [
-            " __                       __             \n"
-            "(_ . _    | _ |_. _  _   |__)_ _  _  _|_ \n"
-            "__)|||||_||(_||_|(_)| )  | \(-|_)(_)| |_ \n"
-            "==============================|==========\n"
+            r" __                       __             \n"
+            r"(_ . _    | _ |_. _  _   |__)_ _  _  _|_ \n"
+            r"__)|||||_||(_||_|(_)| )  | \(-|_)(_)| |_ \n"
+            r"==============================|==========\n"
         ]
 
         # Runtime information and indication if run finished
@@ -1758,7 +1758,7 @@ class WorkerManagerReporter(Reporter):
     def _write_to_file(
         self,
         *args,
-        path: str,
+        path: str = "_report.txt",
         cluster_mode_path: str = "{}_{node_name}{ext}",
         joined_mode_path: str = "{}__{host_name_short}-{pid}{ext}",
         skip_if_joined: bool = False,

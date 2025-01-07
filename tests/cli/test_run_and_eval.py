@@ -1,11 +1,12 @@
 """Tests the utopya run CLI command"""
 
-import logging
 import os
 import time
 import traceback
 
 import pytest
+
+from utopya.exceptions import *
 
 from .. import ADVANCED_MODEL, DUMMY_MODEL
 from .._fixtures import *
@@ -64,7 +65,7 @@ def test_run(with_test_models, tmp_output_dir):
     assert "ABCXYZ" in res.output
 
 
-def test_run_existing(with_test_models, tmp_output_dir):
+def test_run_again(with_test_models, tmp_output_dir):
     """Tests the invocation of the utopya run_existing command"""
 
     # Run the dummy model with --no-work flag
@@ -80,7 +81,8 @@ def test_run_existing(with_test_models, tmp_output_dir):
         )
     )
     _check_result(res_prep, expected_exit=0)
-    assert "Finished working." in res_prep.output
+    assert "Successfully finished simulation run." in res_prep.output
+    assert "skip_after_setup: true" in res_prep.output
 
     # search output for run directory
     __find = res_prep.output.find(tmp_output_dir)
@@ -104,22 +106,28 @@ def test_run_existing(with_test_models, tmp_output_dir):
             os.path.join(run_dir, "data", f"uni{uni}", "out.log")
         )
 
-    # Repeat uni1 with run-existing
-    res = invoke_cli(("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1"))
+    # Repeat uni1 with run-again, which should create the output data
+    res = invoke_cli(("run-again", DUMMY_MODEL, run_dir, "--uni", "uni1"))
     _check_result(res, expected_exit=0)
+    assert "Preparing to run or continue existing simulation" in res.output
+    assert "Adding tasks for 1 universe" in res.output
     assert "uni1" in res.output
-    assert "Now creating plots" not in res.output  # evaluation not attempted
+    assert "Evaluation routine is not possible" in res.output
+
+    assert os.path.isfile(os.path.join(run_dir, "data", "uni1", "data.h5"))
+    assert os.path.isfile(os.path.join(run_dir, "data", "uni1", "out.log"))
 
     # Check that cannot be repeated again as data already exists
-    res_fail_repeat = invoke_cli(
-        ("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1")
-    )
-    _check_result(res_fail_repeat, expected_exit=1)
+    with pytest.raises(UniverseSetupError):
+        res_fail_repeat = invoke_cli(
+            ("run-again", DUMMY_MODEL, run_dir, "--uni", "uni1")
+        )
+        _check_result(res_fail_repeat, expected_exit=1)
 
     # Repeat with uni2 and uni3
     res = invoke_cli(
         (
-            "run-existing",
+            "run-again",
             DUMMY_MODEL,
             run_dir,
             "--uni",
@@ -155,7 +163,7 @@ def test_run_existing(with_test_models, tmp_output_dir):
 
     res = invoke_cli(
         (
-            "run-existing",
+            "run-again",
             DUMMY_MODEL,
             run_dir,
             "--uni",
@@ -167,14 +175,12 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert "uni1" in res.output
     assert "Now creating plots" not in res.output  # evaluation not attempted
 
-    assert not os.path.isfile(
-        os.path.join(run_dir, "data", "uni1", "this_file_should_not_exist.txt")
-    )
+    assert not os.path.isfile(bad_file_path)
 
     # Run all but skip existing
     res = invoke_cli(
         (
-            "run-existing",
+            "run-again",
             DUMMY_MODEL,
             run_dir,
             "--skip-existing",
@@ -183,14 +189,17 @@ def test_run_existing(with_test_models, tmp_output_dir):
     _check_result(res, expected_exit=0)
 
     # Check that uni4 was run
-    assert "Finished working. Total tasks worked on: 1" in res.output
     assert os.path.isfile(os.path.join(run_dir, "data", "uni4", "data.h5"))
     assert os.path.isfile(os.path.join(run_dir, "data", "uni4", "out.log"))
+    assert "Successfully finished simulation run." in res.output
+    assert "worked on:             1" in res.output
+    assert "succeeded:             1" in res.output
+    assert "skipped:               3" in res.output
 
     # Re-run all with clear existing option
     res = invoke_cli(
         (
-            "run-existing",
+            "run-again",
             DUMMY_MODEL,
             run_dir,
             "--clear-existing",
@@ -198,7 +207,10 @@ def test_run_existing(with_test_models, tmp_output_dir):
     )
     _check_result(res, expected_exit=0)
 
-    assert "Finished working. Total tasks worked on: 4" in res.output
+    assert "Successfully finished simulation run." in res.output
+    assert "worked on:             4" in res.output
+    assert "succeeded:             4" in res.output
+    assert "skipped:               0" in res.output
 
 
 def test_eval(with_test_models, tmp_output_dir, delay):
