@@ -134,7 +134,7 @@ def test_join_run(with_test_models, tmp_output_dir):
     assert "skipped:               1" in res.output
 
     assert "Detected 2 Multiverses working together on this run" in res.output
-    assert "finished    (main, this process)" in res.output  # b/c of test
+    assert "cancelled   (main, this process)" in res.output  # b/c of test
     assert "finished    (joined, this process)" in res.output
     assert "Not proceeding to evaluation" in res.output
 

@@ -411,6 +411,8 @@ def _load_and_eval(
 def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
     from utopya._resources import SPINNER_WIDE
     from utopya.multiverse import (
+        _combined_distributed_multiverse_progress,
+        get_distributed_work_status,
         get_status_file_paths,
         unfinished_distributed_multiverses,
     )
@@ -424,18 +426,24 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
 
     _log.caution("This Multiverse run is still being worked on.")
     _log.note("Periodically checking work status of linked Multiverses ...")
-    _log.remark("Evaluation will start once all runs have finished.")
+    _log.remark("Evaluation will start once all active runs have finished.")
     _log.remark("Press Ctrl + C to ignore this and proceed now.\n")
+
+    # TODO Actually consider to wait for 100% combined progress instead!
+    #      Need to take into account that some universes may have been worked
+    #      on but were cancelled; these should count into the progress
 
     try:
         i = 0
         while udmv := unfinished_distributed_multiverses(run_dir):
             N = len(udmv)
             Ntot = len(get_status_file_paths(run_dir))
+            comb_progress = _combined_distributed_multiverse_progress(run_dir)
             _spinner = SPINNER_WIDE[i % len(SPINNER_WIDE)]
             print(
                 f"     {_spinner}  ",
-                f"Waiting for {N:d} / {Ntot} Multiverses to finish ... ",
+                f"Waiting for {N:d} / {Ntot} Multiverses to finish ... "
+                f"({comb_progress * 100.:.3g}% combined progress)",
                 end="   \r",
             )
             time.sleep(0.3)
@@ -472,12 +480,29 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
         time.sleep(1.0)
 
     else:
+        dmv_status = get_distributed_work_status(run_dir)
+        comb_progress = sum(
+            s["progress"]["success"] for s in dmv_status.values()
+        )
+
         print("\n")
         _log.progress(
-            "All %d distributed Multiverse%s have finished.",
+            "All %d distributed Multiverse%s have finished "
+            "(%.3g%% combined success).",
             Ntot,
             "" if Ntot == 1 else "s",
+            comb_progress * 100,
         )
+
+        if any(
+            s["status"] in ("failed", "cancelled") for s in dmv_status.values()
+        ):
+            _log.warning(
+                "Some of these Multiverses were cancelled or failed. "
+                "Evaluation may not succeed!\n"
+            )
+            time.sleep(1.0)
+
         _log.remark("Ready for data loading and evaluation now.\n")
 
     return True

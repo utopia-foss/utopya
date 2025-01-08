@@ -624,6 +624,14 @@ class WorkerManagerReporter(Reporter):
     )
     """Symbols to use in progress bar parser"""
 
+    LATEST_WM_REPORT_TO_STATUS: Dict[str, str] = dict(
+        after_work="finished",
+        after_cancel="cancelled",
+        after_fail="failed",
+    )
+    """Maps WorkerManager report names to a worker status; used in determining
+    the work status."""
+
     # .........................................................................
 
     def __init__(
@@ -1441,10 +1449,11 @@ class WorkerManagerReporter(Reporter):
 
         # Let's have a pretty title :)
         parts += [
-            r" __                       __             \n"
-            r"(_ . _    | _ |_. _  _   |__)_ _  _  _|_ \n"
-            r"__)|||||_||(_||_|(_)| )  | \(-|_)(_)| |_ \n"
-            r"==============================|==========\n"
+            r" __                       __             ",
+            r"(_ . _    | _ |_. _  _   |__)_ _  _  _|_ ",
+            r"__)|||||_||(_||_|(_)| )  | \(-|_)(_)| |_ ",
+            r"==============================|==========",
+            "",
         ]
 
         # Runtime information and indication if run finished
@@ -1741,14 +1750,13 @@ class WorkerManagerReporter(Reporter):
         """Supplies a very simple, YAML-formatted status string for *this*
         WorkerManager run."""
         cntr = self.task_counters
-        if self._latest_wm_report == "after_work":
-            wm_status = "finished"
-        elif self._latest_wm_report == "after_cancel":
-            wm_status = "cancelled"
-        elif self._latest_wm_report is None:
-            wm_status = "unknown"
+
+        if self._latest_wm_report:
+            wm_status = self.LATEST_WM_REPORT_TO_STATUS.get(
+                self._latest_wm_report, "working"
+            )
         else:
-            wm_status = "working"
+            wm_status = "unknown"
 
         progress = self._compute_progress(cntr)
         status = dict(
@@ -1769,7 +1777,7 @@ class WorkerManagerReporter(Reporter):
 
         try:
             return _yaml_dumps(status)
-        except:
+        except Exception:
             print(status)
             print(repr(status))
             raise

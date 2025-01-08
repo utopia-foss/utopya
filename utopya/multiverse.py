@@ -2509,10 +2509,18 @@ def get_distributed_work_status(run_dir: str, **kwargs) -> Dict[str, dict]:
 def unfinished_distributed_multiverses(
     run_dir: str, **kwargs
 ) -> Dict[str, dict]:
-    """Returns the number of distributed Multiverse instanes that have not
-    finished working on the run of the specified run directory."""
+    """Returns status of the distributed Multiverse instances that are still
+    running."""
     return {
         k: v
         for k, v in get_distributed_work_status(run_dir, **kwargs).items()
-        if v["status"] != "finished"
+        if v["status"] not in ("finished", "failed", "cancelled")
     }
+
+
+def _combined_distributed_multiverse_progress(run_dir: str, **kwargs) -> float:
+    """Sum of individual multiverse's active progress"""
+    return sum(
+        s["progress"]["worked_on"]
+        for s in get_distributed_work_status(run_dir, **kwargs).values()
+    )

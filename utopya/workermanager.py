@@ -670,6 +670,7 @@ class WorkerManager:
 
         log.progress("Preparing to work ...")
         self._work_session_status = "preparing"
+        was_cancelled = False
 
         # Set some variables needed during the run
         poll_no = 0
@@ -758,7 +759,7 @@ class WorkerManager:
         except (KeyboardInterrupt, WorkerManagerTotalTimeout) as exc:
             # Got interrupted or a total timeout.
             # Interrupt the workers, giving them some time to shut down ...
-            self._handle_KeyboardInterrupt_or_TotalTimeout(exc)
+            was_cancelled = self._handle_KeyboardInterrupt_or_TotalTimeout(exc)
 
         except WorkerManagerError as err:
             # Some error not related to the non-zero exit code occurred.
@@ -791,7 +792,8 @@ class WorkerManager:
 
         # Register end time and invoke final report
         self.times["end_working"] = dt.now()
-        self._invoke_report("after_work", force=True)
+        if not was_cancelled:
+            self._invoke_report("after_work", force=True)
 
         print("\n")
         log.progress("Work session %s.", self._work_session_status)
@@ -1233,4 +1235,4 @@ class WorkerManager:
             sys.exit(128 + abs(SIGMAP[signal]))
 
         # Otherwise, just return control to the calling scope
-        return
+        return True
