@@ -442,6 +442,13 @@ def parse_update_dicts(
                 key_path=("worker_manager", "num_workers"),
             )
 
+        if args.timeout is not None:
+            add_item(
+                args.timeout,
+                add_to=update_dict,
+                key_path=("run_kwargs", "timeout"),
+            )
+
         if args.run_mode is not None:
             add_item(
                 args.run_mode == "sweep",

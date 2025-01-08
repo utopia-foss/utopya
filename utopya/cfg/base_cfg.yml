@@ -246,7 +246,7 @@ worker_manager:
   #       live on for a longer time, blocking the spawning of new tasks.
 
   # Periodic task callback (in units of poll events). Set None to deactivate.
-  periodic_task_callback: ~
+  periodic_task_callback: 100
 
   # How to react upon a simulation exiting with non-zero exit code
   nonzero_exit_handling: raise
@@ -281,6 +281,7 @@ worker_manager:
     task_invoked: []
     task_spawned: [progress_bar]
     monitor_updated: [progress_bar]
+    periodic: [progress_bar]
     task_finished: [work_status, progress_bar, report_file]
     task_skipped: [work_status, progress_bar, report_file]
     after_work: [work_status, progress_bar, report_file]
@@ -292,7 +293,8 @@ worker_manager:
 run_kwargs:
   # Whether task execution order should be shuffled before a run starts.
   # This may help in load-balancing when some tasks systematically take longer
-  # than others.
+  # than others, but it means that a potentially specified task priority is
+  # completely ignored (typically, all tasks have the same priority, though).
   shuffle_tasks: false
 
   # Total timeout (in s) of a run; to ignore, set to ~

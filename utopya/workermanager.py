@@ -42,6 +42,22 @@ class WorkerManager:
     """The WorkerManager class orchestrates :py:class:`~utopya.task.WorkerTask`
     objects: setting them up, invoking them, tracking their progress, and
     starting new workers if previous workers finished.
+
+    The WorkerManager also keeps track of the status of tasks (as far as can be
+    done without assuming too much about the tasks themselves).
+    It then categorizes the tasks accordingly, using the following groups:
+
+        * ``invoked``: grabbed from the task queue, nothing else done yet
+        * ``spawned``: setup function completed and process spawned
+        * ``active``: currently assigned to workers and not finished yet
+        * ``succeeded``: finished successfully (exit status 0)
+        * ``stopped``: stopped via a deliberately sent signal from the
+          'outside', e.g. a stop condition or a keyboard interrupt.
+        * ``skipped``: skipped some time after invocation, e.g. as was
+          determined by the setup function.
+        * ``failed``: failed for some task-specific reason (exit code != 0)
+        * ``finished``: union of success, stop, fail, and skip, i.e. all tasks
+          that are no longer in the queue but also no longer active.
     """
 
     pending_exceptions: queue.Queue = None
@@ -63,6 +79,7 @@ class WorkerManager:
     - ``task_spawn``
     - ``task_finished``
     - ``task_skipped``
+    - ``periodic``
     """
 
     times: dict = None
@@ -623,7 +640,7 @@ class WorkerManager:
         self,
         *,
         shuffle_tasks: bool = False,
-        timeout: float = None,
+        timeout: Optional[float] = None,
         stop_conditions: Sequence[StopCondition] = None,
         post_poll_func: Callable = None,
     ) -> None:
@@ -637,6 +654,8 @@ class WorkerManager:
                 work session is allowed to take. Workers will be canceled if
                 the number is exceeded. Note that this is not measured in CPU
                 time, but the host systems wall time.
+                If zero, timeout occurs immediately.
+                If None or negative, there will be no timeout.
             stop_conditions (Sequence[StopCondition], optional): During the
                 run these StopCondition objects will be checked
             post_poll_func (Callable, optional): If given, this is called after
@@ -821,15 +840,9 @@ class WorkerManager:
     ) -> Optional[float]:
         """Parses timeout-related arguments"""
         # Determine timeout arguments
-        if not timeout:
+        if timeout is None or timeout < 0:
             log.note("  Timeout:          None")
             return None
-
-        if timeout <= 0:
-            raise ValueError(
-                f"Invalid value for argument `timeout`: {timeout} -- "
-                "needs to be positive."
-            )
 
         # Calculate the time after which a timeout would be reached
         timeout_time = time.time() + timeout

@@ -289,7 +289,7 @@ class Multiverse:
 
     @property
     def status_file_paths(self) -> List[str]:
-        """Retrieves status file paths for this Multiverses run directory"""
+        """Retrieves status file paths in this Multiverse's run directory"""
         return get_status_file_paths(self.dirs["run"])
 
     @property
@@ -949,9 +949,8 @@ class Multiverse:
             subdir_path = os.path.join(run_dir, subdir)
             if not os.path.exists(subdir_path):
                 raise FileNotFoundError(
-                    "Missing '%s' subdirectory in `run_dir` %s!",
-                    subdir,
-                    run_dir,
+                    f"Missing '{subdir}' subdirectory inside "
+                    f"run directory {run_dir}!"
                 )
             self.dirs[subdir] = subdir_path
 
@@ -2144,9 +2143,8 @@ class DistributedMultiverse(FrozenMultiverse):
         meta_cfg_path = os.path.join(run_dir, "config", "meta_cfg.yml")
         if not os.path.isfile(meta_cfg_path):
             raise ValueError(
-                "No meta config found in run dir {} at {}!",
-                run_dir,
-                meta_cfg_path,
+                "No meta configuration file found in specified run directory! "
+                f"Expected it at:  {meta_cfg_path}"
             )
 
         log.note(
@@ -2357,8 +2355,9 @@ class DistributedMultiverse(FrozenMultiverse):
     def join_run(
         self,
         *,
-        num_workers: int = None,
+        num_workers: Optional[int] = None,
         shuffle_tasks: Optional[bool] = True,
+        timeout: Optional[float] = None,
     ):
         """Joins an already-running simulation and performs tasks that have not
         been taken up yet.
@@ -2403,12 +2402,15 @@ class DistributedMultiverse(FrozenMultiverse):
 
         self._is_joined_run = True
 
+        # We may want to overwrite some settings.
         if num_workers is not None:
             self.wm.num_workers = num_workers
 
         run_kwargs = copy.deepcopy(self.meta_cfg["run_kwargs"])
         if shuffle_tasks is not None:
             run_kwargs["shuffle_tasks"] = shuffle_tasks
+        if timeout is not None:
+            run_kwargs["timeout"] = timeout
 
         # Now we can start working ...
         self._start_working(**run_kwargs)

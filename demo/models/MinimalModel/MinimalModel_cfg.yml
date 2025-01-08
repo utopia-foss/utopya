@@ -4,3 +4,5 @@ state_size: 100
 distribution_params:
   low: -1.
   high: +1.
+
+sleep_time: 0

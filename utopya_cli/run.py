@@ -107,18 +107,10 @@ from ._utils import Echo
         "True, such that a sweep is invoked."
     ),
 )
-@click.option(
-    "-W",
-    "--num-workers",
-    default=None,
-    type=click.IntRange(min=-os.cpu_count() + 1, max=+os.cpu_count()),
-    help=(
-        "Shortcut for meta-config entry ``worker_manager.num_workers``, which "
-        "sets the number of worker processes. "
-        "Can be an integer; if negative, will deduce the number from the "
-        "number of available CPUs."
-    ),
-)
+#
+#
+@add_options(OPTIONS["num_workers"])  # -W, --num-workers
+@add_options(OPTIONS["timeout"])  # --timeout
 @click.option(
     "--skippable/--not-skippable",
     "skipping_enabled",
@@ -143,6 +135,8 @@ from ._utils import Echo
         "run using multiple machines."
     ),
 )
+#
+#
 @click.option(
     "--set-model-params",
     "--mp",
@@ -409,6 +403,7 @@ def run_existing(
 )
 @add_options(OPTIONS["label"])
 @add_options(OPTIONS["num_workers"])  # -W, --num-workers
+@add_options(OPTIONS["timeout"])  # --timeout
 #
 #
 #
@@ -419,6 +414,7 @@ def join_run(
     model_name: str,
     label: str,
     num_workers: int,
+    timeout: float,
 ):
     """Repeats a model simulation in parts or entirely"""
     import utopya
@@ -428,7 +424,7 @@ def join_run(
     model = utopya.Model(name=model_name, bundle_label=label)
     mv = model.create_distributed_mv(run_dir=run_dir)
 
-    mv.join_run(num_workers=num_workers)
+    mv.join_run(num_workers=num_workers, timeout=timeout)
 
     _log.info("Not proceeding to evaluation for this joined run.")
     _log.remark(

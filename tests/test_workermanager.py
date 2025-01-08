@@ -3,6 +3,7 @@
 import os
 import queue
 import time
+from typing import List
 
 import numpy as np
 import pytest
@@ -25,10 +26,10 @@ def wm():
 
 
 @pytest.fixture
-def wm_priQ():
-    """Create simple WorkerManager instance with a PriorityQueue for the tasks.
-    Priority from -inf to +inf (high to low)."""
-    return WorkerManager(
+def wm_priQ_kwargs() -> dict:
+    """Keyword arguments to create a simple WorkerManager instance with a
+    PriorityQueue for the tasks. Priority from -inf to +inf (high to low)."""
+    return dict(
         num_workers=2,
         poll_delay=0.01,
         QueueCls=queue.PriorityQueue,
@@ -59,9 +60,7 @@ def longer_sleep_task() -> dict:
 
 
 @pytest.fixture
-def wm_with_tasks(sleep_task):
-    """Create a WorkerManager instance and add some tasks"""
-    # A few tasks
+def various_tasks(sleep_task, longer_sleep_task) -> List[dict]:
     tasks = []
     tasks.append(
         dict(
@@ -76,7 +75,6 @@ def wm_with_tasks(sleep_task):
             priority=0,
         )
     )
-
     tasks.append(sleep_task)
     tasks.append(
         dict(
@@ -96,11 +94,18 @@ def wm_with_tasks(sleep_task):
     )
     tasks.append(sleep_task)
 
+    return tasks
+
+
+@pytest.fixture
+def wm_with_tasks(various_tasks):
+    """Create a WorkerManager instance and add some tasks"""
+
     # Now initialise the worker manager
     wm = WorkerManager(num_workers=2, spawn_rate=1)
 
     # And pass the tasks
-    for task_dict in tasks:
+    for task_dict in various_tasks:
         wm.add_task(**task_dict)
 
     return wm
@@ -213,6 +218,26 @@ def test_start_working(wm_with_tasks):
 
         with pytest.raises(RuntimeError):
             task.worker = "something"
+
+
+def test_start_working_with_task_callback_and_stream_saving(various_tasks):
+    wm = WorkerManager(
+        num_workers=2,
+        poll_delay=0.042,
+        spawn_rate=1,
+        periodic_task_callback=10,
+        save_streams_on=("on_monitor_update", "periodic_callback"),
+    )
+    assert wm._periodic_callback == 10
+
+    for t in various_tasks:
+        wm.add_task(**t)
+
+    wm.start_working()
+
+    # Check that all tasks finished with exit status 0
+    for task in wm.tasks:
+        assert task.worker_status == 0
 
 
 def test_nonzero_exit_handling(wm):
@@ -425,19 +450,26 @@ def test_timeout(wm, sleep_task, longer_sleep_task):
         wm.add_task(**sleep_task)
     # NOTE With two workers, this should take approx 1 second to execute
 
-    # Check if the run does not start for an invalid timeout value
-    with pytest.raises(ValueError):
-        wm.start_working(timeout=-123.45)
-
     # Check if no WorkerManagerTotalTimeout is raised for a high timeout value
     wm.start_working(timeout=23.4)
     assert wm.num_finished_tasks == 3
+
+    # Zero timeout is immediate
+    for _ in range(4):
+        wm.add_task(**sleep_task)
+
+    wm.start_working(timeout=0)
+    assert wm.num_finished_tasks == 3
+
+    # Negative timeout is like no timeout, carrying out the 4 open tasks
+    wm.start_working(timeout=-1)
+    assert wm.task_count == 7
     prev_finished = wm.num_finished_tasks
 
-    # Add more asks
+    # Add more tasks
     for _ in range(17):
         wm.add_task(**longer_sleep_task)  # 1s each
-    assert wm.task_count == 20
+    assert wm.task_count == 7 + 17
 
     # For a brief timeout duration, not all of the queued tasks should be run.
     # With 2 workers, there will be 2 finished tasks and 2 interrupted ones,
@@ -484,10 +516,11 @@ def test_read_stdout(wm):
     # TODO read the stream output here
 
 
-def test_priority_queue(wm_priQ, sleep_task):
+def test_priority_queue(wm_priQ_kwargs, sleep_task):
     """Checks that tasks are dispatched from the task queue in order of their
     priority, if a priority queue is used."""
-    wm = wm_priQ
+    wm = WorkerManager(**wm_priQ_kwargs)
+    wm2 = WorkerManager(**wm_priQ_kwargs)
 
     # Create a list of priorities that should be checked
     prios = [-np.inf, 2.0, 1.0, None, 0, -np.inf, 0, +np.inf, 1.0]
@@ -496,12 +529,14 @@ def test_priority_queue(wm_priQ, sleep_task):
     # NOTE cannot just order the list of tasks, because then there would be
     # no ground truth (the same ordering mechanism between tasks would be used)
 
-    # Add tasks to the WorkerManager, keeping track of addition order
+    # Add tasks to the WorkerManagers, keeping track of addition order
     tasks = []
+    tasks2 = []
     for prio in prios:
         tasks.append(wm.add_task(priority=prio, **sleep_task))
+        tasks2.append(wm2.add_task(priority=prio, **sleep_task))
 
-    # Now, start working
+    # Now start working, adhering to priority
     wm.start_working()
     # Done working now.
 
@@ -520,3 +555,19 @@ def test_priority_queue(wm_priQ, sleep_task):
 
     # Check that the two lists compare equal
     assert tasks_by_correct_order == tasks_by_creation_time
+
+    # When shuffling, tasks will be in the same order, but execution order not
+    wm2.start_working(shuffle_tasks=True)
+
+    assert tasks2 == wm2.tasks
+
+    creation_times2 = [t.profiling["create_time"] for t in tasks2]
+
+    tasks2_by_correct_order = [
+        t for _, t in sorted(zip(correct_order, tasks2))
+    ]
+    tasks2_by_creation_time = [
+        t for _, t in sorted(zip(creation_times2, tasks2))
+    ]
+
+    assert tasks2_by_correct_order != tasks2_by_creation_time

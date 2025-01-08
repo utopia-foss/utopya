@@ -226,6 +226,70 @@ def test_wm_times(rep):
     assert t2["est_end"] < dt.now()
 
 
+def test_est_left(rep):
+    """Tests (parts of) time left estimation function"""
+    cmp_est_left = rep._compute_est_left
+
+    # .. Default mode: from_start
+    # Without skipped tasks, it's easy:
+    elapsed = timedelta(seconds=2.0)
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=0, total=0.1), elapsed=elapsed
+        ).total_seconds()
+        == 18.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=0, total=0.5), elapsed=elapsed
+        ).total_seconds()
+        == 2.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=0, total=1.0), elapsed=elapsed
+        ).total_seconds()
+        == 0.0
+    )
+
+    # Not meant to be called if no progress was made, but avoids zero-div error
+    assert (
+        cmp_est_left(progress=dict(skipped=0, total=0.0), elapsed=elapsed)
+        is None
+    )
+
+    # Computation is different with skipped tasks
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=1, worked_on=10, left_to_do=10),
+            elapsed=elapsed,
+        ).total_seconds()
+        == 2.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=10, worked_on=10, left_to_do=10),
+            elapsed=elapsed,
+        ).total_seconds()
+        == 2.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=10, worked_on=5, left_to_do=15),
+            elapsed=elapsed,
+        ).total_seconds()
+        == 6.0
+    )
+
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=1, worked_on=0, left_to_do=10),
+            elapsed=elapsed,
+        )
+        is None
+    )
+
+
 def test_parsers(rf_dict, sleep_task):
     """Tests the custom parser methods of the WorkerManagerReporter that is
     written for simple terminal reports

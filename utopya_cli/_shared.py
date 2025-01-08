@@ -252,6 +252,20 @@ OPTIONS["num_workers"] = (
         ),
     ),
 )
+OPTIONS["timeout"] = (
+    click.option(
+        "--timeout",
+        default=None,
+        type=float,
+        help=(
+            "Timeout of the whole simulation run (in seconds). "
+            "Sets the meta-config entry ``run_kwargs.timeout``. "
+            "Once the timeout is exceeded, workers will be stopped, which "
+            "may lead to corrupted or incomplete individual universe outputs. "
+            "Set to negative values to deactivate."
+        ),
+    ),
+)
 
 # -- Data loading options
 OPTIONS["load"] = (

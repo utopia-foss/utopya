@@ -18,6 +18,7 @@ from utopya.exceptions import (
     UniverseOutputDirectoryError,
     UniverseSetupError,
 )
+from utopya.model import Model
 from utopya.multiverse import DataManager, PlotManager, WorkerManager
 from utopya.parameter import ValidationError
 
@@ -131,6 +132,11 @@ def test_simple_init(mv_kwargs, tmp_projects):
     assert isinstance(mv.wm, WorkerManager)
     assert isinstance(mv.dm, DataManager)
     assert isinstance(mv.pm, PlotManager)
+    assert isinstance(mv.model, Model)
+
+    # And properties
+    assert mv.model_name == DUMMY_MODEL
+    assert mv.status_file_paths == []
 
     # Without the run configuration
     mv_kwargs.pop("run_cfg_path")
@@ -378,6 +384,9 @@ def test_run_sweep(mv_kwargs):
 
     # There should now be four directories in the data directory
     assert len(os.listdir(mv.dirs["data"])) == 4
+
+    # There should also be a status file path
+    assert len(mv.status_file_paths) == 1
 
     # With a parameter space without volume, i.e. without any sweeps added,
     # the sweep should not be possible
@@ -755,6 +764,111 @@ def test_FrozenMultiverse(mv_kwargs, cluster_env):
         )
 
 
+def test_DistributedMultiverse(mv_kwargs, delay):
+    """Tests various aspects of the DistributedMultiverse"""
+    mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
+    update_cfg = dict(
+        skipping=dict(enabled=True),
+        run_kwargs=dict(timeout=1.0),
+        worker_manager=dict(num_workers=1),
+        parameter_space={"num_steps": 10, DUMMY_MODEL: dict(sleep_time=0.2)},
+    )
+    mv = Multiverse(**mv_kwargs, **update_cfg)
+
+    # Start the sweep, after which there should be only one universe directory
+    # because we ran into the timeout
+    mv.run()
+
+    assert len(os.listdir(mv.dirs["data"])) == 1
+
+    # Set up the distributed multiverse, based on an existing Multiverse that
+    # only ran partially.
+    dmv = DistributedMultiverse(
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
+    )
+
+    # Test some method errors that are hard to reproduce otherwise
+    with pytest.raises(
+        ValueError, match="Missing argument for skipping context"
+    ):
+        dmv._maybe_skip("some_invalid_context", desc="foo")
+
+    with pytest.raises(
+        ValueError, match="Invalid argument 'bad action' for skipping context"
+    ):
+        dmv.skipping["on_foo"] = "bad action"
+        dmv._maybe_skip("foo", desc="test")
+
+    # Meta config may not be missing
+    os.remove(os.path.join(mv.dirs["config"], "meta_cfg.yml"))
+    with pytest.raises(ValueError, match="No meta configuration file found"):
+        DistributedMultiverse(model_name=mv.model_name, run_dir=mv.dirs["run"])
+
+
+def test_run_dmv_join_run(mv_kwargs, delay):
+    """Tests a run with a distributed simulation, running all files"""
+    # Adjust the defaults to use the sweep configuration for run configuration.
+    # However, only run a single universe (stop via timeout), such that we can
+    # later on join in on the run.
+    mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
+    update_cfg = dict(
+        skipping=dict(enabled=True),
+        run_kwargs=dict(timeout=1.0),
+        worker_manager=dict(num_workers=1),
+        parameter_space={"num_steps": 10, DUMMY_MODEL: dict(sleep_time=0.2)},
+    )
+    mv = Multiverse(**mv_kwargs, **update_cfg)
+    assert mv.status_file_paths == []
+
+    # Start the sweep, after which there should be one universe directory only,
+    # because the run should have timed out
+    mv.run()
+
+    assert len(mv.status_file_paths) == 1
+    assert len(os.listdir(mv.dirs["data"])) == 1
+    for uni in os.listdir(mv.dirs["data"]):
+        files = os.listdir(os.path.join(mv.dirs["data"], uni))
+        assert "config.yml" in files
+        assert "data.h5" in files
+        assert "out.log" in files
+
+    # Now set up the distributed multiverse
+    dmv = DistributedMultiverse(
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
+    )
+    assert len(mv.status_file_paths) == 1
+    assert len(dmv.status_file_paths) == 1
+
+    # ... and complete the remaining tasks
+    dmv.join_run(num_workers=3, timeout=-1)
+
+    assert len(mv.status_file_paths) == 2
+    assert len(dmv.status_file_paths) == 2
+
+    assert len(os.listdir(mv.dirs["data"])) == 4
+    for uni in os.listdir(mv.dirs["data"]):
+        files = os.listdir(os.path.join(mv.dirs["data"], uni))
+        assert "config.yml" in files
+        assert "data.h5" in files
+        assert "out.log" in files
+
+    # Cannot join a run if the initial Multiverse had skipping disabled
+    time.sleep(1)
+    update_cfg["skipping"]["enabled"] = False
+    mv = Multiverse(**mv_kwargs, **update_cfg)
+    mv.run()
+    assert len(os.listdir(mv.dirs["data"])) == 1
+
+    dmv = DistributedMultiverse(
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
+    )
+
+    with pytest.raises(
+        MultiverseError, match="`skipping.enabled` set to False!"
+    ):
+        dmv.join_run(timeout=-1)
+
+
 def test_run_dmv_run(mv_kwargs):
     """Tests a run with a distributed simulation, running all files"""
     # Adjust the defaults to use the sweep configuration for run configuration
@@ -775,7 +889,7 @@ def test_run_dmv_run(mv_kwargs):
 
     # Now, after DistributedMultiverse ran, all directories should have files.
     distributed_mv = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     distributed_mv.run()
 
@@ -796,14 +910,14 @@ def test_run_dmv_run(mv_kwargs):
 
     # But also with a new instance, will fail because output already exists
     distributed_mv__repeat = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     with pytest.raises(UniverseSetupError, match=r"existing_uni_output"):
         distributed_mv__repeat.run()
 
     # Test that the MV can create uni-folder and uni-config
     distributed_mv__create_cfg = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
 
     dirs = os.listdir(mv.dirs["data"])
@@ -820,6 +934,11 @@ def test_run_dmv_run(mv_kwargs):
         assert "config.yml" in files
         assert "data.h5" in files
         assert "out.log" in files
+
+    # Cannot run existing in cluster mode (at least not yet)
+    distributed_mv__repeat.meta_cfg["cluster_mode"] = True
+    with pytest.raises(MultiverseError, match="cluster mode"):
+        distributed_mv__repeat.run()
 
 
 def test_run_dmv_run_selection(mv_kwargs):
@@ -841,13 +960,13 @@ def test_run_dmv_run_selection(mv_kwargs):
         assert "out.log" not in files
 
     distributed_mv_0 = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     distributed_mv_1 = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     distributed_mv_23 = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     distributed_mv_0.run(universes=[os.listdir(mv.dirs["data"])[0]])
     distributed_mv_23.run(universes=os.listdir(mv.dirs["data"])[2:])
@@ -862,7 +981,7 @@ def test_run_dmv_run_selection(mv_kwargs):
     bad_file.close()
 
     distributed_mv__fail = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     with pytest.raises(UniverseSetupError, match="existing_uni_output"):
         distributed_mv__fail.run(universes=[uni1])
@@ -887,14 +1006,14 @@ def test_run_dmv_run_selection(mv_kwargs):
         distributed_mv_0.run()
 
     distributed_mv__fail = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     with pytest.raises(UniverseSetupError, match="existing_uni_output"):
         distributed_mv__fail.run()
 
     # repeat run with clear existing option, this will work
     distributed_mv__clear = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=mv.dirs["run"]
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
     )
     distributed_mv__clear.run(
         universes=os.listdir(mv.dirs["data"]), on_existing_uni_output="clear"
@@ -918,7 +1037,9 @@ def test_run_dmv_run_selection(mv_kwargs):
 
     for universes in universes_to_test:
         print("universes =", universes)
-        dmvc.run(universes=universes, on_existing_uni_output="clear")
+        dmvc.run(
+            universes=universes, on_existing_uni_output="clear", num_workers=2
+        )
 
     # invalid universe IDs
     with pytest.raises(MultiverseError, match="A universe with ID '234'"):
@@ -926,6 +1047,9 @@ def test_run_dmv_run_selection(mv_kwargs):
 
     with pytest.raises(ValueError, match="invalid literal"):
         dmvc.run(universes="badID")
+
+    with pytest.raises(TypeError, match="should be 'all' or a string or list"):
+        dmvc.run(universes=dict(not_the="right type"))
 
 
 def test_run_dmv_run_backup(mv_kwargs):
@@ -948,7 +1072,7 @@ def test_run_dmv_run_backup(mv_kwargs):
     nowork_mv.run()
 
     distributed_mv = DistributedMultiverse(
-        model_name=mv_kwargs["model_name"], run_dir=nowork_mv.dirs["run"]
+        model_name=nowork_mv.model_name, run_dir=nowork_mv.dirs["run"]
     )
 
     assert os.path.isfile(distributed_mv.model_executable)
@@ -978,6 +1102,6 @@ def test_run_dmv_run_backup(mv_kwargs):
 
     with pytest.raises(FileNotFoundError, match=r"No executable found .*"):
         distributed_mv = DistributedMultiverse(
-            model_name=mv_kwargs["model_name"],
+            model_name=nowork_mv.model_name,
             run_dir=new_nowork_mv.dirs["run"],
         )

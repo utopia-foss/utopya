@@ -10,6 +10,11 @@ from time import sleep
 import numpy as np
 import pytest
 
+from utopya.exceptions import (
+    SkipWorkerTask,
+    WorkerTaskNotSkippable,
+    WorkerTaskSetupError,
+)
 from utopya.task import (
     SIGMAP,
     MPProcessTask,
@@ -115,6 +120,11 @@ def test_task_properties(tasks):
     # Check if the default priority is given
     assert task.priority == np.inf
 
+    # Skipping-related info
+    assert task.skippable
+    assert task.was_skipped is None
+    assert task.skip_reason is None
+
 
 # WorkerTask tests ------------------------------------------------------------
 
@@ -162,6 +172,85 @@ def test_workertask_invalid_args():
         FileNotFoundError, match="No executable found for task '2'!"
     ):
         t.spawn_worker()
+
+
+def test_workertask_setup_function():
+    """Tests passing and invocation of setup function"""
+    wk = dict()
+
+    def always_return_wk(*, worker_kwargs):
+        return wk
+
+    t = WorkerTask(
+        name="with_setup",
+        setup_func=always_return_wk,
+    )
+
+    assert t.worker_kwargs is None
+    assert t.setup_func is not None
+    assert t.setup_kwargs is not None
+
+    assert t._invoke_setup_func() is wk
+
+    t.setup_func = None
+    with pytest.raises(WorkerTaskSetupError, match="when calling the setup"):
+        t._invoke_setup_func()
+
+    # On bad setup arguments or missing
+    t = WorkerTask(
+        name="with_setup_and_bad_kwargs",
+        setup_func=always_return_wk,
+        setup_kwargs=dict(invalid_kwargs=123),
+    )
+
+    with pytest.raises(WorkerTaskSetupError, match="when calling the setup"):
+        t._invoke_setup_func()
+
+    # Skipping is propagated
+    def always_skip(**_):
+        raise SkipWorkerTask("123")
+
+    t = WorkerTask(
+        name="with_setup_that_skips",
+        setup_func=always_skip,
+        setup_kwargs=dict(ignored_kwargs=123),
+    )
+
+    with pytest.raises(SkipWorkerTask):
+        t._invoke_setup_func()
+
+
+def test_workertask_skipping():
+    """Tests parts of the skipping logic; not a full integrated test!"""
+
+    def always_skip(**_):
+        raise SkipWorkerTask("some reason")
+
+    t = WorkerTask(name="skipping", setup_func=always_skip)
+
+    with pytest.raises(SkipWorkerTask):
+        t._invoke_setup_func()
+
+    # This should work:
+    try:
+        t._invoke_setup_func()
+    except SkipWorkerTask as exc:
+        t._mark_as_skipped(exc)
+
+    assert t.was_skipped
+    assert t.skip_reason == "some reason"
+    assert t.profiling["create_time"] is not None
+    assert t.profiling["end_time"] is not None
+    assert np.isnan(t.profiling["run_time"])
+
+    # It should not work with a non-skippable task
+    t = WorkerTask(name="noskip", setup_func=always_skip, skippable=False)
+
+    with pytest.raises(WorkerTaskNotSkippable, match="is not skippable!"):
+        try:
+            t._invoke_setup_func()
+        except SkipWorkerTask as exc:
+            t._mark_as_skipped(exc)
 
 
 def test_workertask_spawning():
@@ -516,6 +605,7 @@ def test_PopenMPProcess_basics():
     assert proc._proc.is_alive()
 
     # Test the subprocess.Popen interface of the wrapper
+    assert "for process" in str(proc)
     assert proc.poll() is None
     assert proc.returncode is None
     assert proc.pid > 0
@@ -527,6 +617,13 @@ def test_PopenMPProcess_basics():
         5,
         ("foo", "bar"),
     )
+
+    # Target needs to be callable
+    noncallable_target = None
+    with pytest.raises(TypeError, match="is not callable"):
+        proc._prepare_target_args(
+            (noncallable_target, "123"), stdin=None, stdout=None, stderr=None
+        )
 
     # Parts of the interface are NOT implemented
     with pytest.raises(NotImplementedError):

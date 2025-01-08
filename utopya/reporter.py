@@ -12,7 +12,7 @@ from datetime import datetime as dt
 from datetime import timedelta
 from functools import partial
 from shutil import get_terminal_size as _get_terminal_size
-from typing import Callable, Dict, List, Set, Union
+from typing import Callable, Dict, List, Optional, Set, Union
 
 import numpy as np
 import paramspace as psp
@@ -903,7 +903,7 @@ class WorkerManagerReporter(Reporter):
         elapsed: timedelta,
         mode: str = "from_start",
         progress_buffer_size: int = 60,
-    ) -> timedelta:
+    ) -> Optional[timedelta]:
         """Computes the estimated time left until the end of the work session
         (ETA) using the current progress value and the elapsed time.
         Depending on ``mode``, additional information may be included in the
@@ -933,17 +933,27 @@ class WorkerManagerReporter(Reporter):
                 used in  ``from_buffer`` mode.
 
         Returns:
-            datetime.timedelta: Estimate for how much time is left until the
-                end of the work session.
+            Optional[datetime.timedelta]: Estimate for how much time is left
+                until the end of the work session. If it cannot be estimated
+                yet, e.g. because no progress was made, will return None.
         """
         if mode is None or mode == "from_start":
-            if progress["skipped"] == 0:
-                progress = progress["total"]
-                return ((1.0 - progress) / progress) * elapsed
-            else:
-                return progress["left_to_do"] / progress["worked_on"] * elapsed
+            try:
+                if progress["skipped"] == 0:
+                    progress = progress["total"]
+                    return ((1.0 - progress) / progress) * elapsed
+                else:
+                    rel_left = progress["left_to_do"] / progress["worked_on"]
+                    return rel_left * elapsed
+
+            except ZeroDivisionError:
+                return None
 
         elif mode == "from_buffer":
+            progress_total = progress["total"]
+            if progress_total <= 0:
+                return None
+
             # Get / set up the progress buffer: a circular buffer which holds
             # at most ``progress_buffer_size`` elements.
             # Each element is a (progress, elapsed) tuple.
@@ -961,7 +971,6 @@ class WorkerManagerReporter(Reporter):
                 self._eta_info["progress_buffer"] = pbuf
 
             # Add new information to buffer
-            progress_total = progress["total"]
             pbuf.append((progress_total, elapsed))
 
             # Compute progress speed compared to first element of buffer

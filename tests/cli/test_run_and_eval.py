@@ -65,6 +65,127 @@ def test_run(with_test_models, tmp_output_dir):
     assert "ABCXYZ" in res.output
 
 
+# -- Evaluation ---------------------------------------------------------------
+
+
+def test_eval(with_test_models, tmp_output_dir, delay):
+    """Tests the invocation of the utopya eval command"""
+    # Simplest case
+    res = invoke_cli(("eval", ADVANCED_MODEL, "-d"))
+    _check_result(res, expected_exit=0)
+
+    time.sleep(1)
+
+    # Adjusting some of the meta config parameters
+    args = ("eval", ADVANCED_MODEL, "-d")
+    res = invoke_cli(args + ("-p", "plot_manager.raise_exc=true"))
+    _check_result(res, expected_exit=0)
+    assert "Updates to meta configuration" in res.output
+
+
+# -- EXPERIMENTAL FEATURES ----------------------------------------------------
+
+
+def test_join_run(with_test_models, tmp_output_dir):
+    """Tests utopya join-run
+
+    We can only do this indirectly, because we can't really have two parallel
+    processes in the tests that invoke this. So the approach in the test is to
+    start a main run that is directly stopped again -- and then 'join' that
+    run afterwards, completing it ..."""
+    # Start the main run, which will attempt to run one single task before
+    # running into the timeout.
+    res = invoke_cli(
+        (
+            "run",
+            ADVANCED_MODEL,
+            "-dd",
+            "--skippable",
+            "--num-seeds",
+            "5",
+            "-W",
+            "1",
+            "--timeout",
+            "0.01",
+            "--no-eval",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "1 / 5 total" in res.output
+
+    # Now join this partial run.
+    # We still have the timeout here, which we need to overwrite
+    res = invoke_cli(
+        (
+            "join-run",
+            ADVANCED_MODEL,
+            "-W",
+            "2",
+            "--timeout",
+            "-1",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "5 / 5 total" in res.output
+    assert "worked on:             4" in res.output
+    assert "succeeded:             4" in res.output
+    assert "skipped:               1" in res.output
+
+    assert "Detected 2 Multiverses working together on this run" in res.output
+    assert "finished    (main, this process)" in res.output  # b/c of test
+    assert "finished    (joined, this process)" in res.output
+    assert "Not proceeding to evaluation" in res.output
+
+    # Cannot join a non-parameter-space run
+    time.sleep(1)
+    res = invoke_cli(
+        (
+            "run",
+            ADVANCED_MODEL,
+            "-dd",
+            "--skippable",
+            "--timeout",
+            "0.01",
+            "--no-eval",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "1 / 1 total" in res.output
+
+    with pytest.raises(MultiverseError, match="not a parameter sweep"):
+        invoke_cli(
+            (
+                "join-run",
+                ADVANCED_MODEL,
+                "--timeout",
+                "-1",
+            )
+        )
+
+    # Also, cannot join a finished run
+    time.sleep(1)
+    res = invoke_cli(
+        (
+            "run",
+            ADVANCED_MODEL,
+            "-dd",
+            "--skippable",
+            "--num-seeds",
+            "2",
+            "-W",
+            "2",
+            "--no-eval",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    with pytest.raises(MultiverseError, match="no tasks left to join in on"):
+        invoke_cli(("join-run", ADVANCED_MODEL))
+
+
 def test_run_existing(with_test_models, tmp_output_dir):
     """Tests the invocation of the utopya run_existing command"""
 
@@ -229,18 +350,3 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert "worked on:             3" in res.output
     assert "succeeded:             3" in res.output
     assert "skipped:               0" in res.output
-
-
-def test_eval(with_test_models, tmp_output_dir, delay):
-    """Tests the invocation of the utopya eval command"""
-    # Simplest case
-    res = invoke_cli(("eval", ADVANCED_MODEL, "-d"))
-    _check_result(res, expected_exit=0)
-
-    time.sleep(1)
-
-    # Adjusting some of the meta config parameters
-    args = ("eval", ADVANCED_MODEL, "-d")
-    res = invoke_cli(args + ("-p", "plot_manager.raise_exc=true"))
-    _check_result(res, expected_exit=0)
-    assert "Updates to meta configuration" in res.output
