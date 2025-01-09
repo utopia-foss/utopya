@@ -289,6 +289,31 @@ def test_est_left(rep):
         is None
     )
 
+    # Progress buffer
+    assert (
+        cmp_est_left(
+            progress=dict(total=0),
+            elapsed=elapsed,
+            mode="from_buffer",
+        )
+        is None
+    )
+    assert "progress_buffer" not in rep._eta_info
+
+    assert (
+        cmp_est_left(
+            progress=dict(total=0.1),
+            elapsed=elapsed,
+            mode="from_buffer",
+        ).total_seconds()
+        == 18.0
+    )
+    assert len(rep._eta_info["progress_buffer"]) == 2  # have 0-value in there
+
+    # Invalid mode
+    with pytest.raises(ValueError, match="Invalid ETA computation mode"):
+        cmp_est_left(mode="bad_mode", progress=dict(), elapsed=elapsed)
+
 
 def test_parsers(rf_dict, sleep_task):
     """Tests the custom parser methods of the WorkerManagerReporter that is
@@ -300,7 +325,10 @@ def test_parsers(rf_dict, sleep_task):
     # Disable minimum report interval and create shortcuts to the parse methods
     rep.min_report_intv = None
     ptc = rep._parse_task_counters
+    pdw = rep._parse_distributed_work_status
     pp = rep._parse_progress
+    pps = rep._parse_pspace_info
+    pr = rep._parse_report
     ppb = lambda *a, n=23, **kws: rep._parse_progress_bar(
         *a, num_cols=n, **kws
     )
@@ -323,6 +351,13 @@ def test_parsers(rf_dict, sleep_task):
     assert ppb() == "(No tasks assigned to WorkerManager yet.)"
     assert ppbt() == "(No tasks assigned to WorkerManager yet.)"
     assert ppbtt() == "(No tasks assigned to WorkerManager yet.)"
+    assert "No Multiverse associated" in pdw()
+
+    assert "Work has not begun yet." in pr()
+    assert "No tasks defined." in pr()
+
+    with pytest.raises(ValueError, match="No Multiverse associated"):
+        pps()
 
     # Assign tasks to wm
     for _ in range(11):
@@ -369,8 +404,10 @@ def test_parsers(rf_dict, sleep_task):
     assert rep._parse_progress_bar(num_cols=10) == "  91.7% "
 
     # Can also use adaptive or fixed number of columns
-    assert re.match("  ╠(▓*)(.*)╣  91.7% ", ppb(n="fixed"))
-    assert re.match("  ╠(▓*)(.*)╣  91.7% ", ppb(n="adaptive"))
+    print("fixed:    ", ppb(n="fixed"))
+    print("adaptive: ", ppb(n="adaptive"))
+    assert re.match(r"  ╠(▓*)(.*)╣  91\.7% ", ppb(n="fixed"))
+    assert re.match(r"  ╠(▓*)(.*)╣  91\.7% ", ppb(n="adaptive"))
 
     # Parsing time is fast, even for adaptive column width
     N = 10000

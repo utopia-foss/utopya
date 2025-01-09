@@ -701,17 +701,38 @@ def test_FrozenMultiverse(mv_kwargs, cluster_env):
     # Now create a frozen Multiverse from that one
     # Without run directory, the latest one should be loaded
     print("\nInitializing FrozenMultiverse without further kwargs")
-    FrozenMultiverse(
+    fmv = FrozenMultiverse(
         **mv_kwargs, data_manager=dict(out_dir="eval/{timestamp:}_1")
     )
 
-    # With a relative path, the corresponding directory should be found
+    # With a relative path that is also matching the folder pattern,
+    # the corresponding directory should be found
     print("\nInitializing FrozenMultiverse with timestamp as run_dir")
     FrozenMultiverse(
         **mv_kwargs,
         run_dir=os.path.basename(mv.dirs["run"]),
         data_manager=dict(out_dir="eval/{timestamp:}_2"),
     )
+
+    # This can also be only the timestamp, i.e. without the suffixed note:
+    run_dir_timestamp = os.path.basename(mv.dirs["run"]).split("_")[0]
+    print(
+        "\nInitializing FrozenMultiverse only from run directory "
+        f"timestamp: {run_dir_timestamp}"
+    )
+    FrozenMultiverse(
+        **mv_kwargs,
+        run_dir=run_dir_timestamp,
+        data_manager=dict(out_dir="eval/{timestamp:}_2b"),
+    )
+
+    # But needs to be unique (and actually match)
+    with pytest.raises(ValueError, match="uniquely match one and only one"):
+        FrozenMultiverse(
+            **mv_kwargs,
+            run_dir=f"{run_dir_timestamp}_bad_note",
+            data_manager=dict(out_dir="eval/{timestamp:}_2c"),
+        )
 
     # With an absolute path, that path should be used directly
     print("\nInitializing FrozenMultiverse with absolute path to run_dir")
@@ -763,6 +784,10 @@ def test_FrozenMultiverse(mv_kwargs, cluster_env):
             data_manager=dict(out_dir="eval/{timestamp:}_7"),
         )
 
+    # Misc
+    with pytest.raises(AttributeError, match="should not be called"):
+        fmv._create_run_dir(foo="bar")
+
 
 def test_DistributedMultiverse(mv_kwargs, delay):
     """Tests various aspects of the DistributedMultiverse"""
@@ -803,6 +828,12 @@ def test_DistributedMultiverse(mv_kwargs, delay):
     os.remove(os.path.join(mv.dirs["config"], "meta_cfg.yml"))
     with pytest.raises(ValueError, match="No meta configuration file found"):
         DistributedMultiverse(model_name=mv.model_name, run_dir=mv.dirs["run"])
+
+    with pytest.raises(NotImplementedError):
+        dmv.run_single()
+
+    with pytest.raises(NotImplementedError):
+        dmv.run_sweep()
 
 
 def test_run_dmv_join_run(mv_kwargs, delay):

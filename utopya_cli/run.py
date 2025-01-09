@@ -327,6 +327,7 @@ def run(ctx, **kwargs):
     ),
 )
 @add_options(OPTIONS["num_workers"])  # -W, --num-workers
+@add_options(OPTIONS["timeout"])  # --timeout
 #
 #
 #
@@ -338,6 +339,7 @@ def run_existing(
     label: str,
     universes: Union[str, List[str]],
     num_workers: int,
+    timeout: float,
     clear_existing_output: bool,
     skip_existing_output: bool,
 ):
@@ -364,6 +366,7 @@ def run_existing(
     mv.run(
         universes=universes if universes else "all",
         num_workers=num_workers,
+        timeout=timeout,
         on_existing_uni_output=on_existing_uni_output,
     )
 

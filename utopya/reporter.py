@@ -1429,10 +1429,12 @@ class WorkerManagerReporter(Reporter):
 
         # .. Get data
         # Work duration information
-        t_start = self.wm.times["start_working"]
-        t_now = dt.now()
-        duration = t_now - t_start
         tfstr = "%d.%m.%Y, %H:%M:%S"
+
+        t_start = self.wm.times["start_working"]
+        if t_start is not None:
+            t_now = dt.now()
+            duration = t_now - t_start
 
         # Counters, progress, statistics, ...
         cnt = self.task_counters
@@ -1457,11 +1459,15 @@ class WorkerManagerReporter(Reporter):
         ]
 
         # Runtime information and indication if run finished
-        parts += [f"{'Start:':6s}   {t_start.strftime(tfstr)}"]
-        parts += [
-            f"{'End:' if run_finished else 'Now:':6s}   "
-            f"{t_now.strftime(tfstr)}  (Δ: {format_time(duration)})"
-        ]
+        if t_start is not None:
+            parts += [f"{'Start:':6s}   {t_start.strftime(tfstr)}"]
+            parts += [
+                f"{'End:' if run_finished else 'Now:':6s}   "
+                f"{t_now.strftime(tfstr)}  (Δ: {format_time(duration)})"
+            ]
+        else:
+            parts += ["Work has not begun yet."]
+
         parts += [""]
 
         # Host information
@@ -1705,7 +1711,11 @@ class WorkerManagerReporter(Reporter):
         return " \n".join(parts)
 
     def _parse_pspace_info(
-        self, *, fstr: str, only_for_sweep: bool = True, report_no: int = None
+        self,
+        *,
+        fstr: str = "{sweep_info:}",
+        only_for_sweep: bool = True,
+        report_no: int = None,
     ) -> str:
         """Provides information about the parameter space.
 
@@ -1719,6 +1729,10 @@ class WorkerManagerReporter(Reporter):
         If only a single task was defined, returns an empty string.
 
         Args:
+            fstr (str, optional): The format string the sweep info should be
+                embedded into. Needs to contain ``sweep_info`` key.
+            only_for_sweep (bool, optional): If True, returns empty string
+                if only a single task was defined.
             report_no (int, optional): A counter variable passed by the
                 :py:class:`~utopya.reporter.ReportFormat` call, indicating
                 how often this parser was called so far.
