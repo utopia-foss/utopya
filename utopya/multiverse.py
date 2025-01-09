@@ -2199,7 +2199,8 @@ class DistributedMultiverse(FrozenMultiverse):
         self,
         *,
         universes: Union[Literal["all"], str, List[str]] = "all",
-        num_workers=None,
+        num_workers: int = None,
+        timeout: float = None,
         on_existing_uni_dir: str = "continue",
         on_existing_uni_cfg: str = "continue",
         on_existing_uni_output: str = "raise",
@@ -2226,6 +2227,9 @@ class DistributedMultiverse(FrozenMultiverse):
                 Leading zeros and ``uni`` are optional.
             num_workers (int, optional): Specify the number of workers
                 to use, overwriting the setting from the meta-configuration.
+            timeout (float, optional): If given, overwrites the existing value
+                for the WorkerManager timeout, which may have been set
+                in the original Multiverse run.
             on_existing_uni_dir (str, optional): How to proceed if a universe
                 directory already exists; can be ``skip``, ``raise``, or
                 ``continue``. Set this to ``continue`` if you previously
@@ -2348,26 +2352,31 @@ class DistributedMultiverse(FrozenMultiverse):
         if num_workers is not None:
             self.wm.num_workers = num_workers
 
-        self._start_working(
-            lock_tasks=lock_tasks, **self.meta_cfg["run_kwargs"]
-        )
+        run_kwargs = copy.deepcopy(self.meta_cfg["run_kwargs"])
+        if timeout is not None:
+            run_kwargs["timeout"] = timeout
+
+        self._start_working(lock_tasks=lock_tasks, **run_kwargs)
 
     def join_run(
         self,
         *,
-        num_workers: Optional[int] = None,
-        shuffle_tasks: Optional[bool] = True,
-        timeout: Optional[float] = None,
+        num_workers: int = None,
+        shuffle_tasks: bool = True,
+        timeout: float = None,
     ):
         """Joins an already-running simulation and performs tasks that have not
         been taken up yet.
 
         Args:
             num_workers (int, optional): Set number of workers to use.
-            shuffle_tasks (Optional[bool], optional): If given, will overwrite
+            shuffle_tasks (bool, optional): If given, will overwrite
                 the ``shuffle_tasks`` run arguments.
                 When joining an already-running simulation run, it is advisable
                 to set this to True to reduce competition for new tasks.
+            timeout (float, optional): If given, will overwrite the existing
+                value for the WorkerManager timeout, which may have been set
+                in the original Multiverse run.
         """
         log.hilight("Preparing to join simulation run ...")
         meta_cfg = self.meta_cfg
