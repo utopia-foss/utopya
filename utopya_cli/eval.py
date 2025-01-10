@@ -408,7 +408,14 @@ def _load_and_eval(
     _log.success("Left interactive plotting session.\n")
 
 
-def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
+def _proceed_after_waiting_for_distributed_run(
+    mv,
+    *,
+    _log=log,
+    timeout: float = None,
+    check_every: float = 0.3,
+    confirm_after_timeout: bool = True,
+) -> bool:
     from utopya._resources import SPINNER_WIDE
     from utopya.multiverse import (
         _combined_distributed_multiverse_progress,
@@ -416,6 +423,7 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
         get_status_file_paths,
         unfinished_distributed_multiverses,
     )
+    from utopya.tools import format_time
 
     # May need to wait for distributed runs to finish
     run_dir = mv.dirs["run"]
@@ -435,6 +443,7 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
 
     try:
         i = 0
+        t0 = time.time()
         while udmv := unfinished_distributed_multiverses(run_dir):
             N = len(udmv)
             Ntot = len(get_status_file_paths(run_dir))
@@ -446,8 +455,18 @@ def _proceed_after_waiting_for_distributed_run(mv, *, _log) -> bool:
                 f"({comb_progress * 100.:.3g}% combined progress)",
                 end="   \r",
             )
-            time.sleep(0.3)
+            time.sleep(check_every)
             i += 1
+
+            wait_time = time.time() - t0
+            if timeout and wait_time > timeout:
+                _log.caution(
+                    "Waited for %s, exceeding waiting timeout.",
+                    format_time(wait_time),
+                )
+                if confirm_after_timeout:
+                    raise KeyboardInterrupt()
+                break
 
     except KeyboardInterrupt:
         print("\n")

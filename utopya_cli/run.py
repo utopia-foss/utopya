@@ -282,7 +282,7 @@ def run(ctx, **kwargs):
 @click.argument(
     "run_dir",
     shell_complete=complete_run_dirs,
-    required=True,
+    required=False,
 )
 @add_options(OPTIONS["label"])
 @click.option(

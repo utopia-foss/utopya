@@ -10,6 +10,7 @@ from utopya.exceptions import *
 
 from .. import ADVANCED_MODEL, DUMMY_MODEL
 from .._fixtures import *
+from ..test_multiverse import mv_kwargs
 from . import invoke_cli
 
 
@@ -146,6 +147,8 @@ def test_join_run(with_test_models, tmp_output_dir):
             ADVANCED_MODEL,
             "-dd",
             "--skippable",
+            "--run-mode",
+            "single",
             "--timeout",
             "0.01",
             "--no-eval",
@@ -184,6 +187,85 @@ def test_join_run(with_test_models, tmp_output_dir):
 
     with pytest.raises(MultiverseError, match="no tasks left to join in on"):
         invoke_cli(("join-run", ADVANCED_MODEL))
+
+
+def test_wait_for_run_to_finish(
+    with_test_models, tmp_output_dir, mv_kwargs, monkeypatch
+):
+    """... this can only be done indirectly, because we don't have parallel
+    processes in the tests (or it would be super difficult)"""
+    from utopya.multiverse import (
+        DistributedMultiverse,
+        Multiverse,
+        _combined_distributed_multiverse_progress,
+    )
+    from utopya.tools import load_yml, write_yml
+    from utopya_cli.eval import _proceed_after_waiting_for_distributed_run
+
+    from ..test_multiverse import DUMMY_MODEL, SWEEP_CFG_PATH
+
+    mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
+    update_cfg = dict(
+        skipping=dict(enabled=True),
+        run_kwargs=dict(timeout=1.0),
+        worker_manager=dict(num_workers=1),
+        parameter_space={"num_steps": 10, DUMMY_MODEL: dict(sleep_time=0.2)},
+    )
+    mv = Multiverse(**mv_kwargs, **update_cfg)
+
+    # This will run, but end up "cancelled"
+    mv.run()
+    assert len(mv.status_file_paths) == 1
+
+    # By default, cancelled is regarded as finished, so we should proceed
+    assert _proceed_after_waiting_for_distributed_run(mv) is True
+
+    # Let's change the status file to appear like it's still "working"
+    status_file_path = mv.status_file_paths[0]
+    status: dict = load_yml(status_file_path)
+    status["status"] = "working"
+    write_yml(status, path=status_file_path)
+
+    # Combined progress is the value from the status file
+    assert (
+        _combined_distributed_multiverse_progress(mv.dirs["run"])
+        == status["progress"]["worked_on"]
+    )
+
+    # Can specify maximum wait time (mostly for tests).
+    # Need to respond to confirmation prompt
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+    assert _proceed_after_waiting_for_distributed_run(mv, timeout=1.0) is False
+
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+    assert _proceed_after_waiting_for_distributed_run(mv, timeout=1.0) is True
+
+    # May also skip confirmation (again, mostly for tests)
+    assert (
+        _proceed_after_waiting_for_distributed_run(
+            mv, timeout=1.0, confirm_after_timeout=False
+        )
+        is True
+    )
+
+    # Create another (cancelled) run that creates a status file
+    dmv = DistributedMultiverse(
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
+    )
+    dmv.join_run(timeout=0.5, num_workers=1)
+
+    assert len(dmv.status_file_paths) == 2
+
+    # This should now mention in the logs that there was a cancelled run
+    assert (
+        _proceed_after_waiting_for_distributed_run(
+            mv, timeout=1.0, confirm_after_timeout=False
+        )
+        is True
+    )
+
+    # How about the combined progress?
+    assert _combined_distributed_multiverse_progress(mv.dirs["run"]) < 1.0
 
 
 def test_run_existing(with_test_models, tmp_output_dir):
@@ -299,11 +381,12 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert not os.path.isfile(bad_file_path)
 
     # Run all but skip existing
+    # Don't need a run dir (not only here, but in general)
     res = invoke_cli(
         (
             "run-existing",
             DUMMY_MODEL,
-            run_dir,
+            # run_dir,
             "--skip-existing",
         )
     )
@@ -318,12 +401,15 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert "skipped:               3" in res.output
 
     # Re-run all with clear existing option
+    # Can also, optionally, specify a timeout
     res = invoke_cli(
         (
             "run-existing",
             DUMMY_MODEL,
             run_dir,
             "--clear-existing",
+            "--timeout",
+            "12.34",
         )
     )
     _check_result(res, expected_exit=0)
@@ -350,3 +436,15 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert "worked on:             3" in res.output
     assert "succeeded:             3" in res.output
     assert "skipped:               0" in res.output
+
+    # Mutually exclusive skip- and clear-existing
+    res = invoke_cli(
+        (
+            "run-existing",
+            DUMMY_MODEL,
+            run_dir,
+            "--clear-existing",
+            "--skip-existing",
+        )
+    )
+    _check_result(res, expected_exit=1)

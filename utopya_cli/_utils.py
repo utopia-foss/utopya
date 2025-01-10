@@ -348,7 +348,7 @@ def parse_update_dicts(
     args = SimpleNamespace(**all_arguments)
 
     # To-be-populated update dicts:
-    update_dict = {}
+    update_dict = {"parameter_space": {args.model_name: {}}}
     update_plots_cfg = {}
 
     # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -486,12 +486,6 @@ def parse_update_dicts(
             )
 
         if args.set_model_params:
-            if not update_dict.get("parameter_space"):
-                update_dict["parameter_space"] = dict()
-
-            if not update_dict["parameter_space"].get(args.model_name):
-                update_dict["parameter_space"][args.model_name] = dict()
-
             set_entries_from_kv_pairs(
                 *args.set_model_params,
                 add_to=update_dict["parameter_space"][args.model_name],
@@ -499,9 +493,6 @@ def parse_update_dicts(
             )
 
         if args.set_pspace_params:
-            if not update_dict.get("parameter_space"):
-                update_dict["parameter_space"] = dict()
-
             set_entries_from_kv_pairs(
                 *args.set_pspace_params,
                 add_to=update_dict["parameter_space"],
