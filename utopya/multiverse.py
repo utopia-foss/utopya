@@ -2523,7 +2523,7 @@ def unfinished_distributed_multiverses(
     return {
         k: v
         for k, v in get_distributed_work_status(run_dir, **kwargs).items()
-        if v["status"] not in ("finished", "failed", "cancelled")
+        if v and v["status"] not in ("finished", "failed", "cancelled")
     }
 
 
@@ -2532,4 +2532,5 @@ def _combined_distributed_multiverse_progress(run_dir: str, **kwargs) -> float:
     return sum(
         s["progress"]["worked_on"]
         for s in get_distributed_work_status(run_dir, **kwargs).values()
+        if s
     )

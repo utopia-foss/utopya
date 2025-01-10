@@ -434,7 +434,7 @@ def _proceed_after_waiting_for_distributed_run(
 
     _log.caution("This Multiverse run is still being worked on.")
     _log.note("Periodically checking work status of linked Multiverses ...")
-    _log.remark("Evaluation will start once all active runs have finished.")
+    _log.remark("Evaluation will start once all active runs have concluded.")
     _log.remark("Press Ctrl + C to ignore this and proceed now.\n")
 
     # TODO Actually consider to wait for 100% combined progress instead!
