@@ -183,7 +183,7 @@ reporter:
       min_num: 2                      # min. number of universes for statistics
       show_joined_run_info: true      # extra info if part of a joined run
       joined_run_status_fstr:         # how to format the status information
-        "  {progress_here:>5s}  @  {host_name_short:s} - {pid:d}:  {status:10s}  ({tags})"
+        "  {progress_here:>5s}  @  {host_name_short:12s} - {pid:7d}: {status:10s}  ({tags})"
       show_individual_runtimes: true  # for large number of universes, disable
       max_num_to_show: 2048           # max. number of individual times to show
       task_label_singular: universe

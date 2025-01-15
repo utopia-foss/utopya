@@ -15,7 +15,6 @@ from shutil import get_terminal_size as _get_terminal_size
 from typing import Callable, Dict, List, Optional, Set, Union
 
 import numpy as np
-import paramspace as psp
 from yayaml import yaml_dumps as _yaml_dumps
 
 from .tools import TTY_COLS, format_time, get_physical_memory_str
@@ -23,7 +22,7 @@ from .tools import TTY_COLS, format_time, get_physical_memory_str
 log = logging.getLogger(__name__)
 
 _DEFAULT_JOINED_RUN_STATUS_FSTR: str = (
-    "  {progress_here:>5s}  @  {host_name_short:s} - {pid:d}:  "
+    "  {progress_here:>5s}  @  {host_name_short:12s} - {pid:7d}: "
     "{status:10s}  ({tags})"
 )
 """The format string to use for the joined run status"""
@@ -1360,6 +1359,10 @@ class WorkerManagerReporter(Reporter):
             parts += [""]
 
         for status in dws.values():
+            if not status:
+                parts.append("  [Multiverse with currently unknown status]")
+                continue
+
             tags = [status["kind"]]
             if (
                 status["pid"] == self._host_info["pid"]

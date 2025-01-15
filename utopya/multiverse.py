@@ -1900,7 +1900,7 @@ class Multiverse:
         # Inform about potential other distributed workers
         dws = get_distributed_work_status(self.dirs["run"])
         if len(dws) > 1:
-            fstr = "  {host_name_short:s} - {pid:d}:  {status:10s}  ({tags})"
+            fstr = "  {host_name_short:12s} - {pid:7d}: {status:10s}  ({tags})"
             dws_info: str = self._reporter._parse_distributed_work_status(
                 fstr=fstr,
                 distributed_work_status=dws,
