@@ -2154,7 +2154,8 @@ class DistributedMultiverse(FrozenMultiverse):
 
         # Only keep selected entries from the meta configuration. The rest is
         # not needed and is deleted in order to not confuse the user with
-        # potentially varying versions of the meta config.
+        # potentially varying versions of the meta config. Also, this way we
+        # will notice if certain keys are accessed that shouldn't be used here.
         self._meta_cfg = {
             k: v
             for k, v in mcfg.items()
@@ -2162,11 +2163,9 @@ class DistributedMultiverse(FrozenMultiverse):
             not in (
                 "data_manager",
                 "plot_manager",
-                "cluster_mode",
                 "cluster_params",
             )
         }
-        self._meta_cfg["cluster_mode"] = False
         log.info("Restored meta-configuration.")
 
         log.remark("  Debug level:  %d", self.debug_level)
