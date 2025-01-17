@@ -71,6 +71,7 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     :caption: Using utopya
 
     cfg/index
+    run/index
     eval/index
 
 .. TODO add getting started
