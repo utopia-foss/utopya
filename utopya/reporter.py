@@ -21,7 +21,7 @@ from .tools import TTY_COLS, format_time, get_physical_memory_str
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_JOINED_RUN_STATUS_FSTR: str = (
+_DEFAULT_distributed_status_fstr: str = (
     "  {progress_here:>5s}  @  {host_name_short:12s} - {pid:7d}: "
     "{status:10s}  ({tags})"
 )
@@ -1323,7 +1323,7 @@ class WorkerManagerReporter(Reporter):
     def _parse_distributed_work_status(
         self,
         *,
-        fstr: str = _DEFAULT_JOINED_RUN_STATUS_FSTR,
+        fstr: str = _DEFAULT_distributed_status_fstr,
         distributed_work_status: dict = None,
         include_header: bool = True,
         report_no: int = None,
@@ -1363,7 +1363,7 @@ class WorkerManagerReporter(Reporter):
                 parts.append("  [Multiverse with currently unknown status]")
                 continue
 
-            tags = [status["kind"]]
+            tags = list(status["run_tags"])
             if (
                 status["pid"] == self._host_info["pid"]
                 and status["host_name"] == self._host_info["host_name"]
@@ -1382,8 +1382,8 @@ class WorkerManagerReporter(Reporter):
         report_no: int = None,
         show_host_info: bool = True,
         show_exit_codes: bool = True,
-        show_joined_run_info: bool = True,
-        joined_run_status_fstr: str = _DEFAULT_JOINED_RUN_STATUS_FSTR,
+        show_distributed_run_info: bool = True,
+        distributed_status_fstr: str = _DEFAULT_distributed_status_fstr,
         show_individual_runtimes: bool = True,
         max_num_to_show: int = 2048,
         task_label_singular: str = "task",
@@ -1407,9 +1407,9 @@ class WorkerManagerReporter(Reporter):
                 about the host machine
             show_exit_codes (bool, optional): Whether to show a table of exit
                 codes of the finished simulations
-            show_joined_run_info (bool, optional): Whether to look for work
+            show_distributed_run_info (bool, optional): Whether to look for work
                 status report files and show their information.
-            joined_run_status_fstr (str, optional): How to represent the work
+            distributed_status_fstr (str, optional): How to represent the work
                 status of joined runs. Available keys are those from the status
                 file plus ``tags``, which is a comma-separated string with
                 information on whether this was a joined run (or main run) and
@@ -1460,6 +1460,12 @@ class WorkerManagerReporter(Reporter):
             r"==============================|==========",
             "",
         ]
+
+        # Multiverse information
+        if self.mv:
+            parts += [f"From:    {type(self.mv).__name__}"]
+            parts += [f"Tags:    {', '.join(self.mv._run_tags)}"]
+            parts += [""]
 
         # Runtime information and indication if run finished
         if t_start is not None:
@@ -1541,10 +1547,10 @@ class WorkerManagerReporter(Reporter):
         parts += [""]
         parts += [""]
 
-        # Check if part of a joined run by looking at status files
-        if show_joined_run_info:
+        # Check other parts of a potentially distributed run
+        if show_distributed_run_info:
             dws_info = self._parse_distributed_work_status(
-                fstr=joined_run_status_fstr, include_header=True
+                fstr=distributed_status_fstr, include_header=True
             )
             if dws_info:
                 parts += [dws_info, "", ""]
@@ -1785,11 +1791,7 @@ class WorkerManagerReporter(Reporter):
             host_name=self._host_info["host_name"],
             host_name_short=self._host_info["host_name_short"],
             pid=self._host_info["pid"],
-            kind=(
-                "joined"
-                if self.mv and getattr(self.mv, "_is_joined_run", None)
-                else "main"
-            ),
+            run_tags=self.mv._run_tags if self.mv else [],
         )
 
         try:
@@ -1806,8 +1808,8 @@ class WorkerManagerReporter(Reporter):
         *args,
         path: str = "_report.txt",
         cluster_mode_path: str = "{}_{node_name}{ext}",
-        joined_mode_path: str = "{}__{host_name_short}-{pid}{ext}",
-        skip_if_joined: bool = False,
+        dmv_mode_path: str = "{}__{host_name_short}-{pid}{ext}",
+        skip_if_dmv: bool = False,
         **kwargs,
     ):
         """Overloads the parent method with capabilities needed in cluster mode
@@ -1819,20 +1821,25 @@ class WorkerManagerReporter(Reporter):
             *args: Passed on to parent method
             path (str, optional): The path to save to
             cluster_mode_path (str, optional): The format string to use for the
-                path in cluster mode. _Requires_ to contain the format key
+                path in cluster mode. *Requires* to contain the format key
                 ``{0:}`` which retains the given ``path``, extension split off.
                 Extension can be used via ``ext`` (already includes the dot).
                 Additional format keys: ``node_name``, ``job_id``.
-            skip_if_joined (bool, optional): Whether to skip reporting if part
-                of a joined run.
+            dmv_mode_path (str, optional): The format string to use for the
+                path in a distributed Multiverse run.
+            skip_if_dmv (bool, optional): Whether to skip reporting if part
+                of a joined or continued run, i.e.: originating from a
+                :py:class:`~utopya.multiverse.DistributedMultiverse` run.
             **kwargs: Passed on to parent method
         """
-        is_joined_run = self.mv and getattr(self.mv, "_is_joined_run", None)
-        if skip_if_joined and is_joined_run:
+        from .multiverse import DistributedMultiverse
+
+        is_dmv_run = self.mv and isinstance(self.mv, DistributedMultiverse)
+        if skip_if_dmv and is_dmv_run:
             return
 
         always_format_path = "{" in path and "}" in path
-        if not (self.wm.cluster_mode or is_joined_run or always_format_path):
+        if not (self.wm.cluster_mode or is_dmv_run or always_format_path):
             return super()._write_to_file(*args, path=path, **kwargs)
 
         # else: need to create a new path and/or parse additional information
@@ -1845,8 +1852,9 @@ class WorkerManagerReporter(Reporter):
             fstr_kwargs.update(rcp)
             fstr = cluster_mode_path
 
-        elif joined_mode_path:
-            fstr = joined_mode_path
+        elif dmv_mode_path:
+            fstr_kwargs["run_tags"] = ", ".join(self.mv._run_tags)
+            fstr = dmv_mode_path
 
         else:
             fstr = "{}{ext}"

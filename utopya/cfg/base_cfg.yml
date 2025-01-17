@@ -177,12 +177,13 @@ reporter:
       write_to:
         file:
           path: _report.txt
+          skip_if_dmv: false          # set true for many distributed runs
       min_report_intv: 10             # don't update this one too often
       show_host_info: true            # basic information about host machine
       show_exit_codes: true           # exit code overview
       min_num: 2                      # min. number of universes for statistics
-      show_joined_run_info: true      # extra info if part of a joined run
-      joined_run_status_fstr:         # how to format the status information
+      show_distributed_run_info: true # extra info for distributed runs
+      distributed_status_fstr:        # how to format the status information
         "  {progress_here:>5s}  @  {host_name_short:12s} - {pid:7d}: {status:10s}  ({tags})"
       show_individual_runtimes: true  # for large number of universes, disable
       max_num_to_show: 2048           # max. number of individual times to show
@@ -196,7 +197,7 @@ reporter:
         file:
           path: _sweep_info.txt
           skip_if_empty: true
-          skip_if_joined: true  # already have an identical sweep info file
+          skip_if_dmv: true         # already have an identical sweep info file
         log:
           lvl: 18
           skip_if_empty: true
@@ -209,6 +210,7 @@ reporter:
       write_to:
         file:
           path: .status.yml
+          skip_if_dmv: false
       min_report_intv: 5.
 
   # Can define a default format to use

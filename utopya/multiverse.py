@@ -129,6 +129,7 @@ class Multiverse:
         self._model_executable = None
         self._tmpdir = None
         self._resolved_cluster_params = None
+        self._run_tags: List[str] = ["main"]
 
         # Create meta configuration and list of used config files
         mcfg, cfg_parts = self._create_meta_cfg(
@@ -837,7 +838,7 @@ class Multiverse:
 
         # May need to deduce the output directory
         if out_dir is None:
-            if run_dir and os.path.abspath(run_dir):
+            if run_dir and os.path.isabs(run_dir):
                 out_dir = os.path.abspath(os.path.join(run_dir, ".."))
             else:
                 # Need to make a good guess which directory is meant. The best
@@ -855,6 +856,8 @@ class Multiverse:
         # Create model directory path (where the to-be-loaded data is expected)
         out_dir = os.path.expanduser(str(out_dir))
         model_dir = os.path.join(out_dir, self.model_name)
+
+        log.note("Assumed model output directory:\n  %s", model_dir)
 
         if not os.path.isdir(model_dir):
             # Just create it, there's no harm in that ...
@@ -920,8 +923,9 @@ class Multiverse:
                         raise ValueError(
                             f"Got partial run directory name '{run_dir}' that "
                             "does not uniquely match one and only one run "
-                            f"directory, but matched {len(_run_dirs)}!  "
-                            f"{',  '.join(_run_dirs)}"
+                            f"directory! It matched {len(_run_dirs)} "
+                            f"subdirectories of  {model_dir}  :\n"
+                            f"  {',  '.join(_run_dirs)}"
                         )
                     run_dir = os.path.join(model_dir, _run_dirs[0])
 
@@ -1876,6 +1880,10 @@ class Multiverse:
         if lock_tasks:
             self.wm.tasks.lock()
 
+        # Adapt the run kind to better communicate what happened
+        if self.skipping["skip_after_setup"]:
+            self._run_tags.append("skipped after setup")
+
         # Tell the WorkerManager to start working (is a blocking call)
         wm_status = self.wm.start_working(**kwargs)
 
@@ -2098,6 +2106,7 @@ class DistributedMultiverse(FrozenMultiverse):
         run_dir: str,
         model_name: str = None,
         info_bundle: ModelInfoBundle = None,
+        no_reports: bool = False,
     ):
         """Initializes a DistributedMultiverse from a model name and an
         existing run directory.
@@ -2113,6 +2122,10 @@ class DistributedMultiverse(FrozenMultiverse):
             info_bundle (ModelInfoBundle, optional): The model information
                 bundle that includes information about the binary path etc.
                 If not given, will attempt to read it from the model registry.
+            no_reports (bool, optional): If True, will not write work status or
+                other simulation report files. Set this, if invoking this with
+                many *individual* ``universes`` and in order to avoid creating
+                as many report files.
         """
         # First things first: get the info bundle
         if info_bundle is None:
@@ -2131,7 +2144,7 @@ class DistributedMultiverse(FrozenMultiverse):
         self._model_executable = None
         self._tmpdir = None
 
-        self._is_joined_run: bool = None
+        self._run_tags: List[str] = ["distributed"]
 
         # Generate the path to the run directory that is to be loaded.
         # At this point, we don't know the output directory, but we can deduce
@@ -2175,11 +2188,19 @@ class DistributedMultiverse(FrozenMultiverse):
         self._prepare_executable(**self.meta_cfg["executable_control"])
 
         self._wm = WorkerManager(**self.meta_cfg["worker_manager"])
+
+        # Reporter
+        reporter_kwargs = self.meta_cfg["reporter"]
+        if no_reports:
+            rfs = reporter_kwargs["report_formats"]
+            rfs["report_file"]["write_to"]["file"]["skip_if_dmv"] = True
+            rfs["work_status"]["write_to"]["file"]["skip_if_dmv"] = True
+
         self._reporter = WorkerManagerReporter(
             self.wm,
             mv=self,
             report_dir=self.dirs["run"],
-            **self.meta_cfg["reporter"],
+            **reporter_kwargs,
         )
 
         # TODO Should the DistributedMultiverse have a DataManager and a
@@ -2283,6 +2304,7 @@ class DistributedMultiverse(FrozenMultiverse):
         if universes == "all":
             log.note("Adding tasks for all universes ...")
             self._add_sim_tasks()
+            self._run_tags = ["run existing", "all"]
             lock_tasks = True
 
         elif isinstance(universes, (str, tuple, list)):
@@ -2340,6 +2362,7 @@ class DistributedMultiverse(FrozenMultiverse):
                 )
 
             log.info("Added %d tasks.", i + 1)
+            self._run_tags = ["run existing", "selection"]
 
         else:
             raise TypeError(
@@ -2407,8 +2430,7 @@ class DistributedMultiverse(FrozenMultiverse):
 
         # Ok, all good. Add _all_ tasks, some of which will not need to run.
         self._add_sim_tasks(sweep=True)
-
-        self._is_joined_run = True
+        self._run_tags = ["joined"]
 
         # We may want to overwrite some settings.
         if num_workers is not None:

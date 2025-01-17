@@ -250,6 +250,20 @@ def run(ctx, **kwargs):
         _log.progress("Exiting now ...\n")
         return
 
+    elif kwargs.pop("skip_after_setup", False):
+        _log.caution("No work was performed!")
+        _log.note("Universe output folders and config files were created.")
+        _log.note(
+            "Evaluation is not possible, because there is no output yet."
+        )
+        _log.remark(
+            "To perform individual simulations, call:\n\n  %s\n",
+            f"utopya run-existing {kwargs['model_name']} "
+            f"{os.path.basename(mv.dirs['run'])}",
+        )
+        _log.progress("Exiting now ...\n")
+        return
+
     # Loading and evaluating . . . . . . . . . . . . . . . . . . . . . . . . .
     _load_and_eval(
         _log=_log,
@@ -328,6 +342,16 @@ def run(ctx, **kwargs):
 )
 @add_options(OPTIONS["num_workers"])  # -W, --num-workers
 @add_options(OPTIONS["timeout"])  # --timeout
+@click.option(
+    "--no-reports",
+    default=False,
+    is_flag=True,
+    help=(
+        "If set, will not write report files. Set this flag if invoking this "
+        "command with many individual universes to avoid creating as many "
+        "report files."
+    ),
+)
 #
 #
 #
@@ -342,6 +366,7 @@ def run_existing(
     timeout: float,
     clear_existing_output: bool,
     skip_existing_output: bool,
+    no_reports: bool,
 ):
     """Repeats a model simulation in parts or entirely"""
     import utopya
@@ -349,7 +374,7 @@ def run_existing(
     _log = utopya._getLogger("utopya")
 
     model = utopya.Model(name=model_name, bundle_label=label)
-    mv = model.create_distributed_mv(run_dir=run_dir)
+    mv = model.create_distributed_mv(run_dir=run_dir, no_reports=no_reports)
 
     if clear_existing_output and skip_existing_output:
         raise ValueError(

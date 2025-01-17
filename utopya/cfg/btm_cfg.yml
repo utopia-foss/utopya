@@ -226,13 +226,14 @@ reporter:
       write_to:
         file:
           path: _report.txt
+          skip_if_dmv: false          # set true for many distributed runs
       min_report_intv: 10             # don't update this one too often
       show_host_info: true            # basic information about host machine
       show_exit_codes: true           # exit code overview
       min_num: 2                      # min. number of universes for statistics
-      show_joined_run_info: true      # extra info if part of a joined run
-      joined_run_status_fstr:         # how to format the status information
-        "  {progress_here:>5s}  @  {host_name_short:s} - {pid:d}:  {status:10s}  ({tags})"
+      show_distributed_run_info: true # extra info for distributed runs
+      distributed_status_fstr:        # how to format the status information
+        "  {progress_here:>5s}  @  {host_name_short:12s} - {pid:7d}: {status:10s}  ({tags})"
       show_individual_runtimes: true  # for large number of universes, disable
       max_num_to_show: 2048           # max. number of individual times to show
       task_label_singular: universe
