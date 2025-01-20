@@ -68,7 +68,7 @@ def find_version(*file_paths) -> str:
 # -- Project information ------------------------------------------------------
 
 project = "utopya"
-copyright = "2018 — 2024, utopya developers"
+copyright = "2018 — 2025, utopya developers"
 author = "utopya developers"
 
 # The short X.Y version

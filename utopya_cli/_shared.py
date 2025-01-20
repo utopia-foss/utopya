@@ -62,6 +62,7 @@ INTERACTIVE_MODE_PROHIBITED_ARGS = (
     "show_data_tree",
     "use_data_tree_cache",
     "load_parallel",
+    "note",
 )
 """Argument names that may NOT be given in the interactive plotting prompt"""
 
@@ -251,6 +252,20 @@ OPTIONS["num_workers"] = (
         ),
     ),
 )
+OPTIONS["timeout"] = (
+    click.option(
+        "--timeout",
+        default=None,
+        type=float,
+        help=(
+            "Timeout of the whole simulation run (in seconds). "
+            "Sets the meta-config entry ``run_kwargs.timeout``. "
+            "Once the timeout is exceeded, workers will be stopped, which "
+            "may lead to corrupted or incomplete individual universe outputs. "
+            "Set to negative values to deactivate."
+        ),
+    ),
+)
 
 # -- Data loading options
 OPTIONS["load"] = (
@@ -279,6 +294,15 @@ OPTIONS["load"] = (
         default="condensed",
         show_default=True,
         help="Controls which kind of data tree should be shown after loading.",
+    ),
+    click.option(
+        "--no-wait",
+        flag_value=True,
+        default=False,
+        help=(
+            "If set, will not check whether there are distributed Multiverse "
+            "runs that have not finished yet and directly proceed to loading."
+        ),
     ),
 )
 

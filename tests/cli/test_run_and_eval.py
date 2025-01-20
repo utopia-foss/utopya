@@ -1,14 +1,16 @@
 """Tests the utopya run CLI command"""
 
-import logging
 import os
 import time
 import traceback
 
 import pytest
 
+from utopya.exceptions import *
+
 from .. import ADVANCED_MODEL, DUMMY_MODEL
 from .._fixtures import *
+from ..test_multiverse import mv_kwargs
 from . import invoke_cli
 
 
@@ -64,6 +66,208 @@ def test_run(with_test_models, tmp_output_dir):
     assert "ABCXYZ" in res.output
 
 
+# -- Evaluation ---------------------------------------------------------------
+
+
+def test_eval(with_test_models, tmp_output_dir, delay):
+    """Tests the invocation of the utopya eval command"""
+    # Simplest case
+    res = invoke_cli(("eval", ADVANCED_MODEL, "-d"))
+    _check_result(res, expected_exit=0)
+
+    time.sleep(1)
+
+    # Adjusting some of the meta config parameters
+    args = ("eval", ADVANCED_MODEL, "-d")
+    res = invoke_cli(args + ("-p", "plot_manager.raise_exc=true"))
+    _check_result(res, expected_exit=0)
+    assert "Updates to meta configuration" in res.output
+
+
+# -- EXPERIMENTAL FEATURES ----------------------------------------------------
+
+
+def test_join_run(with_test_models, tmp_output_dir):
+    """Tests utopya join-run
+
+    We can only do this indirectly, because we can't really have two parallel
+    processes in the tests that invoke this. So the approach in the test is to
+    start a main run that is directly stopped again -- and then 'join' that
+    run afterwards, completing it ..."""
+    # Start the main run, which will attempt to run one single task before
+    # running into the timeout.
+    res = invoke_cli(
+        (
+            "run",
+            ADVANCED_MODEL,
+            "-dd",
+            "--skippable",
+            "--num-seeds",
+            "5",
+            "-W",
+            "1",
+            "--timeout",
+            "0.01",
+            "--no-eval",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "1 / 5 total" in res.output
+
+    # Now join this partial run.
+    # We still have the timeout here, which we need to overwrite
+    res = invoke_cli(
+        (
+            "join-run",
+            ADVANCED_MODEL,
+            "-W",
+            "2",
+            "--timeout",
+            "-1",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "5 / 5 total" in res.output
+    assert "worked on:             4" in res.output
+    assert "succeeded:             4" in res.output
+    assert "skipped:               1" in res.output
+
+    assert "Detected 2 Multiverses working together on this run" in res.output
+    assert "cancelled   (main, this process)" in res.output  # b/c of test
+    assert "finished    (joined, this process)" in res.output
+    assert "Not proceeding to evaluation" in res.output
+
+    # Cannot join a non-parameter-space run
+    time.sleep(1)
+    res = invoke_cli(
+        (
+            "run",
+            ADVANCED_MODEL,
+            "-dd",
+            "--skippable",
+            "--run-mode",
+            "single",
+            "--timeout",
+            "0.01",
+            "--no-eval",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    assert "1 / 1 total" in res.output
+
+    with pytest.raises(MultiverseError, match="not a parameter sweep"):
+        invoke_cli(
+            (
+                "join-run",
+                ADVANCED_MODEL,
+                "--timeout",
+                "-1",
+            )
+        )
+
+    # Also, cannot join a finished run
+    time.sleep(1)
+    res = invoke_cli(
+        (
+            "run",
+            ADVANCED_MODEL,
+            "-dd",
+            "--skippable",
+            "--num-seeds",
+            "2",
+            "-W",
+            "2",
+            "--no-eval",
+        )
+    )
+    _check_result(res, expected_exit=0)
+
+    with pytest.raises(MultiverseError, match="no tasks left to join in on"):
+        invoke_cli(("join-run", ADVANCED_MODEL))
+
+
+def test_wait_for_run_to_finish(
+    with_test_models, tmp_output_dir, mv_kwargs, monkeypatch
+):
+    """... this can only be done indirectly, because we don't have parallel
+    processes in the tests (or it would be super difficult)"""
+    from utopya.multiverse import (
+        DistributedMultiverse,
+        Multiverse,
+        _combined_distributed_multiverse_progress,
+    )
+    from utopya.tools import load_yml, write_yml
+    from utopya_cli.eval import _proceed_after_waiting_for_distributed_run
+
+    from ..test_multiverse import DUMMY_MODEL, SWEEP_CFG_PATH
+
+    mv_kwargs["run_cfg_path"] = SWEEP_CFG_PATH
+    update_cfg = dict(
+        skipping=dict(enabled=True),
+        run_kwargs=dict(timeout=1.0),
+        worker_manager=dict(num_workers=1),
+        parameter_space={"num_steps": 10, DUMMY_MODEL: dict(sleep_time=0.2)},
+    )
+    mv = Multiverse(**mv_kwargs, **update_cfg)
+
+    # This will run, but end up "cancelled"
+    mv.run()
+    assert len(mv.status_file_paths) == 1
+
+    # By default, cancelled is regarded as finished, so we should proceed
+    assert _proceed_after_waiting_for_distributed_run(mv) is True
+
+    # Let's change the status file to appear like it's still "working"
+    status_file_path = mv.status_file_paths[0]
+    status: dict = load_yml(status_file_path)
+    status["status"] = "working"
+    write_yml(status, path=status_file_path)
+
+    # Combined progress is the value from the status file
+    assert (
+        _combined_distributed_multiverse_progress(mv.dirs["run"])
+        == status["progress"]["worked_on"]
+    )
+
+    # Can specify maximum wait time (mostly for tests).
+    # Need to respond to confirmation prompt
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+    assert _proceed_after_waiting_for_distributed_run(mv, timeout=1.0) is False
+
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+    assert _proceed_after_waiting_for_distributed_run(mv, timeout=1.0) is True
+
+    # May also skip confirmation (again, mostly for tests)
+    assert (
+        _proceed_after_waiting_for_distributed_run(
+            mv, timeout=1.0, confirm_after_timeout=False
+        )
+        is True
+    )
+
+    # Create another (cancelled) run that creates a status file
+    dmv = DistributedMultiverse(
+        model_name=mv.model_name, run_dir=mv.dirs["run"]
+    )
+    dmv.join_run(timeout=0.5, num_workers=1)
+
+    assert len(dmv.status_file_paths) == 2
+
+    # This should now mention in the logs that there was a cancelled run
+    assert (
+        _proceed_after_waiting_for_distributed_run(
+            mv, timeout=1.0, confirm_after_timeout=False
+        )
+        is True
+    )
+
+    # How about the combined progress?
+    assert _combined_distributed_multiverse_progress(mv.dirs["run"]) < 1.0
+
+
 def test_run_existing(with_test_models, tmp_output_dir):
     """Tests the invocation of the utopya run_existing command"""
 
@@ -80,7 +284,8 @@ def test_run_existing(with_test_models, tmp_output_dir):
         )
     )
     _check_result(res_prep, expected_exit=0)
-    assert "Finished working." in res_prep.output
+    assert "Successfully finished simulation run." in res_prep.output
+    assert "skip_after_setup: true" in res_prep.output
 
     # search output for run directory
     __find = res_prep.output.find(tmp_output_dir)
@@ -104,17 +309,23 @@ def test_run_existing(with_test_models, tmp_output_dir):
             os.path.join(run_dir, "data", f"uni{uni}", "out.log")
         )
 
-    # Repeat uni1 with run-existing
+    # Repeat uni1 with run-existing, which should create the output data
     res = invoke_cli(("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1"))
     _check_result(res, expected_exit=0)
+    assert "Preparing to run or continue existing simulation" in res.output
+    assert "Adding tasks for 1 universe" in res.output
     assert "uni1" in res.output
-    assert "Now creating plots" not in res.output  # evaluation not attempted
+    assert "Not automatically continuing with evaluation" in res.output
+
+    assert os.path.isfile(os.path.join(run_dir, "data", "uni1", "data.h5"))
+    assert os.path.isfile(os.path.join(run_dir, "data", "uni1", "out.log"))
 
     # Check that cannot be repeated again as data already exists
-    res_fail_repeat = invoke_cli(
-        ("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1")
-    )
-    _check_result(res_fail_repeat, expected_exit=1)
+    with pytest.raises(UniverseSetupError):
+        res_fail_repeat = invoke_cli(
+            ("run-existing", DUMMY_MODEL, run_dir, "--uni", "uni1")
+        )
+        _check_result(res_fail_repeat, expected_exit=1)
 
     # Repeat with uni2 and uni3
     res = invoke_cli(
@@ -167,50 +378,73 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert "uni1" in res.output
     assert "Now creating plots" not in res.output  # evaluation not attempted
 
-    assert not os.path.isfile(
-        os.path.join(run_dir, "data", "uni1", "this_file_should_not_exist.txt")
-    )
+    assert not os.path.isfile(bad_file_path)
 
     # Run all but skip existing
+    # Don't need a run dir (not only here, but in general)
     res = invoke_cli(
         (
             "run-existing",
             DUMMY_MODEL,
-            run_dir,
+            # run_dir,
             "--skip-existing",
         )
     )
     _check_result(res, expected_exit=0)
 
     # Check that uni4 was run
-    assert "Finished working. Total tasks worked on: 1" in res.output
     assert os.path.isfile(os.path.join(run_dir, "data", "uni4", "data.h5"))
     assert os.path.isfile(os.path.join(run_dir, "data", "uni4", "out.log"))
+    assert "Successfully finished simulation run." in res.output
+    assert "worked on:             1" in res.output
+    assert "succeeded:             1" in res.output
+    assert "skipped:               3" in res.output
 
     # Re-run all with clear existing option
+    # Can also, optionally, specify a timeout
     res = invoke_cli(
         (
             "run-existing",
             DUMMY_MODEL,
             run_dir,
             "--clear-existing",
+            "--timeout",
+            "12.34",
         )
     )
     _check_result(res, expected_exit=0)
 
-    assert "Finished working. Total tasks worked on: 4" in res.output
+    assert "Successfully finished simulation run." in res.output
+    assert "worked on:             4" in res.output
+    assert "succeeded:             4" in res.output
+    assert "skipped:               0" in res.output
 
-
-def test_eval(with_test_models, tmp_output_dir, delay):
-    """Tests the invocation of the utopya eval command"""
-    # Simplest case
-    res = invoke_cli(("eval", ADVANCED_MODEL, "-d"))
+    # Re-run selection with clear existing option
+    res = invoke_cli(
+        (
+            "run-existing",
+            DUMMY_MODEL,
+            run_dir,
+            "--clear-existing",
+            "-u",
+            "1,02,uni4",
+        )
+    )
     _check_result(res, expected_exit=0)
 
-    time.sleep(1)
+    assert "Successfully finished simulation run." in res.output
+    assert "worked on:             3" in res.output
+    assert "succeeded:             3" in res.output
+    assert "skipped:               0" in res.output
 
-    # Adjusting some of the meta config parameters
-    args = ("eval", ADVANCED_MODEL, "-d")
-    res = invoke_cli(args + ("-p", "plot_manager.raise_exc=true"))
-    _check_result(res, expected_exit=0)
-    assert "Updates to meta configuration" in res.output
+    # Mutually exclusive skip- and clear-existing
+    res = invoke_cli(
+        (
+            "run-existing",
+            DUMMY_MODEL,
+            run_dir,
+            "--clear-existing",
+            "--skip-existing",
+        )
+    )
+    _check_result(res, expected_exit=1)

@@ -76,7 +76,7 @@ The `utopya` package is **open source software** released under the [LGPLv3+][LG
 ## Copyright Notice
 
     utopya
-    Copyright (C) 2018 – 2024  utopya developers
+    Copyright (C) 2018 – 2025  utopya developers
 
     The term "utopya developers" refers to all direct contributors to this
     software package. A full list of copyright holders and information about

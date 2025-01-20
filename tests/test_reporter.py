@@ -195,15 +195,15 @@ def test_wm_progress(sleep_task):
     rep = WorkerManagerReporter(wm)
 
     # Should be zero if there are no tasks
-    assert rep.wm_progress == 0.0
+    assert rep._compute_progress()["total"] == 0.0
 
     # Should still be zero after having added a task
     wm.add_task(**sleep_task)
-    assert rep.wm_progress == 0.0
+    assert rep._compute_progress()["total"] == 0.0
 
     # Should be 1. after working
     wm.start_working()
-    assert rep.wm_progress == 1.0
+    assert rep._compute_progress()["total"] == 1.0
 
 
 def test_wm_times(rep):
@@ -226,6 +226,95 @@ def test_wm_times(rep):
     assert t2["est_end"] < dt.now()
 
 
+def test_est_left(rep):
+    """Tests (parts of) time left estimation function"""
+    cmp_est_left = rep._compute_est_left
+
+    # .. Default mode: from_start
+    # Without skipped tasks, it's easy:
+    elapsed = timedelta(seconds=2.0)
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=0, total=0.1), elapsed=elapsed
+        ).total_seconds()
+        == 18.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=0, total=0.5), elapsed=elapsed
+        ).total_seconds()
+        == 2.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=0, total=1.0), elapsed=elapsed
+        ).total_seconds()
+        == 0.0
+    )
+
+    # Not meant to be called if no progress was made, but avoids zero-div error
+    assert (
+        cmp_est_left(progress=dict(skipped=0, total=0.0), elapsed=elapsed)
+        is None
+    )
+
+    # Computation is different with skipped tasks
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=1, worked_on=10, left_to_do=10),
+            elapsed=elapsed,
+        ).total_seconds()
+        == 2.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=10, worked_on=10, left_to_do=10),
+            elapsed=elapsed,
+        ).total_seconds()
+        == 2.0
+    )
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=10, worked_on=5, left_to_do=15),
+            elapsed=elapsed,
+        ).total_seconds()
+        == 6.0
+    )
+
+    assert (
+        cmp_est_left(
+            progress=dict(skipped=1, worked_on=0, left_to_do=10),
+            elapsed=elapsed,
+        )
+        is None
+    )
+
+    # Progress buffer
+    assert (
+        cmp_est_left(
+            progress=dict(total=0),
+            elapsed=elapsed,
+            mode="from_buffer",
+        )
+        is None
+    )
+    assert "progress_buffer" not in rep._eta_info
+
+    assert (
+        cmp_est_left(
+            progress=dict(total=0.1),
+            elapsed=elapsed,
+            mode="from_buffer",
+        ).total_seconds()
+        == 18.0
+    )
+    assert len(rep._eta_info["progress_buffer"]) == 2  # have 0-value in there
+
+    # Invalid mode
+    with pytest.raises(ValueError, match="Invalid ETA computation mode"):
+        cmp_est_left(mode="bad_mode", progress=dict(), elapsed=elapsed)
+
+
 def test_parsers(rf_dict, sleep_task):
     """Tests the custom parser methods of the WorkerManagerReporter that is
     written for simple terminal reports
@@ -236,7 +325,10 @@ def test_parsers(rf_dict, sleep_task):
     # Disable minimum report interval and create shortcuts to the parse methods
     rep.min_report_intv = None
     ptc = rep._parse_task_counters
+    pdw = rep._parse_distributed_work_status
     pp = rep._parse_progress
+    pps = rep._parse_pspace_info
+    pr = rep._parse_report
     ppb = lambda *a, n=23, **kws: rep._parse_progress_bar(
         *a, num_cols=n, **kws
     )
@@ -244,26 +336,39 @@ def test_parsers(rf_dict, sleep_task):
         *a,
         num_cols=n,
         **kws,
-        info_fstr="{total_progress:>5.1f}%  of {cnt[total]} ",
+        info_fstr="{prg[total]:>5.1f}%  of {cnt[total]} ",
     )
     ppbtt = lambda *a, n=60, **kws: rep._parse_progress_bar(
         *a, num_cols=n, show_times=True, **kws
     )
 
     # Test without tasks assigned
-    assert ptc() == "total: 0,  active: 0,  finished: 0,  stopped: 0"
+    assert ptc() == (
+        "total: 0,  active: 0,  finished: 0,  invoked: 0,  spawned: 0,  "
+        "success: 0,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 0"
+    )
     assert pp() == "(No tasks assigned to WorkerManager yet.)"
     assert ppb() == "(No tasks assigned to WorkerManager yet.)"
     assert ppbt() == "(No tasks assigned to WorkerManager yet.)"
     assert ppbtt() == "(No tasks assigned to WorkerManager yet.)"
+    assert "No Multiverse associated" in pdw()
+
+    assert "Work has not begun yet." in pr()
+    assert "No tasks defined." in pr()
+
+    with pytest.raises(ValueError, match="No Multiverse associated"):
+        pps()
 
     # Assign tasks to wm
     for _ in range(11):
         wm.add_task(**sleep_task)
 
     # Test the initial return strings
-    assert ptc() == "total: 11,  active: 0,  finished: 0,  stopped: 0"
-    assert pp() == "Finished   0 / 11  (0.0%)"
+    assert ptc() == (
+        "total: 11,  active: 0,  finished: 0,  invoked: 0,  spawned: 0,  "
+        "success: 0,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 0"
+    )
+    assert pp() == "Finished   0 / 11  (0.0%, 0 skipped)"
     assert ppb() == "  ╠           ╣   0.0% "
     assert ppbt() == "  ╠           ╣   0.0%  of 11 "
     assert re.match("  ╠(.*)╣   0.0% | * elapsed | ~* left  ", ppbtt())
@@ -275,16 +380,22 @@ def test_parsers(rf_dict, sleep_task):
 
     # Start working and check again afterwards
     rep.wm.start_working()
-    assert ptc() == "total: 11,  active: 0,  finished: 11,  stopped: 0"
-    assert pp() == "Finished  11 / 11  (100.0%)"
+    assert ptc() == (
+        "total: 11,  active: 0,  finished: 11,  invoked: 11,  spawned: 11,  "
+        "success: 11,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 11"
+    )
+    assert pp() == "Finished  11 / 11  (100.0%, 0 skipped)"
     assert ppb() == "  ╠▓▓▓▓▓▓▓▓▓▓▓╣ 100.0% "
     assert ppbt() == "  ╠▓▓▓▓▓▓▓▓▓▓▓╣ 100.0%  of 11 "
     assert re.match("  ╠(▓*)╣ 100.0% | finished in *  ", ppbtt())
 
     # Add another task to the WorkerManager, which should change the counts
     rep.wm.add_task(**sleep_task)
-    assert ptc() == "total: 12,  active: 0,  finished: 11,  stopped: 0"
-    assert pp() == "Finished  11 / 12  (91.7%)"
+    assert ptc() == (
+        "total: 12,  active: 0,  finished: 11,  invoked: 11,  spawned: 11,  "
+        "success: 11,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 11"
+    )
+    assert pp() == "Finished  11 / 12  (91.7%, 0 skipped)"
     assert ppb() == "  ╠▓▓▓▓▓▓▓▓▓▓ ╣  91.7% "
     assert ppbt() == "  ╠▓▓▓▓▓▓▓▓▓▓ ╣  91.7%  of 12 "
     assert re.match("  ╠(▓*)(.*)╣  91.7% | * elapsed | ~* left  ", ppbtt())
@@ -293,8 +404,10 @@ def test_parsers(rf_dict, sleep_task):
     assert rep._parse_progress_bar(num_cols=10) == "  91.7% "
 
     # Can also use adaptive or fixed number of columns
-    assert re.match("  ╠(▓*)(.*)╣  91.7% ", ppb(n="fixed"))
-    assert re.match("  ╠(▓*)(.*)╣  91.7% ", ppb(n="adaptive"))
+    print("fixed:    ", ppb(n="fixed"))
+    print("adaptive: ", ppb(n="adaptive"))
+    assert re.match(r"  ╠(▓*)(.*)╣  91\.7% ", ppb(n="fixed"))
+    assert re.match(r"  ╠(▓*)(.*)╣  91\.7% ", ppb(n="adaptive"))
 
     # Parsing time is fast, even for adaptive column width
     N = 10000
@@ -385,11 +498,15 @@ def test_runtime_statistics(rep):
 
     # Calculate the runtime statistics
     rtstats = rep.calc_runtime_statistics()
+    print("Runtime Statistics: ", rtstats)
 
     # All entries but the std should be larger than the sleep time of the task
     for key, val in rtstats.items():
+        print("Testing key: ", key, "=", val)
         if key == "std":
             assert val > 0.0
+        elif key.startswith("num_"):
+            assert isinstance(val, int)
         else:
             assert val > SLEEP_TIME
 
@@ -491,7 +608,10 @@ def test_write_to_file(wm, rf_dict, tmpdir):
 
     # Read file content
     with open(str(report_file)) as f:
-        assert f.read() == "total: 11,  active: 0,  finished: 0,  stopped: 0"
+        assert f.read() == (
+            "total: 11,  active: 0,  finished: 0,  invoked: 0,  spawned: 0,  "
+            "success: 0,  skipped: 0,  stopped: 0,  failed: 0,  worked_on: 0"
+        )
 
     # Unset the report directory and try with relative path
     rep.report_dir = None

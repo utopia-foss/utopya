@@ -5,7 +5,7 @@
 # the Multiverse, which determines all details of how a run is performed.
 #
 # The top-level keys here are used to configure different parts of Multiverse:
-#   - properties of the Multiverse itself: `paths`, `perform_sweep`
+#   - properties of the Multiverse itself: `paths`, `perform_sweep`, ...
 #   - properties of attributes: `worker_manager`, `run_kwargs`, ...
 #   - and the parameter space that is passed on to the model instance
 #
@@ -78,6 +78,47 @@ perform_validation: true
 parameters_to_validate: {}
 
 
+# Skipping universes ..........................................................
+# Controls whether and when universe tasks will be skipped.
+#
+# Example use cases and corresponding configuration options:
+#
+#   A - Work should be done on a single machine and in one session;
+#       in this case, skipping should be disabled completely.
+#   B - Work may be joined from other machines to speed up completion;
+#       for this, enable skipping and skip
+#   C - Work should be done in two stages: first create all the output folders
+#       and configurations, then work on them independently. For this case,
+#       enable skipping and activate `skip_after_setup`.
+#
+skipping:
+  # Whether skipping is enabled at all.
+  #
+  # This should be set to false if you want to ensure that only a single
+  # Multiverse instance is allowed to generate simulation output.
+  # In that case, any skip event will instead result in an error.
+  enabled: false
+
+  # If true, all tasks will be skipped after their setup function ran, meaning
+  # that the universe output directories and config files will be created and
+  # can be worked on later on.
+  skip_after_setup: false
+
+  # How to proceed in certain situations.
+  # In all cases, the options are:  skip, raise, continue
+  #
+  # ... if a universe directory already exists
+  on_existing_uni_dir: skip
+  #
+  # ... if a universe config file already exists
+  on_existing_uni_cfg: skip
+
+  # ... if there already is universe output.
+  # Note that this is only checked for DistributedMultiverse, i.e. when running
+  # from an already existing run directory. Otherwise this is ignored.
+  # Additional option here: `clear` to remove existing output
+  on_existing_uni_output: skip
+
 
 # Reporter ....................................................................
 # The Multiverse owns a Reporter object to report on the progress of the
@@ -98,11 +139,11 @@ reporter:
       num_cols: adaptive
 
       # The format string to use for progress information
-      # Available keys:
-      #   - `total_progress` (in %)
-      #   - `active_progress` (mean progress of _active_ simulations, in %)
-      #   - `cnt` (dict of counters: `total`, `finished`, `active`)
-      info_fstr: "{total_progress:>5.1f}% "
+      # Available format string elements:
+      #   - `prg`    dict with various progress measures in percent:
+      #              `total`, `active`, `skipped`, `failed`, `success`, ...
+      #   - `cnt`    dict of counters (same keys)
+      info_fstr: "{prg[total]:>5.1f}% "
       # Example of how to access counters in format string:
       # info_fstr: "finished {cnt[finished]}/{cnt[total]} "
 
@@ -136,10 +177,14 @@ reporter:
       write_to:
         file:
           path: _report.txt
+          skip_if_dmv: false          # set true for many distributed runs
       min_report_intv: 10             # don't update this one too often
       show_host_info: true            # basic information about host machine
       show_exit_codes: true           # exit code overview
       min_num: 2                      # min. number of universes for statistics
+      show_distributed_run_info: true # extra info for distributed runs
+      distributed_status_fstr:        # how to format the status information
+        "  {progress_here:>5s}  @  {host_name_short:12s} - {pid:7d}: {status:10s}  ({tags})"
       show_individual_runtimes: true  # for large number of universes, disable
       max_num_to_show: 2048           # max. number of individual times to show
       task_label_singular: universe
@@ -152,11 +197,21 @@ reporter:
         file:
           path: _sweep_info.txt
           skip_if_empty: true
+          skip_if_dmv: true         # already have an identical sweep info file
         log:
           lvl: 18
           skip_if_empty: true
       fstr: "Sweeping over the following parameter space:\n\n{sweep_info:}"
       only_for_sweep: true
+
+    # Creates a work status file, for internal use only
+    work_status:
+      parser: work_status
+      write_to:
+        file:
+          path: .status.yml
+          skip_if_dmv: false
+      min_report_intv: 5.
 
   # Can define a default format to use
   # default_format: ~
@@ -193,7 +248,7 @@ worker_manager:
   #       live on for a longer time, blocking the spawning of new tasks.
 
   # Periodic task callback (in units of poll events). Set None to deactivate.
-  periodic_task_callback: ~
+  periodic_task_callback: 100
 
   # How to react upon a simulation exiting with non-zero exit code
   nonzero_exit_handling: raise
@@ -223,17 +278,27 @@ worker_manager:
   # Keys refer to events, values are lists of report format names, which can be
   # defined via the WorkerManagerReporter (see `reporter.report_formats` above)
   rf_spec:
-    before_working: [sweep_info]
+    before_working: [work_status, sweep_info]
     while_working: [progress_bar]
+    task_invoked: []
     task_spawned: [progress_bar]
     monitor_updated: [progress_bar]
-    task_finished: [progress_bar, report_file]
-    after_work: [progress_bar, report_file]
-    after_abort: [progress_bar, report_file]
+    periodic: [progress_bar]
+    task_finished: [work_status, progress_bar, report_file]
+    task_skipped: [work_status, progress_bar, report_file]
+    after_work: [work_status, progress_bar, report_file]
+    after_cancel: [work_status, progress_bar, report_file]
+    after_fail: [work_status, report_file]
 
 
 # Configuration for the WorkerManager.start_working method
 run_kwargs:
+  # Whether task execution order should be shuffled before a run starts.
+  # This may help in load-balancing when some tasks systematically take longer
+  # than others, but it means that a potentially specified task priority is
+  # completely ignored (typically, all tasks have the same priority, though).
+  shuffle_tasks: false
+
   # Total timeout (in s) of a run; to ignore, set to ~
   timeout: ~
 
@@ -248,13 +313,6 @@ run_kwargs:
 # The defaults for the worker_kwargs
 # These are passed to the setup function of each WorkerTask before spawning
 worker_kwargs:
-  # Whether the task should be performed at all.
-  # If false, this will call each universes' setup function, writing respective
-  # config files, but not actually carry out universe simulations. This is used
-  # in combination with the DistributedMultiverse, which can then carry out the
-  # actual universe runs.
-  perform_task: true
-
   # Whether to save the streams of each Universe to a log file
   save_streams: true
   # This file is saved only after the WorkerTask has finished in order to

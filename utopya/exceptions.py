@@ -62,6 +62,51 @@ class WorkerTaskStopConditionFulfilled(WorkerTaskNonZeroExit):
     """
 
 
+class WorkerTaskSetupError(WorkerTaskError):
+    """Raised upon errors in the worker task setup function"""
+
+
+class SkipWorkerTask(WorkerTaskError):
+    """Raised to indicate that a worker task should be skipped."""
+
+    def __init__(self, reason: str, *args, **kwargs):
+        self.reason = reason
+        super().__init__(reason, *args, **kwargs)
+
+
+class WorkerTaskNotSkippable(WorkerTaskError):
+    """Raised when a worker task was NOT marked as skippable but a skip event
+    was raised."""
+
+
+# -- Multiverse ---------------------------------------------------------------
+
+
+class MultiverseError(UtopyaException):
+    """Base class for Multiverse-related exceptions"""
+
+
+class MultiverseRunAlreadyFinished(MultiverseError):
+    """Raised when a Multiverse run has already finished."""
+
+
+class UniverseSetupError(MultiverseError):
+    """Raised on issues with universe during setup"""
+
+
+class UniverseOutputDirectoryError(UniverseSetupError):
+    """Raised on issues with universe output directory"""
+
+
+class SkipUniverse(SkipWorkerTask, MultiverseError):
+    """Raised to indicate that a universe should be skipped."""
+
+
+class SkipUniverseAfterSetup(SkipUniverse):
+    """Raised to indicate that this universe (and all others) are deliberately
+    skipped after their setup function was invoked."""
+
+
 # -----------------------------------------------------------------------------
 
 

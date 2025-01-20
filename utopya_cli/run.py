@@ -1,10 +1,17 @@
 """Implements the utopya run CLI subtree"""
 
 import os
+from typing import List, Union
 
 import click
 
-from ._shared import OPTIONS, add_options, complete_model_names, default_none
+from ._shared import (
+    OPTIONS,
+    add_options,
+    complete_model_names,
+    complete_run_dirs,
+    default_none,
+)
 from ._utils import Echo
 
 
@@ -44,16 +51,6 @@ from ._utils import Echo
     help=(
         "Forces a single simulation or a sweep. If not given, will use the "
         "value specified in the meta configuration."
-    ),
-)
-@click.option(
-    "--no-work",
-    "worker_perform_task",
-    default=True,
-    is_flag=True,
-    help=(
-        "Whether to call WorkerTask or NoWorkTask. NoWorkerTask only creates "
-        "configurations, but does not spawn a worker. No-work implies no-eval."
     ),
 )
 @click.option(
@@ -110,18 +107,36 @@ from ._utils import Echo
         "True, such that a sweep is invoked."
     ),
 )
+#
+#
+@add_options(OPTIONS["num_workers"])  # -W, --num-workers
+@add_options(OPTIONS["timeout"])  # --timeout
 @click.option(
-    "-W",
-    "--num-workers",
+    "--skippable/--not-skippable",
+    "skipping_enabled",
     default=None,
-    type=click.IntRange(min=-os.cpu_count() + 1, max=+os.cpu_count()),
     help=(
-        "Shortcut for meta-config entry ``worker_manager.num_workers``, which "
-        "sets the number of worker processes. "
-        "Can be an integer; if negative, will deduce the number from the "
-        "number of available CPUs."
+        "If given, will overwrite the default value for `skipping.enabled` "
+        "in the meta-configuration. Skippable universes allow that a run can "
+        "be joined from another machine using `utopya join-run`, with the "
+        "disadvantage that the run is now distributed across machines..."
     ),
 )
+@click.option(
+    "--skip-after-setup",
+    "--no-work",
+    "skip_after_setup",
+    default=False,
+    is_flag=True,
+    help=(
+        "By setting --no-work, the universe setup will be run, creating a "
+        "universe output directory, but no universe process will be spawned. "
+        "Use this as a first stage of distributedly working on a Multiverse "
+        "run using multiple machines."
+    ),
+)
+#
+#
 @click.option(
     "--set-model-params",
     "--mp",
@@ -219,9 +234,8 @@ def run(ctx, **kwargs):
     kwargs["plots_cfg"] = plots_cfg
     kwargs["update_plots_cfg"] = update_plots_cfg
 
-    mv = model.create_mv(run_cfg_path=run_cfg, **update_dict)
-
     # Running the simulation . . . . . . . . . . . . . . . . . . . . . . . . .
+    mv = model.create_mv(run_cfg_path=run_cfg, **update_dict)
     mv.run()
 
     # Check whether to start evaluation routine
@@ -236,6 +250,20 @@ def run(ctx, **kwargs):
         _log.progress("Exiting now ...\n")
         return
 
+    elif kwargs.pop("skip_after_setup", False):
+        _log.caution("No work was performed!")
+        _log.note("Universe output folders and config files were created.")
+        _log.note(
+            "Evaluation is not possible, because there is no output yet."
+        )
+        _log.remark(
+            "To perform individual simulations, call:\n\n  %s\n",
+            f"utopya run-existing {kwargs['model_name']} "
+            f"{os.path.basename(mv.dirs['run'])}",
+        )
+        _log.progress("Exiting now ...\n")
+        return
+
     # Loading and evaluating . . . . . . . . . . . . . . . . . . . . . . . . .
     _load_and_eval(
         _log=_log,
@@ -243,3 +271,193 @@ def run(ctx, **kwargs):
         mv=mv,
         **kwargs,
     )
+
+
+# -----------------------------------------------------------------------------
+# -- EXPERIMENTAL interface ---------------------------------------------------
+# -----------------------------------------------------------------------------
+
+
+@click.command(
+    "run-existing",
+    help=(
+        "**EXPERIMENTAL** (Re-)Run universes of an existing simulation run.\n"
+        "\n"
+        "Restores a run of MODEL_NAME from the given RUN_DIR and allows to "
+        "either continue working on it (e.g. if it was incomplete) or "
+        "re-running universes (e.g. because they failed or were stopped).\n"
+        "\n"
+        "Note that this feature is currently *experimental*, meaning that the "
+        "interface may still change a lot. If you encounter any issues, "
+        "please let us know."
+    ),
+)
+@click.argument("model_name", shell_complete=complete_model_names)
+@click.argument(
+    "run_dir",
+    shell_complete=complete_run_dirs,
+    required=False,
+)
+@add_options(OPTIONS["label"])
+@click.option(
+    "-u",
+    "--uni",
+    "--universe",
+    "universes",
+    multiple=True,
+    type=str,
+    help=(
+        "If given, will only run a selection of these universes, identified "
+        "by their state number, e.g. ``--uni 0423``.\n\n"
+        "Note that leading zeros and the ``uni`` prefix are optional. "
+        "To supply multiple, use the ``-u`` option multiple times "
+        "(``-u uni123 -u uni234 -u uni345``) or provide a comma-separated "
+        "list without spaces (``-u 154,167,180``).\n\n"
+        "If no universes are specified, a run on all universes is performed."
+    ),
+)
+@click.option(
+    "-c",
+    "--clear-existing",
+    "clear_existing_output",
+    default=False,
+    is_flag=True,
+    help=(
+        "Whether to clear existing output files from universes. "
+        "Set this option to re-run universes that were previously run. "
+        "Cannot be used together with --skip-existing."
+    ),
+)
+@click.option(
+    "-s",
+    "--skip-existing",
+    "skip_existing_output",
+    default=False,
+    is_flag=True,
+    help=(
+        "Whether to skip universes with existing output. "
+        "Set this option to complete universes from a previous run. "
+        "Cannot be used together --clear-existing."
+    ),
+)
+@add_options(OPTIONS["num_workers"])  # -W, --num-workers
+@add_options(OPTIONS["timeout"])  # --timeout
+@click.option(
+    "--no-reports",
+    default=False,
+    is_flag=True,
+    help=(
+        "If set, will not write report files. Set this flag if invoking this "
+        "command with many individual universes to avoid creating as many "
+        "report files."
+    ),
+)
+#
+#
+#
+@click.pass_context
+def run_existing(
+    ctx,
+    run_dir,
+    model_name: str,
+    label: str,
+    universes: Union[str, List[str]],
+    num_workers: int,
+    timeout: float,
+    clear_existing_output: bool,
+    skip_existing_output: bool,
+    no_reports: bool,
+):
+    """Repeats a model simulation in parts or entirely"""
+    import utopya
+
+    _log = utopya._getLogger("utopya")
+
+    model = utopya.Model(name=model_name, bundle_label=label)
+    mv = model.create_distributed_mv(run_dir=run_dir, no_reports=no_reports)
+
+    if clear_existing_output and skip_existing_output:
+        raise ValueError(
+            "Options --skip-existing and --clear-existing are mutually "
+            "exclusive but both were set."
+        )
+    elif clear_existing_output:
+        on_existing_uni_output = "clear"
+    elif skip_existing_output:
+        on_existing_uni_output = "skip"
+    else:
+        on_existing_uni_output = "raise"
+
+    mv.run(
+        universes=universes if universes else "all",
+        num_workers=num_workers,
+        timeout=timeout,
+        on_existing_uni_output=on_existing_uni_output,
+    )
+
+    _log.note("Not automatically continuing with evaluation routine.")
+    _log.remark(
+        "Once the run is complete, call:\n\n  utopya eval %s %s\n",
+        model_name,
+        os.path.basename(mv.dirs["run"]),
+    )
+    _log.progress("Exiting now ...\n")
+
+
+# -----------------------------------------------------------------------------
+
+
+@click.command(
+    "join-run",
+    help=(
+        "**EXPERIMENTAL** Join a currently-running simulation.\n"
+        "\n"
+        "Initializes MODEL_NAME from RUN_DIR and joins in working on "
+        "the remaining simulation tasks, thus speeding up the progress.\n"
+        "\n"
+        "Only runs that were started with the ``--skippable`` option can be "
+        "joined, otherwise the main simulation would fail.\n"
+        "\n"
+        "Note that this feature is currently *experimental*, meaning that the "
+        "interface may still change a lot. If you encounter any issues, "
+        "please let us know."
+    ),
+)
+@click.argument("model_name", shell_complete=complete_model_names)
+@click.argument(
+    "run_dir",
+    shell_complete=complete_run_dirs,
+    required=False,
+)
+@add_options(OPTIONS["label"])
+@add_options(OPTIONS["num_workers"])  # -W, --num-workers
+@add_options(OPTIONS["timeout"])  # --timeout
+#
+#
+#
+@click.pass_context
+def join_run(
+    ctx,
+    run_dir,
+    model_name: str,
+    label: str,
+    num_workers: int,
+    timeout: float,
+):
+    """Repeats a model simulation in parts or entirely"""
+    import utopya
+
+    _log = utopya._getLogger("utopya")
+
+    model = utopya.Model(name=model_name, bundle_label=label)
+    mv = model.create_distributed_mv(run_dir=run_dir)
+
+    mv.join_run(num_workers=num_workers, timeout=timeout)
+
+    _log.info("Not proceeding to evaluation for this joined run.")
+    _log.remark(
+        "Once the run is complete, call:\n\n  utopya eval %s %s\n",
+        model_name,
+        os.path.basename(mv.dirs["run"]),
+    )
+    _log.progress("Exiting now ...\n")

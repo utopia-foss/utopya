@@ -17,8 +17,8 @@ INSTALL_DEPS = [
     "python-git-info",
     #
     # first-party packages
-    "yayaml>=0.2",
-    "paramspace>=2.7",
+    "yayaml>=0.2.2",
+    "paramspace>=2.8",
     "dantro>=0.20.1",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort

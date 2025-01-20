@@ -2,6 +2,7 @@
 """A minimal implementation of a model that uses the utopya interface"""
 
 import sys
+import time
 
 import h5py as h5
 import numpy as np
@@ -29,6 +30,7 @@ class MinimalModel:
         h5group: h5.Group,
         state_size: int,
         distribution_params: dict,
+        sleep_time: float,
         **__,
     ):
         """Initialize the model instance with a previously constructed RNG and
@@ -41,6 +43,7 @@ class MinimalModel:
             state_size (int): Size of the state vector
             distribution_params (dict): Passed to the random number
                 distribution
+            sleep_time (float): how long to sleep each iteration step
             **__: Additional model parameters (ignored)
         """
         self._name = name
@@ -49,6 +52,7 @@ class MinimalModel:
         self._rng = rng
 
         self._distribution_params = distribution_params
+        self._sleep_time = sleep_time
 
         # Setup state as random values in [0, 1)
         self._state = self._rng.uniform(
@@ -86,6 +90,9 @@ class MinimalModel:
         self._state += self._rng.uniform(
             **self._distribution_params, size=(self._state.size,)
         )
+
+        if self._sleep_time > 0:
+            time.sleep(self._sleep_time)
 
     def write_data(self):
         """Write the current state into the state dataset.

@@ -1,6 +1,19 @@
 # Changelog
 
-`utopya` aims to adhere to [semantic versioning](https://semver.org/).
+`utopya` aims to adhere to [semantic versioning](https://semver.org/).  
+However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
+
+## v1.3.2
+- !82 revamps `Task` management in the `WorkerMangger`:
+    - Tasks can be marked as skipped, which can be determined in their setup function.
+    - We now keep track of the status of a task, whether it was invoked, spawned, cancelled, failed, skipped, or finished successfully.
+    - This alleviates the need for the previously introduced `NoWorkTask`.
+- !82 implements `utopya join-run`, allowing to join an active simulation run from another machine in order to speed up its completion.
+    - Main requirement is that the machines share their output destination, e.g. a network drive, and the network drive supports file locking.
+    - The progress bars and separate report files indicate individual progress.
+- !82 improves `utopya run-existing` universe selection, reporting, and documentation.
+- !82 makes many improvements to the report file that is being written, e.g. showing other `DistributedMultiverse` instances and their progress.
+- !82 improves the CLI to allow calling `utopya eval` in a separate process while the simulation is still running: the CLI will then wait until the active simulation has finished before starting evaluation.
 
 ## v1.3.1
 - !81 also saves the user name in the report file, useful in shared `utopya_output` directories.

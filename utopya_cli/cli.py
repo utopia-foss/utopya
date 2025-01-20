@@ -7,13 +7,13 @@ from .config import config
 from .eval import evaluate
 from .models import models
 from .projects import projects
-from .run import run
-from .run_existing import run_existing as __run_existing
+from .run import join_run, run, run_existing
 from .test import run_test as test
 
 SUBCOMMANDS = [
     run,
-    __run_existing,
+    run_existing,
+    join_run,
     evaluate,
     test,
     batch,
@@ -35,7 +35,7 @@ cli = click.Group(
         "data processing pipeline for simulation output."
     ),
     epilog=(
-        "Copyright (C) 2018 – 2024  utopya developers\n\n"
+        "Copyright (C) 2018 – 2025  utopya developers\n\n"
         "utopya is free software and comes with absolutely no warranty. "
         "You are welcome to redistribute it under the conditions specified in "
         "the LGPLv3+ license. "
