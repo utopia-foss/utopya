@@ -505,6 +505,8 @@ class Multiverse:
             - ``model_mv`` (model-specific multiverse updates)
             - ``user``
 
+        Other layers are applied later.
+
         Returns a 3-tuple of (assembled meta config, cfg paths, cfg dicts).
         """
         # Load the base layers
@@ -2528,30 +2530,39 @@ def get_status_file_paths(
     return glob.glob(os.path.join(run_dir, status_file_glob))
 
 
-def get_distributed_work_status(run_dir: str, **kwargs) -> Dict[str, dict]:
+def get_distributed_work_status(
+    run_dir: str, **kwargs
+) -> Dict[str, Optional[dict]]:
     """Finds and loads the work status files in the given directory"""
+
+    def try_load(p: str) -> Optional[dict]:
+        try:
+            return load_yml(p)
+        except Exception:
+            return None
+
     return {
-        path: load_yml(path)
+        path: try_load(path)
         for path in sorted(get_status_file_paths(run_dir, **kwargs))
     }
 
 
-def unfinished_distributed_multiverses(
-    run_dir: str, **kwargs
-) -> Dict[str, dict]:
-    """Returns status of the distributed Multiverse instances that are still
-    running."""
-    return {
-        k: v
-        for k, v in get_distributed_work_status(run_dir, **kwargs).items()
-        if v and v["status"] not in ("finished", "failed", "cancelled")
-    }
+# .. Extracting information from the work status dict .........................
 
 
-def _combined_distributed_multiverse_progress(run_dir: str, **kwargs) -> float:
-    """Sum of individual multiverse's active progress"""
+def active_dmvs(dws: Dict[str, Optional[dict]]) -> Dict[str, Optional[dict]]:
+    """Returns status of the distributed Multiverse instances that are
+    currently ``working``, given a distributed work status dict."""
+    return {k: v for k, v in dws.items() if v and v["status"] in ("working",)}
+
+
+def combined_dmv_progress(dws: Dict[str, Optional[dict]]) -> float:
+    """Extracts the sum of individual multiverse's active progress"""
+    if not dws:
+        return float("nan")
+
+    # TODO consider returning a tuple of (lower bound sum, sum) value, where
+    #      the first value ignores nans.
     return sum(
-        s["progress"]["worked_on"]
-        for s in get_distributed_work_status(run_dir, **kwargs).values()
-        if s
+        s["progress"]["worked_on"] if s else float("nan") for s in dws.values()
     )

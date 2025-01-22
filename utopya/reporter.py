@@ -1463,7 +1463,13 @@ class WorkerManagerReporter(Reporter):
 
         # Multiverse information
         if self.mv:
+            run_dirname = os.path.basename(self.mv.dirs["run"])
+            run_ts, run_note = run_dirname.split("_", 1)
+
             parts += [f"From:    {type(self.mv).__name__}"]
+            if run_note:
+                run_note = run_note.replace("_", " ").replace("-", " ")
+                parts += [f"Note:    {run_note}"]
             parts += [f"Tags:    {', '.join(self.mv._run_tags)}"]
             parts += [""]
 
@@ -1588,6 +1594,7 @@ class WorkerManagerReporter(Reporter):
             tasks_by_exit_codes = copy.deepcopy(self.tasks_by_exit_codes)
             n_tasks_exited = sum(len(t) for t in tasks_by_exit_codes.values())
             n_tasks_total = len(self.wm.tasks)
+            n_tasks_left = n_tasks_total - n_tasks_exited
             _w = max(
                 [1] + [len(str(len(t))) for t in tasks_by_exit_codes.values()]
             )
@@ -1605,7 +1612,8 @@ class WorkerManagerReporter(Reporter):
                     k="success",
                     v=(
                         f"{n_success:>{_w}d} / {n_tasks_exited} finished "
-                        f"{task_label},  {n_tasks_total - n_tasks_exited} left"
+                        f"{task_label}"
+                        + (f",  {n_tasks_left} left" if n_tasks_left else "")
                     ),
                     w=12,
                 )
