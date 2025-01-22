@@ -101,6 +101,7 @@ The :py:mod:`utopya` package is **open source software** released under the `LGP
     utopya API <api/utopya>
     utopya backend API <api/utopya_backend>
     cli/index
+    Base Meta-Configuration <ref/base_meta_cfg>
     Base Plot Configuration Pool <ref/base_plots>
     dantro <https://gitlab.com/utopia-project/dantro>
     dantro docs <https://dantro.readthedocs.io/>

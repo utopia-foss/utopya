@@ -2563,6 +2563,10 @@ def combined_dmv_progress(dws: Dict[str, Optional[dict]]) -> float:
 
     # TODO consider returning a tuple of (lower bound sum, sum) value, where
     #      the first value ignores nans.
-    return sum(
-        s["progress"]["worked_on"] if s else float("nan") for s in dws.values()
-    )
+    try:
+        return sum(
+            s["progress"]["worked_on"] if s else float("nan")
+            for s in dws.values()
+        )
+    except Exception:
+        return float("nan")

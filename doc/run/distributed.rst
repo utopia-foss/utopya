@@ -19,12 +19,12 @@ Joining Runs
 
 In utopya, "joining" a simulation run means:
 
-* You started a simulation on machine A simply via ``utopya run``
+* You started a simulation on machine A simply via ``utopya run --skippable``
 * You have one or more machines B1, B2, ... that should help in performing that run; you use ``utopya join-run`` to let them join.
 
-Effectively, all involved machines work together by in covering the defined parameter space, thus finishing the simulation faster.
+Effectively, all involved machines work together in covering the defined parameter space, thus finishing the simulation faster.
 
-To allow this, the :py:class:`~utopya.multiverse.Multiverse` and :py:class:`~utopya.multiverse.DistributedMultiverse` instances take a more lenient approach on what happens if a universe output directory (folders like ``<out_dir>/data/uni123``) already exists: they assume that some other Multiverse has already grabbed that task and is working on it, meaning that they don't need to work on it.
+To allow this, the :py:class:`~utopya.multiverse.Multiverse` and :py:class:`~utopya.multiverse.DistributedMultiverse` instances take a more lenient approach on what happens if a universe output directory (folders like ``<out_dir>/data/uni123``) already exists: they assume that some other Multiverse has already grabbed that task and is working on it, meaning that they don't need to work on it and will *skip* the task.
 Essentially, the content of the ``data`` directory is used as a way of communicating about tasks that are already being worked on, hence allowing other Multiverse instances to skip those tasks.
 
 .. note::
@@ -36,7 +36,13 @@ Essentially, the content of the ``data`` directory is used as a way of communica
 .. note::
 
     For ``utopya join-run`` to work, the main simulation needs to be invoked with the ``skippable.enabled`` flag set.
-    This can be done via the CLI flag ``--skippable`` or, more permanently, via the user or project configuration updates.
+    This can be done via the CLI flag ``--skippable`` or, more permanently, via additional entries in the :ref:`user <mv_meta_cfg_layer_user>` or :ref:`project configuration <mv_meta_cfg_layer_framework_and_project>`:
+
+    .. code-block:: yaml
+
+        # At the top level of the meta-configuration, set:
+        skipping:
+          enabled: true
 
 🚧 ...
 

@@ -1464,7 +1464,11 @@ class WorkerManagerReporter(Reporter):
         # Multiverse information
         if self.mv:
             run_dirname = os.path.basename(self.mv.dirs["run"])
-            run_ts, run_note = run_dirname.split("_", 1)
+            if "_" in run_dirname:
+                _, run_note = run_dirname.split("_", 1)
+            else:
+                _ = run_dirname
+                run_note = ""
 
             parts += [f"From:    {type(self.mv).__name__}"]
             if run_note:
