@@ -178,7 +178,7 @@ explicit_node_positions:
       from_dict: !dag_result pos_from_dict
 
 
-custom_graph_creation:
+custom_graph: &custom_graph
   <<: *base
   transform:
     - nx.: complete_graph
@@ -187,6 +187,7 @@ custom_graph_creation:
       tag: graph
 
   graph: !dag_result graph
+  graph_creation: ~
   graph_drawing:
     positions:
       model: random
@@ -207,6 +208,7 @@ custom_graph_arr_creation:
         dims: [foo, bar]
       tag: graphs
   graph: !dag_result graphs
+  graph_creation: ~
   graph_drawing: {}
 
 
@@ -278,6 +280,27 @@ external_properties: &ext_prop
   _match: No tag
 
 
+.warn_times_deprecated:
+  <<: *base
+  _match: deprecated
+  select:
+    graph_group: static
+  animation:
+    enabled: True
+    writer: frames
+  suptitle_kwargs:
+    title: 'time: {time:d}'
+  graph_animation:
+    times:
+      from_property: weight
+
+
+.warn_graph_and_graph_creation:
+  _match: Received both a 'graph' argument and a 'graph_creation' configuration
+  <<: *custom_graph
+  graph_creation:
+    <<: *graph_creation
+
 
 # -- Animation ----------------------------------------------------------------
 
@@ -291,8 +314,9 @@ graph_anim1: &graph_anim
   suptitle_kwargs:
     title: 'time: {time:d}'
   graph_animation:
-    times:
-      from_property: weight
+    sel:
+      time:
+        from_property: weight
 
 
 graph_anim2:
@@ -312,8 +336,8 @@ graph_anim2:
     enabled: True
     writer: frames
   graph_animation:
-    times:
-      isel: [-1]
+    isel:
+      time: [-1]
     update_colormapping: True
 
 
@@ -327,8 +351,8 @@ graph_anim3:
     edge_labels:
       enabled: True
   graph_animation:
-    times:
-      sel: [0, 1]
+    sel:
+      time: [0, 1]
     update_colormapping: False
 
 
@@ -348,8 +372,9 @@ graph_anim4:
 graph_anim_external:
   <<: [*ext_prop, *graph_anim]
   graph_animation:
-    times:
-      from_property: some_transformed_node_prop
+    sel:
+      time:
+        from_property: some_transformed_node_prop
 
 
 graph_anim_custom_graph_creation:
@@ -373,6 +398,7 @@ graph_anim_custom_graph_creation:
       tag: graphs
 
   graph: !dag_result graphs
+  graph_creation: ~
 
   graph_drawing:
     positions:
@@ -387,12 +413,15 @@ graph_anim_custom_graph_creation:
     title: ""
 
 
+# .. Errors and Warnings ......................................................
+
 .err_anim_amgiguous_time_spec:
   <<: *graph_anim
   graph_animation:
-    times:
-      sel: [0]
-      isel: [0]
+    sel:
+      time: [0]
+    isel:
+      time: [0]
 
 .err_anim_not_dataarray:
   <<: *base
