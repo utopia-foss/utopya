@@ -3,6 +3,11 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).  
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
+## v1.3.3
+- !83 improves reliability of `utopya eval` while waiting for distributed Multiverse runs to finish.
+- !83 extends the documentation on meta-configuration levels.
+
+
 ## v1.3.2
 - !82 revamps `Task` management in the `WorkerMangger`:
     - Tasks can be marked as skipped, which can be determined in their setup function.
@@ -15,8 +20,10 @@ However, given the rather burst-like development on this package, features are o
 - !82 makes many improvements to the report file that is being written, e.g. showing other `DistributedMultiverse` instances and their progress.
 - !82 improves the CLI to allow calling `utopya eval` in a separate process while the simulation is still running: the CLI will then wait until the active simulation has finished before starting evaluation.
 
+
 ## v1.3.1
 - !81 also saves the user name in the report file, useful in shared `utopya_output` directories.
+
 
 ## v1.3.0
 ### Features and enhancements

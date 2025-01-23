@@ -159,6 +159,11 @@ test:py313:
   extends: test:py39
   image: python:3.13
 
+  # FIXME Stochastic failure of this job due to some ruamel.yaml issue
+  retry:
+    max: 1
+    when: script_failure
+
 
 # -- Deploy Stage -------------------------------------------------------------
 

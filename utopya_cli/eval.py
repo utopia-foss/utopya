@@ -2,6 +2,7 @@
 
 import copy
 import logging
+import math
 import os
 import readline
 import sys
@@ -279,7 +280,7 @@ def _load_and_eval(
                     if click.confirm(_prompt):
                         break
 
-                except (KeyboardInterrupt, click.exceptions.cancel):
+                except (KeyboardInterrupt, click.exceptions.Abort):
                     pass
 
                 print("\n")
@@ -418,19 +419,18 @@ def _proceed_after_waiting_for_distributed_run(
 ) -> bool:
     from utopya._resources import SPINNER_WIDE
     from utopya.multiverse import (
-        _combined_distributed_multiverse_progress,
+        active_dmvs,
+        combined_dmv_progress,
         get_distributed_work_status,
         get_status_file_paths,
-        unfinished_distributed_multiverses,
     )
     from utopya.tools import format_time
 
     # May need to wait for distributed runs to finish
     run_dir = mv.dirs["run"]
-    if not (udmv := unfinished_distributed_multiverses(run_dir)):
+    dws = get_distributed_work_status(run_dir)
+    if not active_dmvs(dws):
         return True
-
-    Ntot = len(get_status_file_paths(run_dir))
 
     _log.caution("This Multiverse run is still being worked on.")
     _log.note("Periodically checking work status of linked Multiverses ...")
@@ -443,16 +443,42 @@ def _proceed_after_waiting_for_distributed_run(
 
     try:
         i = 0
+        run_finished = False
         t0 = time.time()
-        while udmv := unfinished_distributed_multiverses(run_dir):
-            N = len(udmv)
-            Ntot = len(get_status_file_paths(run_dir))
-            comb_progress = _combined_distributed_multiverse_progress(run_dir)
+
+        while not run_finished:
+            # Status files may be temporarily unavailable, so check multiple
+            # times before making a decision that would lead to existing the
+            # checking loop ...
+            for _ in range(5):
+                dws = get_distributed_work_status(run_dir)
+                Ntot = len(dws)
+
+                dws_active = active_dmvs(dws)
+                N_active = len(dws_active)
+
+                if N_active:
+                    # At least one active Multiverse, will not prematurely exit
+                    # this checking loop
+                    break
+
+                # else: apparently, there were no active Multiverses ... which
+                # may also be due to a partial status file, though! So let's
+                # wait a little bit and check again.
+                time.sleep(0.02)
+
+            comb_progress = combined_dmv_progress(dws)
+            comb_progress_str = (
+                f"{comb_progress * 100.:.3g}%"
+                if comb_progress >= 0.0
+                else "? %"
+            )
             _spinner = SPINNER_WIDE[i % len(SPINNER_WIDE)]
+
             print(
                 f"     {_spinner}  ",
-                f"Waiting for {N:d} / {Ntot} Multiverses to finish ... "
-                f"({comb_progress * 100.:.3g}% combined progress)",
+                f"Waiting for {N_active:d} / {Ntot} Multiverses to finish "
+                f"working ... ({comb_progress_str} combined progress)",
                 end="   \r",
             )
             time.sleep(check_every)
@@ -467,6 +493,10 @@ def _proceed_after_waiting_for_distributed_run(
                 if confirm_after_timeout:
                     raise KeyboardInterrupt()
                 break
+
+            # Check whether the run has finished, then exit the loop
+            if not N_active:
+                run_finished = True
 
     except KeyboardInterrupt:
         print("\n")

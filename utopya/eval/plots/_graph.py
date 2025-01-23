@@ -2,9 +2,8 @@
 
 import copy
 import logging
-import os
 import warnings
-from typing import Any, Callable, Dict, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -415,13 +414,19 @@ class GraphPlot:
 
         log.remark("Now drawing ...")
 
-        # Draw nodes and edges
-        self._mpl_nodes = nx.draw_networkx_nodes(
-            self._g, pos=self.positions, ax=ax, **self._node_kwargs
-        )
-        self._mpl_edges = nx.draw_networkx_edges(
-            self._g, pos=self.positions, ax=ax, **self._edge_kwargs
-        )
+        # .. Draw nodes and edges
+        # This sometimes creates warnings that are useless, so we ignore them
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="No data for colormapping"
+            )
+
+            self._mpl_nodes = nx.draw_networkx_nodes(
+                self._g, pos=self.positions, ax=ax, **self._node_kwargs
+            )
+            self._mpl_edges = nx.draw_networkx_edges(
+                self._g, pos=self.positions, ax=ax, **self._edge_kwargs
+            )
 
         # NOTE networkx does not pass on the norms to the respective matplotlib
         #      functions. Hence, they need to be set manually. For the edges,
@@ -857,7 +862,7 @@ class GraphPlot:
             # If provided a mapping, map the property values to scalar values
             if "map_to_scalar" in node_color:
                 map_to_scalar = np.vectorize(node_color["map_to_scalar"].get)
-                _node_colors = list(map_to_scalar(_node_colors))
+                _node_colors = list(map_to_scalar())  # FIXME ?
 
             else:
                 _node_colors = self._scale_to_interval(

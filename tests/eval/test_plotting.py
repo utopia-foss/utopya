@@ -1229,15 +1229,21 @@ def test_draw_graph(out_dir, graph_dm, with_test_models):
     # Now plot
     pm.plot_from_cfg(plots_cfg=GRAPH_PLOTS_STANDALONE)
 
-    # ... and now plot the cases that are expected to raise -- ensure they do
+    # ... and now the cases that are expected to raise or warn - ensure they do
     plots_cfg = load_yml(GRAPH_PLOTS_STANDALONE)
 
     for name, cfg in plots_cfg.items():
-        if not name.startswith(".err_"):
-            continue
+        match = cfg.pop("_match", None)
+        if name.startswith(".err_"):
+            with pytest.raises(PlotCreatorError, match=match):
+                pm.plot(name.replace(".", ""), **cfg)
 
-        with pytest.raises(PlotCreatorError, match=cfg.pop("_match", None)):
-            pm.plot(name.replace(".", ""), **cfg)
+        elif name.startswith(".warn_"):
+            with pytest.warns((UserWarning, DeprecationWarning), match=match):
+                pm.plot(name.replace(".", ""), **cfg)
+
+        else:
+            continue
 
 
 @pytest.mark.skip("No graph model available")  # TODO need simple graph model

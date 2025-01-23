@@ -1,5 +1,6 @@
 """Tests the utopya run CLI command"""
 
+import math
 import os
 import time
 import traceback
@@ -197,7 +198,8 @@ def test_wait_for_run_to_finish(
     from utopya.multiverse import (
         DistributedMultiverse,
         Multiverse,
-        _combined_distributed_multiverse_progress,
+        combined_dmv_progress,
+        get_distributed_work_status,
     )
     from utopya.tools import load_yml, write_yml
     from utopya_cli.eval import _proceed_after_waiting_for_distributed_run
@@ -227,10 +229,21 @@ def test_wait_for_run_to_finish(
     write_yml(status, path=status_file_path)
 
     # Combined progress is the value from the status file
-    assert (
-        _combined_distributed_multiverse_progress(mv.dirs["run"])
-        == status["progress"]["worked_on"]
-    )
+    dws = get_distributed_work_status(mv.dirs["run"])
+    assert combined_dmv_progress(dws) == status["progress"]["worked_on"]
+
+    # Can also be nan, if the work status dict is empty, corrupted, or there is
+    # an empty status dict for one of the DMVs
+    assert math.isnan(combined_dmv_progress({}))
+
+    dws["foo"] = None
+    assert math.isnan(combined_dmv_progress(dws))
+
+    dws["foo"] = dict(progress=dict(worked_on=0.5))
+    assert not math.isnan(combined_dmv_progress(dws))
+
+    dws["foo"] = dict(progress="not a dict")
+    assert math.isnan(combined_dmv_progress(dws))
 
     # Can specify maximum wait time (mostly for tests).
     # Need to respond to confirmation prompt
@@ -264,8 +277,9 @@ def test_wait_for_run_to_finish(
         is True
     )
 
-    # How about the combined progress?
-    assert _combined_distributed_multiverse_progress(mv.dirs["run"]) < 1.0
+    # How about the combined progress now?
+    dws = get_distributed_work_status(mv.dirs["run"])
+    assert combined_dmv_progress(dws) < 1.0
 
 
 def test_run_existing(with_test_models, tmp_output_dir):
