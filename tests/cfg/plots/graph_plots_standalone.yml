@@ -274,6 +274,20 @@ external_properties: &ext_prop
         from_property: labels
 
 
+with_and_without_edges: !pspace
+  <<: *base
+  graph_creation:
+    <<: *graph_creation
+    without_edges: !sweep
+      default: false
+      values: [false, true]
+  graph_drawing:
+    <<: *graph_drawing
+    draw_edges: !sweep
+      default: true
+      values: [false, true]
+
+
 .err_invalid_ext_prop:
   <<: *ext_prop
   compute_only: [graph_group]
@@ -411,6 +425,20 @@ graph_anim_custom_graph_creation:
     skip_empty_frames: True
   suptitle_kwargs:
     title: ""
+
+
+graph_anim_with_and_without_edges: !pspace
+  <<: *graph_anim
+  graph_creation:
+    <<: *graph_creation
+    without_edges: !sweep
+      default: false
+      values: [false, true]
+  graph_drawing:
+    <<: *graph_drawing
+    draw_edges: !sweep
+      default: true
+      values: [false, true]
 
 
 # .. Errors and Warnings ......................................................

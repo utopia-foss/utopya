@@ -3,6 +3,11 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).  
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
+
+## v1.3.4
+- !84 allows to not draw edges in `.plot.graph`; this is sometimes useful if there would be so many edges that they could not be distinguished anyway.
+
+
 ## v1.3.3
 - !83 improves reliability of `utopya eval` while waiting for distributed Multiverse runs to finish.
 - !83 extends the documentation on meta-configuration levels.
