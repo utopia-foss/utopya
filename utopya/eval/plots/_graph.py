@@ -49,6 +49,7 @@ class GraphPlot:
         positions: dict = None,
         nodes: dict = None,
         edges: dict = None,
+        draw_edges: bool = True,
         node_labels: dict = None,
         edge_labels: dict = None,
         mark_nodes: dict = None,
@@ -210,6 +211,8 @@ class GraphPlot:
                 arrows=True), only norms of type matplotlib.colors.Normalize
                 are allowed.
 
+            draw_edges (bool, optional): Whether to draw edges at all.
+
             node_labels (dict, optional):
                 Drawing configuration for the node labels. The following
                 arguments are allowed:
@@ -298,6 +301,7 @@ class GraphPlot:
         self._show_edge_labels = False
         self._node_kwargs = {}
         self._edge_kwargs = {}
+        self._draw_edges = draw_edges
         self._node_label_kwargs = {}
         self._edge_label_kwargs = {}
 
@@ -339,6 +343,7 @@ class GraphPlot:
         positions: dict = None,
         nodes: dict = None,
         edges: dict = None,
+        draw_edges: bool = None,
         node_labels: dict = None,
         edge_labels: dict = None,
         mark_nodes: dict = None,
@@ -362,6 +367,8 @@ class GraphPlot:
                 model the positions are recalculated.
             nodes (dict, optional): Temporarily updates the node-kwargs
             edges (dict, optional): Temporarily updates the edge-kwargs
+            draw_edges (bool, optional): Temporarily updates whether to draw
+                edges at all.
             node_labels (dict, optional): Temporarily updates the
                 node-label-kwargs
             edge_labels (dict, optional): Temporarily updates the
@@ -386,6 +393,7 @@ class GraphPlot:
         edge_cbar_kwargs_cache = copy.deepcopy(self._edge_cbar_kwargs)
         show_node_cbar_cache = self._show_node_cbar
         show_edge_cbar_cache = self._show_edge_cbar
+        draw_edges_cache = self._draw_edges
         show_node_labels_cache = self._show_node_labels
         show_edge_labels_cache = self._show_edge_labels
         node_kwargs_cache = copy.deepcopy(self._node_kwargs)
@@ -399,6 +407,9 @@ class GraphPlot:
         if positions is not None:
             self.parse_positions(**positions)
 
+        self._draw_edges = (
+            draw_edges if draw_edges is not None else self._draw_edges
+        )
         self.parse_nodes(
             update_colormapping=update_colormapping,
             **(nodes if nodes else {}),
@@ -424,9 +435,11 @@ class GraphPlot:
             self._mpl_nodes = nx.draw_networkx_nodes(
                 self._g, pos=self.positions, ax=ax, **self._node_kwargs
             )
-            self._mpl_edges = nx.draw_networkx_edges(
-                self._g, pos=self.positions, ax=ax, **self._edge_kwargs
-            )
+
+            if self._draw_edges:
+                self._mpl_edges = nx.draw_networkx_edges(
+                    self._g, pos=self.positions, ax=ax, **self._edge_kwargs
+                )
 
         # NOTE networkx does not pass on the norms to the respective matplotlib
         #      functions. Hence, they need to be set manually. For the edges,
@@ -434,7 +447,11 @@ class GraphPlot:
         #      edges if graph is undirected or `arrows=False`.
         self._mpl_nodes.set_norm(self._node_colormanager.norm)
 
-        if not isinstance(self._mpl_edges, list):
+        if (
+            self._draw_edges
+            and self._edge_colormanager
+            and not isinstance(self._mpl_edges, list)
+        ):
             self._mpl_edges.set_norm(self._edge_colormanager.norm)
             self._mpl_edges.set_cmap(self._edge_colormanager.cmap)
 
@@ -446,7 +463,7 @@ class GraphPlot:
                 ax=ax,
                 **self._node_label_kwargs,
             )
-        if self._show_edge_labels:
+        if self._draw_edges and self._show_edge_labels:
             self._mpl_edge_labels = nx.draw_networkx_edge_labels(
                 self._g,
                 pos=self.positions,
@@ -457,7 +474,7 @@ class GraphPlot:
         if not suppress_cbar:
             self.add_colorbars(
                 show_node_cbar=self._show_node_cbar,
-                show_edge_cbar=self._show_edge_cbar,
+                show_edge_cbar=(draw_edges and self._show_edge_cbar),
                 fig=fig,
                 ax=ax,
                 **add_colorbars,
@@ -472,6 +489,7 @@ class GraphPlot:
         self._edge_cbar_kwargs = edge_cbar_kwargs_cache
         self._show_node_cbar = show_node_cbar_cache
         self._show_edge_cbar = show_edge_cbar_cache
+        self._draw_edges = draw_edges_cache
         self._show_node_labels = show_node_labels_cache
         self._show_edge_labels = show_edge_labels_cache
         self._node_kwargs = node_kwargs_cache
@@ -508,7 +526,7 @@ class GraphPlot:
         fig = fig if fig is not None else self.fig
         ax = ax if ax is not None else self.ax
 
-        if show_node_cbar:
+        if show_node_cbar and self._mpl_nodes is not None:
             if remove_previous and self._mpl_node_cbar:
                 self._mpl_node_cbar.remove()
 
@@ -520,7 +538,7 @@ class GraphPlot:
                 **update_cbar_kwargs,
             )
 
-        if show_edge_cbar:
+        if show_edge_cbar and self._mpl_edges is not None:
             if isinstance(self._mpl_edges, list):
                 # When drawing arrows, draw_networkx_edges returns a list of
                 # FancyArrowPatches which can not be used directly in
@@ -977,8 +995,8 @@ class GraphPlot:
         ``width``, ``edge_color``.
 
         Args:
-            width (None, optional): Line width of edges
-            edge_color (None, optional): Single color (string or RGB(A) tuple
+            width (optional): Line width of edges
+            edge_color (optional): Single color (string or RGB(A) tuple
                 or numeric value) or sequence of colors (default='k').
                 If numeric values are specified they will be mapped to colors
                 using the edge_cmap and edge_vmin, edge_vmax parameters.
@@ -987,9 +1005,9 @@ class GraphPlot:
                 ``map_to_scalar``, which is a dict of numeric target values
                 keyed by property value. This allows to map from non-numeric
                 (e.g. categorical) properties.
-            edge_cmap (None, optional): The colormap. Passed as ``cmap`` to
+            edge_cmap (optional): The colormap. Passed as ``cmap`` to
                 :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
-            cmap_norm (None, optional): The norm used for the color mapping.
+            cmap_norm (optional): The norm used for the color mapping.
                 Passed as ``norm`` to
                 :py:class:`~dantro.plot.utils.color_mngr.ColorManager`.
                 Is overwritten, if a discrete colormap is specified in
@@ -1026,6 +1044,15 @@ class GraphPlot:
                 :py:class:`matplotlib.colors.Normalize` and if arrows are to be
                 drawn.
         """
+        # If we don't have any edges to draw, there's no point in continuing
+        # here, as we won't be able to map any values!
+        if not self._edges_to_draw or not self._draw_edges:
+            log.debug(
+                "There are no edges to draw! "
+                "Not parsing edge drawing arguments."
+            )
+            return
+
         if kwargs.pop("edgelist", None) is not None:
             warnings.warn(
                 "The 'edgelist' argument will be ignored. Use the select "
@@ -1059,7 +1086,7 @@ class GraphPlot:
             # If provided a mapping, map the property values to scalar values
             if "map_to_scalar" in edge_color:
                 map_to_scalar = np.vectorize(edge_color["map_to_scalar"].get)
-                _edge_colors = list(map_to_scalar(_edge_colors))
+                _edge_colors = list(map_to_scalar(_edge_colors))  # FIXME
 
             else:
                 _edge_colors = self._scale_to_interval(
