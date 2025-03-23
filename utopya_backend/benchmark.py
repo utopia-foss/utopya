@@ -241,7 +241,9 @@ class ModelBenchmarkMixin:
         group_name: str = "benchmark",
         compression: int = 3,
         dtype: str = "float32",
-        info_fstr: str = "  {name:>15s} : {time_str:s}",
+        info_fstr: str = (
+            "  {time_str:>13s}   {percent_of_max:5.1f}%   {name:s}"
+        ),
     ):
         """Applies benchmark configuration parameters.
 
@@ -273,7 +275,10 @@ class ModelBenchmarkMixin:
             info_fstr (str, optional): The format string to use for generation
                 of :py:meth:`.elapsed_info`.
                 Available keys: ``name``, ``seconds`` (float), ``time_str``
-                (pre-formatted using :py:func:`dantro.tools.format_time`).
+                (pre-formatted using :py:func:`dantro.tools.format_time`),
+                ``w`` (width of longest ``name``), ``percent_of_max`` (float,
+                relative timer value in percent compared to the largest timer
+                value).
         """
         self.__enabled = enabled
         self._add_time_elapsed_to_monitor_info = add_to_monitor
@@ -364,11 +369,19 @@ class ModelBenchmarkMixin:
     @property
     def elapsed_info(self) -> str:
         """Prepares a formatted string with all elapsed times"""
+        max_w = max([1] + [len(name) for name in self.elapsed.keys()])
+        max_seconds = max([0] + [s for s in self.elapsed.values()])
+
         return "\n".join(
             self._time_elapsed_info_fstr.format(
                 name=name,
                 seconds=seconds,
                 time_str=_format_time(seconds, ms_precision=2),
+                max_seconds=max_seconds,
+                percent_of_max=(
+                    (seconds / max_seconds) * 100 if max_seconds > 0.0 else 0.0
+                ),
+                w=max_w,
             )
             for name, seconds in self.elapsed.items()
         )
