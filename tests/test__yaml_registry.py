@@ -353,10 +353,10 @@ def test_entry_manipulation_and_validation(test_registry):
         entry.desc = dict(foo="bar")
 
     # ... that *could* be coerced -- but without validation
-    entry.model_config["validate_assignment"] = False
+    entry.nested.model_config["validate_assignment"] = False
 
-    entry.desc = -123
-    assert entry.desc == -123
+    entry.nested.a_str = -123
+    assert entry.nested.a_str == -123
 
     # ... will have a warning upon serializing
     with pytest.warns(
