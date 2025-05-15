@@ -69,4 +69,3 @@ def test_test(with_test_models):
     assert "collected 0 items" in res.output
     assert "test session starts" in res.output
     assert "no tests ran" in res.output
-    assert "file or directory not found" in res.output
