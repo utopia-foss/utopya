@@ -154,7 +154,12 @@ def test_ModelBenchmarkMixin(minimal_pspace_cfg, tmpdir):
     cfg["root_model_name"] = "MyStepwiseModel"
     cfg["MyStepwiseModel"] = dict(
         sleep_time=0.01,
-        benchmark=dict(enabled=True, add_to_monitor=True),
+        benchmark=dict(
+            enabled=True,
+            add_to_monitor=True,
+            info_fstr="⏲️ {time_str:>13s}   {percent_of_max:5.1f}%   {name:s}",
+            info_kwargs=dict(sort=True),
+        ),
     )
     cfg["monitor_emit_interval"] = 0.1
     cfg["num_steps"] = 42
@@ -199,6 +204,12 @@ def test_ModelBenchmarkMixin(minimal_pspace_cfg, tmpdir):
     assert all(not t.running for t in timers)
     assert all(t.finished for t in timers)
     assert all(t.elapsed > 0 for t in timers)
+
+    # Test formatting
+    assert "⏲️" in m.elapsed_info
+    assert "⏲️" in m.format_elapsed_info()
+    assert "⏲️" not in m.format_elapsed_info("{w:}", width=10, sort=False)
+    assert "⌛" in m.format_elapsed_info("{x:}", x="⌛")
 
     # Delete the model
     timers = m.timers
