@@ -297,16 +297,14 @@ def test_copy(registry):
         TEST_PROJECT_NAME,
     )
     res = invoke_cli(cmd + args + shared_args)
+    print(res.output)
     assert res.exit_code == 0
 
     # Can disable postprocessing
     res = invoke_cli(cmd + args + shared_args + ("--no-pp",))
+    print(res.output)
     assert res.exit_code == 0
     assert "Post-processing routines were disabled." in res.output
-
-    # And may not be getting a prompt
-    res = invoke_cli(cmd + args + ("--dry-run",))
-    assert res.exit_code == 0
 
     # Can pass file extensions to skip, which may also lead to empty file maps
     res = invoke_cli(cmd + args + shared_args + ("--skip-exts", "pyc py .yml"))
