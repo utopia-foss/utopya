@@ -241,7 +241,10 @@ class ModelBenchmarkMixin:
         group_name: str = "benchmark",
         compression: int = 3,
         dtype: str = "float32",
-        info_fstr: str = "  {name:>15s} : {time_str:s}",
+        info_fstr: str = (
+            "  {time_str:>13s}   {percent_of_max:5.1f}%   {name:s}"
+        ),
+        info_kwargs: dict = None,
     ):
         """Applies benchmark configuration parameters.
 
@@ -271,14 +274,22 @@ class ModelBenchmarkMixin:
                 By default, this is reduced float precision, because the times
                 given by :py:func:`time.time` are not as precise anyway.
             info_fstr (str, optional): The format string to use for generation
-                of :py:meth:`.elapsed_info`.
+                of :py:meth:`.elapsed_info` and as default when invoking
+                :py:meth:`.format_elapsed_info`.
                 Available keys: ``name``, ``seconds`` (float), ``time_str``
-                (pre-formatted using :py:func:`dantro.tools.format_time`).
+                (pre-formatted using :py:func:`dantro.tools.format_time`),
+                ``w`` (width of longest ``name``), ``max_seconds`` (float,
+                largest timer value), and ``percent_of_max`` (float, relative
+                timer value in percent compared to ``max_seconds``).
+            info_kwargs (dict, optional): additional arguments to configure how
+                :py:meth:`.elapsed_info` formats timer information. This is not
+                used when calling :py:meth:`.format_elapsed_info`.
         """
         self.__enabled = enabled
         self._add_time_elapsed_to_monitor_info = add_to_monitor
         self._show_time_elapsed_on_exit = show_on_exit
         self._time_elapsed_info_fstr = info_fstr
+        self._time_elapsed_info_kwargs = info_kwargs if info_kwargs else {}
 
         self.__write = write
         self.__dset_compression = compression
@@ -363,14 +374,73 @@ class ModelBenchmarkMixin:
 
     @property
     def elapsed_info(self) -> str:
-        """Prepares a formatted string with all elapsed times"""
+        """Prepares a formatted string with all elapsed times.
+
+        Calls :py:meth:`.format_elapsed_info` with the ``info_fstr`` and
+        ``info_kwargs`` arguments specified at initialization.
+        """
+        return self.format_elapsed_info(
+            self._time_elapsed_info_fstr, **self._time_elapsed_info_kwargs
+        )
+
+    # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+    def format_elapsed_info(
+        self,
+        info_fstr: str = None,
+        *,
+        sort: bool = False,
+        width: int = None,
+        ms_precision: int = 2,
+        **fstr_kwargs,
+    ) -> str:
+        """Prepares a formatted string with all elapsed times.
+
+        Args:
+            info_fstr (str, optional): The format string to use. If not given,
+                will use the default ``info_fstr`` specified at initialization.
+                Available keys: ``name``, ``seconds`` (float), ``time_str``
+                (pre-formatted using :py:func:`dantro.tools.format_time`),
+                ``w`` (width of longest ``name``), ``max_seconds`` (float,
+                largest timer value), and ``percent_of_max`` (float, relative
+                timer value in percent compared to ``max_seconds``).
+            sort (bool, optional): Whether to sort timers (in descending order)
+                before formatting them.
+            width (int, optional): If given, will use this fixed value for the
+                ``w`` format key instead of the maximum width.
+            ms_precision (int, optional): How many digits precision to use
+                for millisecond time intervals.
+            **fstr_kwargs: Passed on to the format operation.
+        """
+        if info_fstr is None:
+            info_fstr = self._time_elapsed_info_fstr
+
+        max_w = (
+            width
+            if width
+            else max([1] + [len(name) for name in self.elapsed.keys()])
+        )
+        max_seconds = max([0] + [s for s in self.elapsed.values()])
+
+        if sort:
+            names_and_seconds = list(self.elapsed.items())
+            names_and_seconds.sort(key=lambda item: item[1], reverse=True)
+        else:
+            names_and_seconds = self.elapsed.items()
+
         return "\n".join(
-            self._time_elapsed_info_fstr.format(
+            info_fstr.format(
                 name=name,
                 seconds=seconds,
-                time_str=_format_time(seconds, ms_precision=2),
+                time_str=_format_time(seconds, ms_precision=ms_precision),
+                max_seconds=max_seconds,
+                percent_of_max=(
+                    (seconds / max_seconds) * 100 if max_seconds > 0.0 else 0.0
+                ),
+                w=max_w,
+                **fstr_kwargs,
             )
-            for name, seconds in self.elapsed.items()
+            for name, seconds in names_and_seconds
         )
 
     # .. Storing timer data ...................................................
