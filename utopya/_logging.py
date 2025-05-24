@@ -24,6 +24,7 @@ _coloredlogs.install(
         remark=dict(color=246),  # grey
         note=dict(color="cyan"),
         info=dict(bright=True),
+        ping=dict(color="yellow"),
         progress=dict(color="green"),
         caution=dict(color=202),  # orange
         hilight=dict(color="yellow", bold=True),
