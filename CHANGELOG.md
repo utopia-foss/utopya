@@ -4,6 +4,13 @@
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
 
+## v1.3.5
+- !85 improves benchmark results formatting (through `elapsed_info` property):
+    - New format keys: `max_seconds` (largest timer value), `w` (width of longest timer name), and `percent_of_max` (percent of largest timer value).
+    - Allow sorting by timer value through `info_kwargs.sort` argument.
+    - Add separate `format_elapsed_info` method with all arguments exposed.
+
+
 ## v1.3.4
 - !84 allows to not draw edges in `.plot.graph`; this is sometimes useful if there would be so many edges that they could not be distinguished anyway.
 
