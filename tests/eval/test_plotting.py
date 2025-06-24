@@ -31,7 +31,6 @@ import utopya.eval.plots.attractor
 import utopya.eval.plots.ca
 import utopya.eval.plots.distributions
 import utopya.eval.plots.graph
-import utopya.eval.plots.snsplot
 import utopya.eval.plots.time_series
 from utopya import MODELS, DataManager, Multiverse, PlotManager
 from utopya.eval import PlotHelper
