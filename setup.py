@@ -2,6 +2,8 @@
 
 from setuptools import find_packages, setup
 
+_DANTRO_REPO = "https://gitlab.com/utopia-project/dantro"
+
 # .. Dependency lists .........................................................
 
 INSTALL_DEPS = [
@@ -19,7 +21,8 @@ INSTALL_DEPS = [
     # first-party packages
     "yayaml>=0.2.2",
     "paramspace>=2.8",
-    "dantro>=0.20.2",
+    # "dantro>=0.21.0",  # FIXME Use this (instead of below) once released
+    f"dantro @ git+{_DANTRO_REPO}@375-add-snsplot#egg=dantro",
 ]
 # NOTE When adding a new dependency, make sure to denote it in the isort
 #      configuration, see pyproject.toml.
