@@ -1,6 +1,7 @@
 """Implements a model that is optimized for a stepwise iteration paradigm."""
 
 import abc
+from typing import Tuple
 
 from .base import BaseModel
 
@@ -9,7 +10,13 @@ from .base import BaseModel
 
 class StepwiseModel(BaseModel):
     """A base class that is optimized for models based on stepwise integration,
-    i.e. with constant time increments."""
+    i.e. with constant time increments.
+
+
+    The time steps that will be written are defined by a range operation,
+    ``range(start, stop, step)``.
+    More specifically: ``range(write_start, num_steps+1, write_every)``.
+    """
 
     # .. Implementation of (some) abstract methods ............................
 
@@ -30,10 +37,7 @@ class StepwiseModel(BaseModel):
 
     def should_write(self) -> bool:
         """Decides whether to write data or not"""
-        return bool(
-            self._time > self._write_start
-            and self._time % (self._write_every - self._write_start) == 0
-        )
+        return self._time in range(*self._write_start_stop_step)
 
     # .. New abstract methods .................................................
 
@@ -61,14 +65,26 @@ class StepwiseModel(BaseModel):
         """
         self._time = 0
 
-        self.log.info("Extracting time step parameters ...")
+        self.log.info("Extracting time step and writing parameters ...")
         self._num_steps = num_steps
         self._write_every = write_every
         self._write_start = write_start
 
-        self.log.info("  Iteration steps:  %-8d", self.num_steps)
-        self.log.info("  Write every:      %-8d", self.write_every)
-        self.log.info("  Write start:      %-8d", self.write_start)
+        self.log.info("  Iteration steps:  %d", self.num_steps)
+        self.log.info("  Write start:      %d", self.write_start)
+        self.log.info("  Write every:      %d", self.write_every)
+
+        _rg = range(*self._write_start_stop_step)
+        self.log.info(
+            "  Writing steps:    %d : %s = %s",
+            len(_rg),
+            _rg,
+            (
+                "[{}, {}, {}, …, {}, {}]".format(*_rg[:3], _rg[-2], _rg[-1])
+                if len(_rg) > 6
+                else list(_rg)
+            ),
+        )
 
     def _setup_finished(self):
         """Called after the model setup has finished."""
@@ -125,6 +141,10 @@ class StepwiseModel(BaseModel):
         """Returns the ``write_every`` parameter for this simulation run."""
         return self._write_every
 
+    @property
+    def _write_start_stop_step(self) -> Tuple[int, int, int]:
+        return (self._write_start, self._num_steps + 1, self._write_every)
+
     # .. Data I/O helper methods ..............................................
 
     def create_ts_dset(
@@ -166,10 +186,10 @@ class StepwiseModel(BaseModel):
                 if the size of the coordinates did not match the dimension size
         """
         # Prepare arguments
-        num_writes = 1 + (
-            (self.num_steps - max(self.time, self.write_start))
-            // self.write_every
-        )
+        start, stop, step = self._write_start_stop_step
+        start = max(self.time, start)
+        num_writes = len(range(start, stop, step))
+
         dims = ("time",) + extra_dims
         extra_dim_sizes = tuple(sizes[d] for d in extra_dims)
         initial_size = (0,) + extra_dim_sizes

@@ -230,6 +230,7 @@ def test_StepwiseModel_basic(minimal_pspace_cfg, tmpdir):
 
     assert model.time == 42
     assert model._num_writes == 43
+    assert model._num_writes == len(range(*model._write_start_stop_step))
     assert model._num_monitor_emits >= 5
 
     # Hack around the time limit to run again and test interrupt handling
@@ -267,6 +268,38 @@ def test_StepwiseModel_basic(minimal_pspace_cfg, tmpdir):
     assert h5file
     del model
     assert not h5file
+
+
+def test_StepwiseModel_custom_write(minimal_pspace_cfg, tmpdir):
+    """Tests write_start and write_every"""
+    # Create the configuration file, filling it with model-specific info
+    cfg = minimal_pspace_cfg
+    cfg["root_model_name"] = "MyStepwiseModel"
+    cfg["MyStepwiseModel"] = dict(sleep_time=0.01)
+    cfg["monitor_emit_interval"] = 0.1
+    cfg["num_steps"] = 42
+    cfg["write_start"] = 11
+    cfg["write_every"] = 2
+
+    cfg_path = tmpdir.join("cfg.yml")
+    write_yml(cfg, path=cfg_path)
+
+    # Instantiate a model instance from that config file
+    model = MyStepwiseModel(cfg_file_path=cfg_path)
+
+    assert model.name == "MyStepwiseModel"
+    assert model.time == 0
+    assert model.write_start == 11
+    assert model.write_every == 2
+    assert model._write_start_stop_step == (11, 43, 2)
+    assert model._num_writes == 0  # initial state not yet written
+
+    # Run the model and test its state afterwards
+    model.run()
+
+    assert model.time == 42
+    assert model._num_writes == 16
+    assert model._num_writes == len(range(*model._write_start_stop_step))
 
 
 def test_StepwiseModel_missing_methods(minimal_pspace_cfg, tmpdir):
