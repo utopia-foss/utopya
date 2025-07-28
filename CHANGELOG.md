@@ -3,6 +3,9 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).  
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
+## v1.3.6 🚧
+- !90 fixes a bug in `StepwiseModel` where `write_start` led to corrupted output data.
+
 
 ## v1.3.5
 - !85 improves benchmark results formatting (through `elapsed_info` property):
