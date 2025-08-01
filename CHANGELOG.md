@@ -5,6 +5,8 @@ However, given the rather burst-like development on this package, features are o
 
 ## v1.3.6 🚧
 - !90 fixes a bug in `StepwiseModel` where `write_start` led to corrupted output data.
+- !91 shows parameter space information in the log output *before* starting to add tasks, such that there is no need to wait for it.
+    - Achieved by adding new reporter invocations: `before_adding_sweep_tasks` and `before_adding_single_task`.
 
 
 ## v1.3.5

@@ -831,7 +831,7 @@ class WorkerManager:
 
         # Resolve the spec name and invoke the reports
         rfs = self.rf_spec[rf_spec_name]
-        if not isinstance(rfs, list):
+        if not isinstance(rfs, (list, tuple)):
             rfs = [rfs]
 
         for rf in rfs:

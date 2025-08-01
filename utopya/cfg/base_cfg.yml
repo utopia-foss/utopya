@@ -191,18 +191,28 @@ reporter:
       task_label_plural: universes
 
     # Creates a parameter sweep information file
-    sweep_info:
+    sweep_info: &rf_sweep_info
       parser: pspace_info
       write_to:
         file:
           path: _sweep_info.txt
           skip_if_empty: true
           skip_if_dmv: true         # already have an identical sweep info file
+        # log:
+        #   lvl: 18
+        #   skip_if_empty: true
+      fstr: "Sweeping over the following parameter space:\n\n{sweep_info:}"
+      min_tasks_added: 2
+
+    # A special report format *only* for showing the sweep information,
+    # independent of the sweep info file creation
+    log_sweep_info:
+      <<: *rf_sweep_info
+      min_tasks_added: 0
+      write_to:
         log:
           lvl: 18
           skip_if_empty: true
-      fstr: "Sweeping over the following parameter space:\n\n{sweep_info:}"
-      only_for_sweep: true
 
     # Creates a work status file, for internal use only
     work_status:
@@ -278,6 +288,8 @@ worker_manager:
   # Keys refer to events, values are lists of report format names, which can be
   # defined via the WorkerManagerReporter (see `reporter.report_formats` above)
   rf_spec:
+    before_adding_single_task: []
+    before_adding_sweep_tasks: [log_sweep_info]
     before_working: [work_status, sweep_info]
     while_working: [progress_bar]
     task_invoked: []

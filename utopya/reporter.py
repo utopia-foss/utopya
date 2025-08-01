@@ -1735,7 +1735,7 @@ class WorkerManagerReporter(Reporter):
         self,
         *,
         fstr: str = "{sweep_info:}",
-        only_for_sweep: bool = True,
+        min_tasks_added: int = 0,
         report_no: int = None,
     ) -> str:
         """Provides information about the parameter space.
@@ -1752,8 +1752,10 @@ class WorkerManagerReporter(Reporter):
         Args:
             fstr (str, optional): The format string the sweep info should be
                 embedded into. Needs to contain ``sweep_info`` key.
-            only_for_sweep (bool, optional): If True, returns empty string
-                if only a single task was defined.
+            min_tasks_added (int, optional): Number of tasks that need to have
+                been added in order for showing the parameter space info.
+                If zero, will always return the pspace info, this can be useful
+                if invoking this before the WorkerManager got *any* tasks!
             report_no (int, optional): A counter variable passed by the
                 :py:class:`~utopya.reporter.ReportFormat` call, indicating
                 how often this parser was called so far.
@@ -1769,7 +1771,7 @@ class WorkerManagerReporter(Reporter):
                 "Cannot parse ParamSpace information."
             )
 
-        if only_for_sweep and len(self.wm.tasks) <= 1:
+        if len(self.wm.tasks) < min_tasks_added:
             return ""
 
         pspace = self.mv.meta_cfg["parameter_space"]
