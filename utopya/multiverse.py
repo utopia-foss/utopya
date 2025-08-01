@@ -1701,6 +1701,9 @@ class Multiverse:
                 perform_sweep=False,
             )
 
+            # Custom report invocation
+            self.wm._invoke_report("before_adding_single_task")
+
             # Add the task to the worker manager.
             log.progress("Adding task for simulation of a single universe ...")
             self._add_sim_task(uni_id_str="0", uni_cfg=uni_cfg, is_sweep=False)
@@ -1715,6 +1718,9 @@ class Multiverse:
                 "the run_single method or add sweeps to your "
                 "run configuration using the !sweep YAML tags."
             )
+
+        # A custom reporter invocation
+        self.wm._invoke_report("before_adding_sweep_tasks")
 
         # Get the parameter space iterator and the number of already-existing
         # tasks (to later compute the number of _added_ tasks)
