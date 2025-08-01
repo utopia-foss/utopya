@@ -1694,15 +1694,15 @@ class Multiverse:
             # Only need the default state of the parameter space
             uni_cfg = pspace.default
 
+            # Custom report invocation when only adding single task
+            self.wm._invoke_report("before_adding_single_task")
+
             # Make a backup of the parameter space that is *actually* used
             self._perform_pspace_backup(
                 psp.ParamSpace(uni_cfg),
                 filename="parameter_space",
                 perform_sweep=False,
             )
-
-            # Custom report invocation
-            self.wm._invoke_report("before_adding_single_task")
 
             # Add the task to the worker manager.
             log.progress("Adding task for simulation of a single universe ...")
@@ -1719,9 +1719,6 @@ class Multiverse:
                 "run configuration using the !sweep YAML tags."
             )
 
-        # A custom reporter invocation
-        self.wm._invoke_report("before_adding_sweep_tasks")
-
         # Get the parameter space iterator and the number of already-existing
         # tasks (to later compute the number of _added_ tasks)
         psp_iter = pspace.iterator(with_info="state_no_str")
@@ -1733,6 +1730,9 @@ class Multiverse:
             self._perform_pspace_backup(
                 pspace, filename="parameter_space", perform_sweep=True
             )
+
+            # Custom reporter invocation for sweep tasks
+            self.wm._invoke_report("before_adding_sweep_tasks")
 
             # Do a sweep over the whole activated parameter space
             vol = pspace.volume
@@ -1771,6 +1771,9 @@ class Multiverse:
                 self._perform_pspace_backup(
                     pspace, filename="parameter_space", perform_sweep=True
                 )
+
+            # Custom reporter invocation for sweep tasks
+            self.wm._invoke_report("before_adding_sweep_tasks")
 
             # Inform about the number of universes to be simulated
             log.progress(
