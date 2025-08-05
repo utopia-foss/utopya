@@ -198,11 +198,9 @@ reporter:
           path: _sweep_info.txt
           skip_if_empty: true
           skip_if_dmv: true         # already have an identical sweep info file
-        # log:
-        #   lvl: 18
-        #   skip_if_empty: true
-      fstr: "Sweeping over the following parameter space:\n\n{sweep_info:}"
-      min_tasks_added: 2
+      fstr: &sweep_info_fstr
+        "Sweeping over the following parameter space:\n\n{sweep_info:}"
+      min_tasks_added: 2            # -> only for parameter sweeps
 
     # A special report format *only* for showing the sweep information,
     # independent of the sweep info file creation
@@ -213,6 +211,7 @@ reporter:
         log:
           lvl: 18
           skip_if_empty: true
+      fstr: !add ["  ", *sweep_info_fstr]  # to match log output
 
     # Creates a work status file, for internal use only
     work_status:

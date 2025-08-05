@@ -128,7 +128,7 @@ def test_init():
         WorkerManager(num_workers=1, poll_delay=-1000)
 
     with pytest.warns(UserWarning):
-        WorkerManager(num_workers=1, poll_delay=0.001)
+        WorkerManager(num_workers=1, poll_delay=0.0001)
 
     # Test different `spawn_rate` arguments
     with pytest.raises(ValueError, match="needs to be a positive integer"):

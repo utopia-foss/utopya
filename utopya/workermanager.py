@@ -35,6 +35,9 @@ switched (depending on whether a signed or unsigned integer convention is
 used) or where a convention is used such that a *handled* signal is turned into
 an exit code of ``128 + abs(signum)``."""
 
+POLL_DELAY_WARNING_THRS: float = 0.001
+"""Below this `poll_delay` time, will issue a warning."""
+
 # -----------------------------------------------------------------------------
 
 
@@ -362,12 +365,13 @@ class WorkerManager:
         will be emitted.
         """
         if val <= 0.0:
-            raise ValueError(f"Poll delay needs to be positive, was {val}!")
-        elif val < 0.01:
+            raise ValueError(f"Poll delay needs to be positive, was {val}s!")
+        elif val < POLL_DELAY_WARNING_THRS:
             warnings.warn(
-                "Setting a poll delay of {} < 0.01s can lead to "
-                "significant CPU load. Consider choosing a higher "
-                "value.",
+                f"Setting a poll delay of {val}s < {POLL_DELAY_WARNING_THRS}s "
+                "can lead to increased CPU load. If you experience issues "
+                "with high main thread CPU time, consider choosing a longer "
+                "delay time.",
                 UserWarning,
             )
         self._poll_delay = val
