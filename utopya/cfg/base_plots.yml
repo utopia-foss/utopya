@@ -183,12 +183,6 @@ _:
 
 
 
-# -- Seaborn plots ------------------------------------------------------------
-.plot.snsplot:
-  module: !add [*utopya_plots, .snsplot]
-  plot_func: snsplot
-
-
 
 # -- Graph plots --------------------------------------------------------------
 .plot.graph:

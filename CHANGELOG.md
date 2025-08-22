@@ -3,10 +3,12 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).  
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
-## v1.3.6 🚧
+## v1.3.6
 - !90 fixes a bug in `StepwiseModel` where `write_start` led to corrupted output data.
 - !91 shows parameter space information in the log output *before* starting to add tasks, such that there is no need to wait for it.
     - Achieved by adding new reporter invocations: `before_adding_sweep_tasks` and `before_adding_single_task`.
+- !89 removes the `.plot.snsplot` function in favour of the upstream-implemented replacement (same name, extended functionality, see [dantro v0.21.0](https://gitlab.com/utopia-project/dantro/-/releases/v0.21.0)).
+    - Now supports `auto_encoding` as well as `files` iteration.
 
 
 ## v1.3.5

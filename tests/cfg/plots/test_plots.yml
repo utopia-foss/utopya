@@ -205,12 +205,12 @@ fg_imshow_hexagonal_auto_encoding:
   <<: *fg_imshow_hex
 
   auto_encoding: true
-  x: ~
-  y: ~
   col: ~
 
 
 # -- seaborn plots ------------------------------------------------------------
+# These are implemented in dantro but tested here additionally to ensure that
+# integration with models works well.
 
 sns_kinds:
   <<: *sns_shared

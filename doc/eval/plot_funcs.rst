@@ -209,17 +209,3 @@ Brings faceting support to :py:func:`~utopya.eval.plots.ca.imshow_hexagonal`:
 Invokes :py:func:`~utopya.eval.plots.graph.draw_graph`.
 
 .. todo:: 🚧
-
-
-
-
-
-
------
-
-``.plot.snsplot``: Plot using seaborn
--------------------------------------
-
-Invokes :py:func:`~utopya.eval.plots.snsplot.snsplot`.
-
-.. todo:: 🚧
