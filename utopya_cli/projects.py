@@ -191,7 +191,8 @@ def remove(
     default=False,
     help=(
         "If set, will additionally register all models in the project's model "
-        "directory."
+        "directory by recursively looking for their manifest files (ending in "
+        "``_info.yml``)."
     ),
 )
 @click.option(
@@ -226,7 +227,7 @@ def register(
     This also includes the option to additionally register all models
     contained in the project's models directory."""
     import utopya
-    from utopya import MODELS, PROJECTS
+    from utopya import PROJECTS
 
     from .models import _register_from_manifest
 
@@ -246,9 +247,13 @@ def register(
     models_dir = project.paths.models_dir
     Echo.remark("Models directory:\n  %s", models_dir)
 
-    manifest_files = glob.glob(os.path.join(models_dir, "*", "*_info.yml"))
+    manifest_files = glob.glob(
+        os.path.join(models_dir, "**", "*_info.yml"), recursive=True
+    )
     num_files = len(manifest_files)
-    Echo.note("Found %d manifest file(s).", num_files)
+    Echo.note(
+        "Found %d manifest file%s.", num_files, "s" if num_files != 1 else ""
+    )
 
     # Register
     for i, manifest_file in enumerate(manifest_files):

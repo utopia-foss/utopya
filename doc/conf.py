@@ -427,6 +427,16 @@ for line in open(".nitpick-ignore"):
         nitpick_ignore.append((reftype, target.strip()))
 
 
+# -- Linkcheck options --------------------------------------------------------
+
+linkcheck_ignore = [
+    # Sites that do not allow the sphinx linkcheck user agent, or forward to
+    # such sites (typically shows a 403 client error) ... even if a custom
+    # user agent is set, these sites are not happy.
+    r".*(www\.)?gnu\.org/.*",
+]
+
+
 # -----------------------------------------------------------------------------
 # -- Functions used in sphinx setup function ----------------------------------
 # -----------------------------------------------------------------------------

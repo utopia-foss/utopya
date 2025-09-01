@@ -3,6 +3,10 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).  
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
+## v1.3.7
+- !92 allows model manifests to be in nested directories inside the models directory; all files ending in `*_info.yml` will now be considered model manifests when registering them via `utopya projects register . --with-models`.
+
+
 ## v1.3.6
 - !90 fixes a bug in `StepwiseModel` where `write_start` led to corrupted output data.
 - !91 shows parameter space information in the log output *before* starting to add tasks, such that there is no need to wait for it.
