@@ -9,8 +9,8 @@ decorator which is required to make them accessible by name.
 
 import copy
 import logging
+import platform
 import time
-import warnings
 from typing import Callable, Dict, List, Set, Tuple, Union
 
 from dantro.data_ops.db import BOOLEAN_OPERATORS as _OPERATORS
@@ -19,8 +19,11 @@ from paramspace.tools import recursive_getitem as _recursive_getitem
 
 log = logging.getLogger(__name__)
 
-SIG_STOPCOND = "SIGUSR1"
+SIG_STOPCOND: str = "SIGUSR1"
 """Signal to use for stopping workers with fulfilled stop conditions"""
+
+if platform.system() == "Windows":
+    SIG_STOPCOND = "SIGFPE"  # ... in lieu of a better alternative
 
 STOP_CONDITION_FUNCS: Dict[str, Callable] = dict()
 """Registered stop condition functions are stored in this dictionary. These

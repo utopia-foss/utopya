@@ -255,6 +255,24 @@ However, we do suggest that the executable complies to the following:
     All this (and the optional features outlined below) are implemented in the :py:class:`~utopya_backend.model.base.BaseModel` class.
     If you are implementing your model in Python, consider using that as a starting point instead of re-implementing it all by yourself.
 
+.. hint::
+
+    If your model executable is not executable on its own but needs a wrapper, you can use the ``executable_control.prefix`` option of the :ref:`Multiverse meta-configuration <utopya_base_meta_cfg>` to add a prefix to the invocation command:
+
+    .. code-block:: yaml
+
+        executable_control:
+          prefix: [python]
+
+    If the prefix is only needed on Windows, use:
+
+    .. code-block:: yaml
+
+        executable_control:
+          prefix: !if-windows-else [[python], ~]
+
+
+
 Examples
 ^^^^^^^^
 As you may have seen, the ``ExtendedModel`` has a separate file called ``run_model.py`` which is used as a model executable, while the actual implementation is done in the ``impl`` package.

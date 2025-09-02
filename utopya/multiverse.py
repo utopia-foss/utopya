@@ -127,6 +127,7 @@ class Multiverse:
         # Setup property-managed attributes
         self._dirs = dict()
         self._model_executable = None
+        self._model_invocation_prefix = None
         self._tmpdir = None
         self._resolved_cluster_params = None
         self._run_tags: List[str] = ["main"]
@@ -1279,17 +1280,32 @@ class Multiverse:
         )
         log.note("  Backed up %s and metadata.", filename.replace("_", " "))
 
-    def _prepare_executable(self, *, run_from_tmpdir: bool = False) -> None:
+    def _prepare_executable(
+        self, *, run_from_tmpdir: bool = False, prefix: Tuple[str, ...] = None
+    ) -> None:
         """Prepares the model executable, potentially copying it to a temporary
         location.
 
-        Note that ``run_from_tmpdir`` requires the executable to be relocatable
-        to another location, i.e. be position-independent.
+        Also allows specifying a ``prefix`` to the model executable, which
+        can be used to control how the model is invoked.
+
+        .. note::
+
+            The ``run_from_tmpdir`` argument requires the executable to be
+            relocatable to another location, i.e. be position-independent.
+
+            Also, copying the executable to a temporary directory might not
+            suffice in isolating it from all system changes, e.g. if
+            dependencies that are imported during runtime change!
 
         Args:
             run_from_tmpdir (bool, optional): Whether to copy the executable
                 to a temporary directory that goes out of scope once the
                 Multiverse instance goes out of scope.
+            prefix (Tuple[str, ...], optional): These arguments are prefixed to
+                the model invocation. For instance, if this is
+                ``('python',)``, the resulting invocation command will be:
+                ``python path/to/model/executable.py path/to/uni/run_cfg.yml``
 
         Raises:
             FileNotFoundError: On missing file at model binary path
@@ -1328,6 +1344,18 @@ class Multiverse:
             execpath = tmp_execpath
 
         self._model_executable = execpath
+
+        # Determine the prefix
+        self._model_invocation_prefix = ()
+        if not prefix:
+            return
+
+        if not isinstance(prefix, (list, tuple)):
+            raise TypeError(
+                "The model invocation `prefix` should be tuple-like, not "
+                f"{type(prefix)} '{prefix}'!"
+            )
+        self._model_invocation_prefix = tuple(prefix)
 
     def _resolve_cluster_params(self) -> dict:  # TODO Outsource!
         """This resolves the cluster parameters, e.g. by setting parameters
@@ -1417,6 +1445,7 @@ class Multiverse:
         worker_kwargs: dict,
         model_name: str,
         model_executable: str,
+        args_prefix: Tuple[str, ...],
         uni_cfg: dict,
         uni_basename: str,
     ) -> dict:
@@ -1432,6 +1461,8 @@ class Multiverse:
                 dictionary; is always passed to a task setup function
             model_name (str): The name of the model
             model_executable (str): path to the binary to execute
+            args_prefix (Tuple[str, ...]): arguments that are prefixed to the
+                model executable
             uni_cfg (dict): the configuration to create a yml file from
                 which is then needed by the model
             uni_basename (str): Basename of the universe to use for folder
@@ -1453,6 +1484,7 @@ class Multiverse:
         )
         wk = self._setup_universe_worker_kwargs(
             model_executable=model_executable,
+            args_prefix=args_prefix,
             uni_dir=uni_dir,
             uni_cfg_path=uni_cfg_path,
             uni_cfg=uni_cfg,
@@ -1528,6 +1560,7 @@ class Multiverse:
         self,
         *,
         model_executable: str,
+        args_prefix: Tuple[str, ...],
         uni_cfg_path: str,
         uni_cfg: dict,
         uni_dir: str,
@@ -1545,7 +1578,7 @@ class Multiverse:
         """
         # Build args tuple for task assignment; only need to pass the path
         # to the configuration file
-        args = (model_executable, uni_cfg_path)
+        args = args_prefix + (model_executable, uni_cfg_path)
 
         # Assemble the worker_kwargs dict
         wk = dict(
@@ -1636,6 +1669,7 @@ class Multiverse:
         setup_kwargs = dict(
             model_name=self.model_name,
             model_executable=self.model_executable,
+            args_prefix=self._model_invocation_prefix,
             uni_cfg=uni_cfg,
             uni_basename=uni_basename,
         )
@@ -2153,6 +2187,7 @@ class DistributedMultiverse(FrozenMultiverse):
         # Initialize property-managed attributes
         self._dirs = dict()
         self._model_executable = None
+        self._model_invocation_prefix = None
         self._tmpdir = None
 
         self._run_tags: List[str] = ["distributed"]
@@ -2459,6 +2494,8 @@ class DistributedMultiverse(FrozenMultiverse):
     # .........................................................................
 
     def _prepare_executable(self, *args, **kwargs) -> None:
+        """Like the parent's method, but restores the executable from its
+        backup location, if it was backed up. Then calls the parent method."""
         if self.meta_cfg["backups"]["backup_executable"]:
             execpath = os.path.join(
                 self.dirs["run"], "backup", self.model_name
@@ -2472,6 +2509,7 @@ class DistributedMultiverse(FrozenMultiverse):
         return super()._prepare_executable(*args, **kwargs)
 
     def _perform_pspace_backup(*args, **kwargs):
+        """Overload that skips parameter space backup (already exists)."""
         log.debug(
             "  Skipping parameter space backup (was already read from backup)."
         )

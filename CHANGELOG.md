@@ -3,6 +3,11 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).  
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
+## v1.3.8
+- !93 adds **Windows support** by allowing to add a prefix command to the model executable, thus delegating model invocation to some program.
+    For Python models, for instance, Windows requires that they are invoked via the Python executable; this can now be set via the `executable_control.prefix` meta-config parameter.
+
+
 ## v1.3.7
 - !92 allows model manifests to be in nested directories inside the models directory; all files ending in `*_info.yml` will now be considered model manifests when registering them via `utopya projects register . --with-models`.
 
