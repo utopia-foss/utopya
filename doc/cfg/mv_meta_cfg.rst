@@ -3,6 +3,15 @@
 Multiverse Meta-Configuration
 =============================
 
+The :py:class:`~utopya.multiverse.Multiverse` and all adjacent functionality can be controlled via its so-called *meta-configuration*.
+The meta-configuration is an aggregate of multiple configuration files, project- or model-specific defaults and updates that are passed via the CLI when running or evaluating a simulation.
+
+Refer to :ref:`utopya_base_meta_cfg` for all available options and default values.
+
+----
+
+Configuration Levels
+--------------------
 .. todo:: Work in Progress 🚧
 
 .. contents::

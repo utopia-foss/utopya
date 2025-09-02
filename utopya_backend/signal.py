@@ -1,12 +1,25 @@
 """Signal handling when using the utopya backend, e.g. for catching stop
 conditions and handling them gracefully."""
 
+import platform
 import signal
 import time
 
-SIG_STOPCOND = signal.SIGUSR1
-"""Which signal to look out for if a stop condition was fulfilled. This should
-match :py:data:`utopya.stop_conditions.SIG_STOPCOND`."""
+SIG_STOPCOND: int = None
+"""Which signal to look out for if a stop condition was fulfilled. This
+should match :py:data:`utopya.stop_conditions.SIG_STOPCOND`.
+
+.. note::
+
+    On Windows, without proper user-defined signals available, will hijack the
+    floating-point-error signal for this purpose.
+"""
+
+if platform.system() == "Windows":
+    SIG_STOPCOND = signal.SIGFPE  # ... in lieu of a better alternative
+else:
+    SIG_STOPCOND = signal.SIGUSR1
+
 
 SIGNAL_INFO = dict(got_signal=False, signum=None, frame=None, at_time=None)
 """A dict that holds information on whether any kind of signal was received

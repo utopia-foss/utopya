@@ -1256,6 +1256,7 @@ class PopenMPProcess:
         stderr=None,
         bufsize: int = -1,
         encoding: str = "utf8",
+        shell: bool = None,  # ignored
     ):
         """Creates a :py:class:`multiprocessing.Process` and starts it.
 
@@ -1293,6 +1294,8 @@ class PopenMPProcess:
             encoding (str, optional): The encoding to use for the streams;
                 should typically remain ``utf8``, using other values is not
                 encouraged!
+            shell (bool, optional): *Ignored* here, exists only to provide the
+                same interface as with ``subprocess.Popen``.
         """
         self._args = args
         self._kwargs = copy.deepcopy(kwargs)

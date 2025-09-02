@@ -6,6 +6,12 @@ executable_control:
   # within the executable.
   run_from_tmpdir: false
 
+  # On Windows systems, one typically needs to prefix the Python executable.
+  # Make sure that it is in your PATH, i.e. you are in the correct virtual
+  # environment where `python` can be invoked just like that.
+  prefix: !if-windows-else [[python], ~]
+
+
 data_manager:
   load_cfg:
     # Configure the DataManager to load the HDF5 simulation data

@@ -64,6 +64,30 @@ executable_control:
   # not suffice to isolate the whole model from changes.
   run_from_tmpdir: true
 
+  # Model invocation prefix.
+  # If not given, will invoke the model by the following command:
+  #
+  #   /path/to/model/executable /path/to/universe/config.yml
+  #
+  # If given a tuple-like sequence, e.g. [foo, bar] will use those as a prefix:
+  #
+  #   foo bar /path/to/model/executable /path/to/universe/config.yml
+  #
+  # Hint: This can be useful if the model executable is not itself executable;
+  #       as is the case with, e.g., Python files on Windows systems.
+  #       In this case of Python-based models, you can set the prefix using
+  #       *your project repository's meta-config update file* as follows:
+  #
+  #         prefix: [python]
+  #
+  #       Making sure that the `python` executable can be found in your PATH.
+  #       If you only want to set the prefix on Windows, use the following
+  #       YAML tag:
+  #
+  #         prefix: !if-windows-else [[python], ~]  # note the square brackets!
+  #
+  prefix: ~
+
 # Whether to perfom a parameter sweep (if configured).
 # Is evaluated only when calling the Multiverse.run method.
 perform_sweep: false

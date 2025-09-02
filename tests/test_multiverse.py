@@ -7,6 +7,7 @@ tests. This can be done with the tmpdir fixture of pytest.
 
 import copy
 import os
+import platform
 import time
 import uuid
 
@@ -318,15 +319,34 @@ def test_prepare_executable(mv_kwargs):
     # With the executable in a temporary location, we can change its access
     # rights to test the PermissionError
     os.chmod(tmp_executable, 0o600)
-    with pytest.raises(
-        PermissionError, match="does not point to an executable file"
-    ):
-        mv._prepare_executable()
+    if platform.system() != "Windows":
+        with pytest.raises(
+            PermissionError, match="does not point to an executable file"
+        ):
+            mv._prepare_executable()
 
     # Finally, remove that (temporary) file, to test the FileNotFound error
     os.remove(tmp_executable)
     with pytest.raises(FileNotFoundError, match="did you build it?"):
         mv._prepare_executable()
+
+
+def test_custom_prefix(mv_kwargs):
+    """Tests handling of the executable, i.e. copying to a temporary location
+    and emitting helpful error messages
+    """
+    # With a python prefix, this should run
+    mv_kwargs["executable_control"] = dict(prefix=["python"])
+    mv = Multiverse(**mv_kwargs)
+    assert mv._model_invocation_prefix == ("python",)
+
+    mv.run()
+
+    # Only accepts tuple-like entries
+    mv_kwargs["executable_control"] = dict(prefix="python")
+    mv_kwargs["paths"]["model_note"] = "_fails"
+    with pytest.raises(TypeError, match="should be tuple-like"):
+        Multiverse(**mv_kwargs)
 
 
 def test_base_cfg_pools(mv_kwargs):
