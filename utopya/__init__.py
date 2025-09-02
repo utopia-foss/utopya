@@ -49,5 +49,5 @@ from .multiverse import DistributedMultiverse, FrozenMultiverse, Multiverse
 from .project_registry import PROJECTS
 from .testtools import ModelTest
 
-__version__ = "1.3.7"
+__version__ = "1.3.8b0"
 """The :py:mod:`utopya` package version"""
