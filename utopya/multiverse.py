@@ -65,14 +65,18 @@ class Multiverse:
     RUN_DIR_TIME_FSTR = "%y%m%d-%H%M%S"
     """The time format string for the run directory"""
 
+    RUN_SUBDIRS: Tuple[str, ...] = ("config", "data", "eval", ".cache")
+    """Names or managed subdirectories of the run directory."""
+
+    RUN_SUBDIRS_REQUIRED: Tuple[str, ...] = ("config", "data", "eval")
+    """Names of *required* subdirectories; these are guaranteed to exist."""
+
     BASE_META_CFG_PATH = get_resource_path("utopya", "cfg/base_cfg.yml")
-    """Where the default meta-configuration can be loaded from.
-    """
+    """Where the default meta-configuration can be loaded from."""
 
     UTOPYA_BASE_PLOTS_PATH = get_resource_path("utopya", "cfg/base_plots.yml")
     """Where the utopya base plots configuration can be found; this is passed
-    to the :py:class:`~utopya.eval.plotmanager.PlotManager`.
-    """
+    to the :py:class:`~utopya.eval.plotmanager.PlotManager`."""
 
     USER_CFG_SEARCH_PATH = _get_cfg_path("user")
     """Where to look for the user configuration"""
@@ -792,12 +796,12 @@ class Multiverse:
         log.debug("Created run directory.")
 
         # Create the subfolders that are always assumed to be present
-        for subdir in ("config", "data", "eval"):
+        for subdir in self.RUN_SUBDIRS:
             subdir_path = os.path.join(run_dir, subdir)
             os.makedirs(subdir_path, exist_ok=self.cluster_mode)
             self.dirs[subdir] = subdir_path
 
-        log.debug("Created subdirectories:  %s", self._dirs)
+        log.debug("Created subdirectories:  %s", ", ".join(self.dirs))
 
         # May want to adapt directory permissions
         if not dir_permissions:
@@ -952,9 +956,12 @@ class Multiverse:
         # Store the path and associate the subdirectories
         self.dirs["run"] = run_dir
 
-        for subdir in ("config", "eval", "data"):
+        for subdir in self.RUN_SUBDIRS:
             subdir_path = os.path.join(run_dir, subdir)
-            if not os.path.exists(subdir_path):
+            if (
+                not os.path.exists(subdir_path)
+                and subdir in self.RUN_SUBDIRS_REQUIRED
+            ):
                 raise FileNotFoundError(
                     f"Missing '{subdir}' subdirectory inside "
                     f"run directory {run_dir}!"

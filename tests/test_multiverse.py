@@ -242,7 +242,13 @@ def test_create_run_dir(default_mv):
     latest = folders[-1]
 
     # Check if the subdirectories are present
-    for folder, perm_mask in dict(config=None, eval="775", data=None).items():
+    EXPECTED_DIRS = {
+        "config": None,
+        "eval": "775",
+        "data": None,
+        ".cache": "775",
+    }
+    for folder, perm_mask in EXPECTED_DIRS.items():
         subdir_path = os.path.join(path_base, latest, folder)
         assert os.path.isdir(subdir_path)
 

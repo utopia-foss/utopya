@@ -2,6 +2,8 @@
 
 import math
 import os
+import re
+import shutil
 import time
 import traceback
 
@@ -26,6 +28,13 @@ def _check_result(res, expected_exit: int = 0):
     assert res.exit_code == expected_exit
 
 
+def _get_run_dir_from_output(output: str) -> str:
+    match = re.search(r"Run directory:\s*\n\s*(\S+)", output)
+    if not match:
+        raise RuntimeError("No match for run directory!")
+    return match.group(1)
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -34,7 +43,7 @@ def test_run(with_test_models, tmp_output_dir):
     # Simplest case with the dummy model
     res = invoke_cli(("run", DUMMY_MODEL, "-d"))
     _check_result(res, expected_exit=0)
-    assert not "Now creating plots" in res.output  # evaluation not attempted
+    assert "Now creating plots" not in res.output  # evaluation not attempted
 
     # Again, but with the advanced model
     res = invoke_cli(("run", ADVANCED_MODEL, "-d"))
@@ -59,12 +68,19 @@ def test_run(with_test_models, tmp_output_dir):
             "foo.bar=ABCXYZ",
             "-W",
             "1",
+            "--use-data-tree-cache",
         )
     )
     _check_result(res, expected_exit=0)
 
     assert "Updates to meta configuration" in res.output
     assert "ABCXYZ" in res.output
+
+    # Check cache directory exists, but there is no tree cache w/o eval
+    run_dir = _get_run_dir_from_output(res.output)
+    cache_dir = os.path.join(run_dir, ".cache")
+    assert os.path.isdir(cache_dir)
+    assert not os.path.exists(os.path.join(cache_dir, "_tree_cache.d3"))
 
 
 # -- Evaluation ---------------------------------------------------------------
@@ -76,13 +92,43 @@ def test_eval(with_test_models, tmp_output_dir, delay):
     res = invoke_cli(("eval", ADVANCED_MODEL, "-d"))
     _check_result(res, expected_exit=0)
 
-    time.sleep(1)
-
     # Adjusting some of the meta config parameters
+    time.sleep(1)
     args = ("eval", ADVANCED_MODEL, "-d")
     res = invoke_cli(args + ("-p", "plot_manager.raise_exc=true"))
     _check_result(res, expected_exit=0)
     assert "Updates to meta configuration" in res.output
+
+
+def test_eval_with_data_tree_cache(with_test_models, tmp_output_dir, delay):
+    args = ("eval", ADVANCED_MODEL, "-d", "-p", "plot_manager.raise_exc=true")
+
+    # Create the tree cache file
+    res = invoke_cli(args + ("--use-data-tree-cache",))
+    _check_result(res, expected_exit=0)
+    # assert "Dumping data tree" in res.output  # N/A in test output
+
+    run_dir = _get_run_dir_from_output(res.output)
+    cache_dir = os.path.join(run_dir, ".cache")
+    tree_cache_path = os.path.join(cache_dir, "_tree_cache.d3")
+    assert os.path.exists(tree_cache_path)
+
+    # ... and check that it's used next time
+    time.sleep(1)
+    res = invoke_cli(args + ("--tc",))
+    assert "Restoring tree from cache file" in res.output
+
+    # Move to legacy location and make sure its moved to new location
+    legacy_tree_cache_path = os.path.join(run_dir, "data", ".tree_cache.d3")
+    shutil.move(tree_cache_path, legacy_tree_cache_path)
+    assert not os.path.isfile(tree_cache_path)
+    assert os.path.isfile(legacy_tree_cache_path)
+
+    time.sleep(1)
+    res = invoke_cli(args + ("--tc",))
+    # assert "moved existing tree cache" in res.output  # N/A in test output
+    assert os.path.isfile(tree_cache_path)
+    assert not os.path.isfile(legacy_tree_cache_path)
 
 
 # -- EXPERIMENTAL FEATURES ----------------------------------------------------
@@ -302,9 +348,7 @@ def test_run_existing(with_test_models, tmp_output_dir):
     assert "skip_after_setup: true" in res_prep.output
 
     # search output for run directory
-    __find = res_prep.output.find(tmp_output_dir)
-    __end = __find + res_prep.output[__find:].find("\n")
-    run_dir = res_prep.output[__find:__end]
+    run_dir = _get_run_dir_from_output(res_prep.output)
 
     # check that all folders exist
     assert os.path.isdir(run_dir)
