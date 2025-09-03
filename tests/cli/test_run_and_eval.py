@@ -394,7 +394,7 @@ def test_run_existing(with_test_models, tmp_output_dir):
             "--uni",
             "uni2",
             "-u",
-            "uni3",
+            "uni00003",  # still works
         )
     )
     _check_result(res, expected_exit=0)
