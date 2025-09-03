@@ -6,6 +6,10 @@ However, given the rather burst-like development on this package, features are o
 ## v1.3.8
 - !93 adds **Windows support** by allowing to add a prefix command to the model executable, thus delegating model invocation to some program.
     For Python models, for instance, Windows requires that they are invoked via the Python executable; this can now be set via the `executable_control.prefix` meta-config parameter.
+- !94 consolidates cache files into the `.cache` directory inside each run directory.
+    - The `.cache` directory is now managed by the `Multiverse` and group-writeable by default, allowing to share DAG cache files in multi-user scenarios.
+    - Data tree cache files are now stored at `.cache/_tree_cache.d3`.
+      If a legacy file exists it will be moved to the new location.
 
 
 ## v1.3.7
