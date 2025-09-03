@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import readline
+import shutil
 import sys
 import time
 import traceback
@@ -163,6 +164,39 @@ def _load_and_eval(
         mv.dm.load_from_cfg()
 
     else:
+        # As of utopya 1.3.8, the tree cache path location changed:
+        #   Legacy location:  data/.tree_cache.d3
+        #   New location:     .cache/_tree_cache.d3
+        #
+        # To maintain backwards compatibility, the old location is inspected
+        # as well; if a tree cache file is found there, try moving it to the
+        # new location before restoring ...
+        #
+        LEGACY_TC_PATH = os.path.join(mv.dirs["data"], ".tree_cache.d3")
+        legacy_tree_cache_exists = os.path.exists(LEGACY_TC_PATH)
+        if legacy_tree_cache_exists and not mv.dm.tree_cache_exists:
+            # Only have a file at the legacy location, move it to new location.
+            try:
+                shutil.move(LEGACY_TC_PATH, mv.dm.tree_cache_path)
+            except Exception as exc:
+                log.caution(
+                    "Tried but failed to move an existing tree cache file "
+                    "from the legacy location to the new location! Got %s: %s",
+                    type(exc).__name__,
+                    exc,
+                )
+                log.remark(
+                    "A new tree cache file will be created, the existing file "
+                    "will remain. If desired, remove it manually:\n  %s",
+                    LEGACY_TC_PATH,
+                )
+            else:
+                log.note(
+                    "Successfully moved existing tree cache file from legacy "
+                    "location to new location."
+                )
+
+        # Evaluate the new location via the default interface
         if not mv.dm.tree_cache_exists:
             mv.dm.load_from_cfg()
             mv.dm.dump()
