@@ -172,11 +172,13 @@ def _load_and_eval(
         # as well; if a tree cache file is found there, try moving it to the
         # new location before restoring ...
         #
+        tree_cache_dir = os.path.dirname(mv.dm.tree_cache_path)
         LEGACY_TC_PATH = os.path.join(mv.dirs["data"], ".tree_cache.d3")
-        legacy_tree_cache_exists = os.path.exists(LEGACY_TC_PATH)
-        if legacy_tree_cache_exists and not mv.dm.tree_cache_exists:
+
+        if os.path.exists(LEGACY_TC_PATH) and not mv.dm.tree_cache_exists:
             # Only have a file at the legacy location, move it to new location.
             try:
+                os.makedirs(tree_cache_dir, 0o775, exist_ok=True)
                 shutil.move(LEGACY_TC_PATH, mv.dm.tree_cache_path)
             except Exception as exc:
                 log.caution(
