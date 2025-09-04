@@ -3,8 +3,13 @@
 `utopya` aims to adhere to [semantic versioning](https://semver.org/).  
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
+
+## v1.3.9
+- !95 fixes an error where `utopya run-existing --uni` may cause inconsistently zero-padded universe directories.
+
+
 ## v1.3.8
-- !93 adds **Windows support** by allowing to add a prefix command to the model executable, thus delegating model invocation to some program.
+- !93 adds *experimental* **Windows support** by allowing to add a prefix command to the model executable, thus delegating model invocation to some program.
     For Python models, for instance, Windows requires that they are invoked via the Python executable; this can now be set via the `executable_control.prefix` meta-config parameter.
 - !94 consolidates cache files into the `.cache` directory inside each run directory.
     - The `.cache` directory is now managed by the `Multiverse` and group-writeable by default, allowing to share DAG cache files in multi-user scenarios.

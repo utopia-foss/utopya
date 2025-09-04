@@ -1099,7 +1099,7 @@ def test_run_dmv_run_selection(mv_kwargs):
         )
 
     # invalid universe IDs
-    with pytest.raises(MultiverseError, match="A universe with ID '234'"):
+    with pytest.raises(MultiverseError, match="A universe with ID 234"):
         dmvc.run(universes="234")
 
     with pytest.raises(ValueError, match="invalid literal"):

@@ -2317,10 +2317,10 @@ class DistributedMultiverse(FrozenMultiverse):
                 output files without prompting for this again!
         """
 
-        def parse_uni_id_str(s: str) -> Tuple[str, int]:
+        def parse_uni_id(s: str) -> int:
             if s.lower().startswith("uni"):
                 s = s[3:]
-            return s, int(s)
+            return int(s)
 
         if self.cluster_mode:
             raise MultiverseError("Cannot run again in cluster mode, sorry.")
@@ -2390,23 +2390,27 @@ class DistributedMultiverse(FrozenMultiverse):
             # For that, first create all possible parameter space combinations:
             pspace = self.meta_cfg["parameter_space"]
             psp_iter = pspace.iterator(with_info="state_no_str")
-            uni_cfgs: Dict[int, dict] = {
-                int(uni_id_str): uni_cfg for uni_cfg, uni_id_str in psp_iter
+            uni_cfgs: Dict[int, Tuple[str, dict]] = {
+                int(uni_id_str): (uni_id_str, uni_cfg)
+                for uni_cfg, uni_id_str in psp_iter
             }
 
             lock_tasks = len(universes) >= pspace.volume
 
             # Now, add the respective tasks, if they are part of the selection:
-            for i, uni_id_str in enumerate(universes):
-                uni_id_str, uni_id = parse_uni_id_str(uni_id_str)
+            for i, uni in enumerate(universes):
+                # Get the universe (integer) ID and from that, resolve the
+                # zero-padded uni ID string and the corresponding uni config.
+                uni_id: int = parse_uni_id(uni)
 
-                uni_cfg = uni_cfgs.get(uni_id)
-                if uni_cfg is None:
+                try:
+                    uni_id_str, uni_cfg = uni_cfgs[uni_id]
+                except KeyError as err:
                     raise MultiverseError(
-                        f"A universe with ID '{uni_id_str}' does not exist! "
+                        f"A universe with ID {uni_id} does not exist! "
                         "Make sure the universe IDs are part of the specified "
                         "parameter space."
-                    )
+                    ) from err
 
                 self._add_sim_task(
                     uni_id_str=uni_id_str,
