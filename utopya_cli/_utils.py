@@ -3,7 +3,7 @@
 import copy
 import logging
 import sys
-from typing import Tuple
+from typing import Tuple, Union
 
 import click
 import paramspace as psp
@@ -146,7 +146,7 @@ def convert_value(
     val: str,
     *,
     allow_deletion: bool = True,
-    allow_yaml: bool = False,
+    allow_yaml: Union[bool, str] = "!!yaml",
     allow_eval: bool = False,
 ):
     """Attempts a number of conversions for a given string
@@ -159,10 +159,13 @@ def convert_value(
         val (str): Description
         allow_deletion (bool, optional): If set, can pass a ``DELETE`` string
             to a key to remove the corresponding entry.
-        allow_yaml (bool, optional): Whether to attempt converting values
-            by employing a YAML parser
-        allow_eval (bool, optional): Whether to try calling eval() on the
-            value strings during conversion
+        allow_yaml (Union[bool, str], optional): Whether to attempt converting
+            values by employing a YAML parser.
+            If True, will parse all strings.
+            If a string, will only parse ``val`` if it starts with the
+            specified string, e.g. ``!!yaml {foo: bar}``; this is to avoid
+            accidental yaml parsing.
+        allow_eval (bool, optional): Whether to try calling ``eval(val)``.
     """
     # Boolean
     if val.lower() in ("true", "false"):
@@ -175,30 +178,34 @@ def convert_value(
     # Numbers
     try:
         return int(val)
-    except:
+    except Exception:
         try:
             return float(val)
-        except:
+        except Exception:
             pass
 
     # Deletion placeholder
     if val == "DELETE":
         return DEL
 
-    # YAML
-    if allow_yaml:
+    # YAML parsing (blanque cheque or only upon explicit prefix)
+    if allow_yaml is True or (
+        isinstance(allow_yaml, str) and val.strip().startswith(allow_yaml)
+    ):
         from utopya.yaml import yaml
 
         try:
-            return yaml.load(val)
-        except:
+            return yaml.load(
+                val if allow_yaml is True else val.strip()[len(allow_yaml) :]
+            )
+        except Exception:
             pass
 
     # Last resort, if allowed: eval
     if allow_eval:
         try:
             return eval(val)
-        except:
+        except Exception:
             pass
 
     # Just return the string
@@ -208,8 +215,9 @@ def convert_value(
 def set_entries_from_kv_pairs(
     *pairs,
     add_to: dict,
-    _log=log,
+    _log: logging.Logger = log,
     attempt_conversion: bool = True,
+    allow_sweep: bool = False,
     **conversion_kwargs,
 ) -> None:
     """Parses the given ``key=value`` pairs and adds them to the given dict.
@@ -222,13 +230,23 @@ def set_entries_from_kv_pairs(
     Args:
         *pairs: Sequence of key=value strings
         add_to (dict): The dict to add the pairs to
-        _log (TYPE, optional): A logger-like object
+        _log (logging.Logger, optional): A logger-like object
         attempt_conversion (bool, optional): Whether to attempt converting the
             strings to bool, float, int, and other types.
+        allow_sweep (bool, optional): If true, allows to define parameter
+            sweeps. To define a sweep, the ``value`` part of the key-value
+            pair should begin with ``!sweep {…}`` or ``!coupled-sweep {…}``.
         **conversion_kwargs: Passed on to the conversion function,
             :py:func:`~utopya_cli._utils.convert_value`
 
     """
+
+    def is_sweep_string(s: str) -> bool:
+        if not isinstance(s, str):
+            return False
+
+        s = s.strip()
+        return s.startswith("!sweep ") or s.startswith("!coupled-sweep ")
 
     _log.remark(
         "Parsing %d key-value pair%s ...",
@@ -257,7 +275,13 @@ def set_entries_from_kv_pairs(
         if attempt_conversion:
             val = convert_value(val, **conversion_kwargs)
 
-        _log.remark("  %s  \t->   %s: %s", kv, ".".join(key_sequence), val)
+        if allow_sweep and is_sweep_string(val):
+            # Use YAML to load the actual sweep object
+            from utopya.yaml import yaml
+
+            val = yaml.load(val)
+
+        _log.remark("  %-32s  ->  %s: %s", kv, ".".join(key_sequence), val)
 
         # Write or delete the entry
         if val is not DEL:
@@ -489,6 +513,7 @@ def parse_update_dicts(
             set_entries_from_kv_pairs(
                 *args.set_model_params,
                 add_to=update_dict["parameter_space"][args.model_name],
+                allow_sweep=True,
                 _log=_log,
             )
 
@@ -496,6 +521,7 @@ def parse_update_dicts(
             set_entries_from_kv_pairs(
                 *args.set_pspace_params,
                 add_to=update_dict["parameter_space"],
+                allow_sweep=True,
                 _log=_log,
             )
 
@@ -528,6 +554,7 @@ def parse_update_dicts(
         set_entries_from_kv_pairs(
             *args.set_params,
             add_to=update_dict,
+            allow_sweep=True,
             _log=_log,
         )
 
@@ -536,6 +563,7 @@ def parse_update_dicts(
             set_entries_from_kv_pairs(
                 *args.update_plots_cfg,
                 add_to=update_plots_cfg,
+                allow_sweep=True,
                 _log=_log,
             )
 
