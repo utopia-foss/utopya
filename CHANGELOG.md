@@ -4,6 +4,12 @@
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
 
+## v1.3.10
+- !97 enhances CLI parsing of parameter updates:
+    - Can now define sweeps directly via CLI: `utopya run MyModel --mp "some.param=!sweep {default: 0, values: [1, 2, 3]}"`
+    - Can parse values as YAML by prefixing value strings with `!!yaml`, useful e.g. to construct nested dicts.
+
+
 ## v1.3.9
 - !95 fixes an error where `utopya run-existing --uni` may cause inconsistently zero-padded universe directories.
 
