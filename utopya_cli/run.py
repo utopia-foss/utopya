@@ -147,7 +147,11 @@ from ._utils import Echo
         "``parameter_space.<model_name>`` entry of the meta configuration. "
         "Example: ``--mp some.param=42`` sets the ``param`` entry in ``some`` "
         "to ``42``. Specify ``DELETE`` as value to remove an entry. "
-        "Repeat the ``--mp`` option to set multiple values."
+        "Repeat the ``--mp`` option to set multiple values.\n"
+        "It is also possible to define parameter sweeps: "
+        "``--mp some.param=!sweep {default: 0, values: [0, 1, 2]}``.\n"
+        "To use YAML syntax for the value, e.g. to define dicts, use the "
+        "``!!yaml`` prefix: ``--mp some.param=!!yaml {foo: {bar: baz}}``."
     ),
 )
 @click.option(

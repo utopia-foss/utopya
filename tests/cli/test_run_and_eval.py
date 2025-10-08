@@ -66,6 +66,10 @@ def test_run(with_test_models, tmp_output_dir):
             "7",
             "--mp",
             "foo.bar=ABCXYZ",
+            "--mp",
+            "foo.sweep=!sweep {default: 0, values: [12, 23, 34]}",
+            "--mp",
+            "foo.yaml=!!yaml {some: {nested: dict, one: ONE}}",
             "-W",
             "1",
             "--use-data-tree-cache",
@@ -75,6 +79,9 @@ def test_run(with_test_models, tmp_output_dir):
 
     assert "Updates to meta configuration" in res.output
     assert "ABCXYZ" in res.output
+    assert "paramdim.ParamDim" in res.output
+    assert "(12, 23, 34)" in res.output
+    assert "'nested': 'dict'" in res.output
 
     # Check cache directory exists, but there is no tree cache w/o eval
     run_dir = _get_run_dir_from_output(res.output)
