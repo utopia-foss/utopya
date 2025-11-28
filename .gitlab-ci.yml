@@ -126,11 +126,26 @@ test:py39:
     # Install additional dependencies (needed for optional dependencies)
     - apt-get update && apt-get install -y graphviz graphviz-dev
     #
+    # Use a venv to avoid installing packages as root and mirror local setup
+    - python -m venv .venv
+    - source .venv/bin/activate
+    - python -m pip install --upgrade pip
+    #
     # Install utopya itself, also testing if the optional dependencies can be
     # pulled in separately
-    - pip3 install .[opt]
-    - pip3 install .[dev]
+    - python -m pip install "./.[opt]"
+    - python -m pip install "./.[dev]"
   script:
+    # NOTE The venv created in before_script needs to be activated again here,
+    #      because GitLab CI runs each command in a fresh shell context and the
+    #      activation does not persist between before_script and script.
+    - source .venv/bin/activate
+    #
+    # Basic diagnostics to help debug CI-only failures
+    - python -V
+    - which python
+    - python -m pip -V
+    - env | sort
     # NOTE It's paramount to ONLY add --cov=./ here: If nothing is added, there
     #      will not be a report; if anything else is added, there are issues
     #      with cobertura reporting. This also assumes that information about
