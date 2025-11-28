@@ -4,6 +4,10 @@
 However, given the rather burst-like development on this package, features are often released immediately, sometimes also as a "patch" (`+0.0.1`) release.
 
 
+## v1.3.11
+- !99 fixes log records showing `logging` as the module name by adding a `shortname` filter so logs use the actual module.
+
+
 ## v1.3.10
 - !97 enhances CLI parsing of parameter updates:
     - Can now define sweeps directly via CLI: `utopya run MyModel --mp "some.param=!sweep {default: 0, values: [1, 2, 3]}"`
