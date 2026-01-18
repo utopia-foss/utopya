@@ -25,7 +25,8 @@ simple_square:  # .. for comparison: square grid
     small:
       path: small
       transform:
-        - increment  # -> will lead to dropping of attributes => square grid
+        - increment
+        - callattr: [!dag_prev , drop_attrs]  # explicitly drop attributes
 
 
 multiple: &multiple
@@ -177,7 +178,8 @@ rescued_attrs:
     _small:
       path: small
       transform:
-        - increment  # -> will lead to dropping of attributes
+        - increment
+        - callattr: [!dag_prev , drop_attrs]  # explicitly drop attributes
   transform:
     - update_with_attrs_from: [!dag_tag _small, !dag_tag da_with_attrs]
       tag: small
@@ -247,7 +249,8 @@ err_grid_structure_mismatch:
     two:
       path: small
       transform:
-        - increment  # removes attributes
+        - increment
+        - callattr: [!dag_prev , drop_attrs]  # explicitly remove attributes
 
   to_plot:
     one: {}
