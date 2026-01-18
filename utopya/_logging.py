@@ -7,31 +7,37 @@ from dantro.logging import REMARK as _DEFAULT_LOG_LEVEL
 from dantro.logging import getLogger as _getLogger
 
 # -----------------------------------------------------------------------------
+# Set up a custom LogRecord factory that adds the `shortname` attribute to the
+# log record directly. This ensures ALL log records have the `shortname`,
+# regardless of which handler processes them (making things much easier with
+# other packages, e.g. compatibility with pytest's log capturing) ...
+
+_original_LogRecordFactory = logging.getLogRecordFactory()
 
 
-class ShortNameFilter(logging.Filter):
-    """A logging filter that adds the ``shortname`` attribute with just the
-    module name to the logging record.
+def _utopya_LogRecordFactory(*args, **kwargs):
+    """Custom log record factory.
 
-    This allows the log format to show, for example, 'multiverse' instead of
-    'utopya.multiverse'.
+    When building the log record object, adds ``shortname`` in addition.
     """
+    record = _original_LogRecordFactory(*args, **kwargs)
+    record.shortname = (
+        record.name.split(".")[-1] if "." in record.name else record.name
+    )
+    return record
 
-    def filter(self, record):
-        record.shortname = (
-            record.name.split(".")[-1] if "." in record.name else record.name
-        )
-        return True
 
+logging.setLogRecordFactory(_utopya_LogRecordFactory)
 
 # -- Logger Setup -------------------------------------------------------------
 
 _log = _getLogger("utopya")
 """The utopya root logger"""
 
-# Add colour logging to the root logger
+# Add colour logging to the utopya logger
 # See API reference:  https://coloredlogs.readthedocs.io/en/latest/api.html
 _coloredlogs.install(
+    logger=_log,
     level=_DEFAULT_LOG_LEVEL,
     fmt="%(levelname)-8s %(shortname)-16s  %(message)s",
     level_styles=dict(
@@ -56,11 +62,5 @@ _coloredlogs.install(
         shortname=dict(faint=True),
     ),
 )
-
-# Also install the filter on (existing) handlers; need to do this as some
-# handlers (of other modules) are already set up and may thus lack the filter.
-_shortname_filter = ShortNameFilter()
-for handler in logging.root.handlers:
-    handler.addFilter(_shortname_filter)
 
 _log.debug("Logging configured.")
